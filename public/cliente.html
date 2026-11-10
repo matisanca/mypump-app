@@ -483,6 +483,41 @@ main{padding:var(--space-4)}
 .meal-totals .lbl{color:var(--color-text-muted);text-transform:uppercase;font-size:10px;letter-spacing:.06em;font-weight:600}
 
 /* TIPO DÍA SELECTOR */
+.dz-barra-dias{position:sticky;top:0;z-index:30;background:var(--color-bg-secondary);margin:0 calc(var(--space-4)*-1) var(--space-2);padding:6px var(--space-4)}
+.dz-dias{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;position:relative;padding:4px 0}
+.dz-dias::-webkit-scrollbar{display:none}
+.dz-dia{flex:0 0 auto;min-height:36px;padding:0 14px;border:0;border-radius:18px;background:var(--color-bg-tertiary);color:var(--color-text-primary);font-size:15px;font-weight:500;cursor:pointer;white-space:nowrap}
+.dz-dia.is-active{background:var(--color-brand);color:var(--color-on-brand);font-weight:700}
+.dz-banner-dia{margin-top:6px;padding:12px;border-radius:14px;background:rgba(245,158,11,.16);color:#92400e;display:flex;flex-direction:column;gap:6px}
+[data-theme="dark"] .dz-banner-dia{color:#fbbf24}
+.dz-banner-t{font-size:12px;font-weight:600}
+.dz-banner-f{font-size:17px;font-weight:700}
+.dz-banner-bs{display:flex;gap:10px}
+.dz-banner-bs button{flex:1;min-height:44px;border:0;border-radius:10px;background:var(--color-bg-secondary);color:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.dz-banner-n{font-size:13px;line-height:1.35}
+.dz-copiar-otro{width:100%;min-height:44px;margin:0 0 var(--space-3);border:0;border-radius:12px;background:var(--color-brand-subtle);color:var(--color-brand-text);font-size:15px;font-weight:600;cursor:pointer}
+.dz-dia-estado{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:64px 24px;color:var(--color-text-muted)}
+.dz-dia-estado b{font-size:18px;color:var(--color-text-primary)}
+.dz-dia-estado button{flex:none;padding:0 22px}
+.dz-track-btn[disabled],.dz-seg button[disabled],.food-comi-check[disabled],.tipo-dia-btn[disabled]{opacity:.45;cursor:default}
+.dz-copia-sec{font-size:13px;font-weight:600;color:var(--color-text-muted);padding:0 4px}
+.dz-copia-lista{display:flex;flex-direction:column;padding:4px 12px}
+.dz-copia-fila{display:flex;align-items:flex-start;gap:10px;width:100%;min-height:48px;padding:10px 0;border:0;background:none;text-align:left;cursor:pointer;color:var(--color-text-primary)}
+.dz-copia-fila+.dz-copia-fila{border-top:1px solid var(--color-border)}
+.dz-copia-fila[disabled]{cursor:default;opacity:.6}
+.dz-copia-fila i{flex:0 0 24px;width:24px;height:24px;border-radius:50%;border:2px solid var(--color-border);display:flex;align-items:center;justify-content:center;color:var(--color-on-brand)}
+.dz-copia-fila.is-on i{background:var(--color-brand);border-color:var(--color-brand)}
+.dz-copia-fila i svg{width:14px;height:14px}
+.dz-copia-fila span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dz-copia-fila b{font-weight:500;font-size:16px}
+.dz-copia-fila small{font-size:13px;color:var(--color-text-muted)}
+.dz-copia-fila small.alerta{color:#b45309;font-weight:600}
+[data-theme="dark"] .dz-copia-fila small.alerta{color:#fbbf24}
+.dz-copia-vacio{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:28px 12px;color:var(--color-text-muted);font-size:14px}
+.dz-copia-vacio b{font-size:17px;color:var(--color-text-primary)}
+.dz-copia-pregunta{display:flex;flex-direction:column;gap:8px;font-size:14px}
+.dz-copia-pregunta b{font-size:16px}
+.dz-hoja-listo[disabled]{opacity:.45;cursor:default}
 .tipo-dia-sel{display:flex;gap:4px;padding:4px;background:var(--color-bg-tertiary);border:1px solid var(--color-border);border-radius:var(--radius-md);margin-bottom:var(--space-4)}
 .tipo-dia-btn{flex:1;height:36px;border:0;background:transparent;border-radius:var(--radius-sm);font-family:var(--font-num);font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:background .15s,color .15s}
 .tipo-dia-btn.is-active{background:var(--color-brand);color:var(--color-on-brand)}
@@ -1547,6 +1582,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/supabase-client.js"></script>
 <script src="/js/food-db.js"></script>
 <script src="/js/ajustes-dieta.js"></script>
+<script src="/js/dias-dieta.js"></script>
 <script src="/js/codigo-barras.js"></script>
 <script src="/js/reglas-guia.js"></script>
 <script src="/js/guia.js"></script>
@@ -1711,11 +1747,14 @@ let _web230 = (() => {
 })();
 function web230() { return _web230; }
 async function leerPalancaWeb230() {
-  if (_hostDePrueba() || !window.mypumpDB.getAppConfig) return;
+  if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
   if (!cfg || typeof cfg !== 'object') return;
+  if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
+  if (_hostDePrueba()) return;
   const v = cfg.web_230 === true;
   if (v === _web230) return;
+  if (typeof _dietaVolverAHoy === 'function') _dietaVolverAHoy(true);
   if (typeof _csVaciarDeshacer === 'function') _csVaciarDeshacer();
   _web230 = v;
   try { localStorage.setItem(_WEB230_KEY, v ? '1' : '0'); } catch (_) {}
@@ -1801,6 +1840,7 @@ const STATE = {
   fpMsg:              null,       // aviso de la sección de fotos {t, cls, cola} (ver _fpMsg)
   adhOpen:            false,
   adhData:            null,
+  diaPasado:          null,        // Dieta: el día anterior que se está mirando (null = hoy)
   comidasMarcadas:    {},          // comida_id → {opcion, estado, marcada_en}
   comidasLoaded:      false,
   comidasFecha:       null,   // fecha local de la última carga de marcas (para recargar al cambiar de día)
@@ -6360,12 +6400,13 @@ document.addEventListener('visibilitychange', () => {
   // La app queda abierta de un día para otro (iOS la congela, no la cierra):
   // las marcas y las comidas libres eran las de AYER y el anillo mostraba lo
   // de ayer como "hoy". Al volver a foco en otro día se recargan.
-  if (!document.hidden && STATE.comidasFecha && STATE.comidasFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
+  if (!document.hidden && STATE.diaPasado) _dietaAlVolverAlFoco();
+  if (!document.hidden && !STATE.diaPasado && STATE.comidasFecha && STATE.comidasFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
     loadComidasMarcadas();
     if (typeof loadComidasLibres === 'function') loadComidasLibres();
   }
   // Los ajustes se releen siempre al volver: lo que se ajustó en la app con la web abierta no se pisa.
-  if (!document.hidden && STATE.ajustesFecha && TOKEN && !(DATA && DATA._isDemo)) loadAjustesDieta();
+  if (!document.hidden && !STATE.diaPasado && STATE.ajustesFecha && TOKEN && !(DATA && DATA._isDemo)) loadAjustesDieta();
   if (!document.hidden && STATE.mydayFecha && STATE.mydayFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
     loadMyday();   // hábitos y vasos de agua de HOY, no los de ayer
   }
@@ -6390,15 +6431,7 @@ async function loadComidasMarcadas() {
   try {
     const fecha = hoyLocal();
     const rows = await window.mypumpDB.getComidasMarcadas(TOKEN, fecha);
-    const map = {};
-    (rows || []).forEach(r => {
-      map[r.comida_id] = {
-        opcion:     r.opcion_elegida,
-        estado:     r.estado,
-        marcada_en: r.marcada_en,
-        foodsExcluidos: Array.isArray(r.foods_excluidos) ? r.foods_excluidos : [],
-      };
-    });
+    const map = _marcasDeFilas(rows);
     // Lo que el cliente marcó mientras esto viajaba (o sin señal, encolado en
     // el Outbox) gana sobre lo que dice el servidor: si no, la comida "se
     // desmarcaba sola" al terminar la carga.
@@ -6415,15 +6448,19 @@ async function loadComidasMarcadas() {
         else map[id] = { opcion: p.opcion, estado: p.estado, foodsExcluidos: p.excl || [] };
       }
     }
-    STATE.comidasMarcadas = map;
-    STATE.comidasFecha = fecha;
+    // Mirando un día anterior, lo de hoy se guarda en su caja: no se pinta sobre el otro día.
+    const caja = _cajaHoy();
+    caja.comidasMarcadas = map;
+    caja.comidasFecha = fecha;
     STATE.comidasLoaded = true;
+    if (STATE.diaPasado) return;
     _opcionesIniciales();
     if (STATE.scene === 'diet') renderDiet();
   } catch(e) {
     console.error('[Diet] error cargando comidas marcadas:', e);
-    STATE.comidasMarcadas = {};
-    STATE.comidasFecha = hoyLocal();   // si no, el chequeo de "cambió el día" no se dispara nunca
+    const caja = _cajaHoy();
+    caja.comidasMarcadas = {};
+    caja.comidasFecha = hoyLocal();   // si no, el chequeo de "cambió el día" no se dispara nunca
     STATE.comidasLoaded = true;
   }
 }
@@ -6440,6 +6477,7 @@ async function toggleComidaEstado(comidaId, nuevoEstado) {
   const prev = STATE.comidasMarcadas[comidaId];
   if (nuevoEstado === null) delete STATE.comidasMarcadas[comidaId];
   else STATE.comidasMarcadas[comidaId] = { opcion: opcionNombre, estado: nuevoEstado, foodsExcluidos: [] };
+  if (STATE.diaPasado) _ordenDia++;
   renderDiet();
 
   // Modo demo: solo memoria, no backend.
@@ -6450,7 +6488,7 @@ async function toggleComidaEstado(comidaId, nuevoEstado) {
   // leía adherencia de dieta de alguien que no tiene dieta.
   if (!TOKEN || (DATA && (DATA._isDemo || DATA._dietaEjemplo))) return;
 
-  const fecha = hoyLocal();
+  const fecha = fechaVistaDieta();
   if (OUTBOX_ENABLED) {
     Outbox.enqueue('comida', { fecha, comidaId, opcion: opcionNombre, estado: nuevoEstado, excl: [] }, `comida|${fecha}|${comidaId}`);
     return;
@@ -6481,10 +6519,11 @@ async function toggleFoodComido(comidaId, foodIdx) {
 
   const prev = mark.foodsExcluidos || [];
   mark.foodsExcluidos = nuevos;          // optimistic
+  if (STATE.diaPasado) _ordenDia++;
   renderDiet();
 
   if (!TOKEN || (DATA && (DATA._isDemo || DATA._dietaEjemplo))) return;
-  const fecha = hoyLocal();
+  const fecha = fechaVistaDieta();
   if (OUTBOX_ENABLED) {
     Outbox.enqueue('comida', { fecha, comidaId, opcion: mark.opcion || 'A', estado: 'comido', excl: nuevos }, `comida|${fecha}|${comidaId}`);
     return;
@@ -6502,31 +6541,41 @@ async function toggleFoodComido(comidaId, foodIdx) {
 /* ---- F10: COMIDAS LIBRES (foto del plato / registro manual) ---- */
 async function loadComidasLibres() {
   if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getComidasLibres) {
-    STATE.comidasLibres = [];
+    _cajaHoy().comidasLibres = [];
     return;
   }
+  let libres;
   try {
-    STATE.comidasLibres = (await window.mypumpDB.getComidasLibres(TOKEN, hoyLocal())) || [];
-  } catch (_) { STATE.comidasLibres = []; }
-  if (STATE.scene === 'diet') renderDiet();
+    libres = (await window.mypumpDB.getComidasLibres(TOKEN, hoyLocal())) || [];
+  } catch (_) { libres = []; }
+  _cajaHoy().comidasLibres = libres;
+  if (STATE.scene === 'diet' && !STATE.diaPasado) renderDiet();
 }
 
-async function guardarComidaLibre(datos) {
-  const res = await window.mypumpDB.crearComidaLibre(TOKEN, { ...datos, fecha: hoyLocal() });
+// `fecha`: la del día en que se abrió la carga (una foto tarda: el cliente pudo haber cambiado de día mientras tanto).
+async function guardarComidaLibre(datos, fecha) {
+  const f = fecha || fechaVistaDieta();
+  const res = await window.mypumpDB.crearComidaLibre(TOKEN, { ...datos, fecha: f });
   if (res && res.success && res.data && res.data[0]) {
-    STATE.comidasLibres.push(res.data[0]);
-    renderDiet();
+    const caja = _cajaDe(f);
+    if (caja) caja.comidasLibres.push(res.data[0]);
+    if (STATE.scene === 'diet') renderDiet();
     return true;
   }
   return false;
 }
 
 async function borrarComidaLibre(id) {
+  const f = fechaVistaDieta();
   const prev = STATE.comidasLibres;
   STATE.comidasLibres = prev.filter(c => c.id !== id);   // optimista
   renderDiet();
   const res = await window.mypumpDB.borrarComidaLibre(TOKEN, id);
-  if (!res || !res.success) { STATE.comidasLibres = prev; renderDiet(); }
+  if (!res || !res.success) {
+    const caja = _cajaDe(f);
+    if (caja) caja.comidasLibres = prev;
+    if (STATE.scene === 'diet') renderDiet();
+  }
 }
 
 /* ---- AJUSTES DE COMIDAS (D22) Y ALIMENTOS AGREGADOS (D1) ----
@@ -6541,14 +6590,16 @@ const _AJ_KEY = (fecha) => `ajustes_dieta|${fecha}`;
 async function loadAjustesDieta() {
   const fecha = hoyLocal();
   if (_dietaSinEscritura() || !DIETA_ID || !window.mypumpDB.getAjustesDieta) {
-    STATE.ajustesDieta = {}; STATE.ajustesFecha = fecha;
+    const c = _cajaHoy();
+    c.ajustesDieta = {}; c.ajustesFecha = fecha;
     return;
   }
   const filas = await window.mypumpDB.getAjustesDieta(TOKEN, fecha, fecha);
   // null = no se pudo preguntar: se queda lo que había (no se borra un ajuste por un corte de señal), y hasta
   // una lectura buena no se escribe (_ajustar).
-  if (!Array.isArray(filas)) { STATE.ajustesFecha = fecha; return; }
-  STATE.ajustesCargados = fecha;
+  if (!Array.isArray(filas)) { _cajaHoy().ajustesFecha = fecha; return; }
+  const caja = _cajaHoy();
+  caja.ajustesCargados = fecha;
   const fila = filas.find(f => String(f.fecha).slice(0, 10) === fecha && f.dieta_id === DIETA_ID);
   let aj = fila ? AjustesDieta.leerAjustes(fila.ajustes) : {};
   // Lo que el cliente ajustó y todavía no salió gana sobre el servidor (igual que las marcas).
@@ -6557,8 +6608,9 @@ async function loadAjustesDieta() {
       if (k === _AJ_KEY(fecha)) aj = AjustesDieta.leerAjustes((op.payload || {}).ajustes);
     }
   }
-  STATE.ajustesDieta = aj;
-  STATE.ajustesFecha = fecha;
+  caja.ajustesDieta = aj;
+  caja.ajustesFecha = fecha;
+  if (STATE.diaPasado) return;
   _opcionesIniciales();
   if (STATE.scene === 'diet') renderDiet();
 }
@@ -6610,9 +6662,10 @@ function guardarAjustesDieta(ajustes, comidaId) {
   STATE.ajustesDieta = limpio;
   // «Hoy no la como» sobre una comida marcada: la marca se va (como en la app).
   if (limpio[comidaId] && limpio[comidaId].omitida && STATE.comidasMarcadas[comidaId]) toggleComidaEstado(comidaId, null);
+  if (STATE.diaPasado) _ordenDia++;
   renderDiet();
   if (_dietaSinEscritura() || !DIETA_ID) return;
-  const fecha = hoyLocal();
+  const fecha = fechaVistaDieta();
   const hay = Object.keys(limpio).length > 0;
   const dia = AjustesDieta.dia(delDia, limpio);
   const resumen = [];
@@ -6643,17 +6696,428 @@ function _ajusteDe(comidaId) {
   return aj ? AjustesDieta.clonarAjuste(aj) : AjustesDieta.nuevoAjuste((STATE.meals[comidaId] || {}).selectedOpt || 0);
 }
 async function _ajustar(comidaId, aj) {
-  // Sin una lectura buena de hoy no se escribe: el día viaja entero y pisaría lo que se ajustó en la app.
-  if (!_dietaSinEscritura() && DIETA_ID && STATE.ajustesCargados !== hoyLocal()) {
+  if (STATE.diaPasado) {
+    // El día pasado solo se escribe ya leído (cargando o sin señal, la hoja ni se abre).
+    if (!vistaEditable()) return;
+  } else if (!_dietaSinEscritura() && DIETA_ID && STATE.ajustesCargados !== hoyLocal()) {
+    // Sin una lectura buena de hoy no se escribe: el día viaja entero y pisaría lo que se ajustó en la app.
     await loadAjustesDieta();
     if (STATE.ajustesCargados !== hoyLocal()) {
       MyPump.ui.showConfirmModal({ title: 'No se pudo guardar', body: 'No pudimos leer tus ajustes de hoy. Revisá la conexión y probá de nuevo.', confirmLabel: 'Entendido' });
       return;
     }
   }
+  const antes = (STATE.ajustesDieta[comidaId] || {}).agregados || [];
+  const despues = (aj && aj.agregados) || [];
+  const cambiaron = antes.map(a => a._ts).join() !== despues.map(a => a._ts).join();
+  // Los tildes siguen a los agregados con una marca nueva: fuera de la ventana de «Comí» la base la rechazaría y quedaría
+  // un tilde corrido, así que los agregados de una comida marcada no se tocan.
+  if (cambiaron && STATE.diaPasado && STATE.comidasMarcadas[comidaId]?.estado === 'comido' && !vistaPuedeMarcar()) return;
+  if (cambiaron) _seguirTildes(comidaId, antes, despues);
   const todos = Object.assign({}, STATE.ajustesDieta);
   if (aj) todos[comidaId] = aj; else delete todos[comidaId];
   guardarAjustesDieta(todos, comidaId);
+}
+
+// Los tildes de «Comí» siguen a cada agregado (por su _ts): sacar uno o sumar otro no corre lo que se destildó.
+function _seguirTildes(comidaId, antes, despues) {
+  const m = STATE.comidasMarcadas[comidaId];
+  if (!m || m.estado !== 'comido' || !(m.foodsExcluidos || []).length) return;
+  const c = getActivePlan().comidas.find(x => x.id === comidaId);
+  if (!c) return;
+  const o = AjustesDieta.indiceOpcion(c, m.opcion);
+  const n = c.options[o] ? c.options[o].foods.length : 0;
+  const excl = AjustesDieta.excluidosTrasCambio(m.foodsExcluidos, n, antes.map(a => a._ts), despues.map(a => a._ts));
+  if (excl.join() === m.foodsExcluidos.join()) return;
+  m.foodsExcluidos = excl;
+  if (_dietaSinEscritura()) return;
+  _encolarMarca(fechaVistaDieta(), comidaId, m, m.opcion);
+}
+
+function _encolarMarca(fecha, comidaId, marca, opcionAlDesmarcar) {
+  const opcion = (marca && marca.opcion) || opcionAlDesmarcar || 'A';
+  const estado = marca ? marca.estado : null;
+  const excl = marca ? (marca.foodsExcluidos || []) : [];
+  if (OUTBOX_ENABLED) { Outbox.enqueue('comida', { fecha, comidaId, opcion, estado, excl }, `comida|${fecha}|${comidaId}`); return; }
+  if (estado === null) window.mypumpDB.desmarcarComida(TOKEN, fecha, comidaId);
+  else window.mypumpDB.marcarComida(TOKEN, fecha, comidaId, opcion, estado, excl);
+}
+
+// Un reemplazo (o volver al alimento del plan) cambia el alimento de esa posición: la cantidad puesta a mano era del
+// anterior y en otra unidad, así que se descarta. Con otros ajustes en el día, el resumen se rehace igual.
+function _planCambio(comidaId, opt, idx) {
+  const aj = STATE.ajustesDieta[comidaId];
+  if (aj && aj.opcion === opt && aj.cantidades[String(idx)] !== undefined) {
+    const nuevo = AjustesDieta.clonarAjuste(aj);
+    delete nuevo.cantidades[String(idx)];
+    _ajustar(comidaId, nuevo);
+  } else _reencolarResumen();
+}
+
+// Cambió lo que se ve (opción, tipo de día, un reemplazo): con ajustes en el día, el resumen que lee Mati se rehace.
+function _reencolarResumen() {
+  if (_dietaSinEscritura() || !DIETA_ID || !Object.keys(STATE.ajustesDieta).length) return;
+  if (STATE.diaPasado ? !vistaEditable() : STATE.ajustesCargados !== hoyLocal()) return;
+  guardarAjustesDieta(Object.assign({}, STATE.ajustesDieta), null);
+}
+
+/* ---- DÍAS ANTERIORES Y COPIAR A HOY (app 2.3.0, palanca web230) ----
+ * Lo de hoy no cambia: mirando otro día, sus datos se guardan en STATE.diaPasado.hoy y los campos de siempre
+ * (comidasMarcadas, ajustesDieta, comidasLibres…) muestran ese día, así todo lo que dibuja Dieta sirve igual. Vive solo
+ * mientras se lo mira: se lee del servidor y escribe por la misma cola con la fecha de ese día. Sin señal no se abre,
+ * porque un día se guarda entero y escribir sin haber leído borraría lo que ya tenía. */
+const _CAMPOS_DIA = ['comidasMarcadas', 'comidasLibres', 'ajustesDieta', 'ajustesCargados', 'ajustesFecha', 'comidasFecha', 'meals', 'mealsTocadas', 'activeTipoDia'];
+let _vueltaDia = 0;   // otro día elegido (o la vuelta a hoy) mientras viajaba: esa respuesta ya no es de nadie
+let _ordenDia = 0;    // tocó algo mientras viajaba: la respuesta es una foto de antes de ese cambio
+let _palancaDiasMarcar = null;
+
+function _cajaHoy() { return STATE.diaPasado ? STATE.diaPasado.hoy : STATE; }
+function _cajaDe(fecha) {
+  if (fecha === fechaVistaDieta()) return STATE;
+  return fecha === hoyLocal() ? _cajaHoy() : null;
+}
+function fechaVistaDieta() { return STATE.diaPasado ? STATE.diaPasado.fecha : hoyLocal(); }
+function fechasDieta() {
+  if (!web230() || _dietaSinEscritura() || !DIETA_ID) return [];
+  return DiasDieta.seleccionables(hoyLocal(), DiasDieta.hoyServidor());
+}
+function vistaEditable() { const p = STATE.diaPasado; return !p || (!p.cargando && !p.sinRed && !p.otroPlan); }
+function vistaAdmiteLibres() { const p = STATE.diaPasado; return !p || (!p.cargando && !p.sinRed); }
+function diasMarcarDieta() { return DiasDieta.diasMarcar(_palancaDiasMarcar); }
+function vistaPuedeMarcar() {
+  const p = STATE.diaPasado;
+  return !p || (vistaEditable() && DiasDieta.permiteMarcar(p.fecha, DiasDieta.hoyServidor(), diasMarcarDieta()));
+}
+function _marcasDeFilas(rows) {
+  const map = {};
+  (rows || []).forEach(r => {
+    map[r.comida_id] = {
+      opcion:     r.opcion_elegida,
+      estado:     r.estado,
+      marcada_en: r.marcada_en,
+      foodsExcluidos: Array.isArray(r.foods_excluidos) ? r.foods_excluidos : [],
+    };
+  });
+  return map;
+}
+function _cerrarHojaDieta() { if ($('#modalHost .dz-hoja')) closeModal(); }
+
+function _dietaVolverAHoy(sinPintar) {
+  _vueltaDia++;
+  const p = STATE.diaPasado;
+  if (!p) return;
+  Object.assign(STATE, p.hoy);
+  STATE.diaPasado = null;
+  _cerrarHojaDieta();
+  _opcionesIniciales();
+  if (!sinPintar && STATE.scene === 'diet') renderDiet();
+}
+
+async function irADiaDieta(fecha) {
+  if (!fecha || fecha === hoyLocal() || !fechasDieta().includes(fecha)) { _dietaVolverAHoy(); return; }
+  if (STATE.diaPasado && STATE.diaPasado.fecha === fecha) return;
+  const v = ++_vueltaDia;
+  _cerrarHojaDieta();
+  let hoy;
+  if (STATE.diaPasado) hoy = STATE.diaPasado.hoy;
+  else { hoy = {}; for (const k of _CAMPOS_DIA) hoy[k] = STATE[k]; }
+  STATE.diaPasado = { fecha, cargando: true, sinRed: false, otroPlan: false, hoy };
+  STATE.comidasMarcadas = {}; STATE.comidasLibres = []; STATE.ajustesDieta = {};
+  STATE.ajustesCargados = fecha; STATE.ajustesFecha = fecha; STATE.comidasFecha = fecha;
+  STATE.activeTipoDia = hoy.activeTipoDia;
+  STATE.mealsTocadas = new Set();
+  STATE.meals = buildMeals();
+  renderDiet();
+  await _leerDiaPasado(fecha, v);
+}
+
+async function _refrescarDiaPasado() {
+  const p = STATE.diaPasado;
+  if (!p) return;
+  if (p.sinRed) { p.cargando = true; p.sinRed = false; renderDiet(); }
+  await _leerDiaPasado(p.fecha, ++_vueltaDia);
+}
+
+// Al volver a la app: si cambió el día se vuelve a hoy (las fechas ya son otras); si no, se relee el que se está mirando.
+function _dietaAlVolverAlFoco() {
+  const p = STATE.diaPasado;
+  if (!p) return;
+  if (!fechasDieta().includes(p.fecha) || p.hoy.comidasFecha !== hoyLocal()) { _dietaVolverAHoy(); return; }
+  _refrescarDiaPasado();
+}
+
+async function _leerDiaPasado(fecha, vuelta) {
+  const orden = _ordenDia;
+  const r = await _leerDia(fecha);
+  const p = STATE.diaPasado;
+  if (vuelta !== _vueltaDia || !p || p.fecha !== fecha || orden !== _ordenDia) return;
+  p.cargando = false;
+  if (!r) {
+    // Con el día ya a la vista, un corte al refrescar no lo cierra.
+    if (!Object.keys(STATE.comidasMarcadas).length && !Object.keys(STATE.ajustesDieta).length && !STATE.comidasLibres.length) p.sinRed = true;
+    renderDiet();
+    return;
+  }
+  p.sinRed = false;
+  p.otroPlan = r.otroPlan;
+  STATE.comidasMarcadas = r.marcas;
+  STATE.ajustesDieta = r.ajustes;
+  STATE.comidasLibres = r.libres;
+  if (r.tipoDia && r.tipoDia !== STATE.activeTipoDia) { STATE.activeTipoDia = r.tipoDia; STATE.mealsTocadas.clear(); STATE.meals = buildMeals(); }
+  _opcionesIniciales();
+  renderDiet();
+}
+
+// Lo que hay guardado de un día: lo del servidor con lo pendiente de la cola por encima. null si no se pudo leer: nunca
+// se trata un corte como un día vacío.
+async function _leerDia(fecha) {
+  if (_dietaSinEscritura()) return null;
+  // Lo pendiente al empezar también gana: si sale mientras viaja la lectura, la foto del servidor puede ser de antes.
+  const pendientesAntes = OUTBOX_ENABLED ? Array.from(Outbox.pendingByKey()) : [];
+  const [filasM, libres, filasA] = await Promise.all([
+    window.mypumpDB.getComidasMarcadas(TOKEN, fecha),
+    window.mypumpDB.getComidasLibres(TOKEN, fecha),
+    window.mypumpDB.getAjustesDieta(TOKEN, fecha, fecha),
+  ]);
+  if (!Array.isArray(filasM) || !Array.isArray(libres) || !Array.isArray(filasA)) return null;
+  const lotes = OUTBOX_ENABLED ? [pendientesAntes, Array.from(Outbox.pendingByKey())] : [];
+  const marcas = _marcasDeFilas(filasM);
+  const prefijo = `comida|${fecha}|`;
+  for (const lote of lotes) for (const [k, op] of lote) {
+    if (!k.startsWith(prefijo)) continue;
+    const id = k.slice(prefijo.length), q = op.payload || {};
+    if (q.estado === null || q.estado === undefined) delete marcas[id];
+    else marcas[id] = { opcion: q.opcion, estado: q.estado, foodsExcluidos: q.excl || [] };
+  }
+  let ajustes = {}, tipo = null, dietaRemota = null;
+  const adoptar = (a, t, d) => {
+    const leidos = AjustesDieta.leerAjustes(a);
+    ajustes = {};
+    for (const k of Object.keys(leidos)) if (!AjustesDieta.esNeutro(leidos[k])) ajustes[k] = leidos[k];
+    tipo = t || null; dietaRemota = d || null;
+  };
+  const fila = filasA.find(f => String(f.fecha).slice(0, 10) === fecha);
+  if (fila) adoptar(fila.ajustes, fila.tipo_dia, fila.dieta_id);
+  for (const lote of lotes) for (const [k, op] of lote) {
+    if (k === _AJ_KEY(fecha)) { const q = op.payload || {}; adoptar(q.ajustes, q.tipoDia, q.dietaId); }
+  }
+  // ¿Regía otro plan? La fila dice con qué dieta se guardó; las marcas, qué comidas había.
+  const ids = new Set((DIET.comidas || []).map(c => c.id));
+  for (const t of (DIET.tipos_dia || [])) for (const c of (t.comidas || [])) ids.add(c.id);
+  const otroPlan = (Object.keys(ajustes).length > 0 && dietaRemota != null && dietaRemota !== DIETA_ID)
+    || Object.keys(marcas).some(id => !ids.has(id));
+  const tipoValido = tipo && (DIET.tipos_dia || []).some(t => t.id === tipo) ? tipo : null;
+  return { marcas: otroPlan ? {} : marcas, ajustes: otroPlan ? {} : ajustes, libres, tipoDia: tipoValido, otroPlan };
+}
+
+function _elegirTipoDia(id) {
+  if (STATE.diaPasado) {
+    if (STATE.activeTipoDia === id || !vistaEditable()) return;
+    _ordenDia++;
+  }
+  STATE.activeTipoDia = id;
+  if (!STATE.diaPasado) localStorage.setItem('mypump_tipo_dia', id);
+  STATE.meals = buildMeals();
+  STATE.mealsTocadas.clear();
+  _opcionesIniciales();
+  _reencolarResumen();
+  renderDiet();
+}
+
+function _barraDiasHtml() {
+  const fechas = fechasDieta();
+  if (!fechas.length) return '';
+  const hoy = hoyLocal(), elegida = fechaVistaDieta(), p = STATE.diaPasado;
+  const pills = fechas.map(f => `<button class="dz-dia${f === elegida ? ' is-active' : ''}" data-dia="${f}" aria-pressed="${f === elegida}" aria-label="${f === hoy ? 'Hoy' : DiasDieta.rotuloLargo(f)}">${DiasDieta.rotuloCorto(f, hoy)}</button>`).join('');
+  let banner = '';
+  if (p) {
+    const nota = p.otroPlan
+      ? 'Ese día tenías otro plan. Acá ves el plan actual: lo que cargaste entonces queda guardado y solo podés sumar comidas libres.'
+      : (vistaPuedeMarcar() || !vistaEditable() ? ''
+        : `«Comí» y «Salté» se pueden marcar hasta ${diasMarcarDieta()} días atrás. Para este día, cargá lo que comiste en «Comidas libres».`);
+    banner = `
+    <div class="dz-banner-dia">
+      <div class="dz-banner-t">Estás viendo otro día</div>
+      <div class="dz-banner-f">${DiasDieta.rotuloLargo(p.fecha)}</div>
+      <div class="dz-banner-bs">
+        <button data-dia-volver>Volver a hoy</button>
+        ${!p.cargando && !p.sinRed ? '<button data-dia-copiar>Copiar a hoy</button>' : ''}
+      </div>
+      ${nota ? `<div class="dz-banner-n">${nota}</div>` : ''}
+    </div>`;
+  }
+  return `<div class="dz-barra-dias"><div class="dz-dias">${pills}</div>${banner}</div>`;
+}
+
+function _bindBarraDias() {
+  const root = $('#scene-diet');
+  root.querySelectorAll('[data-dia]').forEach(b => b.addEventListener('click', () => irADiaDieta(b.getAttribute('data-dia'))));
+  root.querySelectorAll('[data-dia-volver]').forEach(b => b.addEventListener('click', () => irADiaDieta(null)));
+  root.querySelectorAll('[data-dia-copiar]').forEach(b => b.addEventListener('click', () => abrirCopiarAHoy(STATE.diaPasado && STATE.diaPasado.fecha)));
+  root.querySelectorAll('[data-dia-copiar-otro]').forEach(b => b.addEventListener('click', () => abrirCopiarAHoy(DiasDieta.sumar(hoyLocal(), -1))));
+  root.querySelectorAll('[data-dia-reintentar]').forEach(b => b.addEventListener('click', () => _refrescarDiaPasado()));
+  const activa = root.querySelector('.dz-dia.is-active');
+  const tira = root.querySelector('.dz-dias');
+  if (activa && tira) tira.scrollLeft = Math.max(0, activa.offsetLeft - (tira.clientWidth - activa.offsetWidth) / 2);
+}
+
+/* ---- Hoja «Copiar a hoy» ---- */
+function _planDeTipoHoy() {
+  const tipo = _cajaHoy().activeTipoDia;
+  const tipos = DIET.tipos_dia || [];
+  if (!tipos.length) return DIET;
+  return tipos.find(t => t.id === tipo) || tipos[0];
+}
+
+async function _prepararCopia(fecha) {
+  const d = await _leerDia(fecha);
+  if (!d) return null;
+  const caja = _cajaHoy();
+  return DiasDieta.plan({
+    comidas: _planDeTipoHoy().comidas, origenMarcas: d.marcas, origenAjustes: d.ajustes, origenLibres: d.libres,
+    hoyMarcas: caja.comidasMarcadas, hoyAjustes: caja.ajustesDieta, hoyLibres: caja.comidasLibres || [], otroPlan: d.otroPlan,
+    kcal: (c, m, a, o) => {
+      const sintetica = m || { opcion: _letraOpcion(c.options[o], o), estado: 'comido', foodsExcluidos: [] };
+      return AjustesDieta.consumo([c], { [c.id]: sintetica }, [], a ? { [c.id]: a } : {}, { [c.id]: o }, _efectivoDieta).kcal;
+    },
+  });
+}
+
+async function _copiarAHoy(comidas, libres, reemplazar) {
+  const r = { comidas: 0, libres: 0, libresFallidas: 0, saltadas: 0 };
+  const hoy = hoyLocal();
+  // Sin una lectura buena de hoy no se escribe: el día viaja entero.
+  if (comidas.length && STATE.comidasFecha !== hoy) await loadComidasMarcadas();
+  if (comidas.length && STATE.ajustesCargados !== hoy) await loadAjustesDieta();
+  if (comidas.length && (STATE.ajustesCargados !== hoy || STATE.comidasFecha !== hoy)) { r.saltadas += comidas.length; comidas = []; }
+  for (const i of comidas) {
+    const id = i.comidaId;
+    const actual = DiasDieta.estado(i.marca, i.ajuste, STATE.comidasMarcadas[id] || null, STATE.ajustesDieta[id] || null);
+    if (actual === 'igual') continue;
+    if (actual === 'conflicto' && !reemplazar.has(id)) { r.saltadas++; continue; }
+    // Los mismos topes que al agregar a mano: un día que no entra haría rechazar la fila entera de hoy.
+    const nuevos = Object.assign({}, STATE.ajustesDieta);
+    if (i.ajuste) nuevos[id] = i.ajuste; else delete nuevos[id];
+    if (AjustesDieta.motivoNoEntra(nuevos, id)) { r.saltadas++; continue; }
+    const opcionHoy = STATE.comidasMarcadas[id] && STATE.comidasMarcadas[id].opcion;
+    const vaMarca = actual === 'conflicto' || !!i.marca;
+    // La marca de hoy se saca antes de ajustar: la porción se ancla a la opción copiada y los tildes copiados no se corren.
+    if (vaMarca) delete STATE.comidasMarcadas[id];
+    if (STATE.meals[id]) STATE.meals[id].selectedOpt = i.opcion;
+    STATE.mealsTocadas.add(id);
+    if (i.ajuste || STATE.ajustesDieta[id]) await _ajustar(id, i.ajuste ? AjustesDieta.clonarAjuste(i.ajuste) : null);
+    if (vaMarca) {
+      if (i.marca) STATE.comidasMarcadas[id] = { opcion: i.marca.opcion, estado: i.marca.estado, foodsExcluidos: i.marca.foodsExcluidos.slice() };
+      _encolarMarca(hoy, id, i.marca, (i.marca && i.marca.opcion) || opcionHoy);
+    }
+    r.comidas++;
+  }
+  // Por conteo: cada una de hoy cubre una sola del origen.
+  const deHoy = (STATE.comidasLibres || []).slice();
+  for (const i of libres) {
+    const j = deHoy.findIndex(x => DiasDieta.mismaLibre(x, i.libre));
+    if (j >= 0) { deHoy.splice(j, 1); continue; }
+    if (i.estado === 'igual') continue;   // ya estaba cuando se armó la lista y hoy ya no: el cliente no la pidió
+    const l = i.libre;
+    const ok = await guardarComidaLibre({ hora: l.hora ? String(l.hora).slice(0, 5) : null, descripcion: l.descripcion || '',
+      kcal: l.kcal || 0, prot: l.prot || 0, carb: l.carb || 0, fat: l.fat || 0, detalle: l.detalle || null }, hoy);
+    if (ok) r.libres++; else r.libresFallidas++;
+  }
+  if (r.libresFallidas) await loadComidasLibres();
+  return r;
+}
+
+function abrirCopiarAHoy(origenPedido) {
+  const hoy = hoyLocal();
+  const fechas = fechasDieta().filter(f => f !== hoy);
+  if (!fechas.length) return;
+  const st = { origen: fechas.includes(origenPedido) ? origenPedido : fechas[0], plan: null, sinRed: false, elegidas: new Set(), preguntar: false, copiando: false, turno: 0 };
+  const pisan = () => (st.plan ? st.plan.comidas : []).filter(i => st.elegidas.has(i.id) && i.estado === 'conflicto');
+  const fila = (i, titulo, detalle) => {
+    const t = st.elegidas.has(i.id);
+    const nota = i.estado === 'conflicto' ? '<small class="alerta">Hoy ya cargaste algo acá: si la tildás, se reemplaza.</small>'
+      : i.estado === 'igual' ? '<small>Ya está igual hoy</small>' : '';
+    return `<button class="dz-copia-fila${t ? ' is-on' : ''}" data-item="${escapeHtml(i.id)}" role="checkbox" aria-checked="${t}" ${i.estado === 'igual' ? 'disabled' : ''}>
+      <i aria-hidden="true">${t ? _ICO_COMIDA.check : ''}</i><span><b>${escapeHtml(titulo)}</b><small>${escapeHtml(detalle)}</small>${nota}</span></button>`;
+  };
+  const detalleComida = (i) => {
+    const p = [`Opción ${i.nombreOpcion}`];
+    if (i.agregados > 0) p.push(`${i.agregados} ${i.agregados === 1 ? 'agregado' : 'agregados'}`);
+    if (i.conCantidades) p.push('con ajustes');
+    p.push(`${Math.round(i.kcal)} kcal`);
+    return p.join(' · ');
+  };
+  const contenido = () => {
+    if (st.sinRed) return '<div class="dz-copia-vacio"><b>Sin conexión</b><span>Hace falta señal para traer lo de ese día.</span></div>';
+    const p = st.plan;
+    if (!p) return '<div class="dz-copia-vacio"><span>Cargando…</span></div>';
+    const vacio = !p.comidas.length && !p.libres.length;
+    return `${p.otroPlan ? '<div class="dz-hoja-nota">Ese día tenías otro plan: solo se pueden copiar las comidas libres.</div>' : ''}
+      ${vacio ? '<div class="dz-copia-vacio"><b>Nada para copiar</b><span>Ese día no tiene comidas marcadas ni cargadas.</span></div>' : ''}
+      ${p.comidas.length ? `<div class="dz-copia-sec">Comidas</div><div class="dz-hoja-card dz-copia-lista">${p.comidas.map(i => fila(i, i.nombre, detalleComida(i))).join('')}</div>` : ''}
+      ${p.libres.length ? `<div class="dz-copia-sec">Comidas libres</div><div class="dz-hoja-card dz-copia-lista">${p.libres.map(i => fila(i, i.libre.descripcion || '', `${Math.round(i.libre.kcal || 0)} kcal`)).join('')}</div>` : ''}`;
+  };
+  let hoja = null;
+  const copiar = async () => {
+    st.copiando = true; st.preguntar = false; pintar();
+    const p = st.plan;
+    const reemplazar = new Set(pisan().map(i => i.id));
+    const comidas = p.comidas.filter(i => st.elegidas.has(i.id));
+    // Las «igual» van también: cada una descuenta la suya de hoy y no le roba la coincidencia a una nueva.
+    const libres = p.libres.filter(i => st.elegidas.has(i.id) || i.estado === 'igual');
+    _dietaVolverAHoy(true);
+    const r = await _copiarAHoy(comidas, libres, reemplazar);
+    closeModal();
+    if (STATE.scene === 'diet') renderDiet();
+    if (r.libresFallidas > 0 || r.saltadas > 0) {
+      const t = [];
+      if (r.libresFallidas > 0) t.push(`Faltaron ${r.libresFallidas} comidas libres: probá de nuevo cuando tengas señal.`);
+      if (r.saltadas > 0) t.push(`No se copiaron ${r.saltadas} comidas: cambiaron mientras elegías o no entran más alimentos agregados hoy.`);
+      MyPump.ui.showConfirmModal({ title: 'No se pudo copiar todo', body: t.join(' '), confirmLabel: 'OK' });
+    }
+  };
+  const pintar = () => {
+    const cuantas = st.elegidas.size;
+    const hayLista = st.plan && (st.plan.comidas.length || st.plan.libres.length);
+    hoja.innerHTML = `
+      <div class="dz-hoja-top"><button class="dz-hoja-x" data-cerrar>Cancelar</button><b>Copiar a hoy</b><span></span></div>
+      <div class="dz-copia-sec">Copiar desde</div>
+      <div class="dz-dias">${fechas.map(f => `<button class="dz-dia${f === st.origen ? ' is-active' : ''}" data-origen="${f}" aria-pressed="${f === st.origen}" aria-label="${DiasDieta.rotuloLargo(f)}">${DiasDieta.rotuloCorto(f, hoy)}</button>`).join('')}</div>
+      ${contenido()}
+      ${st.preguntar ? `<div class="dz-hoja-card dz-copia-pregunta"><b>¿Reemplazar lo que cargaste hoy?</b>
+        <span>Hoy ya tenés cargado: ${escapeHtml(pisan().map(i => i.nombre).join(', '))}. Se reemplaza por lo de ese día.</span>
+        <div class="dz-hoja-dos"><button class="dz-hoja-sec" data-no>Cancelar</button><button class="dz-hoja-sec peligro" data-si>Reemplazar y copiar</button></div></div>`
+      : (hayLista ? `<button class="dz-hoja-listo" data-copiar ${!cuantas || st.copiando ? 'disabled' : ''}>${st.copiando ? 'Copiando…' : (cuantas === 1 ? 'Copiar 1 comida a hoy' : `Copiar ${cuantas} comidas a hoy`)}</button>` : '')}`;
+    hoja.querySelector('[data-cerrar]').addEventListener('click', () => { st.turno++; closeModal(); });
+    hoja.querySelectorAll('[data-origen]').forEach(b => b.addEventListener('click', () => { const f = b.getAttribute('data-origen'); if (f !== st.origen && !st.copiando) { st.origen = f; cargar(); } }));
+    hoja.querySelectorAll('[data-item]').forEach(b => b.addEventListener('click', () => {
+      if (st.copiando) return;
+      const id = b.getAttribute('data-item');
+      if (st.elegidas.has(id)) st.elegidas.delete(id); else st.elegidas.add(id);
+      st.preguntar = false;
+      pintar();
+    }));
+    const c = hoja.querySelector('[data-copiar]');
+    if (c) c.addEventListener('click', () => { if (pisan().length) { st.preguntar = true; pintar(); } else copiar(); });
+    const si = hoja.querySelector('[data-si]');
+    if (si) si.addEventListener('click', copiar);
+    const no = hoja.querySelector('[data-no]');
+    if (no) no.addEventListener('click', () => { st.preguntar = false; pintar(); });
+    const activa = hoja.querySelector('.dz-dia.is-active'), tira = hoja.querySelector('.dz-dias');
+    if (activa && tira) tira.scrollLeft = Math.max(0, activa.offsetLeft - (tira.clientWidth - activa.offsetWidth) / 2);
+  };
+  const cargar = async () => {
+    const t = ++st.turno, pedido = st.origen;
+    st.plan = null; st.sinRed = false; st.elegidas = new Set(); st.preguntar = false;
+    pintar();
+    const p = await _prepararCopia(pedido);
+    if (t !== st.turno || !hoja.isConnected) return;
+    st.plan = p; st.sinRed = !p;
+    // Todo lo nuevo viene tildado: es copiar el día entero con un toque. Lo que pisa algo de hoy, no.
+    if (p) st.elegidas = new Set(p.comidas.concat(p.libres).filter(i => i.estado === 'nueva').map(i => i.id));
+    pintar();
+  };
+  _abrirHoja('', (h) => { hoja = h; cargar(); });
 }
 
 /* ---- Formato (como la app: coma decimal, unidades en plural) ---- */
@@ -6708,10 +7172,23 @@ function renderDiet() {
     const activeId = STATE.activeTipoDia || DIET.tipos_dia[0].id;
     tipoDiaHtml = `<div class="tipo-dia-sel">${
       DIET.tipos_dia.map(t =>
-        `<button class="tipo-dia-btn${t.id===activeId?' is-active':''}" data-tipodía="${t.id}">${t.nombre}</button>`
+        `<button class="tipo-dia-btn${t.id===activeId?' is-active':''}" data-tipodía="${t.id}"${vistaEditable() ? '' : ' disabled'}>${t.nombre}</button>`
       ).join('')
     }</div>`;
   }
+
+  // Mirando otro día: cargando o sin señal, solo la tira y la vuelta a hoy (nunca se trata un corte como un día vacío).
+  const barraDias = _barraDiasHtml();
+  const pasado = STATE.diaPasado;
+  if (STATE.scene === 'diet') $('#hdrEyebrow').textContent = `DIETA · ${DiasDieta.rotuloCorto(fechaVistaDieta(), hoyLocal()).toUpperCase()}`;
+  if (pasado && (pasado.cargando || pasado.sinRed)) {
+    root.innerHTML = barraDias + (pasado.cargando
+      ? '<div class="dz-dia-estado" role="status">Cargando…</div>'
+      : '<div class="dz-dia-estado"><b>No pudimos traer ese día</b><span>Para ver o cargar un día anterior hace falta conexión.</span><button class="dz-hoja-sec" data-dia-reintentar>Reintentar</button></div>');
+    _bindBarraDias();
+    return;
+  }
+  const esHoy = !pasado;
 
   const { delDia, dia } = _diaDieta();
   const consumido = calcularConsumido();
@@ -6732,6 +7209,7 @@ function renderDiet() {
   const nHechas = consumido.nComidasMarcadas, nSalt = consumido.nSalteadas;
 
   root.innerHTML = `
+  ${barraDias}
   ${tipoDiaHtml}
   <div class="dz-hdr">
     <div class="dz-ring">
@@ -6746,15 +7224,17 @@ function renderDiet() {
     </div>
     <div class="dz-linea">${nHechas || nSalt
       ? `Comiste ${nHechas} de ${consumido.nComidas} comidas${nSalt ? ` · salteaste ${nSalt}` : ''}`
-      : 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.'}</div>
-    <div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? 'Con tus ajustes de hoy' : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>
+      : (esHoy ? 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.' : 'Tocá «Comí» en lo que comiste ese día y acá se va sumando.')}</div>
+    <div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? (esHoy ? 'Con tus ajustes de hoy' : 'Con tus ajustes de ese día') : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>
     ${renderDietCite()}
   </div>
+  ${esHoy && barraDias ? '<button class="dz-copiar-otro" data-dia-copiar-otro>Copiar de otro día</button>' : ''}
   ${DATA && DATA._dietaEjemplo ? '<div class="dz-ejemplo">Ejemplo: todavía no tenés dieta. Cuando Mati publique la tuya, la vas a ver acá.</div>' : ''}
   ${plan.comidas.map((c, i) => renderMeal(c, i, delDia, dia)).join('')}
   ${renderComidasLibres()}
   ${renderFuentesFooter('dieta')}`;
   bindDietEvents();
+  _bindBarraDias();
 }
 
 // F10 — Sección "Comidas libres": lo que comiste fuera del plan (foto → IA
@@ -6784,7 +7264,8 @@ function renderComidasLibres() {
 }
 
 // Modal de comida libre: con estimación de la IA (todo EDITABLE) o vacío (manual).
-function openComidaLibreModal(est) {
+function openComidaLibreModal(est, fechaDia) {
+  const fechaLibre = fechaDia || fechaVistaDieta();
   const ahora = new Date();
   const horaDef = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
   const d = est || {};
@@ -6882,7 +7363,7 @@ function openComidaLibreModal(est) {
         confianza: d.confianza || null,
         escala: d.escala || null,
       } : null,
-    });
+    }, fechaLibre);
     if (ok) { $('#modalHost').innerHTML = ''; }
     else { btn.disabled = false; btn.textContent = 'Registrar comida'; err.textContent = 'No se pudo guardar. Probá de nuevo.'; err.style.display = 'block'; }
   });
@@ -7116,7 +7597,7 @@ function renderFood(originalFood, comidaId, optIdx, foodIdx, hoy, cambiado, plan
   <div class="dz-food">
     <div class="dz-food-info">
       <div class="dz-food-name">${escapeHtml(f.name)}${isSwapped
-        ? ` <span class="swap-badge" data-revert="${comidaId}|${optIdx}|${foodIdx}" title="Tocá para volver al original">↔</span>`
+        ? ` <span class="swap-badge"${STATE.diaPasado ? '' : ` data-revert="${comidaId}|${optIdx}|${foodIdx}" title="Tocá para volver al original"`}>↔</span>`
         : ''}</div>
       <div class="dz-food-cant">${pill}<span class="dz-food-kcal${cambiado ? ' is-cambiada' : ''}">${Math.round(f.kcal || 0)} kcal</span></div>
       ${cambiado ? `<div class="dz-enplan">En el plan: ${_fmtCant(base.qty, base.unit)}</div>` : ''}
@@ -7125,17 +7606,17 @@ function renderFood(originalFood, comidaId, optIdx, foodIdx, hoy, cambiado, plan
     </div>
     <div class="dz-food-btns">
       ${porcion ? `<button class="dz-redondo porcion-btn" data-porcion="${comidaId}|${optIdx}|${foodIdx}" aria-label="Ver porción casera"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></button>` : ''}
-      ${swappable ? `<button class="dz-redondo" data-swap="${comidaId}|${optIdx}|${foodIdx}" aria-label="Reemplazar">⇄</button>` : ''}
+      ${swappable && !STATE.diaPasado ? `<button class="dz-redondo" data-swap="${comidaId}|${optIdx}|${foodIdx}" aria-label="Reemplazar">⇄</button>` : ''}
     </div>
   </div>`;
 }
 
-function _renderAgregado(ag, comidaId, j) {
+function _renderAgregado(ag, comidaId, j, editable = true) {
   return `
   <div class="dz-food">
     <div class="dz-food-info">
       <div class="dz-food-name">${escapeHtml(ag.nombre)} <span class="dz-chip-ag">+ Agregado</span></div>
-      <div class="dz-food-cant"><button class="dz-pill" data-ag="${comidaId}|${j}">${_fmtCant(ag.cantidad, ag.unidad)} <span class="dz-lapiz">✎</span></button><span class="dz-food-kcal">${Math.round(ag.kcal)} kcal</span></div>
+      <div class="dz-food-cant"><button class="dz-pill" ${editable ? `data-ag="${comidaId}|${j}"` : 'disabled'}>${_fmtCant(ag.cantidad, ag.unidad)}${editable ? ' <span class="dz-lapiz">✎</span>' : ''}</button><span class="dz-food-kcal">${Math.round(ag.kcal)} kcal</span></div>
       <div class="dz-macros">${_macrosLinea({ prot: ag.p, carb: ag.c, fat: ag.g })}</div>
     </div>
   </div>`;
@@ -7160,6 +7641,8 @@ function renderMeal(c, idx, delDia, dia) {
 
   const mark = STATE.comidasMarcadas[c.id];
   const estado = omitida ? null : mark?.estado;
+  const esHoy = !STATE.diaPasado, editable = vistaEditable(), puedeMarcar = vistaPuedeMarcar();
+  const cantidadOk = editable && (estado !== 'comido' || puedeMarcar);
   const viendoLaMarcada = !mark || !mark.opcion || (opt && _letraOpcion(opt, optIdx) === mark.opcion) || (opt && opt.name === mark.opcion);
   const n = opt.foods.length, nAg = agregados.length;
 
@@ -7169,7 +7652,7 @@ function renderMeal(c, idx, delDia, dia) {
     const propia = !!aj;
     const signo = x => `${x > 0 ? '+' : '−'}${Math.abs(Math.round(x))}`;
     const absorbido = d.compensacion - d.noAbsorbido;
-    if (d.omitida) avisos.push('Hoy no la comés');
+    if (d.omitida) avisos.push(esHoy ? 'Hoy no la comés' : 'Ese día no la comiste');
     else if (propia) avisos.push(Math.abs(d.propio) >= 1 ? `Ajustada: ${signo(d.propio)} kcal` : 'Ajustada a mano');
     const llega = propia ? absorbido : d.kcal - d.kcalPlan;
     if (!d.omitida && Math.abs(absorbido) >= 1 && Math.abs(llega) >= 1) {
@@ -7185,15 +7668,15 @@ function renderMeal(c, idx, delDia, dia) {
 
   const filas = [];
   alimentosHoy.forEach((f, fi) => {
-    const html = renderFood(opt.foods[fi], c.id, optIdx, fi, planHoy ? f : null, planHoy && d.cambiados.has(fi) && !d.omitida, planHoy && !omitida);
+    const html = renderFood(opt.foods[fi], c.id, optIdx, fi, planHoy ? f : null, planHoy && d.cambiados.has(fi) && !d.omitida, planHoy && !omitida && cantidadOk);
     filas.push({ html, i: fi });
   });
-  agregados.forEach((ag, j) => filas.push({ html: _renderAgregado(ag, c.id, j), i: n + j }));
+  agregados.forEach((ag, j) => filas.push({ html: _renderAgregado(ag, c.id, j, cantidadOk), i: n + j }));
   const filasHtml = filas.map(({ html, i }) => {
     if (estado !== 'comido' || !viendoLaMarcada) return html;
     const excl = (mark.foodsExcluidos || []).includes(i);
     return `<div class="food-comi-row${excl ? ' is-excluido' : ''}">
-      <button class="food-comi-check" data-food-comido="${c.id}|${i}" role="checkbox" aria-checked="${excl ? 'false' : 'true'}" aria-label="${excl ? 'No comido' : 'Comido'}">${excl ? '' : '✓'}</button>
+      <button class="food-comi-check" data-food-comido="${c.id}|${i}" role="checkbox" aria-checked="${excl ? 'false' : 'true'}" aria-label="${excl ? 'No comido' : 'Comido'}"${puedeMarcar ? '' : ' disabled'}>${excl ? '' : '✓'}</button>
       <div class="food-comi-body">${html}</div>
     </div>`;
   }).join('');
@@ -7210,12 +7693,12 @@ function renderMeal(c, idx, delDia, dia) {
     </div>
     ${c.options.length > 1 ? `
     <div class="dz-opciones"><span>Opción</span><div class="dz-seg">
-      ${c.options.map((o, i) => `<button class="${i === optIdx ? 'is-active' : ''}" data-opt="${c.id}|${i}">${escapeHtml(_letraOpcion(o, i))}</button>`).join('')}
+      ${c.options.map((o, i) => `<button class="${i === optIdx ? 'is-active' : ''}" data-opt="${c.id}|${i}"${editable ? '' : ' disabled'}>${escapeHtml(_letraOpcion(o, i))}</button>`).join('')}
     </div></div>` : ''}
     ${omitida ? '' : `
     <div class="dz-track">
-      <button class="dz-track-btn yes${estado === 'comido' ? ' is-active' : ''}" data-comida-mark="${c.id}|comido">✓ Comí</button>
-      <button class="dz-track-btn no${estado === 'saltado' ? ' is-active' : ''}" data-comida-mark="${c.id}|saltado">✕ Salté</button>
+      <button class="dz-track-btn yes${estado === 'comido' ? ' is-active' : ''}" data-comida-mark="${c.id}|comido"${puedeMarcar ? '' : ' disabled'}>✓ Comí</button>
+      <button class="dz-track-btn no${estado === 'saltado' ? ' is-active' : ''}" data-comida-mark="${c.id}|saltado"${puedeMarcar ? '' : ' disabled'}>✕ Salté</button>
     </div>`}
     ${estado === 'comido'
       ? (viendoLaMarcada
@@ -7227,9 +7710,9 @@ function renderMeal(c, idx, delDia, dia) {
     ${aviso ? `<div class="dz-aviso">${aviso}</div>` : ''}
     <div class="dz-foods">${filasHtml}</div>
     <div class="dz-total"><span>TOTAL</span><span><i class="dz-dot p"></i>P <b>${Math.round(tot.prot)} g</b> <i class="dz-dot c"></i>C <b>${Math.round(tot.carb)} g</b> <i class="dz-dot f"></i>G <b>${Math.round(tot.fat)} g</b></span></div>
-    ${planHoy ? `
+    ${planHoy && editable ? `
     <div class="dz-acciones">
-      ${omitida || estado === 'saltado' ? '' : `<button class="dz-accion" data-agregar="${c.id}"><span class="dz-mas">+</span> Agregar alimento</button>`}
+      ${omitida || estado === 'saltado' || (estado === 'comido' && !puedeMarcar) ? '' : `<button class="dz-accion" data-agregar="${c.id}"><span class="dz-mas">+</span> Agregar alimento</button>`}
       <button class="dz-accion" data-ajustar="${c.id}">${aj ? (omitida ? 'Cambiar el ajuste' : 'Cambiar el ajuste') : 'Ajustar'}</button>
     </div>` : ''}
   </div>`;
@@ -7294,7 +7777,7 @@ function abrirCantidad(comidaId, fi) {
       <div class="dz-step-val"><b data-q></b> <span data-u></span></div>
       <button class="dz-step" data-mas aria-label="Más">+</button>
     </div>
-    <div class="dz-hoja-nota">En el plan: ${_fmtCant(planA.qty, planA.unit)}. Vale solo por hoy.</div>
+    <div class="dz-hoja-nota">En el plan: ${_fmtCant(planA.qty, planA.unit)}. ${STATE.diaPasado ? 'Vale solo para ese día.' : 'Vale solo por hoy.'}</div>
     <div class="dz-hoja-card">${_filaCompensar(comidaId, compensar)}</div>
     <div class="dz-hoja-dos"><button class="dz-hoja-sec" data-como-plan>Como el plan</button><button class="dz-hoja-sec peligro" data-sacar>Sacar de la comida</button></div>
     <button class="dz-hoja-listo" data-listo>Listo</button>`, (h) => {
@@ -7506,7 +7989,7 @@ function abrirAgregado(comidaId, cand, j) {
       <button class="dz-step" data-mas aria-label="Más">+</button></div>
       ${medidas.length > 1 ? `<div class="dz-seg dz-seg-medida">${medidas.map(m => `<button data-medida="${escapeHtml(m.nombre)}">${m.nombre === 'g' ? 'g' : `${escapeHtml(m.nombre)} (${_coma(m.gramos)} g)`}</button>`).join('')}</div>` : ''}
     </div>
-    <div class="dz-hoja-nota">Vale solo por hoy.</div>
+    <div class="dz-hoja-nota">${STATE.diaPasado ? 'Vale solo para ese día.' : 'Vale solo por hoy.'}</div>
     ${cand.origen === 'barras' && cand.codigo ? `<div class="dz-hoja-nota">Valores de Open Food Facts · ${escapeHtml(cand.codigo)}</div>` : ''}
     ${previo ? '<div class="dz-hoja-dos"><button class="dz-hoja-sec peligro" data-quitar>Sacar de la comida</button></div>' : ''}
     <button class="dz-hoja-listo" data-listo>${previo ? 'Listo' : 'Agregar'}</button>`, (h) => {
@@ -7527,7 +8010,6 @@ function abrirAgregado(comidaId, cand, j) {
       const aj = _ajusteDe(comidaId);
       aj.agregados.splice(j, 1);
       closeModal();
-      _tildesTrasBorrarAgregado(comidaId, j);
       _ajustar(comidaId, aj);
     });
     h.querySelector('[data-listo]').addEventListener('click', () => {
@@ -7543,20 +8025,6 @@ function abrirAgregado(comidaId, cand, j) {
   });
 }
 
-// Borrar un agregado corre los tildes de los que vienen después (n + j).
-function _tildesTrasBorrarAgregado(comidaId, j) {
-  const m = STATE.comidasMarcadas[comidaId];
-  if (!m || m.estado !== 'comido' || !(m.foodsExcluidos || []).length) return;
-  const c = _comidasDelDia().find(x => x.id === comidaId);
-  if (!c) return;
-  const nuevos = AjustesDieta.excluidosTrasBorrar(m.foodsExcluidos, c.alimentos.length, j);
-  m.foodsExcluidos = nuevos;
-  if (_dietaSinEscritura()) return;
-  const fecha = hoyLocal();
-  if (OUTBOX_ENABLED) Outbox.enqueue('comida', { fecha, comidaId, opcion: m.opcion || 'A', estado: 'comido', excl: nuevos }, `comida|${fecha}|${comidaId}`);
-  else window.mypumpDB.marcarComida(TOKEN, fecha, comidaId, m.opcion || 'A', 'comido', nuevos);
-}
-
 // Ajustar la comida: sumar o restar kcal de a 50 (las porciones se recalculan con
 // la proporción del plan), «Hoy no la como» y volver al plan.
 function abrirAjustar(comidaId) {
@@ -7570,7 +8038,7 @@ function abrirAjustar(comidaId) {
     const prueba = Object.assign({}, STATE.ajustesDieta, { [comidaId]: Object.assign(AjustesDieta.clonarAjuste(aj0), { deltaKcal: delta, omitida, compensar, opcion: c.opcion }) });
     const d = AjustesDieta.dia(delDia, prueba)[comidaId];
     h.querySelector('[data-q]').textContent = omitida ? '—' : `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta)}`;
-    h.querySelector('[data-hoy]').textContent = omitida ? 'Hoy no la comés' : `Queda en ${Math.round(d.kcal)} kcal (plan: ${Math.round(d.kcalPlan)})`;
+    h.querySelector('[data-hoy]').textContent = omitida ? (STATE.diaPasado ? 'Ese día no la comiste' : 'Hoy no la comés') : `Queda en ${Math.round(d.kcal)} kcal (plan: ${Math.round(d.kcalPlan)})`;
     h.querySelector('[data-menos]').disabled = omitida || delta - AjustesDieta.PASO < limites.min;
     h.querySelector('[data-mas]').disabled = omitida || delta + AjustesDieta.PASO > limites.max;
     h.querySelector('[data-omitir]').checked = omitida;
@@ -7584,10 +8052,10 @@ function abrirAjustar(comidaId) {
     </div>
     <div class="dz-hoja-nota" data-hoy></div>
     <div class="dz-hoja-card">
-      <label class="dz-hoja-fila"><span><b>Hoy no la como</b></span><input type="checkbox" class="dz-switch" data-omitir></label>
+      <label class="dz-hoja-fila"><span><b>${STATE.diaPasado ? 'Ese día no la comí' : 'Hoy no la como'}</b></span><input type="checkbox" class="dz-switch" data-omitir></label>
       ${_filaCompensar(comidaId, compensar)}
     </div>
-    <div class="dz-hoja-nota">Vale solo por hoy: mañana vuelve tu plan.</div>
+    <div class="dz-hoja-nota">${STATE.diaPasado ? 'Vale solo para ese día: no cambia tu plan.' : 'Vale solo por hoy: mañana vuelve tu plan.'}</div>
     ${STATE.ajustesDieta[comidaId] ? `<div class="dz-hoja-dos"><button class="dz-hoja-sec" data-volver>Volver al plan</button></div>
     ${(STATE.ajustesDieta[comidaId].agregados || []).length ? '<div class="dz-hoja-nota">«Volver al plan» también saca los alimentos que agregaste.</div>' : ''}` : ''}
     <button class="dz-hoja-listo" data-listo>Listo</button>`, (h) => {
@@ -7612,12 +8080,7 @@ function bindDietEvents() {
   // Selector tipo-día (Formato B)
   $$('[data-tipodía]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
-    STATE.activeTipoDia = btn.getAttribute('data-tipodía');
-    localStorage.setItem('mypump_tipo_dia', STATE.activeTipoDia);
-    STATE.meals = buildMeals();
-    STATE.mealsTocadas.clear();
-    _opcionesIniciales();
-    renderDiet();
+    _elegirTipoDia(btn.getAttribute('data-tipodía'));
   }));
   // Expand/collapse meal (sin acciones hijas)
   $$('[data-meal]').forEach(btn => btn.addEventListener('click', e => {
@@ -7641,12 +8104,13 @@ function bindDietEvents() {
     clInput.addEventListener('change', async () => {
       const file = clInput.files && clInput.files[0];
       if (!file) return;
+      const fechaFoto = fechaVistaDieta();
       clFoto.disabled = true;
       const txtOrig = clFoto.textContent;
       clFoto.textContent = 'Analizando el plato… (~30s)';
       try {
         const est = await visionDesdeFoto(file, 'plato');
-        openComidaLibreModal(est);
+        openComidaLibreModal(est, fechaFoto);
       } catch (e) {
         alert('No pudimos leer la foto (' + (e.message || 'error') + '). Podés cargarla a mano.');
       } finally {
@@ -7682,6 +8146,7 @@ function bindDietEvents() {
       _ajustar(id, nuevo);
       return;
     }
+    _reencolarResumen();
     renderDiet();
   }));
   // Toggle referencia de porción casera (inline, sin re-render — tap mobile)
@@ -7723,6 +8188,7 @@ function bindDietEvents() {
         if (!res.success) console.warn('[swap] error borrando swap en backend:', res.error);
       }
     }
+    _planCambio(comidaId, +optIdx, +foodIdx);
   }));
   // Ajustes del día (como la app): cantidad de un alimento, agregados y la comida entera.
   $$('[data-cant]').forEach(btn => btn.addEventListener('click', e => {
@@ -10682,6 +11148,8 @@ function renderMyday() {
 
 function setScene(scene) {
   if (scene !== 'train') { _csVaciarDeshacer(); _csCorr = null; }
+  // Dieta se abre siempre en hoy, y las otras pantallas leen lo de hoy.
+  if (scene !== 'diet') _dietaVolverAHoy(true);
   // El aviso de las fotos es de esta visita a Revisión: al irse, se va (como en la app).
   if (scene !== 'revision') STATE.fpMsg = null;
   STATE.scene = scene;
@@ -11453,6 +11921,7 @@ async function confirmSwap() {
   if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
     Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx, food: subAnclado },
       `swap_${DIETA_ID}_${comidaId}_${optIdx}_${foodIdx}`);
+    _planCambio(comidaId, +optIdx, +foodIdx);
   }
 }
 // El sustituto con el alimento que reemplaza adentro (ver _swapAplicable).
@@ -12009,6 +12478,7 @@ async function aplicarCustomFoodComoSwap(name) {
   if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
     Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx, food: subAnclado },
       `swap_${DIETA_ID}_${comidaId}_${optIdx}_${foodIdx}`);
+    _planCambio(comidaId, +optIdx, +foodIdx);
   }
 }
 

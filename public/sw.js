@@ -36,6 +36,7 @@ const SHELL = [
   '/js/supabase-client.js',
   '/js/food-db.js',
   '/js/ajustes-dieta.js',
+  '/js/dias-dieta.js',
   '/js/codigo-barras.js',
   '/js/reglas-guia.js',
   '/js/guia.js',
