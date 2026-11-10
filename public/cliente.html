@@ -16,6 +16,7 @@
 
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/gimnasio.css">
+<link rel="stylesheet" href="/css/tecnica.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--font-size-base);line-height:var(--line-height-normal);-webkit-font-smoothing:antialiased}
@@ -1490,6 +1491,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
     <section class="scene" id="scene-cuerpo"></section>
     <section class="scene" id="scene-misdatos"></section>
     <section class="scene" id="scene-gimnasio"></section>
+    <section class="scene" id="scene-tecnica"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -1596,6 +1598,9 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/gimnasio.js"></script>
 <script src="/js/gimnasio-cola.js"></script>
 <script src="/js/gimnasio-ui.js"></script>
+<script src="/js/tecnica.js"></script>
+<script src="/js/tecnica-cola.js"></script>
+<script src="/js/tecnica-ui.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1766,10 +1771,24 @@ function _gimPalanca(cfg) {
   });
   window.GimnasioUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.gimnasio_fotos === true : null);
 }
+/* «Técnica por video» (js/tecnica*.js), detrás de `tecnica_video`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada. */
+function _tecPalanca(cfg) {
+  if (!window.TecnicaUI || !TOKEN || DEMO) return;
+  window.TecnicaUI.configurar({
+    token: TOKEN,
+    visionUrl: (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '',
+    rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
+    irA: (escena) => setScene(escena),
+    alCambiarEntrada: () => { if (STATE.scene === 'misdatos') renderMisDatos(); },
+    ejercicios: () => window.Tecnica.ejerciciosDeRutina(DATA && (DATA._dias || [DATA.dia]), getEffectiveEx, (ex) => ex.tipo === 'calentamiento' || (!!CS && CS.esCardio(ex.nombre, ex.tipo, [ex.catalogo_slug, ex.matched_slug, ex._swapSlug]))),
+  });
+  window.TecnicaUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.tecnica_video === true : null);
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
   _gimPalanca(cfg);
+  _tecPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -5248,6 +5267,7 @@ function renderExCard(ex, blockIdx) {
             <figcaption>Pico</figcaption>
           </figure>` : ''}
         </div>` : ''}
+      ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? `<div class="ex-swap-row"><button class="ex-swap-btn" data-tecnica-ex="${ex.id}">${window.Tecnica.T.mandar}</button></div>` : ''}
       ${(() => {
         const subs = exGetSubs(ex);
         const canSwap = subs.length > 0;
@@ -5787,6 +5807,11 @@ function bindTrainEvents() {
   const efb = $('#earlyFinishBtn');
   if (efb) efb.addEventListener('click', openEarlyFinishModal);
 
+  $$('[data-tecnica-ex]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === btn.getAttribute('data-tecnica-ex'));
+    if (ex) window.TecnicaUI.abrirConEjercicio(getEffectiveEx(ex));
+  }));
   // Abrir modal de sustitución de ejercicio
   $$('[data-swap-ex]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
@@ -10081,7 +10106,7 @@ function renderRecordatorio() {
   }
 
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
-  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio') return;
+  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica') return;
 
   const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan tu check y tus fotos de la semana'
               : p.faltaCheck ? 'Te falta tu check de la semana'
@@ -10960,6 +10985,7 @@ function renderMisDatos() {
     <div class="md-grupo">
       ${guia ? fila('mdGuia', 'Ver mi guía') : ''}
       ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
+      ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? fila('mdTecnica', window.Tecnica.T.titulo) : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
@@ -10968,6 +10994,8 @@ function renderMisDatos() {
   document.getElementById('mdRec').onclick = () => setScene('salud');
   const gim = document.getElementById('mdGimnasio');
   if (gim) gim.onclick = () => window.GimnasioUI.abrir('misdatos');
+  const tec = document.getElementById('mdTecnica');
+  if (tec) tec.onclick = () => window.TecnicaUI.abrir('misdatos');
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
   const sw = document.getElementById('mdOscuro');
@@ -11231,7 +11259,8 @@ function setScene(scene) {
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
     const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision'
-      : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train') : scene;
+      : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train')
+      : scene === 'tecnica' ? (window.TecnicaUI.origen === 'train' ? 'train' : 'revision') : scene;
     const active = t.getAttribute('data-scene') === tabDe;
     t.classList.toggle('is-active', active);
     t.setAttribute('aria-selected', active);
@@ -11298,6 +11327,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = window.GimnasioUI.titulo();
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'tecnica') {
+    $('#hdrEyebrow').textContent = window.TecnicaUI.origen === 'train' ? 'ENTRENAMIENTO' : 'REVISIÓN';
+    $('#hdrTitle').textContent = window.TecnicaUI.titulo();
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   }
 
   if (scene === 'train') renderTrain();
@@ -11309,6 +11343,7 @@ function setScene(scene) {
   if (scene === 'cuerpo') renderCuerpo();
   if (scene === 'misdatos') renderMisDatos();
   if (scene === 'gimnasio') window.GimnasioUI.renderEscena();
+  if (scene === 'tecnica') window.TecnicaUI.renderEscena();
   if (scene === 'supl') { STATE.suplAbierto = null; renderSupl(); }
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
@@ -11412,7 +11447,7 @@ function _aplicarSceneDeURL() {
     const s = new URLSearchParams(location.search).get('scene');
     if (!s) return;
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
-    if (validas.indexOf(s) !== -1 && s !== 'gimnasio') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
+    if (validas.indexOf(s) !== -1 && s !== 'gimnasio' && s !== 'tecnica') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
   } catch (e) {}
 }
 
