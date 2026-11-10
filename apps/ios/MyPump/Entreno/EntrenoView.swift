@@ -208,6 +208,7 @@ private struct ListaEntreno: View {
                 if let g = GuiaUI.modelo { TarjetaEntregaAhora(modelo: g) }
                 if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
                 TarjetaGimnasio()
+                TarjetaNovedadPlan()
                 cabecera
                 if deEjemplo {
                     AvisoProgresion(icono: "exclamationmark.triangle.fill",

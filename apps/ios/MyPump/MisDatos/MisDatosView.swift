@@ -24,6 +24,8 @@ struct MisDatosView: View {
     @State private var fuentes = false
     @State private var verGimnasio = false
     @State private var verTecnica = false
+    /// `-abrir novedades` (capturas): la lista de novedades directo.
+    @State private var verNovedades = DemoUI.abrir == "novedades"
     @State private var pagina: Pagina?
     /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
     /// en el iPhone (para poder exportarlas o borrarlas aunque ya no haya reloj).
@@ -87,6 +89,14 @@ struct MisDatosView: View {
             }
 
             Section("Tu información") {
+                // «Novedades de tu plan» (palanca `novedades_plan`): el lugar fijo, primero.
+                if let nov = modelo.novedades, modelo.palanca.novedadesPlan || modelo.esDemo {
+                    NavigationLink { NovedadesListaView(modelo: nov) } label: {
+                        Label { Text(TextosNovedades.entradaMisDatos) } icon: { IconoAzulejo("sparkles", color: .marcaTexto) }
+                    }
+                    .accessibilityIdentifier("mis-datos-novedades")
+                    .navigationDestination(isPresented: $verNovedades) { NovedadesListaView(modelo: nov) }
+                }
                 // «Tu guía» después de la entrega (o si la quitó de Entreno): una sola fila, primera, como en Android. Sale
                 // del resumen, sin cartel.
                 if let guia = GuiaUI.modelo, guia.mostrarFila {
