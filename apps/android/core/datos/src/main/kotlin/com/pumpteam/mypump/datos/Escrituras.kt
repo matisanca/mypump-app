@@ -27,6 +27,11 @@ class Escrituras(
     private val token: String,
     /** La de la cuenta: la comparte con la pantalla de Entreno ([ModeloEntreno.asegurarSesion]). */
     private val sesiones: SesionesDelDia = SesionesDelDia(),
+    /**
+     * La palanca `elegir_horario` (la última leída, recordada en el disco de la cuenta): apagada, un cambio que quedó en la
+     * cola no llama a `entregas_app_cambiar`.
+     */
+    private val cambiarPermitido: () -> Boolean = { true },
 ) {
     private val verificacion = VerificacionToken()
 
@@ -260,6 +265,8 @@ class Escrituras(
         // Un cambio (palanca `elegir_horario`, videollamada 2.3.0): la misma op con la reserva que se deja (`cambia`). El
         // servidor toma la nueva y recién ahí libera la vieja; el tope y el plazo los controla él (`tope`, `plazo`).
         val vieja = (p["cambia"] as? ValorJson.Texto)?.valor?.ifEmpty { null }
+        // Con la palanca apagada (aunque sea sin red: la última leída), el cambio no sale: queda la reserva como estaba.
+        if (vieja != null && !cambiarPermitido()) return rechazo("plazo")
         val r = if (vieja != null) {
             cliente.llamar(
                 "entregas_app_cambiar",

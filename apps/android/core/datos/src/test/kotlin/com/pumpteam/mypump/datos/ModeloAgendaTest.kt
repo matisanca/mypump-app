@@ -42,6 +42,7 @@ class ModeloAgendaTest {
         alcance: CoroutineScope,
         disco: Disco = Disco(carpetaTemporal("agenda"), "tok"),
         reloj: () -> Long = System::currentTimeMillis,
+        cambiarPermitido: () -> Boolean = { true },
         regla: suspend (String, ValorJson) -> Pair<Int, String>,
     ): Entorno {
         val cuerpos = mutableListOf<Pair<String, ValorJson>>()
@@ -50,7 +51,7 @@ class ModeloAgendaTest {
             regla(fn, c)
         }
         val cliente = ClienteRpc(transporte = t)
-        val esc = Escrituras(cliente, "tok")
+        val esc = Escrituras(cliente, "tok", cambiarPermitido = cambiarPermitido)
         val cola = Outbox(archivo = disco.archivo("outbox.json"), reintentoAutomatico = false, alcance = alcance) { esc.ejecutar(it) }
         val m = ModeloGuia(cliente, "tok", cola, disco, alcance, reloj = reloj).also {
             it.alDia()
@@ -536,6 +537,57 @@ class ModeloAgendaTest {
         assertEquals(ReglasAgenda.TEXTO_SIN_CAMBIO, e.agenda.aviso.value)
         assertEquals(Instant.parse("2099-11-12T13:00:00Z"), e.agenda.agenda.value!!.reserva!!.inicio, "la reserva queda como estaba")
         assertNull(e.agenda.reservando.value)
+    }
+
+    @Test
+    fun unCambioEnLaColaConLaPalancaApagadaNoLlamaACambiarYQuedaComoPlazo() = enUnHilo { alcance ->
+        var palanca = true
+        val e = entorno(alcance, cambiarPermitido = { palanca }) { fn, _ ->
+            when (fn) {
+                "entregas_app_agenda" -> 200 to """{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":$franjasLejos,"cambio":{"permitido":true},"reserva":${reservaLejos()}}"""
+                "entregas_app_cambiar" -> 200 to """{"ok":true,"reserva":${reservaLejos("2099-11-13T12:00:00-03:00")}}"""
+                else -> 200 to "true"
+            }
+        }
+        e.agenda.refrescar()
+        assertTrue(e.agenda.cambiar(e.agenda.agenda.value!!.franjas[1]))
+        // La palanca se apagó (o se leyó apagada la última vez) antes de que la op saliera.
+        palanca = false
+        e.cola.drenar()
+        asentar()
+        assertTrue(e.cuerposDe("entregas_app_cambiar").isEmpty(), "con la palanca apagada no se cambia")
+        assertTrue(e.cola.operaciones().none { it.kind == ModeloAgenda.KIND }, "se resuelve, no queda en la cola")
+        assertEquals(ReglasAgenda.TEXTO_SIN_CAMBIO, e.agenda.aviso.value)
+        assertEquals(Instant.parse("2099-11-12T13:00:00Z"), e.agenda.agenda.value!!.reserva!!.inicio, "la reserva queda como estaba")
+        assertNull(e.agenda.reservando.value)
+    }
+
+    @Test
+    fun despuesDeReservarSeConsultaLaAgendaYAparececambiarHorario() = enUnHilo { alcance ->
+        var reservada = false
+        val e = entorno(alcance) { fn, _ ->
+            when (fn) {
+                "entregas_app_agenda" -> 200 to if (!reservada) {
+                    """{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":$franjasLejos,"reserva":null}"""
+                } else {
+                    """{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":$franjasLejos,"cambio":{"permitido":true,"restantes":1},"reserva":${reservaLejos()}}"""
+                }
+                "entregas_app_reservar" -> { reservada = true; 200 to """{"ok":true,"reserva":${reservaLejos()}}""" }
+                else -> 200 to "true"
+            }
+        }
+        e.agenda.refrescar()
+        assertFalse(e.agenda.puedeCambiar())
+        val antes = e.cuerposDe("entregas_app_agenda").size
+        assertTrue(e.agenda.reservar(e.agenda.agenda.value!!.franjas[0]))
+        e.cola.drenar()
+        // La consulta va por el cliente (otro dispatcher): hasta 2 s.
+        for (i in 0 until 200) {
+            if (e.agenda.puedeCambiar()) break
+            kotlinx.coroutines.delay(10)
+        }
+        assertTrue(e.cuerposDe("entregas_app_agenda").size > antes, "la agenda se consulta de nuevo enseguida")
+        assertTrue(e.agenda.puedeCambiar(), "«Cambiar horario» sin volver a la app")
     }
 
     @Test

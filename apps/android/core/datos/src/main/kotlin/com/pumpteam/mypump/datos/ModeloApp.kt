@@ -518,7 +518,7 @@ class ModeloApp(
         cacheCodigos = null
         val sesiones = SesionesDelDia(alcance)
         sesionesDelDia = sesiones
-        val escrituras = Escrituras(cliente, t, sesiones)
+        val escrituras = Escrituras(cliente, t, sesiones) { elegirHorarioForzado ?: elegirHorarioRecordado(d) }
         outbox?.cerrar()
         // Las ops de la migración esperan a la palanca remota (`cargar` la lee y se la pasa): hallazgo 2 del 15-oct.
         UltimaCuenta.anotar(t, preferencias)
@@ -702,6 +702,7 @@ class ModeloApp(
             _palanca.value = it
             _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
             _tecnica.value?.recordarPalanca(it.tecnicaVideo)
+            disco?.let { d -> if (elegirHorarioRecordado(d) != it.elegirHorario) d.guardar(ARCHIVO_PALANCA_ELEGIR, ValorJson.Booleano(it.elegirHorario)) }
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -1711,6 +1712,19 @@ class ModeloApp(
     }
 
     companion object {
+        /**
+         * Solo en las builds de prueba (MainActivity con `--ez elegirHorario`, o una prueba): pisa la palanca
+         * `elegir_horario`. En la de la tienda queda en null y manda la palanca.
+         */
+        @Volatile
+        var elegirHorarioForzado: Boolean? = null
+
+        internal const val ARCHIVO_PALANCA_ELEGIR = "elegir-horario-palanca.json"
+
+        /** La palanca `elegir_horario` que se leyó por última vez en esta cuenta (de fábrica, apagada). */
+        internal fun elegirHorarioRecordado(d: Disco): Boolean =
+            d.leer(ARCHIVO_PALANCA_ELEGIR)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true)
+
         /** Ver [faltaDecidirSwaps]. */
         internal fun faltaDecidirSwapsEn(d: Disco): Boolean = d.carpeta.list().orEmpty().any { n ->
             if (!n.startsWith("swaps_") || !n.endsWith(".json")) return@any false
