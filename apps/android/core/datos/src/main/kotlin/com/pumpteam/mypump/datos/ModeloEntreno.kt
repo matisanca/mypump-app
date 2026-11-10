@@ -167,7 +167,7 @@ class ModeloEntreno(
     private val _iniciadaConBoton = MutableStateFlow(false)
     val iniciadaConBoton: StateFlow<Boolean> = _iniciadaConBoton.asStateFlow()
 
-    /** Hay sesión en el servidor (o se pidió crearla): el botón "Cerrar sesión de hoy" se ve habilitado. */
+    /** Hay sesión en el servidor (o se pidió crearla): el botón "Terminar el entrenamiento de hoy" se ve habilitado. */
     private val _sesionIniciada = MutableStateFlow(false)
     val sesionIniciada: StateFlow<Boolean> = _sesionIniciada.asStateFlow()
 
@@ -420,7 +420,7 @@ class ModeloEntreno(
     fun cronometro(): TiempoEntreno.Cronometro? =
         TiempoEntreno.cronometro(_inicioSesion.value, ahoraMs, _iniciadaConBoton.value, _dia.value.diaFinalizado, todoHecho)
 
-    /** El botón "Cerrar sesión de hoy" del pie se ve habilitado. */
+    /** El botón "Terminar el entrenamiento de hoy" del pie se ve habilitado. */
     val cierreHabilitado: Boolean get() = _sesionIniciada.value || hechos > 0
 
     /** La card de un ejercicio del día, con todo lo que muestra (ENT-10/11). */
@@ -961,15 +961,19 @@ class ModeloEntreno(
         val diaId = _dia.value.dia.id ?: return
         val semana = this.semana
         val ops = mutableListOf<Operacion>()
+        val enCola = outbox?.operaciones() ?: emptyList()
         if (conAnotadas) {
             val rutinaId = _rutina.value.id
-            val propias = anotadas.values.filter {
-                it.rutinaId == rutinaId && it.payload["diaId"]?.comoTexto == diaId && it.payload["semana"]?.comoNumero == semana.toDouble()
-            }
+            // Lo que sigue en la cola manda (con su fecha): lo anotado solo cubre lo que ya subió.
+            val claves = enCola.mapNotNull { it.dedupeKey }.toSet()
+            val propias = anotadas.filter { (clave, a) ->
+                clave !in claves && a.rutinaId == rutinaId && a.payload["diaId"]?.comoTexto == diaId &&
+                    a.payload["semana"]?.comoNumero == semana.toDouble()
+            }.values
             if (propias.isNotEmpty()) _seriesSinConfirmar.value = true
             propias.sortedBy { it.ts }.forEach { ops += Operacion(id = "anotada", kind = it.kind, payload = it.payload, dedupeKey = null, ts = it.ts) }
         }
-        ops += outbox?.operaciones() ?: emptyList()
+        ops += enCola
         if (ops.isEmpty()) return
         mutarDia { d ->
             for (op in ops) {
@@ -1013,7 +1017,7 @@ class ModeloEntreno(
         /** "No se pudo guardar la sesión. Revisá tu conexión e intentá de nuevo." */
         SIN_SESION,
 
-        /** "No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo." */
+        /** "No se pudo terminar el entrenamiento. Revisá tu conexión e intentá de nuevo." */
         FALLO,
 
         /** Demo: no se cierra nada. */

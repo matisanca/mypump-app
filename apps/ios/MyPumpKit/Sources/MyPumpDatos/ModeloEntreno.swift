@@ -31,7 +31,7 @@ public final class ModeloEntreno {
     public internal(set) var inicioSesion: Double?
     /// Se tocó "Empezar entrenamiento" (si no, el cronómetro dice "⏱ arrancó con tu primera serie").
     public internal(set) var iniciadaConBoton = false
-    /// Hay sesión en el servidor (o se pidió crearla): el botón "Cerrar sesión de hoy" se ve habilitado.
+    /// Hay sesión en el servidor (o se pidió crearla): el botón "Terminar el entrenamiento de hoy" se ve habilitado.
     public internal(set) var sesionIniciada = false
     /// Historial pedido y todavía sin respuesta.
     public internal(set) var historialCargando: Set<String> = []
@@ -300,7 +300,7 @@ public final class ModeloEntreno {
     public func cronometro() -> TiempoEntreno.Cronometro? {
         TiempoEntreno.cronometro(inicio: inicioSesion, ahora: ahoraMs, porBoton: iniciadaConBoton, diaFinalizado: dia.diaFinalizado, todoHecho: todoHecho)
     }
-    /// El botón "Cerrar sesión de hoy" del pie se ve habilitado.
+    /// El botón "Terminar el entrenamiento de hoy" del pie se ve habilitado.
     public var cierreHabilitado: Bool { sesionIniciada || hechos > 0 }
 
     /// La card de un ejercicio del día, con todo lo que muestra (ENT-10/11).
@@ -814,9 +814,12 @@ public final class ModeloEntreno {
         let cola = await outbox?.operaciones ?? []
         var ops: [(kind: String, payload: JSONValue, ts: Double)] = []
         if conAnotadas {
-            let propias = anotadas.values.filter { a in
-                a.rutinaId == rutina.id && a.payload["diaId"]?.comoTexto == diaId && a.payload["semana"]?.comoNumero == Double(semana)
-            }
+            // Lo que sigue en la cola manda (con su fecha): lo anotado solo cubre lo que ya subió.
+            let claves = Set(cola.compactMap(\.dedupeKey))
+            let propias = anotadas.filter { clave, a in
+                !claves.contains(clave) && a.rutinaId == rutina.id && a.payload["diaId"]?.comoTexto == diaId
+                    && a.payload["semana"]?.comoNumero == Double(semana)
+            }.values
             if !propias.isEmpty { seriesSinConfirmar = true }
             ops += propias.sorted { $0.ts < $1.ts }.map { ($0.kind, $0.payload, $0.ts) }
         }
@@ -850,7 +853,7 @@ public final class ModeloEntreno {
         case cerrado
         /// "No se pudo guardar la sesión. Revisá tu conexión e intentá de nuevo."
         case sinSesion
-        /// "No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo."
+        /// "No se pudo terminar el entrenamiento. Revisá tu conexión e intentá de nuevo."
         case fallo
         /// Demo: no se cierra nada.
         case demo

@@ -713,11 +713,9 @@ public final class ModeloApp {
         // Suplementación: Mati la pudo cambiar después de la llamada.
         if let suplementacion, toca(.suplementacion) { Task { await suplementacion.cargar() } }
         await outbox?.drenar()
-        // Las marcas de hoy: las pudo cambiar la web u otro teléfono (DIE-05, D25).
-        if toca(.marcas) {
-            await hidratarMarcas()
-            await refrescarDiaPasado()
-        }
+        // Las marcas de hoy se releen en cada vuelta: las pudo cambiar la web u otro teléfono (DIE-05, D25) y es un pedido chico.
+        await hidratarMarcas()
+        await refrescarDiaPasado()
         await chat?.sondear()
         await fotos?.drenar()
         if toca(.gimnasio) {
@@ -732,12 +730,11 @@ public final class ModeloApp {
 
     /// Lo que se relee al volver a la app, con su tiempo mínimo entre una lectura y la siguiente.
     public enum Relectura: CaseIterable, Sendable {
-        case plan, guia, suplementacion, marcas, gimnasio, salud
+        case plan, guia, suplementacion, gimnasio, salud
 
         public var cada: TimeInterval {
             switch self {
             case .plan: 5 * 60
-            case .marcas: 2 * 60
             case .guia, .suplementacion, .gimnasio: 10 * 60
             case .salud: 60 * 60
             }

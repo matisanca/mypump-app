@@ -593,12 +593,21 @@ public actor Outbox {
     }
 
     /// Suma un intento a la op (en la cola real, no en la copia). Devuelve true si sigue pendiente.
+    /// Un dato que la base no acepta (SQLSTATE 22 y 23, o un `raise` de la función) no se arregla reintentando media hora:
+    /// se deja de intentar a los `maxIntentos` y queda en «No se pudo guardar». Lo vacío, los 5xx y una función que no
+    /// existe (una versión a medio publicar) sí esperan la ventana.
+    static func esRechazoDeDatos(_ motivo: String) -> Bool {
+        let codigo = motivo.split(separator: ":", maxSplits: 1).first.map(String.init) ?? ""
+        return codigo == "P0001" || (codigo.count == 5 && (codigo.hasPrefix("22") || codigo.hasPrefix("23")))
+    }
+
     private func registrarFallo(_ op: Operacion, motivo: String, resueltas: inout Set<String>, abandonadas: inout [Operacion]) -> Bool {
         guard let i = estado.ops.firstIndex(where: { $0.id == op.id }) else { return false }
         estado.ops[i].tries += 1
         let ahora = reloj()
         if estado.ops[i].primerRechazo == nil { estado.ops[i].primerRechazo = ahora }
-        if estado.ops[i].tries >= maxIntentos, ahora - (estado.ops[i].primerRechazo ?? ahora) >= ventanaAbandono {
+        let ventana = Self.esRechazoDeDatos(motivo) ? 0 : ventanaAbandono
+        if estado.ops[i].tries >= maxIntentos, ahora - (estado.ops[i].primerRechazo ?? ahora) >= ventana {
             resueltas.insert(op.id)
             abandonadas.append(estado.ops[i])
             return false

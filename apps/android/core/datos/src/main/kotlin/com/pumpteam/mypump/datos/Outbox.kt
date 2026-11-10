@@ -604,6 +604,16 @@ class Outbox(
         if (ops.any { enCarril(c, it) && mandable(it) } && !algunaFallo && !esperaAudio) programar(c, 0)
     }
 
+    /**
+     * Un dato que la base no acepta (SQLSTATE 22 y 23, o un `raise` de la función) no se arregla reintentando media hora: se
+     * deja de intentar a los [maxIntentos] y queda en «No se pudo guardar». Lo vacío, los 5xx y una función que no existe (una
+     * versión a medio publicar) sí esperan la ventana.
+     */
+    internal fun esRechazoDeDatos(motivo: String): Boolean {
+        val codigo = motivo.substringBefore(":")
+        return codigo == "P0001" || (codigo.length == 5 && (codigo.startsWith("22") || codigo.startsWith("23")))
+    }
+
     /** Suma un intento a la op (en la cola real, no en la copia). Devuelve true si sigue pendiente. */
     private fun registrarFallo(op: Operacion, motivo: String, resueltas: MutableSet<String>, abandonadas: MutableList<Operacion>): Boolean {
         val i = ops.indexOfFirst { it.id == op.id }
@@ -611,7 +621,8 @@ class Outbox(
         val ahora = reloj().toDouble()
         val nueva = ops[i].copy(tries = ops[i].tries + 1, primerRechazo = ops[i].primerRechazo ?: ahora)
         ops[i] = nueva
-        if (nueva.tries >= maxIntentos && ahora - (nueva.primerRechazo ?: ahora) >= ventanaAbandonoMs) {
+        val ventana = if (esRechazoDeDatos(motivo)) 0L else ventanaAbandonoMs
+        if (nueva.tries >= maxIntentos && ahora - (nueva.primerRechazo ?: ahora) >= ventana) {
             resueltas += op.id
             abandonadas += nueva
             porIntentos += op.id

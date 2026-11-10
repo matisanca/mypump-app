@@ -74,7 +74,7 @@ struct ArreglosAuditoriaColaTests {
     @Test func rechazadaSeSigueIntentandoYDespuesSeReintentaAMano() async {
         let e = Estado()
         let cola = Outbox(archivo: nil, ventanaAbandono: 30 * 60 * 1000, reintentoAutomatico: false, reloj: { e.ms }) { _ in
-            e.rechaza ? .respuesta(.failure(ErrorRPC(clase: .permanente, status: 400, codigo: "22P02", mensaje: "boom")))
+            e.rechaza ? .respuesta(.failure(ErrorRPC(clase: .permanente, status: 400, codigo: "PGRST202", mensaje: "boom")))
                       : .respuesta(.success(.texto("ok")))
         }
         _ = await cola.encolar("carga", .objeto(["x": .numero(1)]), dedupeKey: "k1")

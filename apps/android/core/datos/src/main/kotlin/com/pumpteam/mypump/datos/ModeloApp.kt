@@ -894,12 +894,10 @@ class ModeloApp(
         // cerrar la app del todo. Ahora se vuelven a pedir pasados unos minutos.
         if (toca(Relectura.PLAN)) refrescarPlan()
         outbox?.drenar()
-        // F11: lo demás tampoco se relee en cada vuelta (el alumno entra y sale veinte veces en un entreno, y al girar el
-        // teléfono también pasaba por acá). Las marcas de hoy: las pudo cambiar la web u otro teléfono (DIE-05, D25).
-        if (toca(Relectura.MARCAS)) {
-            hidratarMarcas()
-            refrescarDiaPasado()
-        }
+        // Las marcas de hoy se releen en cada vuelta: las pudo cambiar la web u otro teléfono (DIE-05, D25) y es un pedido
+        // chico. F11: lo demás no se relee en cada vuelta (el alumno entra y sale veinte veces en un entreno).
+        hidratarMarcas()
+        refrescarDiaPasado()
         _chat.value?.sondear()
         _fotos.value?.drenar()
         if (toca(Relectura.GIMNASIO)) {
@@ -920,7 +918,6 @@ class ModeloApp(
     /** Lo que se relee al volver a la app, con su tiempo mínimo (ms) entre una lectura y la siguiente. */
     enum class Relectura(val cadaMs: Long) {
         PLAN(5 * 60_000L),
-        MARCAS(2 * 60_000L),
         GUIA(10 * 60_000L),
         SUPLEMENTACION(10 * 60_000L),
         GIMNASIO(10 * 60_000L),

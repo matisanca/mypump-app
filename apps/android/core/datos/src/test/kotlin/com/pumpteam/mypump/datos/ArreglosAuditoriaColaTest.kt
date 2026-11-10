@@ -17,7 +17,7 @@ class ArreglosAuditoriaColaTest {
         var ms = 1_000_000L
         var rechaza = true
         val cola = Outbox(archivo = null, ventanaAbandonoMs = 30 * 60 * 1000, reintentoAutomatico = false, alcance = alcance, reloj = { ms }) {
-            if (rechaza) ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 400, "22P02", "boom")))
+            if (rechaza) ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 400, "PGRST202", "boom")))
             else ResultadoOp.Respuesta(Resultado.Ok(ValorJson.Texto("ok")))
         }
         cola.encolar("carga", ValorJson.objeto("x" to ValorJson.Numero(1.0)), "k1")
