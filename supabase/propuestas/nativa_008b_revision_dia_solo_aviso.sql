@@ -38,7 +38,8 @@ CREATE OR REPLACE FUNCTION mypump_set_revision_dia(p_cliente_id TEXT, p_dia SMAL
 RETURNS BOOLEAN
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  IF p_dia IS NULL OR p_dia NOT BETWEEN 1 AND 7 THEN RAISE EXCEPTION 'revision_dia va de 1 (lunes) a 7 (domingo)'; END IF;
+  -- Decisión de Mati (9/11): solo sábado o domingo. La columna admite 1-7 por si algún día se abre, sin migrar.
+  IF p_dia IS NULL OR p_dia NOT IN (6, 7) THEN RAISE EXCEPTION 'revision_dia: solo 6 (sábado) o 7 (domingo)'; END IF;
   IF NOT EXISTS (SELECT 1 FROM mypump_clientes WHERE cliente_id = p_cliente_id) THEN RETURN FALSE; END IF;
   INSERT INTO mypump_cliente_prefs (cliente_id, revision_dia) VALUES (p_cliente_id, p_dia)
   ON CONFLICT (cliente_id) DO UPDATE SET revision_dia = EXCLUDED.revision_dia, updated_at = NOW();
