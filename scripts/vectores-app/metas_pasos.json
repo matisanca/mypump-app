@@ -1,0 +1,695 @@
+{
+ "fuente": "scratchpad gen.py, referencia en Python",
+ "metas": [
+  {
+   "nombre": "las dos",
+   "estructura": {
+    "comidas": [],
+    "meta_pasos_dia": 10000,
+    "ritmo_peso_kg_semana": -0.5
+   },
+   "metaPasos": 10000,
+   "ritmo": -0.5
+  },
+  {
+   "nombre": "entero con punto",
+   "estructura": {
+    "meta_pasos_dia": 12000.0
+   },
+   "metaPasos": 12000,
+   "ritmo": null
+  },
+  {
+   "nombre": "decimal no",
+   "estructura": {
+    "meta_pasos_dia": 10000.5,
+    "ritmo_peso_kg_semana": 0.3
+   },
+   "metaPasos": null,
+   "ritmo": 0.3
+  },
+  {
+   "nombre": "texto no",
+   "estructura": {
+    "meta_pasos_dia": "10000",
+    "ritmo_peso_kg_semana": "-0.5"
+   },
+   "metaPasos": null,
+   "ritmo": null
+  },
+  {
+   "nombre": "bajo el rango",
+   "estructura": {
+    "meta_pasos_dia": 2999,
+    "ritmo_peso_kg_semana": -1.01
+   },
+   "metaPasos": null,
+   "ritmo": null
+  },
+  {
+   "nombre": "arriba del rango",
+   "estructura": {
+    "meta_pasos_dia": 25001,
+    "ritmo_peso_kg_semana": 0.51
+   },
+   "metaPasos": null,
+   "ritmo": null
+  },
+  {
+   "nombre": "bordes",
+   "estructura": {
+    "meta_pasos_dia": 3000,
+    "ritmo_peso_kg_semana": 0.5
+   },
+   "metaPasos": 3000,
+   "ritmo": 0.5
+  },
+  {
+   "nombre": "bordes 2",
+   "estructura": {
+    "meta_pasos_dia": 25000,
+    "ritmo_peso_kg_semana": -1
+   },
+   "metaPasos": 25000,
+   "ritmo": -1.0
+  },
+  {
+   "nombre": "mantener",
+   "estructura": {
+    "ritmo_peso_kg_semana": 0
+   },
+   "metaPasos": null,
+   "ritmo": 0.0
+  },
+  {
+   "nombre": "nulos",
+   "estructura": {
+    "meta_pasos_dia": null,
+    "ritmo_peso_kg_semana": null
+   },
+   "metaPasos": null,
+   "ritmo": null
+  },
+  {
+   "nombre": "booleano no",
+   "estructura": {
+    "meta_pasos_dia": true
+   },
+   "metaPasos": null,
+   "ritmo": null
+  },
+  {
+   "nombre": "sin campos (planes viejos)",
+   "estructura": {
+    "macros_target": {
+     "kcal": 2000
+    },
+    "comidas": []
+   },
+   "metaPasos": null,
+   "ritmo": null
+  }
+ ],
+ "vista": [
+  {
+   "nombre": "a mitad del día, racha de ayer",
+   "hoy": "2026-11-12",
+   "meta": 10000,
+   "pasos": {
+    "2026-11-06": 11000,
+    "2026-11-07": 9000,
+    "2026-11-08": 10000,
+    "2026-11-09": 10500,
+    "2026-11-10": 12000,
+    "2026-11-11": 10001,
+    "2026-11-12": 7420.6
+   },
+   "esperado": {
+    "pasosHoy": 7421,
+    "fraccion": 0.7421,
+    "falta": 2579,
+    "cumplido": false,
+    "racha": 4,
+    "semana": [
+     "cumplido",
+     "cumplido",
+     "cumplido",
+     "hoy",
+     "futuro",
+     "futuro",
+     "futuro"
+    ],
+    "promedio7": 10417
+   }
+  },
+  {
+   "nombre": "hoy cumplido suma a la racha",
+   "hoy": "2026-11-12",
+   "meta": 10000,
+   "pasos": {
+    "2026-11-09": 10000,
+    "2026-11-10": 10000,
+    "2026-11-11": 10000,
+    "2026-11-12": 10000
+   },
+   "esperado": {
+    "pasosHoy": 10000,
+    "fraccion": 1,
+    "falta": 0,
+    "cumplido": true,
+    "racha": 4,
+    "semana": [
+     "cumplido",
+     "cumplido",
+     "cumplido",
+     "cumplido",
+     "futuro",
+     "futuro",
+     "futuro"
+    ],
+    "promedio7": 10000
+   }
+  },
+  {
+   "nombre": "día sin dato corta la racha",
+   "hoy": "2026-11-12",
+   "meta": 8000,
+   "pasos": {
+    "2026-11-08": 9000,
+    "2026-11-10": 9000,
+    "2026-11-11": 9000,
+    "2026-11-12": 100
+   },
+   "esperado": {
+    "pasosHoy": 100,
+    "fraccion": 0.0125,
+    "falta": 7900,
+    "cumplido": false,
+    "racha": 2,
+    "semana": [
+     "sin_dato",
+     "cumplido",
+     "cumplido",
+     "hoy",
+     "futuro",
+     "futuro",
+     "futuro"
+    ],
+    "promedio7": 9000
+   }
+  },
+  {
+   "nombre": "lunes temprano, sin pasos hoy",
+   "hoy": "2026-11-16",
+   "meta": 10000,
+   "pasos": {
+    "2026-11-09": 12000,
+    "2026-11-10": 12000,
+    "2026-11-11": 12000,
+    "2026-11-12": 12000,
+    "2026-11-13": 12000,
+    "2026-11-14": 12000,
+    "2026-11-15": 12000
+   },
+   "esperado": {
+    "pasosHoy": 0,
+    "fraccion": 0.0,
+    "falta": 10000,
+    "cumplido": false,
+    "racha": 7,
+    "semana": [
+     "hoy",
+     "futuro",
+     "futuro",
+     "futuro",
+     "futuro",
+     "futuro",
+     "futuro"
+    ],
+    "promedio7": 12000
+   }
+  },
+  {
+   "nombre": "domingo, semana completa",
+   "hoy": "2026-11-15",
+   "meta": 10000,
+   "pasos": {
+    "2026-11-09": 10000,
+    "2026-11-10": 9999,
+    "2026-11-11": 12000,
+    "2026-11-13": 15000,
+    "2026-11-14": 8000,
+    "2026-11-15": 10000
+   },
+   "esperado": {
+    "pasosHoy": 10000,
+    "fraccion": 1,
+    "falta": 0,
+    "cumplido": true,
+    "racha": 1,
+    "semana": [
+     "cumplido",
+     "no",
+     "cumplido",
+     "sin_dato",
+     "cumplido",
+     "no",
+     "cumplido"
+    ],
+    "promedio7": 11000
+   }
+  },
+  {
+   "nombre": "9999,5 redondea a 10000",
+   "hoy": "2026-11-12",
+   "meta": 10000,
+   "pasos": {
+    "2026-11-12": 9999.5
+   },
+   "esperado": {
+    "pasosHoy": 10000,
+    "fraccion": 1,
+    "falta": 0,
+    "cumplido": true,
+    "racha": 1,
+    "semana": [
+     "sin_dato",
+     "sin_dato",
+     "sin_dato",
+     "cumplido",
+     "futuro",
+     "futuro",
+     "futuro"
+    ],
+    "promedio7": null
+   }
+  },
+  {
+   "nombre": "9999,4 no llega",
+   "hoy": "2026-11-12",
+   "meta": 10000,
+   "pasos": {
+    "2026-11-12": 9999.4
+   },
+   "esperado": {
+    "pasosHoy": 9999,
+    "fraccion": 0.9999,
+    "falta": 1,
+    "cumplido": false,
+    "racha": 0,
+    "semana": [
+     "sin_dato",
+     "sin_dato",
+     "sin_dato",
+     "hoy",
+     "futuro",
+     "futuro",
+     "futuro"
+    ],
+    "promedio7": null
+   }
+  },
+  {
+   "nombre": "sin nada",
+   "hoy": "2026-11-12",
+   "meta": 10000,
+   "pasos": {},
+   "esperado": {
+    "pasosHoy": 0,
+    "fraccion": 0.0,
+    "falta": 10000,
+    "cumplido": false,
+    "racha": 0,
+    "semana": [
+     "sin_dato",
+     "sin_dato",
+     "sin_dato",
+     "hoy",
+     "futuro",
+     "futuro",
+     "futuro"
+    ],
+    "promedio7": null
+   }
+  },
+  {
+   "nombre": "cambio de año",
+   "hoy": "2027-01-01",
+   "meta": 8000,
+   "pasos": {
+    "2026-12-28": 8000,
+    "2026-12-29": 8000,
+    "2026-12-30": 8000,
+    "2026-12-31": 8000,
+    "2027-01-01": 8001
+   },
+   "esperado": {
+    "pasosHoy": 8001,
+    "fraccion": 1,
+    "falta": 0,
+    "cumplido": true,
+    "racha": 5,
+    "semana": [
+     "cumplido",
+     "cumplido",
+     "cumplido",
+     "cumplido",
+     "cumplido",
+     "futuro",
+     "futuro"
+    ],
+    "promedio7": 8000
+   }
+  }
+ ],
+ "celebrar": [
+  {
+   "nombre": "primera vez",
+   "celebrados": [],
+   "hoy": "2026-11-10",
+   "pasos": 10000,
+   "meta": 10000,
+   "celebra": true
+  },
+  {
+   "nombre": "abajo de la meta",
+   "celebrados": [],
+   "hoy": "2026-11-10",
+   "pasos": 9999,
+   "meta": 10000,
+   "celebra": false
+  },
+  {
+   "nombre": "ya celebrado hoy",
+   "celebrados": [
+    "2026-11-10"
+   ],
+   "hoy": "2026-11-10",
+   "pasos": 15000,
+   "meta": 10000,
+   "celebra": false
+  },
+  {
+   "nombre": "día nuevo",
+   "celebrados": [
+    "2026-11-09",
+    "2026-11-10"
+   ],
+   "hoy": "2026-11-11",
+   "pasos": 10500,
+   "meta": 10000,
+   "celebra": true
+  },
+  {
+   "nombre": "viaje al oeste vuelve a ayer",
+   "celebrados": [
+    "2026-11-10"
+   ],
+   "hoy": "2026-11-09",
+   "pasos": 12000,
+   "meta": 10000,
+   "celebra": false
+  },
+  {
+   "nombre": "viaje al este salta un día",
+   "celebrados": [
+    "2026-11-09"
+   ],
+   "hoy": "2026-11-11",
+   "pasos": 12000,
+   "meta": 10000,
+   "celebra": true
+  },
+  {
+   "nombre": "día nuevo sin pasos todavía",
+   "celebrados": [
+    "2026-11-10"
+   ],
+   "hoy": "2026-11-11",
+   "pasos": 0,
+   "meta": 10000,
+   "celebra": false
+  },
+  {
+   "nombre": "meta cero nunca",
+   "celebrados": [],
+   "hoy": "2026-11-10",
+   "pasos": 5,
+   "meta": 0,
+   "celebra": false
+  }
+ ],
+ "ritmo": [
+  {
+   "nombre": "bajando al ritmo",
+   "ritmo": -0.5,
+   "hoy": "2026-11-14",
+   "pesos": {
+    "2026-11-01": 90.0,
+    "2026-11-02": 89.9,
+    "2026-11-03": 89.8,
+    "2026-11-05": 89.7,
+    "2026-11-06": 89.6,
+    "2026-11-07": 89.6,
+    "2026-11-08": 89.5,
+    "2026-11-09": 89.4,
+    "2026-11-10": 89.3,
+    "2026-11-11": 89.2,
+    "2026-11-13": 89.0,
+    "2026-11-14": 89.0,
+    "2026-11-15": 88.9
+   },
+   "esperado": {
+    "meta": "Buscamos bajar medio kilo por semana",
+    "tendencia": "Venís bajando medio kilo por semana",
+    "enRitmo": true,
+    "deltaG": -533
+   }
+  },
+  {
+   "nombre": "pocos pesos esta semana",
+   "ritmo": -0.5,
+   "hoy": "2026-11-14",
+   "pesos": {
+    "2026-11-01": 90,
+    "2026-11-02": 90,
+    "2026-11-03": 90,
+    "2026-11-04": 90,
+    "2026-11-05": 90,
+    "2026-11-06": 90,
+    "2026-11-07": 90,
+    "2026-11-10": 89,
+    "2026-11-13": 88.5
+   },
+   "esperado": {
+    "meta": "Buscamos bajar medio kilo por semana",
+    "tendencia": null,
+    "enRitmo": false
+   }
+  },
+  {
+   "nombre": "subiendo en definición, sin juicio",
+   "ritmo": -0.5,
+   "hoy": "2026-11-14",
+   "pesos": {
+    "2026-11-01": 80,
+    "2026-11-02": 80,
+    "2026-11-03": 80,
+    "2026-11-04": 80,
+    "2026-11-05": 80,
+    "2026-11-06": 80,
+    "2026-11-07": 80,
+    "2026-11-08": 80.3,
+    "2026-11-09": 80.3,
+    "2026-11-10": 80.3,
+    "2026-11-11": 80.4,
+    "2026-11-12": 80.4,
+    "2026-11-13": 80.4,
+    "2026-11-14": 80.4
+   },
+   "esperado": {
+    "meta": "Buscamos bajar medio kilo por semana",
+    "tendencia": "Venís subiendo 400 g por semana",
+    "enRitmo": false,
+    "deltaG": 357
+   }
+  },
+  {
+   "nombre": "mantener estable",
+   "ritmo": 0,
+   "hoy": "2026-11-14",
+   "pesos": {
+    "2026-11-01": 70,
+    "2026-11-02": 70.1,
+    "2026-11-03": 70,
+    "2026-11-04": 70.1,
+    "2026-11-05": 70,
+    "2026-11-06": 70.1,
+    "2026-11-07": 70,
+    "2026-11-08": 70.1,
+    "2026-11-09": 70,
+    "2026-11-10": 70.1,
+    "2026-11-11": 70,
+    "2026-11-12": 70.1,
+    "2026-11-13": 70,
+    "2026-11-14": 70.1
+   },
+   "esperado": {
+    "meta": "Buscamos mantener tu peso",
+    "tendencia": "Venís estable",
+    "enRitmo": true,
+    "deltaG": 14
+   }
+  },
+  {
+   "nombre": "volumen 300 g",
+   "ritmo": 0.3,
+   "hoy": "2026-11-14",
+   "pesos": {
+    "2026-11-01": 70,
+    "2026-11-02": 70,
+    "2026-11-03": 70,
+    "2026-11-04": 70,
+    "2026-11-05": 70,
+    "2026-11-06": 70,
+    "2026-11-07": 70,
+    "2026-11-08": 70.3,
+    "2026-11-09": 70.3,
+    "2026-11-10": 70.3,
+    "2026-11-11": 70.3,
+    "2026-11-12": 70.3,
+    "2026-11-13": 70.3,
+    "2026-11-14": 70.3
+   },
+   "esperado": {
+    "meta": "Buscamos subir unos 300 g por semana",
+    "tendencia": "Venís subiendo 300 g por semana",
+    "enRitmo": true,
+    "deltaG": 300
+   }
+  },
+  {
+   "nombre": "bajando más rápido, sin elogio",
+   "ritmo": -0.5,
+   "hoy": "2026-11-14",
+   "pesos": {
+    "2026-11-01": 90,
+    "2026-11-02": 90,
+    "2026-11-03": 90,
+    "2026-11-04": 90,
+    "2026-11-05": 90,
+    "2026-11-06": 90,
+    "2026-11-07": 90,
+    "2026-11-08": 88.6,
+    "2026-11-09": 88.6,
+    "2026-11-10": 88.6,
+    "2026-11-11": 88.6,
+    "2026-11-12": 88.6,
+    "2026-11-13": 88.6,
+    "2026-11-14": 88.6
+   },
+   "esperado": {
+    "meta": "Buscamos bajar medio kilo por semana",
+    "tendencia": "Venís bajando 1,4 kg por semana",
+    "enRitmo": false,
+    "deltaG": -1400
+   }
+  },
+  {
+   "nombre": "sin la semana anterior",
+   "ritmo": -0.5,
+   "hoy": "2026-11-14",
+   "pesos": {
+    "2026-11-08": 90,
+    "2026-11-09": 89.9,
+    "2026-11-10": 89.8,
+    "2026-11-11": 89.7,
+    "2026-11-12": 89.6,
+    "2026-11-13": 89.5,
+    "2026-11-14": 89.4
+   },
+   "esperado": {
+    "meta": "Buscamos bajar medio kilo por semana",
+    "tendencia": null,
+    "enRitmo": false
+   }
+  },
+  {
+   "nombre": "un kilo",
+   "ritmo": -1,
+   "hoy": "2026-11-14",
+   "pesos": {
+    "2026-11-01": 100,
+    "2026-11-02": 100,
+    "2026-11-03": 100,
+    "2026-11-04": 100,
+    "2026-11-05": 100,
+    "2026-11-06": 100,
+    "2026-11-07": 100,
+    "2026-11-08": 98.8,
+    "2026-11-09": 98.8,
+    "2026-11-10": 98.8,
+    "2026-11-11": 98.8,
+    "2026-11-12": 98.8,
+    "2026-11-13": 98.8,
+    "2026-11-14": 98.8
+   },
+   "esperado": {
+    "meta": "Buscamos bajar un kilo por semana",
+    "tendencia": "Venís bajando 1,2 kg por semana",
+    "enRitmo": true,
+    "deltaG": -1200
+   }
+  }
+ ],
+ "cantidad": [
+  {
+   "kg": 0.5,
+   "texto": "medio kilo"
+  },
+  {
+   "kg": -0.5,
+   "texto": "medio kilo"
+  },
+  {
+   "kg": 0.3,
+   "texto": "300 g"
+  },
+  {
+   "kg": 0.25,
+   "texto": "300 g"
+  },
+  {
+   "kg": 0.04,
+   "texto": "100 g"
+  },
+  {
+   "kg": 0.45,
+   "texto": "medio kilo"
+  },
+  {
+   "kg": 0.95,
+   "texto": "un kilo"
+  },
+  {
+   "kg": 1,
+   "texto": "un kilo"
+  },
+  {
+   "kg": 1.2,
+   "texto": "1,2 kg"
+  },
+  {
+   "kg": -1.0,
+   "texto": "un kilo"
+  },
+  {
+   "kg": 0.7,
+   "texto": "700 g"
+  },
+  {
+   "kg": 0.2,
+   "texto": "200 g"
+  }
+ ]
+}
