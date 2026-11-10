@@ -28,11 +28,24 @@ final class GimnasioUITests: XCTestCase {
         XCTFail("No apareció \(id)")
     }
     private func tocar(_ id: String) { esperar(id); e(id).tap() }
+    /// Sube la pantalla de a poco hasta que el elemento quede lejos del borde de abajo (ahí el toque se lo queda el sistema).
+    private func tocarLejosDelBorde(_ id: String) {
+        esperar(id)
+        var n = 0
+        while e(id).frame.maxY > app.frame.maxY - 90 && n < 10 {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+            n += 1
+        }
+        e(id).tap()
+    }
+
+    /// Para un botón que con letra grande o en pantalla chica puede quedar debajo del borde.
+    private func tocarDebajo(_ id: String) { esperar(id); app.swipeUp(velocity: .slow); RunLoop.current.run(until: Date().addingTimeInterval(0.4)); e(id).tap() }
     private func texto(_ s: String) -> XCUIElement { app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", s)).firstMatch }
     private func foto(_ nombre: String) {
         RunLoop.current.run(until: Date().addingTimeInterval(0.6))
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = nombre; a.lifetime = .keepAlways; add(a)
-        if let dir { try? app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(dir)/ios-\(UIDeviceTamano.nombre)-\(oscuro ? "oscuro" : "claro")-\(nombre).png")) }
+        if let dir { try? app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(dir)/ios-\(UIDeviceTamano.nombre)-\(letraGrande ? "grande" : oscuro ? "oscuro" : "claro")-\(nombre).png")) }
     }
     private func volver() { app.navigationBars.buttons.element(boundBy: 0).tap(); RunLoop.current.run(until: Date().addingTimeInterval(0.5)) }
 
@@ -43,7 +56,7 @@ final class GimnasioUITests: XCTestCase {
         abrirTarjeta()
         esperar("gimnasio-aviso")
         foto("1-inicio")
-        tocar("gimnasio-empezar")
+        tocarDebajo("gimnasio-empezar")
         esperar("gimnasio-zona-poleas")
         foto("2-zonas")
         tocar("gimnasio-zona-poleas")
@@ -53,13 +66,11 @@ final class GimnasioUITests: XCTestCase {
         foto("3-zona")
         volver()
         for z in ["accesorios_polea", "piernas", "empuje", "tiron", "barras_racks", "discos", "mancuernas", "bancos"] {
-            app.swipeUpSiHaceFalta(e("gimnasio-zona-\(z)"))
-            tocar("gimnasio-zona-\(z)")
+            tocarLejosDelBorde("gimnasio-zona-\(z)")
             tocar("gimnasio-no-hay")
             volver()
         }
-        app.swipeUpSiHaceFalta(e("gimnasio-revisar"))
-        tocar("gimnasio-revisar")
+        tocarDebajo("gimnasio-revisar")
         esperar("gimnasio-nota")
         e("gimnasio-nota").tap()
         e("gimnasio-nota").typeText("Hay una polea rota")
@@ -78,8 +89,7 @@ final class GimnasioUITests: XCTestCase {
         abrirTarjeta()
         esperar("gimnasio-zona-poleas")
         XCTAssertTrue(texto("Te faltan 9 zonas").waitForExistence(timeout: 5))
-        app.swipeUpSiHaceFalta(e("gimnasio-revisar"))
-        tocar("gimnasio-revisar")
+        tocarDebajo("gimnasio-revisar")
         esperar("gimnasio-faltan")
         XCTAssertFalse(e("gimnasio-enviar").isEnabled)
     }
@@ -176,7 +186,7 @@ final class GimnasioUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] %@", "inteligencia")).firstMatch.exists)
         XCTAssertTrue(texto("Cruce de poleas").exists)
         foto("listo")
-        app.swipeUpSiHaceFalta(e("gimnasio-falta-algo"))
+        app.swipeUpSiHaceFalta(e("gimnasio-cambie"))
         esperar("gimnasio-falta-algo")
         esperar("gimnasio-cambie")
         tocar("gimnasio-ya-no-esta")

@@ -13,7 +13,8 @@ struct TarjetaGimnasio: View {
     @State private var abierta = false
 
     var body: some View {
-        if let m = app.gimnasio, m.tarjetaVisible {
+        // Si está abierta queda en pie aunque deje de hacer falta: si no, la hoja se cierra antes de ver «Recibido».
+        if let m = app.gimnasio, m.tarjetaVisible || abierta {
             Button { abierta = true } label: {
                 HStack(spacing: Espacio.s) {
                     Image(systemName: "dumbbell.fill")
@@ -37,11 +38,8 @@ struct TarjetaGimnasio: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("gimnasio-tarjeta")
             .sheet(isPresented: $abierta) {
-                NavigationStack {
-                    GimnasioRaiz(modelo: m)
-                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cerrar") { abierta = false } } }
-                }
-                .presentationDragIndicator(.visible)
+                GimnasioRaiz(modelo: m, alCerrar: { abierta = false })
+                    .presentationDragIndicator(.visible)
             }
         }
     }
@@ -64,42 +62,51 @@ private enum DestinoGimnasio: Hashable {
 /// Elige la pantalla según lo que diga el servidor (`CONTRATO_APP.md`, sección 4).
 struct GimnasioRaiz: View {
     let modelo: ModeloGimnasio
-    @Environment(\.dismiss) private var cerrar
-    @State private var destino: DestinoGimnasio?
+    let alCerrar: () -> Void
+    @State private var camino: [DestinoGimnasio] = []
 
+    private var destino: Binding<DestinoGimnasio?> {
+        Binding(get: { camino.last }, set: { d in camino = d.map { [$0] } ?? [] })
+    }
+
+    // Una pila propia con `path`: `navigationDestination(item:)` dejaba la app en un bucle al 100 % de CPU en iOS 17, y sin
+    // pila explícita no hay cómo volver a la raíz cuando la carga cambia de etapa.
     var body: some View {
-        Group {
-            if modelo.estado == nil {
-                Color.fondo
-            } else if modelo.envio != nil {
-                EnviandoGimnasio(modelo: modelo)
-            } else if modelo.pantalla == .zonas && modelo.necesitaAviso {
-                InicioGimnasio(modelo: modelo)
-            } else {
-                switch modelo.pantalla {
-                case .inicio: InicioGimnasio(modelo: modelo)
-                case .zonas: ZonasGimnasio(modelo: modelo, destino: $destino)
-                case .recibido: RecibidoGimnasio()
-                case .preguntas: PreguntasGimnasio(modelo: modelo)
-                case .listo: ListoGimnasio(modelo: modelo, destino: $destino)
+        NavigationStack(path: $camino) {
+            Group {
+                if modelo.estado == nil {
+                    Color.fondo
+                } else if modelo.envio != nil {
+                    EnviandoGimnasio(modelo: modelo)
+                } else if modelo.pantalla == .zonas && modelo.necesitaAviso {
+                    InicioGimnasio(modelo: modelo)
+                } else {
+                    switch modelo.pantalla {
+                    case .inicio: InicioGimnasio(modelo: modelo)
+                    case .zonas: ZonasGimnasio(modelo: modelo, destino: destino)
+                    case .recibido: RecibidoGimnasio()
+                    case .preguntas: PreguntasGimnasio(modelo: modelo)
+                    case .listo: ListoGimnasio(modelo: modelo, destino: destino)
+                    }
+                }
+            }
+            .background(Color.fondo)
+            .navigationTitle(T.tarjetaTitulo)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(T.cerrar, action: alCerrar) } }
+            .navigationDestination(for: DestinoGimnasio.self) { d in
+                switch d {
+                case .zona(let clave):
+                    if let z = Gimnasio.zonas.first(where: { $0.clave == clave }) { ZonaGimnasio(modelo: modelo, zona: z) }
+                case .revisar: RevisarGimnasio(modelo: modelo)
+                case .yaNoEsta: YaNoEstaGimnasio(modelo: modelo)
                 }
             }
         }
-        .background(Color.fondo)
-        .navigationTitle(T.tarjetaTitulo)
-        .navigationBarTitleDisplayMode(.inline)
         .task { await modelo.refrescar(); modelo.drenarEnFondo() }
-        .onChange(of: modelo.estado == nil) { _, apagado in if apagado { cerrar() } }
+        .onChange(of: modelo.estado == nil) { _, apagado in if apagado { alCerrar() } }
         // Si la carga pasó a otra etapa, se vuelve a la raíz: lo que importa es lo que dice ella.
-        .onChange(of: "\(modelo.pantalla)-\(modelo.envio != nil)") { _, _ in destino = nil }
-        .navigationDestination(item: $destino) { d in
-            switch d {
-            case .zona(let clave):
-                if let z = Gimnasio.zonas.first(where: { $0.clave == clave }) { ZonaGimnasio(modelo: modelo, zona: z) }
-            case .revisar: RevisarGimnasio(modelo: modelo)
-            case .yaNoEsta: YaNoEstaGimnasio(modelo: modelo)
-            }
-        }
+        .onChange(of: "\(modelo.pantalla)-\(modelo.envio != nil)") { _, _ in camino = [] }
     }
 }
 
@@ -113,6 +120,21 @@ private struct NotaGimnasio: View {
             .foregroundStyle(alerta ? Color.alerta : Color.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
+            .onAppear { if alerta { AccessibilityNotification.Announcement(texto).post() } }
+    }
+}
+
+/// Por qué no salió lo enviado.
+private struct AvisoEnvioGimnasio: View {
+    let modelo: ModeloGimnasio
+
+    var body: some View {
+        switch modelo.avisoEnvio {
+        case .faltan(let f)?: NotaGimnasio(texto: T.faltanZonas(f.count), alerta: true).accessibilityIdentifier("gimnasio-aviso-envio")
+        case .sinNovedad?: NotaGimnasio(texto: T.sinNovedad, alerta: true).accessibilityIdentifier("gimnasio-aviso-envio")
+        case .error?, .sinConsentimiento?: NotaGimnasio(texto: T.errorGenerico, alerta: true).accessibilityIdentifier("gimnasio-aviso-envio")
+        case nil: EmptyView()
+        }
     }
 }
 
@@ -153,7 +175,8 @@ private struct InicioGimnasio: View {
         ocupado = true
         Task {
             defer { ocupado = false }
-            if modelo.abierta != nil { modelo.aceptarAviso(); return }
+            modelo.aceptarAviso()
+            if modelo.abierta != nil { return }
             switch await modelo.empezar() {
             case .ok: error = nil
             case .sinSenal: error = T.sinSenal
@@ -171,7 +194,7 @@ private struct FilaApilar<Contenido: View>: View {
     var body: some View {
         Button(action: accion) {
             HStack(spacing: Espacio.s) {
-                contenido().frame(maxWidth: .infinity, alignment: .leading)
+                contenido().frame(maxWidth: .infinity, alignment: .leading).multilineTextAlignment(.leading)
                 Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary).accessibilityHidden(true)
             }
             .contentShape(.rect)
@@ -184,35 +207,43 @@ private struct ZonasGimnasio: View {
     let modelo: ModeloGimnasio
     @Binding var destino: DestinoGimnasio?
 
+    // Sin `List`: en iOS 17 esta lista con su encabezado dejaba la app en un bucle de layout al 100 % de CPU.
     var body: some View {
-        List {
-            Section {
-                ForEach(Gimnasio.zonas) { z in
-                    FilaApilar(accion: { destino = .zona(z.clave) }) { fila(z) }
-                        .accessibilityIdentifier("gimnasio-zona-\(z.clave)")
-                }
-            } header: {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Espacio.m) {
                 VStack(alignment: .leading, spacing: Espacio.xs) {
                     if modelo.abierta?.modo == "completa", !modelo.faltantes.isEmpty {
-                        Text(T.faltanZonas(modelo.faltantes.count)).font(.headline).foregroundStyle(.primary).textCase(nil)
+                        Text(T.faltanZonas(modelo.faltantes.count)).font(.headline).accessibilityAddTraits(.isHeader)
                     }
-                    Text(T.consejoPermiso).font(.footnote).textCase(nil)
+                    NotaGimnasio(texto: T.consejoPermiso)
                     aviso
+                    AvisoEnvioGimnasio(modelo: modelo)
                 }
-                .padding(.bottom, Espacio.xs)
-            }
-            Section {
-                FilaApilar(accion: { destino = .revisar }) {
-                    Text(T.revisarYEnviar).font(.headline).foregroundStyle(Color.marcaTexto)
+                VStack(spacing: 0) {
+                    ForEach(Array(Gimnasio.zonas.enumerated()), id: \.element.clave) { i, z in
+                        if i > 0 { Divider().padding(.leading, 44) }
+                        FilaApilar(accion: { destino = .zona(z.clave) }) { fila(z) }
+                            .padding(.horizontal, Espacio.m)
+                            .frame(minHeight: 56)
+                            .accessibilityIdentifier("gimnasio-zona-\(z.clave)")
+                    }
                 }
-                .accessibilityIdentifier("gimnasio-revisar")
+                .tarjeta(relleno: 0)
+                Button(T.revisarYEnviar) { destino = .revisar }
+                    .buttonStyle(BotonMarca())
+                    .accessibilityIdentifier("gimnasio-revisar")
             }
+            .padding(Espacio.m)
+            .anchoLectura()
         }
-        .scrollContentBackground(.hidden)
     }
 
     @ViewBuilder private var aviso: some View {
-        if let a = modelo.avisoFoto { NotaGimnasio(texto: a == .tope ? T.tope : T.fotoRechazada, alerta: true).textCase(nil).accessibilityIdentifier("gimnasio-aviso-foto") }
+        if let a = modelo.avisoFoto { NotaGimnasio(texto: a == .tope ? T.tope : T.fotoRechazada, alerta: true).accessibilityIdentifier("gimnasio-aviso-foto") }
+    }
+
+    private func faltaEnElEnvio(_ clave: String) -> Bool {
+        if case .faltan(let f)? = modelo.avisoEnvio { f.contains(clave) } else { false }
     }
 
     private func fila(_ z: Gimnasio.Zona) -> some View {
@@ -226,7 +257,7 @@ private struct ZonasGimnasio: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
                 Text(z.nombre).font(.body)
-                Text(detalle).font(.caption).foregroundStyle(.secondary)
+                Text(detalle).font(.caption).foregroundStyle(faltaEnElEnvio(z.clave) ? Color.alerta : .secondary)
             }
         }
         .accessibilityElement(children: .combine)
@@ -290,6 +321,7 @@ struct ZonaGimnasio: View {
         .navigationTitle(zona.nombre)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: fotos.count) { await firmar() }
+        .onDisappear { modelo.limpiarAvisoFoto() }
     }
 
     private func firmar() async {
@@ -427,7 +459,7 @@ private struct RevisarGimnasio: View {
                 if !modelo.faltantes.isEmpty {
                     NotaGimnasio(texto: T.faltanZonas(modelo.faltantes.count), alerta: true).accessibilityIdentifier("gimnasio-faltan")
                 }
-                avisoEnvio
+                AvisoEnvioGimnasio(modelo: modelo)
                 Button(T.botonEnviar) { modelo.fijarNota(nota); Task { await modelo.enviarCarga() } }
                     .buttonStyle(BotonMarca())
                     .disabled(!modelo.puedeEnviar)
@@ -445,15 +477,6 @@ private struct RevisarGimnasio: View {
             modelo.fijarNota(nota)
         }
     }
-
-    @ViewBuilder private var avisoEnvio: some View {
-        switch modelo.avisoEnvio {
-        case .faltan(let f)?: NotaGimnasio(texto: T.faltanZonas(f.count), alerta: true)
-        case .sinNovedad?: NotaGimnasio(texto: T.sinNovedad, alerta: true)
-        case .error?, .sinConsentimiento?: NotaGimnasio(texto: T.errorGenerico, alerta: true)
-        case nil: EmptyView()
-        }
-    }
 }
 
 private struct EnviandoGimnasio: View {
@@ -467,11 +490,13 @@ private struct EnviandoGimnasio: View {
                     .font(.headline).multilineTextAlignment(.center)
             }
             Text(T.enviandoSeguir).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .accessibilityIdentifier("gimnasio-enviando")
+            Button(T.volverAEditar) { modelo.cancelarEnvio() }
+                .buttonStyle(BotonSecundario())
+                .accessibilityIdentifier("gimnasio-volver-editar")
         }
         .padding(Espacio.l)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("gimnasio-enviando")
     }
 }
 
@@ -732,9 +757,9 @@ private struct PreguntaGimnasioVista: View {
                 .frame(minHeight: 44)
                 .background(Color.campo, in: .rect(cornerRadius: Radio.control, style: .continuous))
                 .accessibilityIdentifier("gimnasio-kilos")
-            Text(pregunta.unidad ?? "kg").foregroundStyle(.secondary)
+            Text(pregunta.unidad ?? T.kg).foregroundStyle(.secondary)
         }
-        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Listo") { enKilos = false } } }
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(T.listoTeclado) { enKilos = false } } }
         .onChange(of: kilos) { _, s in
             if let n = Gimnasio.kilos(s) { modelo.responder(pregunta.id, .numero(n)) } else if !noSe { modelo.responder(pregunta.id, nil) }
         }
@@ -781,7 +806,7 @@ private struct PreguntaGimnasioVista: View {
         if valor == .texto("subida") {
             NotaGimnasio(texto: enCola == nil ? T.cuentaFotos(1) : modelo.subiendo == enCola?.id ? T.subiendo : T.esperandoSenal)
         }
-        AgregarFotoGimnasio(puede: modelo.puedeAgregar) { jpeg in
+        AgregarFotoGimnasio(puede: true) { jpeg in
             if modelo.agregar(zona: pregunta.zona ?? Gimnasio.zonaOpcional, jpeg: jpeg, pregunta: pregunta.id) == .guardada { modelo.drenarEnFondo() }
         } contenido: {
             Label(T.agregarFoto, systemImage: "camera.fill").frame(maxWidth: .infinity, minHeight: 54)

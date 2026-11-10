@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -51,9 +53,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -163,11 +167,16 @@ private const val A_ZONA = "zona:"
 @Composable
 fun GimnasioPantalla(m: ModeloGimnasio, alVolver: () -> Unit) {
     val v = observar(m)
+    // Al volver de una muerte del proceso el estado todavía no está: se decide después de preguntar.
+    var preguntado by remember { mutableStateOf(false) }
     LaunchedEffect(m) {
-        m.refrescar()
-        m.drenarEnFondo()
+        if (m.palancaRecordada) {
+            m.refrescar()
+            m.drenarEnFondo()
+        }
+        preguntado = true
     }
-    LaunchedEffect(v.estado == null) { if (v.estado == null) alVolver() }
+    LaunchedEffect(preguntado, v.estado == null) { if (preguntado && v.estado == null) alVolver() }
 
     var destino by rememberSaveable { mutableStateOf("") }
     // Si la carga pasó a otra etapa, se vuelve a la raíz: lo que importa es lo que dice ella.
@@ -224,12 +233,29 @@ private fun Desplazable(relleno: PaddingValues, contenido: @Composable ColumnSco
 @Composable
 private fun NotaGimnasio(texto: String, modifier: Modifier = Modifier, alerta: Boolean = false) {
     val c = MyPump.colores
-    Text(texto, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium), color = if (alerta) c.alerta else c.textoSecundario, modifier = modifier.fillMaxWidth())
+    Text(
+        texto,
+        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+        color = if (alerta) c.alerta else c.textoSecundario,
+        modifier = modifier.fillMaxWidth().then(if (alerta) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier),
+    )
 }
 
 @Composable
 private fun AvisoFoto(aviso: Gimnasio.AvisoFoto?) {
     if (aviso != null) NotaGimnasio(if (aviso == Gimnasio.AvisoFoto.TOPE) T.tope else T.fotoRechazada, Modifier.testTag("gimnasio-aviso-foto"), alerta = true)
+}
+
+/** Por qué no salió lo enviado. */
+@Composable
+private fun AvisoEnvio(aviso: ModeloGimnasio.AvisoEnvio?) {
+    val texto = when (aviso) {
+        is ModeloGimnasio.AvisoEnvio.Faltan -> T.faltanZonas(aviso.zonas.size)
+        ModeloGimnasio.AvisoEnvio.SinNovedad -> T.sinNovedad
+        ModeloGimnasio.AvisoEnvio.Error, ModeloGimnasio.AvisoEnvio.SinConsentimiento -> T.errorGenerico
+        null -> return
+    }
+    NotaGimnasio(texto, Modifier.testTag("gimnasio-aviso-envio"), alerta = true)
 }
 
 private fun textoDe(s: ModeloGimnasio.Salida): String? = when (s) {
@@ -265,7 +291,8 @@ private fun InicioGimnasio(m: ModeloGimnasio, relleno: PaddingValues) {
                 ocupado = true
                 alcance.launch {
                     try {
-                        if (m.abierta != null) m.aceptarAviso() else error = textoDe(m.empezar())
+                        m.aceptarAviso()
+                        if (m.abierta == null) error = textoDe(m.empezar())
                     } finally {
                         ocupado = false
                     }
@@ -288,11 +315,12 @@ private fun ZonasGimnasio(m: ModeloGimnasio, relleno: PaddingValues, alAbrir: (S
             }
             NotaGimnasio(T.consejoPermiso)
             AvisoFoto(v.avisoFoto)
+            AvisoEnvio(v.avisoEnvio)
         }
         Tarjeta(relleno = 0.dp, espaciado = 0.dp) {
             Gimnasio.zonas.forEachIndexed { i, z ->
                 if (i > 0) Separador(sangria = 48.dp)
-                FilaZona(m, z) { alAbrir(A_ZONA + z.clave) }
+                FilaZona(m, z, (v.avisoEnvio as? ModeloGimnasio.AvisoEnvio.Faltan)?.zonas?.contains(z.clave) == true) { alAbrir(A_ZONA + z.clave) }
             }
         }
         BotonMarca(T.revisarYEnviar, alTocar = { alAbrir(A_REVISAR) }, modifier = Modifier.fillMaxWidth().testTag("gimnasio-revisar"))
@@ -310,7 +338,7 @@ private fun detalleZona(m: ModeloGimnasio, clave: String): String {
 }
 
 @Composable
-private fun FilaZona(m: ModeloGimnasio, z: Gimnasio.Zona, alTocar: () -> Unit) {
+private fun FilaZona(m: ModeloGimnasio, z: Gimnasio.Zona, falta: Boolean, alTocar: () -> Unit) {
     val c = MyPump.colores
     val lista = m.fotos(z.clave).isNotEmpty() || z.clave in m.noHay
     Row(
@@ -321,7 +349,7 @@ private fun FilaZona(m: ModeloGimnasio, z: Gimnasio.Zona, alTocar: () -> Unit) {
         Marca(lista)
         Column(Modifier.weight(1f)) {
             Text(z.nombre, style = MaterialTheme.typography.bodyLarge, color = c.texto)
-            Text(detalleZona(m, z.clave), style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
+            Text(detalleZona(m, z.clave), style = MaterialTheme.typography.bodySmall, color = if (falta) c.alerta else c.textoSecundario)
         }
         Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
     }
@@ -369,6 +397,7 @@ private fun ZonaGimnasio(m: ModeloGimnasio, zona: Gimnasio.Zona, relleno: Paddin
     var error by remember { mutableStateOf<String?>(null) }
     val fotos = m.fotos(zona.clave)
     val noHay = zona.clave in m.noHay
+    DisposableEffect(zona.clave) { onDispose { m.limpiarAvisoFoto() } }
 
     LaunchedEffect(fotos.size) {
         val a = m.abierta ?: return@LaunchedEffect
@@ -427,7 +456,7 @@ private fun MiniaturaFoto(foto: ModeloGimnasio.VistaFoto, url: String?, borrar: 
                 if (foto.subiendo) T.subiendo else T.esperandoSenal,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White,
-                maxLines = 1,
+                maxLines = 2,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha = 0.55f)).padding(4.dp),
             )
@@ -526,12 +555,7 @@ private fun RevisarGimnasio(m: ModeloGimnasio, relleno: PaddingValues) {
             Text("${nota.length}/${Gimnasio.MAX_NOTA}", style = MaterialTheme.typography.bodySmall, color = c.textoSecundario, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth())
         }
         if (m.faltantes.isNotEmpty()) NotaGimnasio(T.faltanZonas(m.faltantes.size), Modifier.testTag("gimnasio-faltan"), alerta = true)
-        when (val a = v.avisoEnvio) {
-            is ModeloGimnasio.AvisoEnvio.Faltan -> NotaGimnasio(T.faltanZonas(a.zonas.size), alerta = true)
-            ModeloGimnasio.AvisoEnvio.SinNovedad -> NotaGimnasio(T.sinNovedad, alerta = true)
-            ModeloGimnasio.AvisoEnvio.Error, ModeloGimnasio.AvisoEnvio.SinConsentimiento -> NotaGimnasio(T.errorGenerico, alerta = true)
-            null -> Unit
-        }
+        AvisoEnvio(v.avisoEnvio)
         BotonMarca(
             T.botonEnviar,
             alTocar = {
@@ -547,7 +571,7 @@ private fun RevisarGimnasio(m: ModeloGimnasio, relleno: PaddingValues) {
 @Composable
 private fun Centrado(relleno: PaddingValues, etiqueta: String, contenido: @Composable ColumnScope.() -> Unit) {
     Column(
-        Modifier.padding(relleno).fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l).semantics(mergeDescendants = true) {}.testTag(etiqueta),
+        Modifier.padding(relleno).fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l).testTag(etiqueta),
         verticalArrangement = Arrangement.spacedBy(Espacio.m, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
         content = contenido,
@@ -569,6 +593,7 @@ private fun EnviandoGimnasio(m: ModeloGimnasio, relleno: PaddingValues) {
             )
         }
         Text(T.enviandoSeguir, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, textAlign = TextAlign.Center)
+        BotonSecundario(T.volverAEditar, alTocar = { m.cancelarEnvio() }, modifier = Modifier.testTag("gimnasio-volver-editar"))
     }
 }
 
@@ -791,7 +816,7 @@ private fun Numero(m: ModeloGimnasio, p: PreguntaGimnasio, valor: ValorJson?, no
             modifier = Modifier.weight(1f),
             teclado = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         )
-        Text(p.unidad ?: "kg", style = MaterialTheme.typography.bodyLarge, color = MyPump.colores.textoSecundario)
+        Text(p.unidad ?: T.kg, style = MaterialTheme.typography.bodyLarge, color = MyPump.colores.textoSecundario)
     }
     if (kilos.isNotEmpty() && Gimnasio.kilos(kilos) == null) NotaGimnasio(T.kilosInvalidos, alerta = true)
 }
@@ -802,7 +827,7 @@ private fun ItemConfirmar(m: ModeloGimnasio, p: PreguntaGimnasio, item: ItemGimn
     Tarjeta(relleno = Espacio.s, espaciado = Espacio.xs) {
         Text(item.texto, style = MaterialTheme.typography.titleMedium, color = c.texto)
         FotosDeReferencia(item.fotos, urls)
-        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+        Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
             for ((v, texto) in listOf("si" to T.si, "no" to T.no, "no_se" to T.noSe)) {
                 val mapa = (valor as? ValorJson.Objeto)?.campos.orEmpty()
                 val marcada = mapa[item.tipo] == ValorJson.Texto(v)
@@ -842,7 +867,7 @@ private fun PedirFoto(m: ModeloGimnasio, p: PreguntaGimnasio, valor: ValorJson?,
             },
         )
     }
-    BotonAgregarFoto("gimnasio-p-${p.id}", m.puedeAgregar) { jpeg ->
+    BotonAgregarFoto("gimnasio-p-${p.id}", true) { jpeg ->
         if (m.agregar(p.zona ?: Gimnasio.ZONA_OPCIONAL, jpeg, p.id) == ModeloGimnasio.Foto.GUARDADA) m.drenarEnFondo()
     }
     val noPuedo = valor == ValorJson.Texto("no_puedo")
