@@ -117,4 +117,20 @@ internal object CuentasDelTelefono {
         }
         return total
     }
+
+    /** Lo mismo con las fotos del gimnasio que no llegaron a subirse. Cada una lleva su carga: se suben a la misma. */
+    fun adoptarGimnasio(clienteId: String, disco: Disco, gimnasio: ModeloGimnasio): Int {
+        if (clienteId.isEmpty()) return 0
+        var total = 0
+        for (otra in otras(disco)) {
+            val viejas = PendienteGimnasio.leerCola(otra)
+            if (viejas.isEmpty() || clienteId(otra) != clienteId) continue
+            if (gimnasio.adoptar(viejas, otra)) {
+                otra.borrar(PendienteGimnasio.ARCHIVO)
+                otra.archivo(PendienteGimnasio.CARPETA).deleteRecursively()
+                total += viejas.size
+            }
+        }
+        return total
+    }
 }

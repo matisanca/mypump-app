@@ -235,6 +235,10 @@ class ModeloApp(
     private val _fotos = MutableStateFlow<ModeloFotos?>(null)
     val fotos: StateFlow<ModeloFotos?> = _fotos.asStateFlow()
 
+    /** Gimnasio por fotos: existe con cuenta, pero solo llama al servidor con la palanca `gimnasio_fotos` prendida. */
+    private val _gimnasio = MutableStateFlow<ModeloGimnasio?>(null)
+    val gimnasio: StateFlow<ModeloGimnasio?> = _gimnasio.asStateFlow()
+
     /** Progreso: se carga al abrir la pestaña (como la web). */
     private val _progreso = MutableStateFlow<ModeloProgreso?>(null)
     val progreso: StateFlow<ModeloProgreso?> = _progreso.asStateFlow()
@@ -485,6 +489,7 @@ class ModeloApp(
         _chat.value = null
         _revision.value = null
         _fotos.value = null
+        _gimnasio.value = null
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
@@ -522,6 +527,7 @@ class ModeloApp(
         if (enPrimerPlano) chat.empezarSondeo()
         _revision.value = ModeloRevision(cliente, t, cola, alcance, d)
         _fotos.value = ModeloFotos(cliente, t, d)
+        _gimnasio.value = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
@@ -659,6 +665,7 @@ class ModeloApp(
         val discoCuenta = disco
         val colaCuenta = outbox
         val fotosCuenta = _fotos.value
+        val gimnasioCuenta = _gimnasio.value
         val clienteId = _info.value?.clienteId
         if (discoCuenta != null && colaCuenta != null && !clienteId.isNullOrEmpty()) {
             CuentasDelTelefono.anotar(clienteId, discoCuenta)
@@ -667,6 +674,7 @@ class ModeloApp(
             // (sin esto, un reemplazo que estaba solo en la carpeta del link viejo se perdía; hallazgo 9).
             if (CuentasDelTelefono.adoptarSwaps(clienteId, discoCuenta)) colaCuenta.retenerSwapsHastaDecidir()
             fotosCuenta?.let { f -> CuentasDelTelefono.adoptarFotos(clienteId, discoCuenta, f) }
+            gimnasioCuenta?.let { g -> CuentasDelTelefono.adoptarGimnasio(clienteId, discoCuenta, g) }
             if (!vigente()) return
         }
 
@@ -684,6 +692,7 @@ class ModeloApp(
         if (!vigente()) return
         palancaLeida?.let {
             _palanca.value = it
+            _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -745,6 +754,7 @@ class ModeloApp(
             launch { _guia.value?.refrescarResumen() }
             launch { _suplementacion.value?.refrescar() }
         }
+        sincronizarGimnasio()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -760,6 +770,18 @@ class ModeloApp(
         }
         outbox?.drenar()
         _fotos.value?.drenar()
+        _gimnasio.value?.takeIf { it.palancaRecordada }?.drenar()
+    }
+
+    /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
+    private suspend fun sincronizarGimnasio() {
+        val g = _gimnasio.value ?: return
+        if (g.palancaRecordada) {
+            g.refrescar()
+            g.drenar()
+        } else {
+            g.apagar()
+        }
     }
 
     /**
@@ -805,6 +827,7 @@ class ModeloApp(
         refrescarDiaPasado()
         _chat.value?.sondear()
         _fotos.value?.drenar()
+        sincronizarGimnasio()
         _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }

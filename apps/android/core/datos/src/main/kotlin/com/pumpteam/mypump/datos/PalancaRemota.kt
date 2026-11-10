@@ -18,6 +18,8 @@ data class PalancaRemota(
     val versionMinimaAndroid: String? = null,
     /** Cuántos días atrás acepta «Comí» / «Salté» el servidor (`dieta_dias_marcar`). Sin la clave, lo de fábrica. */
     val diasMarcarDieta: Int? = null,
+    /** Gimnasio por fotos (`gimnasio_fotos`). Sin la clave, apagado: ni se muestra ni se llama a nada nuevo. */
+    val gimnasioFotos: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -30,6 +32,7 @@ data class PalancaRemota(
             versionMinimaIOS = (j["version_minima_ios"] as? ValorJson.Texto)?.valor?.takeIf { it.isNotEmpty() },
             versionMinimaAndroid = (j["version_minima_android"] as? ValorJson.Texto)?.valor?.takeIf { it.isNotEmpty() },
             diasMarcarDieta = (j["dieta_dias_marcar"] as? ValorJson.Numero)?.valor?.takeIf { it == Math.rint(it) && it in 0.0..30.0 }?.toInt(),
+            gimnasioFotos = (j["gimnasio_fotos"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */
