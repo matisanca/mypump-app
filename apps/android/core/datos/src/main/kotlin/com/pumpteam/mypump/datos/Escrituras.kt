@@ -246,8 +246,9 @@ class Escrituras(
     }
 
     /**
-     * `entregas_app_reservar(p_token, p_franja, p_id)`: `{ok: true, reserva}` o `{ok: false, motivo}` (`obligatorios`,
-     * `autorizada`, `tomada`, `ya_tiene`, `franja`, `error`) quedan como hechos y los muestra [ModeloAgenda]; `token` (o una
+     * `entregas_app_reservar(p_token, p_franja, p_id)` (o, con `cambia`, `entregas_app_cambiar(p_token, p_reserva, p_franja,
+     * p_id)`): `{ok: true, reserva}` o `{ok: false, motivo}` (`obligatorios`, `autorizada`, `tomada`, `ya_tiene`, `franja`,
+     * `tope`, `plazo`, `sin_reserva`, `error`) quedan como hechos y los muestra [ModeloAgenda]; `token` (o una
      * respuesta vacía) es `false`, que la cola verifica y estaciona. Sin la función (PGRST202), un rechazo: reintentar daría
      * lo mismo. Red y transitorio vuelven tal cual (en su carril, sin gastar intento).
      */
@@ -256,10 +257,20 @@ class Escrituras(
         val franja = (p["franja"] as? ValorJson.Texto)?.valor?.ifEmpty { null }
         fun rechazo(m: String) = Resultado.Ok(ValorJson.objeto("ok" to ValorJson.Booleano(false), "motivo" to ValorJson.Texto(m)))
         if (id == null || franja == null) return rechazo("franja")
-        val r = cliente.llamar(
-            "entregas_app_reservar",
-            mapOf("p_token" to texto(token), "p_franja" to ValorJson.Texto(franja), "p_id" to ValorJson.Texto(id)),
-        )
+        // Un cambio (palanca `elegir_horario`, videollamada 2.3.0): la misma op con la reserva que se deja (`cambia`). El
+        // servidor toma la nueva y recién ahí libera la vieja; el tope y el plazo los controla él (`tope`, `plazo`).
+        val vieja = (p["cambia"] as? ValorJson.Texto)?.valor?.ifEmpty { null }
+        val r = if (vieja != null) {
+            cliente.llamar(
+                "entregas_app_cambiar",
+                mapOf("p_token" to texto(token), "p_reserva" to ValorJson.Texto(vieja), "p_franja" to ValorJson.Texto(franja), "p_id" to ValorJson.Texto(id)),
+            )
+        } else {
+            cliente.llamar(
+                "entregas_app_reservar",
+                mapOf("p_token" to texto(token), "p_franja" to ValorJson.Texto(franja), "p_id" to ValorJson.Texto(id)),
+            )
+        }
         val v = when (r) {
             is Resultado.Falla -> return if (r.error.funcionInexistente) rechazo("error") else r
             is Resultado.Ok -> r.valor
