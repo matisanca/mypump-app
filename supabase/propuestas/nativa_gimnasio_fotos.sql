@@ -727,6 +727,7 @@ GRANT EXECUTE ON FUNCTION
   mypump_gimnasio_para_limpiar(INTEGER, INTEGER), mypump_gimnasio_limpieza_hecha(UUID), mypump_gimnasio_reabrir_errores(INTEGER, INTEGER)
 TO service_role;
 
+NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 -- Abrir el piloto, a mano y sin dejar ids en el repo:

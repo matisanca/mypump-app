@@ -37,4 +37,5 @@ DROP FUNCTION IF EXISTS mypump_gimnasio_zonas();
 DROP FUNCTION IF EXISTS mypump_gimnasio_tipos();
 DELETE FROM mypump_app_config WHERE clave IN ('gimnasio_fotos', 'gimnasio_para_todos');
 DROP POLICY IF EXISTS "coach lee gimnasio" ON storage.objects;
+NOTIFY pgrst, 'reload schema';
 COMMIT;

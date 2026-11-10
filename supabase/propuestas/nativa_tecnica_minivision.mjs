@@ -27,7 +27,7 @@ const BUCKET_TECNICA = 'tecnica';
 const MAX_TECNICA_B = 60 * 1024 * 1024;           // la app comprime a 720p; un video de 75 s entra sobrado
 const DURACION_MIN_TECNICA = 4;
 const DURACION_MAX_TECNICA = 75;                // +0,5 s de tolerancia como el teléfono: lo que sobra lo corta el `-t`
-const RATE_TECNICA = 8;                           // subidas por token por día, contando reintentos
+const RATE_TECNICA = 8;                           // subidas exitosas por token por día
 const MAX_TECNICA_EN_CURSO = 2;                   // a la vez en todo el servicio: cada una lanza ffmpeg
 const ESPERA_TECNICA_MS = 30_000;
 const ESPERA_CUERPO_TECNICA_MS = 600_000;         // total: 60 MB entran con ~0,8 Mb/s (con 240 s hacían falta 2 Mb/s). Exige server.requestTimeout mayor
@@ -68,16 +68,26 @@ function carpetaTecnica(clienteId) {                 // sin el cliente_id, que e
 // Después de responder se lee lo que falte del cuerpo, con tope de bytes y de tiempo. Cortar la conexión con la subida a medio
 // camino hace que el navegador vea un corte de red y no el 4xx, y el video se reintentaría sin fin.
 const DRENAR_TECNICA_MS = 15_000;
+const MAX_DRENANDO_TECNICA = 16;
+let drenandoTecnica = 0;
 function drenarOCortarTecnica(req) {
   if (req.complete || req.destroyed) return;
-  let leidos = 0;
-  const cortar = () => { clearTimeout(plazo); req.destroy(); };
+  if (drenandoTecnica >= MAX_DRENANDO_TECNICA) { req.destroy(); return; }
+  drenandoTecnica++;
+  let leidos = 0, listo = false;
+  const terminar = () => { if (!listo) { listo = true; drenandoTecnica--; clearTimeout(plazo); } };
+  const cortar = () => { terminar(); req.destroy(); };
   const plazo = setTimeout(cortar, DRENAR_TECNICA_MS);
   plazo.unref?.();
   req.on('data', (c) => { leidos += c.length; if (leidos > MAX_TECNICA_B) cortar(); });
-  req.once('end', () => clearTimeout(plazo));
-  req.once('close', () => clearTimeout(plazo));
+  req.once('end', terminar);
+  req.once('close', terminar);
   req.once('error', cortar);
+}
+
+// ffprobe o ffmpeg que no pudieron correr por algo nuestro (disco, memoria, plazo, señal, binario): no es culpa del archivo.
+function fallaNuestraFf(e) {
+  return Boolean(e?.killed || e?.signal || typeof e?.code === 'string' || /no space left|cannot allocate|too many open/i.test(e?.detalle || ''));
 }
 
 function rechazarTecnica(req, res, status, error, origin) {
@@ -111,7 +121,7 @@ function cuerpoADisco(req, largo, ruta) {
       if (cabecera.length < 12) cabecera = Buffer.concat([cabecera, c]).subarray(0, 12);
       if (!salida.write(c)) { req.pause(); salida.once('drain', () => req.resume()); }
     });
-    req.on('end', () => { recibido = true; clearTimeout(silencio); salida.end(() => { if (!listo) { listo = true; clearTimeout(plazo); resolve({ total, cabecera }); } }); });
+    req.on('end', () => { recibido = true; clearTimeout(silencio); salida.end((err) => { if (err) { fin(null); req.destroy(); return; } if (!listo) { listo = true; clearTimeout(plazo); resolve({ total, cabecera }); } }); });
     req.on('close', () => { if (!recibido) fin(null); });     // después de `end` también llega `close`: ahí manda el disco
     req.on('error', () => fin(null));
   });
@@ -161,7 +171,7 @@ async function handleTecnicaUpload(req, res, origin) {
       if (!d.streams?.length) return send(res, 400, { ok: false, error: 'el video no se puede leer' }, origin);
       duracion = Number(d.format?.duration);
     } catch (e) {
-      if (e instanceof SyntaxError || e.killed) throw e;      // salida rota o colgado: nuestra falla, 503
+      if (e instanceof SyntaxError || fallaNuestraFf(e)) throw e;      // salida rota, colgado, disco: nuestra falla, 503
       if (e.code === 'ENOENT') throw e;                       // sin binario, también
       return send(res, 400, { ok: false, error: 'el video no se puede leer' }, origin);
     }
@@ -172,7 +182,7 @@ async function handleTecnicaUpload(req, res, origin) {
       await correrTecnica(FFMPEG_TECNICA, ['-nostdin', '-v', 'error', '-y', '-protocol_whitelist', 'file', '-i', entrada, '-t', String(DURACION_MAX_TECNICA), '-map', '0:v:0', '-c', 'copy', '-an', '-sn', '-dn', '-map_metadata', '-1',
         '-map_chapters', '-1', '-movflags', '+faststart', salida]);
     } catch (e) {
-      if (e.killed || e.code === 'ENOENT') throw e;           // colgado o sin binario: 503, se puede reintentar
+      if (fallaNuestraFf(e)) throw e;           // colgado, sin binario, disco: 503, se puede reintentar
       return send(res, 400, { ok: false, error: 'el video no se puede leer' }, origin);
     }
     const peso = (await statTec(salida)).size;

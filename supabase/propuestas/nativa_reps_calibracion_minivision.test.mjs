@@ -146,6 +146,11 @@ const doble = createServer(async (req, res) => {
 // ── El servidor real con la propuesta pegada ──
 let hijo, puerto, puertoDoble, salida = '', murio = null;
 function armarServidor(dir) {
+  if (process.env.SERVIDOR_FINAL) {   // la versión final armada para producción, tal cual
+    const f = join(dir, 'server.mjs');
+    writeFileSync(f, readFileSync(process.env.SERVIDOR_FINAL));
+    return f;
+  }
   let s = readFileSync(join(aqui, '../../mini-vision/server.mjs'), 'utf8');
   const tope = "const tope = feature === 'fotos' ? RATE_FOTOS : RATE_LIMIT;";
   assert.ok(s.includes(tope));

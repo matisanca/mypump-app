@@ -74,15 +74,20 @@ function carpetaGimnasio(clienteId) {
 // Después de responder se lee lo que falte del cuerpo, con tope de bytes y de tiempo. Cortar la conexión con la subida a medio
 // camino hace que el navegador vea un corte de red y no el 4xx, y la foto se reintentaría sin fin.
 const DRENAR_GIMNASIO_MS = 15_000;
+const MAX_DRENANDO_GIMNASIO = 16;
+let drenandoGimnasio = 0;
 function drenarOCortarGimnasio(req) {
   if (req.complete || req.destroyed) return;
-  let leidos = 0;
-  const cortar = () => { clearTimeout(plazo); req.destroy(); };
+  if (drenandoGimnasio >= MAX_DRENANDO_GIMNASIO) { req.destroy(); return; }
+  drenandoGimnasio++;
+  let leidos = 0, listo = false;
+  const terminar = () => { if (!listo) { listo = true; drenandoGimnasio--; clearTimeout(plazo); } };
+  const cortar = () => { terminar(); req.destroy(); };
   const plazo = setTimeout(cortar, DRENAR_GIMNASIO_MS);
   plazo.unref?.();
   req.on('data', (c) => { leidos += c.length; if (leidos > MAX_GIMNASIO_B) cortar(); });
-  req.once('end', () => clearTimeout(plazo));
-  req.once('close', () => clearTimeout(plazo));
+  req.once('end', terminar);
+  req.once('close', terminar);
   req.once('error', cortar);
 }
 

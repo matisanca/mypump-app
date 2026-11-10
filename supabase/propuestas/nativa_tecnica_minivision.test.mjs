@@ -351,6 +351,18 @@ function rechazoEnCurso(headers, total) {
   });
 }
 
+test('subida que se calla a la mitad: se corta y no deja temporales', async () => {
+  const s = conectarTcp(puerto, '127.0.0.1');
+  const h = Object.entries({ ...cab(), host: 'prueba', connection: 'keep-alive', 'content-length': video.length }).map(([k, v]) => `${k}: ${v}`).join('\r\n');
+  const cerro = new Promise((r) => { s.on('close', r); s.on('error', () => {}); });
+  s.write(`POST /tecnica/upload HTTP/1.1\r\n${h}\r\n\r\n`);
+  s.write(video.subarray(0, 1024));
+  const quien = await Promise.race([cerro.then(() => 'cerro'), espera(6000).then(() => 'colgada')]);
+  s.destroy();
+  assert.equal(quien, 'cerro');
+  await sinTemporales();
+});
+
 test('un 4xx llega legible con la subida en curso', async () => {
   const r = await rechazoEnCurso(cab({ 'x-tecnica-token': 'token-que-no-existe' }), 2 * 1024 * 1024);
   assert.equal(r.error, null);

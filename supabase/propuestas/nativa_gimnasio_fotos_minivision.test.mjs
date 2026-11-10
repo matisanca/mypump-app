@@ -144,9 +144,10 @@ before(async () => {
   puertoDoble = doble.address().port;
   dir = mkdtempSync(join(tmpdir(), 'gim-minivision-'));
   tmpServidor = join(dir, 'tmp'); (await import('node:fs')).mkdirSync(tmpServidor);
-  const real = join(dir, 'tapar-real'); generar = join(dir, 'generar');
-  await exec('swiftc', ['-O', '-o', real, join(aqui, 'gimnasio_tapar_caras/tapar_caras.swift')], { timeout: 180000 });
-  await exec('swiftc', ['-O', '-o', generar, join(aqui, 'gimnasio_tapar_caras/generar_prueba.swift')], { timeout: 180000 });
+  // En la Mini swiftc no compila: ahí se pasan los binarios ya armados en la MacBook.
+  const real = process.env.TAPAR_PRECOMPILADO || join(dir, 'tapar-real'); generar = process.env.GENERAR_PRECOMPILADO || join(dir, 'generar');
+  if (!process.env.TAPAR_PRECOMPILADO) await exec('swiftc', ['-O', '-o', real, join(aqui, 'gimnasio_tapar_caras/tapar_caras.swift')], { timeout: 180000 });
+  if (!process.env.GENERAR_PRECOMPILADO) await exec('swiftc', ['-O', '-o', generar, join(aqui, 'gimnasio_tapar_caras/generar_prueba.swift')], { timeout: 180000 });
   // Envoltorio: con el archivo de control, falla con ese código en vez de tapar.
   control = join(dir, 'control'); tapar = join(dir, 'tapar');
   writeFileSync(tapar, `#!/bin/sh\nif [ -f "${control}" ]; then c=$(cat "${control}"); [ "$c" = "colgar" ] && sleep 60; [ "$c" = "basura" ] && echo hola && exit 0; exit "$c"; fi\nexec "${real}" "$@"\n`);
