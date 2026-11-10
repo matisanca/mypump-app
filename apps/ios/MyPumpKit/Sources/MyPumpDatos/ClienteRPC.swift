@@ -6,9 +6,15 @@ public struct ConfigBackend: Sendable {
     public let anonKey: String
     public let vision: URL
     public let app: URL
+    /// El servicio de firma propia (contrato y consentimiento). Va con valor por defecto porque todavía no está en
+    /// `public/js/config.js`, de donde sale `ConfigBackend+Produccion.swift`: cuando se sume ahí (`FIRMA_URL`) y al
+    /// generador, el generado lo pasa y este valor deja de usarse.
+    public let firma: URL
 
-    public init(supabase: URL, anonKey: String, vision: URL, app: URL) {
-        self.supabase = supabase; self.anonKey = anonKey; self.vision = vision; self.app = app
+    public static let firmaProduccion = URL(string: "https://firma.mypumpteam.com")!
+
+    public init(supabase: URL, anonKey: String, vision: URL, app: URL, firma: URL = ConfigBackend.firmaProduccion) {
+        self.supabase = supabase; self.anonKey = anonKey; self.vision = vision; self.app = app; self.firma = firma
     }
 }
 

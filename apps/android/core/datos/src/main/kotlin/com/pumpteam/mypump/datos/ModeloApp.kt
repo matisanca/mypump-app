@@ -267,6 +267,13 @@ class ModeloApp(
     private val _suplementacion = MutableStateFlow<ModeloSuplementacion?>(null)
     val suplementacion: StateFlow<ModeloSuplementacion?> = _suplementacion.asStateFlow()
 
+    /**
+     * Documentos (contrato y consentimiento): la fila de Mis datos y el aviso de Entreno, solo si `mypump_contrato_get`
+     * devolvió algo. No existe en la demo ni sin cuenta.
+     */
+    private val _documentos = MutableStateFlow<ModeloDocumentos?>(null)
+    val documentos: StateFlow<ModeloDocumentos?> = _documentos.asStateFlow()
+
     private val _salud = MutableStateFlow<ModeloSalud?>(null)
     val salud: StateFlow<ModeloSalud?> = _salud.asStateFlow()
 
@@ -462,6 +469,7 @@ class ModeloApp(
         _guia.value?.cerrar()
         _guia.value = null
         _suplementacion.value = null
+        _documentos.value = null
         val t = almacen.leer()
         token = t
         if (t != null) {
@@ -501,6 +509,7 @@ class ModeloApp(
         _guia.value?.cerrar()
         _guia.value = null
         _suplementacion.value = null
+        _documentos.value = null
         _entreno.value = null
     }
 
@@ -538,6 +547,7 @@ class ModeloApp(
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
         _suplementacion.value = ModeloSuplementacion(cliente, t, d, alcance)
+        _documentos.value = ModeloDocumentos(cliente, t)
         _salud.value?.cancelarEspera()
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3 del 15-oct).
         _salud.value = ModeloSalud(cliente, t, almacen = AlmacenSaludPorCuenta(preferencias, Disco.huella(t)), alcance = alcance)
@@ -763,6 +773,8 @@ class ModeloApp(
             launch { _guia.value?.refrescarResumen() }
             launch { _suplementacion.value?.refrescar() }
         }
+        // Documentos: aparte, así no demora la carga (un error es «sin documentos»).
+        _documentos.value?.let { m -> alcance.launch { m.refrescar() } }
         sincronizarGimnasio()
         sincronizarTecnica()
         _fotos.value?.drenar()
@@ -856,6 +868,8 @@ class ModeloApp(
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }
         // Suplementación: aparte, así no demora lo que sigue (es solo lectura).
         _suplementacion.value?.let { m -> alcance.launch { m.refrescar() } }
+        // Documentos, cada vez: quien firmó en el navegador vuelve y ve «Firmado» (y el aviso se va).
+        _documentos.value?.let { m -> alcance.launch { m.refrescar() } }
         _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y retomar el historial (visibilitychange)
         _entreno.value?.alVolverAPrimerPlano()
     }

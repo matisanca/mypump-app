@@ -215,6 +215,8 @@ fun ListaEntreno(
                     // Con todo visto, la compacta en su lugar de siempre.
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.COMPACTA)
                     BannerRevision(modelo)
+                    // El contrato sin firmar: un renglón que lleva a Documentos (no frena nada).
+                    com.pumpteam.mypump.misdatos.AvisoContratoPendiente(modelo)
                     // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
                     if (motor.dias.size > 1) SelectorDias(motor, v)
                     if (motor.vacio) {

@@ -112,6 +112,9 @@ public final class ModeloApp {
     public private(set) var guia: ModeloGuia?
     /// La pestaña Suplementación (2.1.0): aparece solo si `mypump_suplementacion` devolvió una fila con ítems.
     public private(set) var suplementacion: ModeloSuplementacion?
+    /// Documentos (contrato y consentimiento): la fila de Mis datos y el aviso de Entreno, solo si
+    /// `mypump_contrato_get` devolvió algo. No existe en la demo ni sin cuenta.
+    public private(set) var documentos: ModeloDocumentos?
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet {
@@ -231,6 +234,7 @@ public final class ModeloApp {
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
+        documentos = nil
         esDemo = false
         sinRedEn = []
         fase = .sinToken
@@ -282,6 +286,7 @@ public final class ModeloApp {
         esDemo = false
         rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; entreno = nil; guia = nil
         suplementacion = nil
+        documentos = nil
         token = almacen.leer()
         if let t = token {
             prepararCuenta(t)
@@ -300,6 +305,7 @@ public final class ModeloApp {
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
+        documentos = nil
     }
 
     /// Hay un mapa de reemplazos de comida sin la marca de migrados: el servidor quizás nunca los vio y, hasta decidirlo, la
@@ -336,6 +342,7 @@ public final class ModeloApp {
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
+        documentos = ModeloDocumentos(cliente: cliente, token: t)
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3).
         salud = ModeloSalud(cliente: cliente, token: t, almacen: AlmacenSaludPorCuenta(base: AlmacenSaludDefaults(), cuenta: Disco.huella(t)))
         Task { [weak self] in
@@ -488,6 +495,8 @@ public final class ModeloApp {
         fase = .listo
         // Suplementación sin esperar a lo demás: decide si la pestaña está (con copia guardada ya se ve desde el arranque).
         if let suplementacion { Task { await suplementacion.cargar() } }
+        // Documentos, igual: un error es «sin documentos» y no frena nada.
+        if let documentos { Task { await documentos.cargar() } }
         if let e = entreno {
             cargaDelMotor = Task {
                 await self.cargarCatalogo()
@@ -666,6 +675,8 @@ public final class ModeloApp {
         if let guia { Task { await guia.actualizarResumen() } }
         // Suplementación, cada vez (como las marcas de Dieta): Mati la pudo cambiar después de la llamada.
         if let suplementacion { Task { await suplementacion.cargar() } }
+        // Documentos, cada vez: quien firmó en el navegador vuelve y ve «Firmado» (y el aviso se va).
+        if let documentos { Task { await documentos.cargar() } }
         await outbox?.drenar()
         // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
         await hidratarMarcas()

@@ -155,6 +155,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     BackHandler(enabled = enGuiaDeMisDatos) { navegacion.guiaEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.gimnasioEnMisDatos) { navegacion.gimnasioEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.tecnicaEnMisDatos) { navegacion.tecnicaEnMisDatos = false }
+    BackHandler(enabled = enMisDatos && navegacion.documentosEnMisDatos) { navegacion.documentosEnMisDatos = false }
     BackHandler(enabled = navegacion.pestana == Pestana.ENTRENO && navegacion.gimnasio) { navegacion.gimnasio = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
@@ -201,12 +202,16 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         val gim = gimnasio
                                         val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
                                         val tec = tecnica
+                                        val documentos by modelo.documentos.collectAsStateWithLifecycle()
+                                        val docs = documentos
                                         if (navegacion.guiaEnMisDatos && g != null) {
                                             GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false })
                                         } else if (navegacion.gimnasioEnMisDatos && gim != null) {
                                             GimnasioPantalla(gim, alVolver = { navegacion.gimnasioEnMisDatos = false })
                                         } else if (navegacion.tecnicaEnMisDatos && tec != null) {
                                             com.pumpteam.mypump.tecnica.TecnicaPantalla(tec, modelo, alVolver = { navegacion.tecnicaEnMisDatos = false })
+                                        } else if (navegacion.documentosEnMisDatos && docs != null) {
+                                            com.pumpteam.mypump.misdatos.DocumentosPantalla(docs, alVolver = { navegacion.documentosEnMisDatos = false })
                                         } else {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }

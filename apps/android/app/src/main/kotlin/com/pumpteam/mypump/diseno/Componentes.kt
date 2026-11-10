@@ -377,6 +377,23 @@ fun abrirEnNavegador(contexto: Context, url: String) {
 }
 
 /**
+ * Abre un link en el navegador del sistema, afuera de la app (Documentos: la página de firma, donde además se baja el PDF).
+ * No es una Custom Tab: el cliente firma en su navegador de siempre. Va por el selector de navegadores, como el respaldo de
+ * [abrirEnNavegador], así nunca resuelve a MyPump ni a otra app que no sea un navegador. false si no hay navegador.
+ */
+fun abrirEnNavegadorDelSistema(contexto: Context, url: String): Boolean {
+    val ver = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    ver.selector = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER)
+    if (contexto !is Activity) ver.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    return try {
+        contexto.startActivity(ver)
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    }
+}
+
+/**
  * El navegador con Custom Tabs: el predeterminado si las tiene; si no, el primero que las tenga. Nunca MyPump. Verlos
  * necesita el `<queries>` de `CustomTabsService` del manifest (Android 11+).
  */

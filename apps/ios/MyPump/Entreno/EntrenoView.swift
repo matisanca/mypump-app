@@ -218,6 +218,8 @@ private struct ListaEntreno: View {
                 // hay; D16: la barra no se toca).
                 if let g = GuiaUI.modelo, !g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia) }
                 BannerRevision()
+                // El contrato sin firmar: un renglón que lleva a Documentos (no frena nada).
+                AvisoContratoPendiente()
                 // Eventos del Apple Watch que esperan hace horas sin poder pasar (otro día abierto, otra cuenta…).
                 if let t = motor.relojEsperando {
                     AvisoProgresion(icono: "applewatch", texto: Text(t), tono: .alerta)
