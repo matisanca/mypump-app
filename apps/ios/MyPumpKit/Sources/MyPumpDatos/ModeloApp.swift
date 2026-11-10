@@ -98,6 +98,8 @@ public final class ModeloApp {
     public private(set) var gimnasio: ModeloGimnasio?
     /// Técnica por video: existe con cuenta, pero solo llama al servidor con la palanca `tecnica_video` prendida.
     public private(set) var tecnica: ModeloTecnica?
+    /// Estudios y órdenes: existe con cuenta, pero solo llama al servidor con la palanca `estudios_app` prendida.
+    public private(set) var estudios: ModeloEstudios?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
     /// El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada).
@@ -229,7 +231,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         esDemo = false
         sinRedEn = []
@@ -298,7 +300,7 @@ public final class ModeloApp {
         cacheCodigos = nil
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
     }
 
@@ -333,6 +335,8 @@ public final class ModeloApp {
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
         tecnica = ModeloTecnica(cliente: cliente, token: t, disco: disco)
+        // En las pruebas (`raizDisco`), el caché también va a la carpeta de la prueba.
+        estudios = ModeloEstudios(cliente: cliente, token: t, disco: disco, cache: raizDisco?.appendingPathComponent("Caches", isDirectory: true))
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
@@ -431,6 +435,7 @@ public final class ModeloApp {
             let f = fotos
             let g = gimnasio
             let tec = tecnica
+            let est = estudios
             CuentasDelTelefono.anotar(clienteId: id, en: d)
             await CuentasDelTelefono.adoptar(clienteId: id, en: d, cola: cola)
             // Los reemplazos de comida que esa carpeta tenía sin decidir vienen con ellas: hasta decidir, la cola los retiene
@@ -440,6 +445,7 @@ public final class ModeloApp {
             if let f { await CuentasDelTelefono.adoptarFotos(clienteId: id, en: d, fotos: f) }
             if let g { CuentasDelTelefono.adoptarGimnasio(clienteId: id, en: d, gimnasio: g) }
             if let tec { CuentasDelTelefono.adoptarTecnica(clienteId: id, en: d, tecnica: tec) }
+            if let est { CuentasDelTelefono.adoptarEstudios(clienteId: id, en: d, estudios: est) }
             guard vigente() else { return }
         }
 
@@ -510,6 +516,7 @@ public final class ModeloApp {
         _ = await (cargaChat, cargaRevision, cargaFotos)
         await sincronizarGimnasio()
         await sincronizarTecnica()
+        await sincronizarEstudios()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -608,6 +615,17 @@ public final class ModeloApp {
         await fotos?.drenar()
         if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
         if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
+        if palanca.estudiosApp { estudios?.drenarEnFondo() }
+    }
+
+    private func sincronizarEstudios() async {
+        guard let estudios else { return }
+        if palanca.estudiosApp {
+            await estudios.refrescar()
+            if estudios.habilitado { estudios.drenarEnFondo() }   // varios archivos de 20 MB no frenan el resto de la carga
+        } else {
+            estudios.apagar()
+        }
     }
 
     /// Con la palanca apagada no se llama a nada: la app es la de siempre.
@@ -674,6 +692,7 @@ public final class ModeloApp {
         await fotos?.drenar()
         await sincronizarGimnasio()
         await sincronizarTecnica()
+        await sincronizarEstudios()
         await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
         _ = await entreno?.alVolverAPrimerPlano()
     }

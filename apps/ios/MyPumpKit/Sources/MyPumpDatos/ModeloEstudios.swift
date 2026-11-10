@@ -1,0 +1,471 @@
+import Foundation
+import Observation
+import MyPumpModelos
+import MyPumpReglas
+
+/// Un archivo de un envío. Los bytes van en su propio archivo en caché (`estudios-archivos/<id>.pdf|jpg`) y acá solo el índice.
+public struct ArchivoEstudio: Codable, Equatable, Sendable, Identifiable {
+    public let id: String
+    public let formato: Estudios.Formato
+    /// Ya está en el servidor. El archivo local se borra recién cuando el envío entero queda `enviado`.
+    public var subido = false
+
+    var nombre: String { "\(id).\(formato.extensionArchivo)" }
+}
+
+/// Un envío que el alumno ya mandó y todavía no terminó de salir. Sobrevive a cerrar la app.
+public struct EnvioEstudioPendiente: Codable, Equatable, Sendable, Identifiable {
+    public var id: String
+    public var pedidoId: String?
+    public var archivos: [ArchivoEstudio]
+    /// `envio_nuevo` ya contestó que sí.
+    var abierto = false
+    /// Archivos que el servidor no aceptó o que el teléfono perdió: al terminar se le avisa.
+    var rechazados = 0
+
+    public static let archivo = "estudios-cola.json"
+    public static let carpeta = "estudios-archivos"
+    public static let carpetaBorrador = "estudios-borrador"
+    public static let carpetaVer = "estudios-ver"
+}
+
+/// Estudios y órdenes. Mismo criterio de cola que `ModeloGimnasio`: en disco, sobrevive a cerrar la app y a quedarse sin
+/// señal, un 5xx o un 429 no gasta el archivo y todo otro 4xx es definitivo para ese archivo. Con la palanca apagada
+/// `ModeloApp` no llama a nada de esto: `estado` queda en nil y no se ve ni se pide nada.
+///
+/// Son datos médicos: los archivos viven en Caches, fuera del respaldo de iCloud, y se borran al quedar enviados; lo que se
+/// abre para ver va a un temporal que se borra al cerrar; el estado del servidor no se guarda en el teléfono; nada va a
+/// Fotos ni a un registro.
+@MainActor @Observable
+public final class ModeloEstudios {
+    public enum Resultado: Equatable, Sendable { case ok, fecha, sinSenal, error }
+    public enum Aviso: Equatable, Sendable { case recibido, recibidoConRechazo, rechazado, topeDia, error }
+    public enum Abrir: Equatable, Sendable { case archivos([ArchivoParaVer]), error }
+
+    public struct ArchivoParaVer: Equatable, Sendable {
+        public let url: URL
+        public let pdf: Bool
+    }
+
+    /// Un archivo elegido en la hoja de subida, antes de «Enviar».
+    public struct Elegido: Equatable, Sendable, Identifiable {
+        public let id: String
+        public let formato: Estudios.Formato
+        public let url: URL
+    }
+
+    /// nil: apagado, sin el servidor nuevo, o todavía no se supo nada. No se muestra nada.
+    public private(set) var estado: EstadoEstudios?
+    /// El último `get` falló por red o servicio y lo que se ve puede estar viejo.
+    public private(set) var errorDeCarga = false
+    public private(set) var cola: [EnvioEstudioPendiente] = []
+    public private(set) var borrador: [Elegido] = []
+    public private(set) var sinSenal = false
+    public private(set) var aviso: Aviso?
+
+    @ObservationIgnored let cliente: ClienteRPC
+    @ObservationIgnored let token: String
+    @ObservationIgnored let disco: Disco?
+    /// La carpeta de esta cuenta en Caches.
+    @ObservationIgnored let cache: URL
+    @ObservationIgnored private let esperar: @Sendable (TimeInterval) async -> Void
+    @ObservationIgnored private var drenando = false
+    @ObservationIgnored private var reintentoProgramado = false
+    @ObservationIgnored private var reintentosDeFondo = 0
+    @ObservationIgnored private var vueltas: [String: Int] = [:]
+
+    static let maxIntentosSeguidos = 3
+    static let maxReintentosDeFondo = 5
+    static let maxVueltas = 2
+    static let sesionEfimera = URLSession(configuration: .ephemeral)
+
+    public init(cliente: ClienteRPC, token: String, disco: Disco?, cache raiz: URL? = nil,
+                esperar: @escaping @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(for: .seconds($0)) }) {
+        self.cliente = cliente; self.token = token; self.disco = disco; self.esperar = esperar
+        cache = Self.carpetaCache(raiz: raiz, cuenta: "cuenta-\(Disco.huella(token))")
+        cola = disco?.leer([EnvioEstudioPendiente].self, EnvioEstudioPendiente.archivo) ?? []
+        barrer()
+    }
+
+    static func carpetaCache(raiz: URL?, cuenta: String) -> URL {
+        (raiz ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]).appendingPathComponent("MyPump/\(cuenta)", isDirectory: true)
+    }
+
+    /// Lo que quedó de una hoja de subida sin enviar o de un archivo abierto para ver se borra al arrancar, y también lo que
+    /// está en la carpeta de la cola sin envío que lo nombre (un cierre entre la copia y el índice).
+    private func barrer() {
+        let fm = FileManager.default
+        try? fm.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpetaBorrador))
+        try? fm.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpetaVer))
+        let carpeta = cache.appendingPathComponent(EnvioEstudioPendiente.carpeta)
+        let vivos = Set(cola.flatMap { $0.archivos.map(\.nombre) })
+        for f in (try? fm.contentsOfDirectory(atPath: carpeta.path)) ?? [] where !vivos.contains(f) {
+            try? fm.removeItem(at: carpeta.appendingPathComponent(f))
+        }
+    }
+
+    // MARK: Lo que lee la pantalla
+
+    public var habilitado: Bool { estado != nil }
+    public var pendientes: Int { estado?.pendientes.count ?? 0 }
+    public var topeArchivos: Int { estado?.topeArchivos ?? Estudios.topeArchivos }
+    public var topeMB: Int { estado?.topeMB ?? Estudios.topeMB }
+    public var puedeAgregar: Bool { borrador.count < topeArchivos }
+    /// «Subiendo 2 de 5», del envío que está saliendo.
+    public var progreso: String? {
+        guard let e = cola.first else { return nil }
+        return Estudios.progreso(subidos: e.archivos.filter(\.subido).count, total: e.archivos.count)
+    }
+
+    public func limpiarAviso() { aviso = nil }
+
+    // MARK: Servidor
+
+    /// `get`. Token caído, función inexistente o `habilitado: false`: la sección no existe. Sin red se queda con lo que ya
+    /// se veía en esta sesión (nada se guarda en el teléfono) y avisa que no se pudo cargar.
+    public func refrescar() async {
+        switch await cliente.llamar("mypump_estudios_get", ["p_token": .texto(token)]) {
+        case .success(.null):
+            apagar()
+        case .success(let j):
+            guard let e = EstadoEstudios(j) else { apagar(); return }
+            estado = e
+            errorDeCarga = false
+        case .failure(let e) where e.funcionInexistente || e.status == 404 || e.clase == .permanente:
+            apagar()
+        case .failure:
+            errorDeCarga = estado != nil
+        }
+    }
+
+    public func apagar() { estado = nil; errorDeCarga = false }
+
+    /// «Ya me lo hice» con su fecha (`AAAA-MM-DD`), o nil para deshacerlo.
+    public func marcarHecho(pedidoId: String, fecha: Estudios.Dia?) async -> Resultado {
+        let r = await cliente.llamar("mypump_estudios_hecho", ["p_token": .texto(token), "p_pedido_id": .texto(pedidoId),
+                                                              "p_fecha": fecha.map { .texto($0.iso) } ?? .null])
+        switch r {
+        case .success(.null): return .error
+        case .success(let j):
+            if j["ok"] == .bool(true) { await refrescar(); return .ok }
+            switch j["error"]?.comoTexto {
+            case "fecha": return .fecha
+            case "no_encontrado": await refrescar(); return .ok   // ya llegó o lo cerraron: lo que valga es lo del servidor
+            case "no_habilitado": apagar(); return .error
+            default: return .error
+            }
+        case .failure(let e): return e.clase == .permanente ? .error : .sinSenal
+        }
+    }
+
+    // MARK: Hoja de subida
+
+    /// Suma un archivo a lo que se está por enviar. Las fotos ya llegan en JPEG (2400 px, 0,8, sin EXIF); el PDF, tal cual.
+    @discardableResult
+    public func elegir(_ datos: Data) -> Estudios.Agregado {
+        let formato = Estudios.formato(datos)
+        let r = Estudios.puedeAgregar(bytes: datos.count, formato: formato, yaHay: borrador.count, topeArchivos: topeArchivos, topeMB: topeMB)
+        guard r == .ok, let formato else { return r }
+        let id = UUID().uuidString.lowercased()
+        let carpeta = cache.appendingPathComponent(EnvioEstudioPendiente.carpetaBorrador, isDirectory: true)
+        guard Self.prepararCarpeta(carpeta) else { return .noSeGuardo }
+        let url = carpeta.appendingPathComponent("\(id).\(formato.extensionArchivo)")
+        do { try datos.write(to: url, options: [.atomic]) } catch { return .noSeGuardo }
+        borrador.append(Elegido(id: id, formato: formato, url: url))
+        return .ok
+    }
+
+    public func quitar(_ id: String) {
+        guard let i = borrador.firstIndex(where: { $0.id == id }) else { return }
+        try? FileManager.default.removeItem(at: borrador[i].url)
+        borrador.remove(at: i)
+    }
+
+    /// Se cerró la hoja sin enviar: no queda nada.
+    public func descartarBorrador() {
+        borrador = []
+        try? FileManager.default.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpetaBorrador))
+    }
+
+    /// «Enviar»: los archivos pasan a la carpeta de la cola y se anota el envío en disco; sale con `drenar()`. false = no se
+    /// pudo guardar en el teléfono (lo elegido queda en la hoja).
+    @discardableResult
+    public func enviar(pedidoId: String? = nil) -> Bool {
+        guard !borrador.isEmpty, disco != nil else { return false }
+        let carpeta = cache.appendingPathComponent(EnvioEstudioPendiente.carpeta, isDirectory: true)
+        guard Self.prepararCarpeta(carpeta) else { return false }
+        var envio = EnvioEstudioPendiente(id: UUID().uuidString.lowercased(), pedidoId: pedidoId, archivos: [])
+        let fm = FileManager.default
+        for e in borrador {
+            let a = ArchivoEstudio(id: e.id, formato: e.formato)
+            do { try fm.moveItem(at: e.url, to: carpeta.appendingPathComponent(a.nombre)) } catch {
+                // Lo que ya se movió vuelve a la hoja: o sale todo o no sale nada.
+                for hecho in envio.archivos { try? fm.moveItem(at: carpeta.appendingPathComponent(hecho.nombre), to: borrador.first { $0.id == hecho.id }!.url) }
+                return false
+            }
+            envio.archivos.append(a)
+        }
+        cola.append(envio)
+        guard guardarCola() else {
+            cola.removeLast()
+            for a in envio.archivos { try? fm.moveItem(at: carpeta.appendingPathComponent(a.nombre), to: borrador.first { $0.id == a.id }!.url) }
+            return false
+        }
+        borrador = []
+        aviso = nil
+        return true
+    }
+
+    // MARK: Cola
+
+    public func drenarEnFondo() { Task { await drenar() } }
+
+    /// Una pasada a la vez, un envío por vez: `envio_nuevo` → cada archivo → `enviar`. Red: corta y espera a que vuelva.
+    /// 5xx o 429: espera y reintenta, y a la tercera seguida corta la pasada y prueba sola más tarde.
+    public func drenar() async {
+        guard !drenando, !cola.isEmpty else { return }
+        drenando = true
+        defer { drenando = false }
+        sinSenal = false
+        var termino = false
+        pasada: while let envio = cola.first {
+            switch await sacar(envio) {
+            case .listo: termino = true
+            case .seguir: continue
+            case .cortar: break pasada
+            }
+        }
+        if termino { await refrescar() }
+    }
+
+    private enum Paso { case listo, seguir, cortar }
+
+    private func sacar(_ envio: EnvioEstudioPendiente) async -> Paso {
+        if !envio.abierto { return await abrir(envio) }
+        var seguidas = 0
+        while let a = cola.first?.archivos.first(where: { !$0.subido }), cola.first?.id == envio.id {
+            switch await subir(a, envio: envio.id) {
+            case .ok:
+                marcar(envio.id) { e in if let i = e.archivos.firstIndex(where: { $0.id == a.id }) { e.archivos[i].subido = true } }
+                seguidas = 0
+            case .descartar:
+                borrarArchivo(a)
+                marcar(envio.id) { e in e.archivos.removeAll { $0.id == a.id }; e.rechazados += 1 }
+            case .reintentar:
+                seguidas += 1
+                if seguidas >= Self.maxIntentosSeguidos { programarReintento(); return .cortar }
+                await esperar(pow(2, Double(seguidas)))
+            case nil:
+                sinSenal = true
+                return .cortar
+            }
+        }
+        guard let actual = cola.first, actual.id == envio.id else { return .seguir }
+        if actual.archivos.isEmpty {
+            // No quedó ninguno: el envío se descarta en silencio y se le dice que pruebe de otra forma.
+            terminar(actual, aviso: .rechazado)
+            return .seguir
+        }
+        return await cerrar(actual)
+    }
+
+    private func abrir(_ envio: EnvioEstudioPendiente) async -> Paso {
+        let r = await cliente.llamar("mypump_estudios_envio_nuevo", [
+            "p_token": .texto(token), "p_id": .texto(envio.id), "p_pedido_id": envio.pedidoId.map(JSONValue.texto) ?? .null,
+        ])
+        switch r {
+        case .success(.null):
+            return .cortar   // token caído: queda guardado para el link nuevo
+        case .success(let j):
+            if j["ok"] == .bool(true) {
+                if j["estado"]?.comoTexto == "enviado" { terminar(envio, aviso: envio.rechazados > 0 ? .recibidoConRechazo : .recibido); return .listo }
+                marcar(envio.id) { $0.abierto = true }
+                return .seguir
+            }
+            switch j["error"]?.comoTexto {
+            case "tope_dia": terminar(envio, aviso: .topeDia)
+            case "no_habilitado": terminar(envio, aviso: nil); apagar()
+            case "id_repetido" where darVuelta(envio.id):
+                // El id ya es de otro envío: se prueba con uno nuevo (los archivos son los mismos).
+                let nuevo = UUID().uuidString.lowercased()
+                vueltas[nuevo] = vueltas[envio.id]
+                marcar(envio.id) { $0.id = nuevo }
+            default: terminar(envio, aviso: .error)
+            }
+            return .seguir
+        case .failure(let e):
+            return falla(e, envio)
+        }
+    }
+
+    private func cerrar(_ envio: EnvioEstudioPendiente) async -> Paso {
+        let r = await cliente.llamar("mypump_estudios_enviar", [
+            "p_token": .texto(token), "p_id": .texto(envio.id), "p_archivos": .numero(Double(envio.archivos.count)),
+        ])
+        switch r {
+        case .success(.null):
+            return .cortar
+        case .success(let j):
+            if j["ok"] == .bool(true) {
+                terminar(envio, aviso: envio.rechazados > 0 ? .recibidoConRechazo : .recibido)
+                return .listo
+            }
+            switch j["error"]?.comoTexto {
+            case "faltan_archivos", "sin_archivos":
+                // En el servidor hay menos de los que subieron: se suben de nuevo (los que ya están contestan `ya`).
+                guard darVuelta(envio.id) else { programarReintento(); vueltas[envio.id] = 0; return .cortar }
+                marcar(envio.id) { e in for i in e.archivos.indices { e.archivos[i].subido = false } }
+            case "no_encontrado":
+                guard darVuelta(envio.id) else { terminar(envio, aviso: .error); return .seguir }
+                marcar(envio.id) { e in e.abierto = false; for i in e.archivos.indices { e.archivos[i].subido = false } }
+            case "no_habilitado": terminar(envio, aviso: nil); apagar()
+            default: terminar(envio, aviso: .error)
+            }
+            return .seguir
+        case .failure(let e):
+            return falla(e, envio)
+        }
+    }
+
+    private func falla(_ e: ErrorRPC, _ envio: EnvioEstudioPendiente) -> Paso {
+        switch e.clase {
+        case .permanente: terminar(envio, aviso: .error); return .seguir   // error de programación o servidor sin la función
+        case .red: sinSenal = true; return .cortar
+        case .transitorio: programarReintento(); return .cortar
+        }
+    }
+
+    /// Cuenta las vueltas de un envío (subir todo de nuevo, cambiarle el id): false cuando ya dio las que puede.
+    private func darVuelta(_ id: String) -> Bool {
+        let n = vueltas[id, default: 0]
+        guard n < Self.maxVueltas else { return false }
+        vueltas[id] = n + 1
+        return true
+    }
+
+    /// nil = sin red.
+    private func subir(_ a: ArchivoEstudio, envio: String) async -> Estudios.Subida? {
+        let archivo = cache.appendingPathComponent(EnvioEstudioPendiente.carpeta).appendingPathComponent(a.nombre)
+        // El sistema puede vaciar Caches con el disco lleno: ese archivo ya no existe. Si está y no se puede leer (el
+        // teléfono bloqueado), no se pierde: se prueba más tarde.
+        guard FileManager.default.fileExists(atPath: archivo.path) else { return .descartar }
+        guard let datos = try? Data(contentsOf: archivo, options: .mappedIfSafe) else { return .reintentar }
+        guard !datos.isEmpty else { return .descartar }
+        var pedido = URLRequest(url: cliente.config.vision.appendingPathComponent("estudios/upload"), timeoutInterval: 180)
+        pedido.httpMethod = "POST"
+        pedido.setValue(a.formato.mime, forHTTPHeaderField: "Content-Type")
+        pedido.setValue(String(datos.count), forHTTPHeaderField: "Content-Length")
+        pedido.setValue(token, forHTTPHeaderField: "x-estudios-token")
+        pedido.setValue(envio, forHTTPHeaderField: "x-estudios-envio")
+        pedido.setValue(a.id, forHTTPHeaderField: "x-estudios-archivo")
+        pedido.httpBody = datos
+        guard let (cuerpo, resp) = try? await cliente.transporte.enviar(pedido) else { return nil }
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        let j = try? JSONDecoder().decode(JSONValue.self, from: cuerpo)
+        return Estudios.clasificarSubida(status: status, ok: j?["ok"] == .bool(true))
+    }
+
+    /// Después de una tanda de errores del servidor, una pasada más sola, con la app abierta.
+    private func programarReintento() {
+        guard !reintentoProgramado, reintentosDeFondo < Self.maxReintentosDeFondo else { return }
+        reintentoProgramado = true
+        reintentosDeFondo += 1
+        Task { [weak self, esperar] in
+            await esperar(60)
+            self?.reintentoProgramado = false
+            await self?.drenar()
+        }
+    }
+
+    private func marcar(_ id: String, _ cambio: (inout EnvioEstudioPendiente) -> Void) {
+        guard let i = cola.firstIndex(where: { $0.id == id }) else { return }
+        cambio(&cola[i])
+        _ = guardarCola()
+    }
+
+    /// El envío sale de la cola (enviado o descartado) y sus archivos se borran del teléfono.
+    private func terminar(_ envio: EnvioEstudioPendiente, aviso nuevo: Aviso?) {
+        for a in envio.archivos { borrarArchivo(a) }
+        cola.removeAll { $0.id == envio.id }
+        vueltas[envio.id] = nil
+        _ = guardarCola()
+        if let nuevo { aviso = nuevo }
+        // Las pasadas solas se cuentan por envío: recién al terminar uno se vuelve a empezar (si no, un servidor que
+        // siempre dice «faltan archivos» haría subir todo de nuevo cada minuto).
+        reintentosDeFondo = 0
+    }
+
+    private func borrarArchivo(_ a: ArchivoEstudio) {
+        try? FileManager.default.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpeta).appendingPathComponent(a.nombre))
+    }
+
+    // MARK: Abrir una orden o un estudio propio
+
+    /// Pide las URL (duran 10 minutos: nunca se guardan), baja los archivos a un temporal y devuelve dónde quedaron. Quien
+    /// los muestra llama a `cerrarVisor()` al cerrar.
+    public func bajarParaVer(clase: String, id: String) async -> Abrir {
+        cerrarVisor()   // lo que hubiera quedado de antes no sobrevive a un intento nuevo, salga bien o mal
+        var pedido = URLRequest(url: cliente.config.vision.appendingPathComponent("estudios/urls"), timeoutInterval: 30)
+        pedido.httpMethod = "POST"
+        pedido.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        pedido.httpBody = try? JSONEncoder().encode(JSONValue.objeto(["token": .texto(token), "clase": .texto(clase), "id": .texto(id)]))
+        guard let (datos, resp) = try? await cliente.transporte.enviar(pedido), (resp as? HTTPURLResponse)?.statusCode == 200,
+              let j = try? JSONDecoder().decode(JSONValue.self, from: datos), j["ok"] == .bool(true),
+              case .lista(let filas)? = j["archivos"], !filas.isEmpty else { return .error }
+        cerrarVisor()
+        // Con la red de verdad, una sesión efímera: el archivo no queda en el caché de URLSession.
+        let descarga: any Transporte = cliente.transporte is URLSession ? Self.sesionEfimera : cliente.transporte
+        let carpeta = cache.appendingPathComponent(EnvioEstudioPendiente.carpetaVer, isDirectory: true)
+        guard Self.prepararCarpeta(carpeta) else { return .error }
+        var salida: [ArchivoParaVer] = []
+        for (i, f) in filas.enumerated() {
+            guard let u = f["url"]?.comoTexto.flatMap(URL.init(string:)), u.scheme == "https",
+                  let (bytes, r) = try? await descarga.enviar(URLRequest(url: u, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)),
+                  (r as? HTTPURLResponse)?.statusCode == 200, let formato = Estudios.formato(bytes) else { cerrarVisor(); return .error }
+            let destino = carpeta.appendingPathComponent("\(i + 1).\(formato.extensionArchivo)")
+            do { try bytes.write(to: destino, options: [.atomic]) } catch { cerrarVisor(); return .error }
+            salida.append(ArchivoParaVer(url: destino, pdf: formato == .pdf))
+        }
+        return .archivos(salida)
+    }
+
+    /// Borra lo que se bajó para ver.
+    public func cerrarVisor() {
+        try? FileManager.default.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpetaVer))
+    }
+
+    // MARK: Disco
+
+    /// Crea la carpeta y la deja fuera del respaldo de iCloud.
+    static func prepararCarpeta(_ carpeta: URL) -> Bool {
+        do {
+            try FileManager.default.createDirectory(at: carpeta, withIntermediateDirectories: true)
+            var c = carpeta
+            var valores = URLResourceValues()
+            valores.isExcludedFromBackup = true
+            try? c.setResourceValues(valores)
+            return true
+        } catch { return false }
+    }
+
+    private func guardarCola() -> Bool {
+        guard let disco else { return false }
+        if cola.isEmpty { disco.borrar(EnvioEstudioPendiente.archivo); return true }
+        return disco.guardar(cola, EnvioEstudioPendiente.archivo)
+    }
+
+    /// Los envíos que quedaron en la carpeta de otro link de la misma persona (`CuentasDelTelefono.adoptarEstudios`).
+    func adoptar(_ otros: [EnvioEstudioPendiente], desde otra: URL) -> Bool {
+        guard disco != nil else { return false }
+        let carpeta = cache.appendingPathComponent(EnvioEstudioPendiente.carpeta, isDirectory: true)
+        guard Self.prepararCarpeta(carpeta) else { return false }
+        let origen = otra.appendingPathComponent(EnvioEstudioPendiente.carpeta)
+        for var e in otros where !cola.contains(where: { $0.id == e.id }) {
+            for a in e.archivos { try? FileManager.default.moveItem(at: origen.appendingPathComponent(a.nombre), to: carpeta.appendingPathComponent(a.nombre)) }
+            // Con el link nuevo el envío se abre de nuevo (mismo id, misma persona: el servidor contesta `ya`).
+            e.abierto = false
+            cola.append(e)
+        }
+        return guardarCola()
+    }
+}

@@ -22,6 +22,9 @@ public struct PalancaRemota: Equatable, Sendable {
     public var gimnasioFotos = false
     /// Técnica por video (`tecnica_video`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo.
     public var tecnicaVideo = false
+    /// Estudios y órdenes (`estudios_app`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. No se recuerda
+    /// entre arranques: sin red no hay nada que mostrar (el estado no se guarda en el teléfono).
+    public var estudiosApp = false
 
     public init() {}
 
@@ -54,6 +57,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["reloj_contador_reps"] { contadorRepsReloj = b }
         if case .bool(let b)? = j["gimnasio_fotos"] { gimnasioFotos = b }
         if case .bool(let b)? = j["tecnica_video"] { tecnicaVideo = b }
+        if case .bool(let b)? = j["estudios_app"] { estudiosApp = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }
