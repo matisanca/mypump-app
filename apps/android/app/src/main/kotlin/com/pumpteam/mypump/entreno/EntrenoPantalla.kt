@@ -29,6 +29,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pumpteam.mypump.gimnasio.TarjetaGimnasioDe
+import com.pumpteam.mypump.diseno.Espacio
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloEntreno
 import com.pumpteam.mypump.diseno.BotonSecundario
@@ -187,7 +191,9 @@ private fun SinRutina(modelo: ModeloApp) {
             },
             modifier = Modifier.padding(relleno).fillMaxSize(),
         ) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 80.dp)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                TarjetaGimnasioDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
+                Spacer(Modifier.height(80.dp))
                 EstadoVacio(
                     icono = Iconos.Pesa,
                     titulo = "Todavía no hay rutina",

@@ -218,6 +218,8 @@ android {
         // Las pruebas de interfaz contestan con las respuestas REALES grabadas de las cuentas de prueba (las mismas de los
         // tests de :core y de iOS). Van solo en el APK de pruebas.
         getByName("androidTest").assets.srcDir(raizRepo.resolve("apps/shared/fixtures"))
+        // El doble del servidor del gimnasio (el mismo de las pruebas JVM de :core:datos). Nunca entra en la app.
+        getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleGimnasio/kotlin"))
     }
 
     packaging {

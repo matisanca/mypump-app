@@ -56,6 +56,7 @@ import com.pumpteam.mypump.salud.SeccionSaludMisDatos
 import com.pumpteam.mypump.guia.lugarDeLaGuia
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.ReglasGuia
+import com.pumpteam.mypump.reglas.TextosGimnasio
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -108,6 +109,14 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
             guia?.let { g ->
                 if (lugarDeLaGuia(g).second == ReglasGuia.Lugar.MIS_DATOS) {
                     FilaEnlace(Iconos.Video, c.marcaTexto, "Ver mi guía", etiqueta = "mis-datos-guia") { navegacion?.guiaEnMisDatos = true }
+                    Separador(sangria = 58.dp)
+                }
+            }
+            val gimnasio by modelo.gimnasio.collectAsStateWithLifecycle()
+            gimnasio?.let { g ->
+                val estadoGimnasio by g.estado.collectAsStateWithLifecycle()
+                if (estadoGimnasio != null && g.entradaVisible) {
+                    FilaEnlace(Iconos.Pesa, c.marcaTexto, TextosGimnasio.entradaMisDatos, etiqueta = "mis-datos-gimnasio") { navegacion?.gimnasioEnMisDatos = true }
                     Separador(sangria = 58.dp)
                 }
             }

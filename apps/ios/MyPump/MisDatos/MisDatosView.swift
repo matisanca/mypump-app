@@ -22,6 +22,7 @@ struct MisDatosView: View {
     /// D5: "dark" o nada (sigue al teléfono). Lo lee la raíz de la app.
     @AppStorage("mypump-theme") private var tema = ""
     @State private var fuentes = false
+    @State private var verGimnasio = false
     @State private var pagina: Pagina?
     /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
     /// en el iPhone (para poder exportarlas o borrarlas aunque ya no haya reloj).
@@ -92,6 +93,15 @@ struct MisDatosView: View {
                         Label { Text("Ver mi guía") } icon: { IconoAzulejo("play.rectangle.fill", color: .marcaTexto) }
                     }
                     .accessibilityIdentifier("mis-datos-guia")
+                }
+                if let g = modelo.gimnasio, g.entradaVisible || verGimnasio {
+                    Button { verGimnasio = true } label: {
+                        fila(TextosGimnasio.entradaMisDatos, icono: "dumbbell.fill", color: .marcaTexto)
+                    }
+                    .accessibilityIdentifier("mis-datos-gimnasio")
+                    .sheet(isPresented: $verGimnasio) {
+                        GimnasioRaiz(modelo: g, alCerrar: { verGimnasio = false }).presentationDragIndicator(.visible)
+                    }
                 }
                 Button { fuentes = true } label: {
                     fila("Respaldo científico del plan", icono: "book.closed.fill", color: .marcaTexto)
