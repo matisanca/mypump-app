@@ -41,7 +41,7 @@ struct EntrenoView: View {
                         TarjetaGimnasio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
-                            TarjetaEntregaAhora(modelo: g).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                            TarjetaVideollamadaEntreno(modelo: g).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                             TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         }
                         ContentUnavailableView("Todavía no hay rutina", systemImage: "dumbbell",
@@ -204,8 +204,8 @@ private struct ListaEntreno: View {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 // «Tu guía» mientras falte ver algo: verde y primera, arriba de todo (pedido de Mati, 4-nov). Abajo,
                 // el aviso de Revisión.
-                // 2.2.0: el link de la entrega, desde 30 min antes hasta el fin (aunque la tarjeta de la guía esté oculta).
-                if let g = GuiaUI.modelo { TarjetaEntregaAhora(modelo: g) }
+                // 2.3.0: la videollamada fija arriba, desde que se agenda hasta que termina (aunque la tarjeta de la guía esté oculta).
+                if let g = GuiaUI.modelo { TarjetaVideollamadaEntreno(modelo: g) }
                 if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
                 TarjetaGimnasio()
                 cabecera
