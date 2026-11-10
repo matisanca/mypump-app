@@ -23,7 +23,7 @@ AVISO_MEDIO = ("Cómo funciona esta firma. Vas a leer el documento, confirmar tu
                "tus datos está mal o tenés una duda, no firmes y escribinos antes.")
 
 AVISO_ES = ("Derecho de desistimiento. Tenés 14 días naturales desde hoy para desistir de este contrato sin dar ningún "
-            "motivo. Para hacerlo alcanza con escribir a " + CORREO_CONTACTO + " o con usar el botón «Quiero desistir» "
+            "motivo. Para hacerlo alcanza con escribir a " + CORREO_CONTACTO + " o con usar el botón «Desistir del contrato aquí» "
             "de esta misma página, que queda disponible después de firmar (cláusula 10).")
 
 BOTON = {
@@ -35,7 +35,8 @@ BOTON = {
 
 BAJA = {
     "AR": {"boton": "Quiero revocar el contrato o darme de baja", "titulo": "Revocación o baja"},
-    "ES": {"boton": "Quiero desistir", "titulo": "Desistimiento"},
+    # Rótulos de la función de desistimiento en línea (Directiva (UE) 2023/2673): botón y paso de confirmación.
+    "ES": {"boton": "Desistir del contrato aquí", "titulo": "Desistimiento", "confirmar": "Confirmar desistimiento"},
     "OTRO": {"boton": "Quiero revocar el contrato o darme de baja", "titulo": "Revocación o baja"},
 }
 

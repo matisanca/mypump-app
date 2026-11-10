@@ -53,11 +53,24 @@ def es_residente_argentino(pais: str, whatsapp: str) -> bool:
     return re.sub(r"\D", "", whatsapp or "").startswith("54")
 
 
+# Países con desistimiento de 14 días (Directiva 2011/83 y su equivalente en el Reino Unido): UE, EEE y Reino Unido.
+# La variante se sigue llamando «ES» (nació para España): es la que muestra el aviso, la casilla de inicio durante
+# el plazo y el botón con obligación de pago.
+PAISES_DESISTIMIENTO_14 = (
+    "espana", "spain", "alemania", "germany", "deutschland", "austria", "belgica", "belgium", "bulgaria", "chipre", "cyprus",
+    "croacia", "croatia", "dinamarca", "denmark", "eslovaquia", "slovakia", "eslovenia", "slovenia", "estonia", "finlandia",
+    "finland", "francia", "france", "grecia", "greece", "hungria", "hungary", "irlanda", "ireland", "italia", "italy", "letonia",
+    "latvia", "lituania", "lithuania", "luxemburgo", "luxembourg", "malta", "paises bajos", "holanda", "netherlands", "polonia",
+    "poland", "portugal", "republica checa", "chequia", "czech republic", "czechia", "rumania", "romania", "suecia", "sweden",
+    "islandia", "iceland", "liechtenstein", "noruega", "norway", "reino unido", "united kingdom", "inglaterra", "england",
+    "escocia", "scotland", "gales", "wales", "irlanda del norte", "uk", "gran bretana", "great britain")
+
+
 def variante_de(pais: str, residente_argentina: bool) -> str:
     if residente_argentina:
         return "AR"
     p = sin_acentos(pais or "").lower()
-    return "ES" if re.search(r"\b(espana|spain)\b", p) else "OTRO"
+    return "ES" if any(re.search(r"\b%s\b" % re.escape(x), p) for x in PAISES_DESISTIMIENTO_14) else "OTRO"
 
 
 def dni_plausible(v: str) -> str:

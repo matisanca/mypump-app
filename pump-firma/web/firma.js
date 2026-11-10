@@ -60,16 +60,16 @@
     if (D.puede_revocar) app.appendChild(panelSalida('revocacion', 'Revocar este consentimiento', 'Revocación del consentimiento',
       'Podés revocar tu consentimiento cuando quieras. Desde ese momento el Dr. Sancari no emite órdenes ni recetas a tu nombre. Tus otros contratos no cambian.', '/api/revocar'));
     if (D.baja && !D.baja_pedida_en) app.appendChild(panelSalida('baja', D.baja.boton, D.baja.titulo,
-      'Tu pedido queda registrado con fecha y hora, y te escribimos para confirmarte cómo sigue.', '/api/baja'));
+      'Tu pedido queda registrado con fecha y hora, y te escribimos para confirmarte cómo sigue.', '/api/baja', D.baja.confirmar));
   }
-  function panelSalida(proposito, rotulo, titulo, explicacion, ruta) {
+  function panelSalida(proposito, rotulo, titulo, explicacion, ruta, rotuloConfirmar) {
     var caja = el('section', { clase: 'tarjeta salida' });
     var abrir = el('button', { clase: 'boton secundario', type: 'button', texto: rotulo });
     var cuerpo = el('div', { clase: 'oculto' });
     var motivo = el('textarea', { rows: '3', maxlength: '500', placeholder: 'Motivo (optativo)' });
     var cod = campoCodigo(proposito);
     var aviso = el('div');
-    var confirmar = el('button', { clase: 'boton peligro', type: 'button', texto: 'Confirmar' });
+    var confirmar = el('button', { clase: 'boton peligro', type: 'button', texto: rotuloConfirmar || 'Confirmar' });
     cuerpo.appendChild(el('h2', { texto: titulo }));
     cuerpo.appendChild(el('p', { texto: explicacion }));
     cuerpo.appendChild(motivo); cuerpo.appendChild(cod.nodo); cuerpo.appendChild(aviso); cuerpo.appendChild(confirmar);

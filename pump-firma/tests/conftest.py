@@ -96,7 +96,7 @@ def plantillas(db_url):
     with psycopg.connect(db_url, autocommit=False, prepare_threshold=None) as c:
         for tipo in ("servicio_ar", "servicio_ext", "consentimiento_ar"):
             md = open(os.path.join(AQUI, "plantillas", tipo + ".md"), encoding="utf-8").read()
-            cargar_plantillas.cargar(c, tipo, "prueba1", md)
+            cargar_plantillas.cargar(c, tipo, "prueba1", md, sintetica=True)
         c.commit()
 
 

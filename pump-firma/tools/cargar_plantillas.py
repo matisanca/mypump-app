@@ -3,7 +3,7 @@
 desde el archivo aprobado, y el md5 esperado se pasa a mano para que un archivo equivocado no entre.
 
 Uso (con el rol dueño, no con firma_srv):
-  FIRMA_DB_ADMIN_URL=postgresql://... python tools/cargar_plantillas.py servicio_ar v9 /ruta/A_v9.md <md5 esperado> [--ensayo]
+  FIRMA_DB_ADMIN_URL=postgresql://... python tools/cargar_plantillas.py servicio_ar v10 /ruta/A_v10.md <md5 esperado> [--ensayo]
 
 `--ensayo` hace todo y termina en ROLLBACK. Una versión ya cargada con el mismo texto no se vuelve a cargar."""
 import hashlib
@@ -14,22 +14,48 @@ import psycopg
 
 TIPOS = ("servicio_ar", "servicio_ext", "consentimiento_ar")
 
-# Decisión del 10/11: el contrato ya no promete más de una videollamada (cláusula 1 c en los dos; 9.3 c en el exterior).
-# Una plantilla de servicio con la redacción anterior NO se carga: las versiones v8 (Argentina) y v3 (exterior) quedaron
-# retiradas para contratos nuevos. Los ya firmados no se tocan.
-FRASES_RETIRADAS = ("sesiones de coaching individual",
-                    "la asistencia a la totalidad de las sesiones de coaching")
-FRASE_VIGENTE = "una videollamada individual de entrega y acompañamiento del proceso por mensajes"
+# Decisiones de Mati del 10/11. Una plantilla de servicio con una redacción retirada NO se carga (los contratos ya
+# firmados no se tocan; esto frena que un archivo viejo vuelva a quedar vigente):
+#   - una sola videollamada (cláusula 1 c en los dos; 9.3 c en los dos);
+#   - Argentina: pasado el plazo de revocación lo pagado no se reembolsa (14.2), sin el 30 % fijo ni devolución del excedente;
+#   - exterior: el desistimiento europeo de 14 días informado completo (cláusula 10.2, formulario modelo y aviso).
+# Las frases se comparan sin distinguir mayúsculas ni saltos de línea. Vigentes: servicio_ar v10, servicio_ext v5.
+RETIRADAS = {
+    "servicio_ar": ("sesiones de coaching individual",
+                    "de las sesiones de coaching y de los controles programados",
+                    "una suma fija equivalente al treinta por ciento (30 %) del precio total",
+                    "14.2. desistimiento del cliente"),
+    "servicio_ext": ("sesiones de coaching individual",
+                     "la asistencia a la totalidad de las sesiones de coaching",
+                     "con devolución de lo abonado cuando la prestación del servicio no hubiera comenzado. a modo de referencia"),
+}
+EXIGIDAS = {
+    "servicio_ar": ("una videollamada individual de entrega y acompañamiento del proceso por mensajes",
+                    "la asistencia a la videollamada de entrega y al menos el ochenta por ciento (80 %) de los check-ins programados",
+                    "las sumas abonadas hasta esa comunicación no se reembolsan",
+                    "el cliente no adeuda las cuotas impagas a la fecha de esa comunicación ni las que venzan después",
+                    "cuando la terminación obedece a un incumplimiento del prestador",
+                    "una imposibilidad de continuar por razones de salud",
+                    "dentro de los diez (10) días corridos desde la fecha de celebración",
+                    "botón de revocación"),
+    "servicio_ext": ("una videollamada individual de entrega y acompañamiento del proceso por mensajes",
+                     "la asistencia a la videollamada de entrega y la realización de los check-ins programados",
+                     "en un plazo de catorce (14) días naturales sin necesidad de justificación",
+                     "solicitar expresamente que el servicio comience durante el plazo de desistimiento",
+                     "un importe proporcional a la parte ya prestada del servicio",
+                     "habrá perdido su derecho de desistimiento",
+                     "modelo de formulario de desistimiento",
+                     "por la presente le comunico que desisto de mi contrato"),
+}
 
 
 def texto_retirado(tipo: str, md: str) -> list:
-    """Qué tiene mal una plantilla de servicio respecto de la decisión de una sola videollamada ([] = está bien)."""
-    if tipo not in ("servicio_ar", "servicio_ext"):
+    """Qué tiene mal una plantilla de servicio respecto de las redacciones vigentes ([] = está bien)."""
+    if tipo not in RETIRADAS:
         return []
-    plano = " ".join(md.split()).lower()
-    mal = [f"vuelve el texto retirado: «{f}»" for f in FRASES_RETIRADAS if f in plano]
-    if FRASE_VIGENTE not in plano:
-        mal.append(f"falta la cláusula 1 c vigente: «{FRASE_VIGENTE}»")
+    plano = " ".join(md.replace("**", "").split()).lower()
+    mal = [f"vuelve el texto retirado: «{f}»" for f in RETIRADAS[tipo] if f in plano]
+    mal += [f"falta el texto vigente: «{f}»" for f in EXIGIDAS[tipo] if f not in plano]
     return mal
 
 
@@ -40,11 +66,11 @@ def titulo_de(md: str) -> str:
     raise SystemExit("la plantilla no tiene título (# ...)")
 
 
-def cargar(conn, tipo: str, version: str, md: str, vigente: bool = True) -> dict:
+def cargar(conn, tipo: str, version: str, md: str, vigente: bool = True, sintetica: bool = False) -> dict:
     """Devuelve {'id', 'sha256', 'md5', 'resultado'}; no hace commit."""
     if tipo not in TIPOS:
         raise SystemExit(f"tipo inválido: {tipo}")
-    mal = texto_retirado(tipo, md)
+    mal = [] if sintetica else texto_retirado(tipo, md)  # `sintetica`: solo las plantillas inventadas de las pruebas
     if mal:
         raise SystemExit("la plantilla no se carga — " + "; ".join(mal))
     pid = f"{tipo}@{version}"
