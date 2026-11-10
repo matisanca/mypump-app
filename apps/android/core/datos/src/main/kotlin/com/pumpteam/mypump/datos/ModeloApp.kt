@@ -623,9 +623,33 @@ class ModeloApp(
         val chatAlEmpezar = _chat.value
         val traidasAlEmpezar = chatAlEmpezar?.ultimasTraidas
 
+        // F2 (auditoría 10/11): con el plan guardado en el teléfono, se muestra ya y se actualiza por detrás. Antes se miraba
+        // el logo hasta 20 a 40 segundos con mala señal, aunque el plan estuviera guardado.
+        var motorDeLaCopia: ModeloEntreno? = null
+        if (_fase.value == Fase.CARGANDO) {
+            leerCopia()?.let { c ->
+                aplicar(c, cargarMotor = false)
+                _entreno.value?.let { e ->
+                    motorDeLaCopia = e
+                    cargaDelMotor = alcance.launch {
+                        cargarCatalogo()
+                        e.aplicarLegadoDelDisco()
+                        e.cargar()
+                    }
+                }
+                _fase.value = Fase.LISTO
+            }
+        }
+
         // Sin red o servicio caído: la copia offline, si hay. La cuenta sigue guardada.
         fun sinRespuesta(clase: ErrorRpc.Clase) {
             _ultimaFalla.value = clase
+            if (motorDeLaCopia != null || (_fase.value == Fase.LISTO && _info.value != null)) {
+                // Ya se está mostrando la copia: solo se avisa que es la guardada.
+                _desdeCache.value = true
+                _fase.value = Fase.LISTO
+                return
+            }
             val copia = leerCopia()
             if (copia != null) {
                 aplicar(copia)
@@ -738,7 +762,8 @@ class ModeloApp(
         prepararEntreno()
         _fase.value = Fase.LISTO
         if (faltaron.isEmpty()) _cargasConRed.update { it + 1 }
-        _entreno.value?.let { e ->
+        // El motor que ya arrancó con la copia no se vuelve a cargar (si la rutina cambió, `prepararEntreno` la reemplazó).
+        _entreno.value?.takeIf { it !== motorDeLaCopia }?.let { e ->
             cargaDelMotor = alcance.launch {
                 cargarCatalogo()
                 e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
@@ -989,7 +1014,7 @@ class ModeloApp(
     val diaDeRevision: Int
         get() = if (_esDemo.value) SemanaRevision.DIA_POR_DEFECTO else _revision.value?.revisionDia?.value ?: SemanaRevision.DIA_POR_DEFECTO
 
-    private fun aplicar(c: CopiaOffline) {
+    private fun aplicar(c: CopiaOffline, cargarMotor: Boolean = true) {
         _info.value = decodificar(c.info.aJson(), ClienteInfo::desde)
         _rutina.value = c.rutina?.let { decodificar(it.aJson(), RutinaActiva::desde) }
         _dieta.value = dietaNormalizada(c.dieta)
@@ -997,7 +1022,7 @@ class ModeloApp(
         cargarAjustes()
         cargarMarcas()
         prepararEntreno()
-        _entreno.value?.let { e -> cargaDelMotor = alcance.launch { e.cargar() } }
+        if (cargarMotor) _entreno.value?.let { e -> cargaDelMotor = alcance.launch { e.cargar() } }
     }
 
     // ── Dieta ──
