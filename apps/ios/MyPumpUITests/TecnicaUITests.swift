@@ -191,10 +191,14 @@ final class TecnicaUITests: XCTestCase {
     func testSacarVideo() {
         abrirMiTecnica("publicado")
         tocar("tecnica-fila-publicado")
+        // Pegado al borde de abajo, el toque se lo queda el gesto del sistema.
+        esperar("tecnica-sacar")
+        app.swipeUp(velocity: .slow)
         tocar("tecnica-sacar")
         // La hoja de confirmación tiene su propio botón con el mismo nombre: el último.
         let botones = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Sacar mi video", "tecnica-sacar"))
         XCTAssertTrue(botones.firstMatch.waitForExistence(timeout: 5))
+        foto("15-sacar-confirmar")
         botones.firstMatch.tap()
         let desaparecio = NSPredicate(format: "exists == false")
         expectation(for: desaparecio, evaluatedWith: e("tecnica-ver-en-video"), handler: nil)

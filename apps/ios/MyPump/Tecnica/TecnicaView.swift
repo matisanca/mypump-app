@@ -291,7 +291,11 @@ struct EnviarTecnica: View {
             Text(modelo.subiendo ? T.subiendo : T.esperandoSenal).font(.headline).multilineTextAlignment(.center).accessibilityIdentifier("tecnica-enviando")
             Text(T.enviandoSeguir).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
             if !modelo.subiendo {
-                Button(T.cancelarEnvio) { Task { await modelo.cancelarPendiente(); mandado = false } }
+                Button(T.cancelarEnvio) {
+                    // Antes de sacarlo de la cola: si no, se ve un instante «Recibido».
+                    mandado = false
+                    Task { if await !modelo.cancelarPendiente() { mandado = true } }
+                }
                     .buttonStyle(BotonSecundario())
                     .accessibilityIdentifier("tecnica-cancelar")
             }

@@ -83,6 +83,7 @@ import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.entreno.NombreEjercicio
 import com.pumpteam.mypump.fotos.ProveedorFotos
 import com.pumpteam.mypump.modelos.Ejercicio
+import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.CorreccionTecnica
 import com.pumpteam.mypump.reglas.DevolucionTecnica
 import com.pumpteam.mypump.reglas.EnvioTecnica
@@ -303,7 +304,7 @@ fun EnviarTecnicaPantalla(m: ModeloTecnica, slug: String, nombre: String, alVolv
         val puede = v.estado != null && v.pendiente == null && v.estado.enRevision == null
         when {
             mandado && v.pendiente == null && v.aviso == null -> Recibido(relleno, alTerminar)
-            v.pendiente != null -> Enviando(m, v.subiendo, relleno) { mandado = false }
+            v.pendiente != null -> Enviando(m, v.subiendo, relleno, alCancelar = { mandado = false }, alNoCancelar = { mandado = true })
             !puede && !mandado -> Box(Modifier.padding(relleno).fillMaxSize().padding(Espacio.l), contentAlignment = Alignment.Center) {
                 Nota(T.enCurso, Modifier.testTag("tecnica-en-curso"))
             }
@@ -449,9 +450,10 @@ private fun Formulario(m: ModeloTecnica, v: Vista, slug: String, nombre: String,
 }
 
 @Composable
-private fun Enviando(m: ModeloTecnica, subiendo: Boolean, relleno: PaddingValues, alCancelar: () -> Unit) {
+private fun Enviando(m: ModeloTecnica, subiendo: Boolean, relleno: PaddingValues, alCancelar: () -> Unit, alNoCancelar: () -> Unit) {
     val c = MyPump.colores
-    val alcance = rememberCoroutineScope()
+    // En el alcance de la app: esta pantalla se va apenas sale de la cola, y el borrador del servidor se tiene que cerrar igual.
+    val alcance = LocalAlcanceApp.current
     Column(
         Modifier.padding(relleno).fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l),
         verticalArrangement = Arrangement.spacedBy(Espacio.m, Alignment.CenterVertically),
@@ -462,10 +464,9 @@ private fun Enviando(m: ModeloTecnica, subiendo: Boolean, relleno: PaddingValues
         Text(T.enviandoSeguir, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, textAlign = TextAlign.Center)
         if (!subiendo) {
             BotonSecundario(T.cancelarEnvio, alTocar = {
-                alcance.launch {
-                    m.cancelarPendiente()
-                    alCancelar()
-                }
+                // Antes de sacarlo de la cola: si no, se ve un instante «Recibido».
+                alCancelar()
+                alcance.launch { if (!m.cancelarPendiente()) alNoCancelar() }
             }, modifier = Modifier.fillMaxWidth().testTag("tecnica-cancelar"))
         }
     }

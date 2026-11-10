@@ -15,7 +15,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class TecnicaUiTest : PruebaUi() {
     private var camara: CamaraDeVideoDePrueba? = null
-    private val ejercicio = "ex_010"
+    private val ejercicio = "jalon-al-pecho-prono-dorsal-ancho-d1-0"
 
     @After
     fun soltar() {
@@ -140,7 +140,7 @@ class TecnicaUiTest : PruebaUi() {
         elegirYEnviar()
         p.nodo(etiqueta("tecnica-aviso-envio"), 30_000)
         Telefono.captura("tec-9-rechazo")
-        assertTrue(p.textoDe(etiqueta("tecnica-aviso-envio")).contains("muy corto"))
+        p.nodo(textoQueContiene("muy corto"))
         p.nodo(etiqueta("tecnica-agregar-video"))
     }
 
@@ -148,7 +148,7 @@ class TecnicaUiTest : PruebaUi() {
         desdeEjercicio("tope")
         elegirYEnviar()
         p.nodo(etiqueta("tecnica-aviso-envio"), 30_000)
-        assertTrue(p.textoDe(etiqueta("tecnica-aviso-envio")).contains("3 videos"))
+        p.nodo(textoQueContiene("3 videos"))
     }
 
     private fun noHayNada(escenario: String, d: DobleTecnica) {
@@ -187,10 +187,13 @@ class TecnicaUiTest : PruebaUi() {
         p.tocar(etiqueta("tecnica-fila-publicado"))
         p.nodo(etiqueta("tecnica-credito"))
         Telefono.captura("tec-11-devolucion-$tema")
-        assertEquals("Lo revisó Mati el 12/11", p.textoDe(etiqueta("tecnica-credito")))
+        p.nodo(texto("Lo revisó Mati el 12/11"))
         p.tocar(etiqueta("tecnica-ver-en-video"))
         p.nodo(etiqueta("tecnica-video"))
         Telefono.captura("tec-12-video-$tema")
+        // Con el reproductor abierto, Android 9 sin ventana se queda sin dibujar al recrear la Activity (cambio de letra del @After).
+        p.atras()
+        p.nodo(etiqueta("tecnica-credito"))
     }
 
     @Test fun publicadoClaro() = publicado("claro")
