@@ -954,7 +954,6 @@ struct FilaEjercicio: View {
         } else if let s = pauta.series {
             partes.append("\(s) series de \(pauta.reps ?? "—")")
         }
-        if let rir = pauta.rir { partes.append("RIR \(rir)") }
         partes.append("descanso \(TiempoEntreno.fmtTiempo(Double(ejercicio.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto)))")
         // Lo que va por tiempo no tiene última vez ni récord (unas cargas viejas en su clave no cuentan).
         let ultima = porTiempo ? nil : motor.dia.ultimaVez(lugar, ahora: .now)
