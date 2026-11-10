@@ -69,8 +69,8 @@ class AccesoUiTest : PruebaUi() {
         p.escribir(etiqueta("campo-link"), "Hola! Este es tu link: https://app.mypumpteam.com/?t=$vencido")
         p.tocar(etiqueta("entrar"))
         p.nodo(etiqueta("link-vencido"))
-        p.nodo(texto("Este link ya no sirve"))
-        p.nodo(texto("Pedile a Mati un link nuevo y pegalo acá abajo."))
+        p.nodo(texto("Este link ya no está activo"))
+        p.nodo(texto("Escribile a Mati y te manda uno nuevo. Después pegalo acá abajo."))
         assertNull("un link vencido no queda guardado", tokenGuardado())
         assertEquals(vencido, preferencia(ModeloApp.CLAVE_TOKEN_INVALIDO))
         // Pega el nuevo, a medias (sin https): entra.

@@ -99,7 +99,13 @@ class ModeloApp(
     /** El día local de la última carga completa: si al volver a la app cambió, se recarga lo que es "de hoy". */
     private var diaCargado: String? = null
 
-    private val _fase = MutableStateFlow(if (token == null) Fase.SIN_TOKEN else Fase.CARGANDO)
+    private val _fase = MutableStateFlow(if (token == null) faseSinCuenta() else Fase.CARGANDO)
+
+    /**
+     * Sin cuenta guardada: si la última que hubo la dio de baja la base, se sigue explicando (F10, auditoría del 10/11). Antes,
+     * al volver a abrir la app después de «Este link ya no sirve», se veía la bienvenida vacía sin decir qué pasó.
+     */
+    private fun faseSinCuenta(): Fase = if (preferencias.leer(CLAVE_TOKEN_INVALIDO) == null) Fase.SIN_TOKEN else Fase.TOKEN_INVALIDO
     val fase: StateFlow<Fase> = _fase.asStateFlow()
 
     private val _info = MutableStateFlow<ClienteInfo?>(null)
@@ -313,6 +319,9 @@ class ModeloApp(
 
         /** No se pudo revisar el link (sin red): no se cambia de cuenta sin saber si anda. */
         SIN_CONEXION,
+
+        /** Un link de la app que llegó cortado o mal copiado (F10): antes la app se abría y no decía nada. */
+        MAL_FORMADO,
     }
 
     /** Lo muestra la raíz y lo borra al cerrarlo ([cerrarAvisoLink]). */
@@ -330,7 +339,10 @@ class ModeloApp(
      * (el token que adoptó la migración): ahí no se le muestra nada.
      */
     suspend fun entrar(texto: String, avisar: Boolean = true): Boolean {
-        val t = FormatoToken.extraer(texto) ?: return false
+        val t = FormatoToken.extraer(texto) ?: run {
+            if (avisar && FormatoToken.pareceLink(texto)) _avisoLink.value = AvisoLink.MAL_FORMADO
+            return false
+        }
         // El link puede llegar antes que la vuelta a primer plano: con una cuenta que no se pudo leer al nacer, no la pisa.
         retomarCuentaGuardada()
         entradas += 1
@@ -385,6 +397,7 @@ class ModeloApp(
 
     fun salir() {
         almacen.guardar(null)
+        preferencias.guardar(CLAVE_TOKEN_INVALIDO, null)   // salió él: la próxima vez, la bienvenida
         // Lo buscado por código se va con la cuenta: se borra del teléfono.
         disco?.borrar(ARCHIVO_CODIGOS)
         soltarCuentaEnMemoria()
@@ -473,7 +486,7 @@ class ModeloApp(
             _fase.value = Fase.CARGANDO
             cargar()
         } else {
-            _fase.value = Fase.SIN_TOKEN
+            _fase.value = faseSinCuenta()
         }
     }
 
@@ -530,7 +543,9 @@ class ModeloApp(
             archivo = d.archivo("outbox.json"), ventanaAbandonoMs = VENTANA_ABANDONO_MS, alcance = alcance, retenerLegadas = true,
             retenerSwaps = faltaDecidirSwaps(d),
         ) { op ->
-            escrituras.ejecutar(op)
+            val r = escrituras.ejecutar(op)
+            if (r is ResultadoOp.TokenCaido) alCaerElToken(t)
+            r
         }
         outbox = cola
         _chat.value?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
@@ -624,6 +639,31 @@ class ModeloApp(
         }
     }
 
+    /** La base dice que el link ya no sirve: se olvida (la cola y la carpeta quedan para el link nuevo de la misma persona). */
+    private fun marcarLinkCaido(t: String) {
+        if (almacen.leer() == t) almacen.guardar(null)
+        preferencias.guardar(CLAVE_TOKEN_INVALIDO, t)
+        _chat.value?.pararSondeo()
+        _fase.value = Fase.TOKEN_INVALIDO
+    }
+
+    private val revisandoCaida = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * F10: con la app abierta, la cola vio que el link dejó de andar. Antes se avisaba «sin conexión» para siempre; ahora se
+     * confirma con la base (un `[]` sin error) y se muestra «Este link ya no está activo».
+     */
+    internal suspend fun alCaerElToken(t: String) {
+        if (t != token || _esDemo.value || _fase.value != Fase.LISTO || !revisandoCaida.compareAndSet(false, true)) return
+        try {
+            val r = cliente.llamar("mypump_get_cliente_info", mapOf("p_token" to ValorJson.Texto(t)))
+            val vacia = ((r as? Resultado.Ok)?.valor as? ValorJson.Lista)?.elementos?.isEmpty() == true
+            if (vacia && t == token && !_esDemo.value) marcarLinkCaido(t)
+        } finally {
+            revisandoCaida.set(false)
+        }
+    }
+
     private fun leerCopia(): CopiaOffline? = CopiaOffline.desde(disco?.leer(ARCHIVO_COPIA))
 
     suspend fun cargar() {
@@ -701,10 +741,7 @@ class ModeloApp(
         // `[]` sin error = token inválido o revocado (la base no tira error: devuelve vacío).
         val primera = (respuestaInfo as? ValorJson.Lista)?.elementos?.firstOrNull()
         if (primera == null) {
-            if (almacen.leer() == t) almacen.guardar(null)
-            preferencias.guardar(CLAVE_TOKEN_INVALIDO, t)
-            _chat.value?.pararSondeo()
-            _fase.value = Fase.TOKEN_INVALIDO
+            marcarLinkCaido(t)
             return
         }
         _info.value = decodificar(primera.aJson(), ClienteInfo::desde)

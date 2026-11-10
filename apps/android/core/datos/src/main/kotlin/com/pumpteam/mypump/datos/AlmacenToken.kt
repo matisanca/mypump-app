@@ -55,6 +55,15 @@ object FormatoToken {
      * y pegar, para que un token válido no salga con «No reconocí ese link»: caracteres invisibles (las marcas de dirección
      * de WhatsApp) y la puntuación de la frase alrededor.
      */
+    /**
+     * Un link de la app aunque no traiga un token que sirva (cortado, mal copiado): `?t=` o `/acceso/`. Para avisar al abrirlo
+     * desde afuera (F10) sin confundirlo con los links de los avisos (`?scene=…`).
+     */
+    fun pareceLink(texto: String): Boolean {
+        val t = limpio(texto)
+        return Regex("""[?&]\s*t\s*=""").containsMatchIn(t) || "/acceso/" in t
+    }
+
     fun extraer(texto: String): String? {
         val t = limpio(texto)
         if (valido(t)) return t

@@ -169,8 +169,8 @@ fun AccesoPantalla(modelo: ModeloApp, alVerDemo: () -> Unit) {
                 ) {
                     Aviso(
                         icono = Iconos.Link,
-                        titulo = "Este link ya no sirve",
-                        texto = "Pedile a Mati un link nuevo y pegalo acá abajo.",
+                        titulo = "Este link ya no está activo",
+                        texto = "Escribile a Mati y te manda uno nuevo. Después pegalo acá abajo.",
                         modifier = Modifier.testTag("link-vencido"),
                     )
                 }
