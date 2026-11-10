@@ -346,6 +346,11 @@ private struct HojaDeNovedades: ViewModifier {
                     .environment(navegacion)
                     .presentationDragIndicator(.visible)
             }
+            // Otra cuenta (o salir): no queda abierta ni pedida ninguna de la anterior.
+            .onChange(of: modelo.novedades.map(ObjectIdentifier.init)) {
+                ui.abierta = nil
+                ui.yaPedida = []
+            }
             .task(id: "\(pendiente?.id ?? "")-\(otraHoja)") {
                 guard let p = pendiente, !ui.yaPedida.contains(p.id) else { return }
                 while (otraHoja || OnboardingPermisos.pendiente) && !modelo.esDemo {

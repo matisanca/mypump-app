@@ -134,7 +134,8 @@ class ModeloNovedades(private val disco: Disco?, private val ahora: () -> Long =
         val fotoDespues = FotoPlan(area(guardar(rutina), RutinaActiva::desde), area(guardar(dieta), DietaActiva::desde), suplementacion(guardar(suplementacion)))
         val r = NovedadesPlan.calcular(fotoAntes, fotoDespues) ?: return null
         val n = NovedadPlan(UUID.randomUUID().toString(), ahora().toDouble(), r)
-        _lista.value = (listOf(n) + _lista.value).take(MAXIMO)
+        // Las anteriores quedan vistas: se muestra la de esta publicación, nunca una vieja que no se llegó a abrir.
+        _lista.value = (listOf(n) + _lista.value.map { it.copy(vista = true) }).take(MAXIMO)
         guardarLista()
         return n
     }

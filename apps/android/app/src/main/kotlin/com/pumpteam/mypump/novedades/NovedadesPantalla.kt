@@ -80,6 +80,13 @@ import kotlinx.coroutines.launch
 object NovedadesUI {
     var abierta by mutableStateOf<NovedadPlan?>(null)
     val yaPedidas = mutableSetOf<String>()
+    /** La bienvenida de «Tu guía» a la vista: las dos hojas no se apilan (la que llega segunda espera). */
+    var bienvenidaGuia by mutableStateOf(false)
+
+    /** Al salir o cambiar de cuenta no queda nada de la anterior. */
+    fun olvidar() { abierta = null; yaPedidas.clear() }
+    /** El modelo de la cuenta a la que pertenecen [abierta] y [yaPedidas]. */
+    internal var dueno: Any? = null
 }
 
 object TextosNovedades {
@@ -242,11 +249,14 @@ fun HojaDeNovedadesDe(modelo: ModeloApp, navegacion: Navegacion) {
     val nov by modelo.novedades.collectAsStateWithLifecycle()
     val lista = nov?.lista?.collectAsStateWithLifecycle()?.value.orEmpty()
     val pendiente = if ((palanca.novedadesPlan || esDemo) && fase == ModeloApp.Fase.LISTO) lista.firstOrNull { !it.vista } else null
+    LaunchedEffect(nov) {
+        if (NovedadesUI.dueno !== nov) { NovedadesUI.olvidar(); NovedadesUI.dueno = nov }
+    }
     LaunchedEffect(pendiente?.id) {
         val p = pendiente ?: return@LaunchedEffect
         if (p.id in NovedadesUI.yaPedidas) return@LaunchedEffect
         delay(1_200)
-        while (Onboarding.pendiente(modelo.preferencias) && !esDemo) delay(400)
+        while ((Onboarding.pendiente(modelo.preferencias) && !esDemo) || NovedadesUI.bienvenidaGuia) delay(400)
         if (navegacion.guia || NovedadesUI.abierta != null) return@LaunchedEffect
         NovedadesUI.yaPedidas += p.id
         NovedadesUI.abierta = p

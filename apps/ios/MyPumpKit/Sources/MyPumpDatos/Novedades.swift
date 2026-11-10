@@ -123,7 +123,8 @@ public final class ModeloNovedades {
                                    suplementacion: Self.suplementacion(suplementacion.guardada))
         guard let r = NovedadesPlan.calcular(antes: fotoAntes, despues: fotoDespues) else { return nil }
         let n = NovedadPlan(id: UUID().uuidString, fecha: ahora().timeIntervalSince1970 * 1000, resumen: r)
-        lista = Array(([n] + lista).prefix(Self.maximo))
+        // Las anteriores quedan vistas: se muestra la de esta publicación, nunca una vieja que no se llegó a abrir.
+        lista = Array(([n] + lista.map { var x = $0; x.vista = true; return x }).prefix(Self.maximo))
         disco.guardar(lista, Self.archivoLista)
         return n
     }

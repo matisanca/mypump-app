@@ -214,7 +214,8 @@ public enum NovedadesPlan {
 
     /// «4 series de 8 a 10», «3 series», «10 a 12 repes». nil = no hay nada que decir.
     static func formatoPauta(_ series: Int?, _ reps: String?) -> String? {
-        let r = reps.flatMap { $0.isEmpty ? nil : $0 }
+        // Repes con texto que no puede salir (RIR, fallo, guiones, dos puntos): se dicen solo las series.
+        let r = reps.flatMap { $0.isEmpty || $0.range(of: #"(?i)rir|fallo|[-–—:]"#, options: .regularExpression) != nil ? nil : $0 }
         let numerico = r.map { $0.range(of: #"^\d+( a \d+)?$"#, options: .regularExpression) != nil } ?? false
         switch (series, r) {
         case let (s?, r?): return numerico ? "\(s) \(s == 1 ? "serie" : "series") de \(r)" : "\(s) \(s == 1 ? "serie" : "series"), \(r)"
@@ -406,18 +407,20 @@ public enum NovedadesPlan {
     static func formatoCantidad(_ q: Double, _ unidad: String?) -> String {
         let num = formatoNumero(q)
         let u = unidadNormal(unidad)
-        if ["unidad", "unidades", "u", "un", "ud", "uds"].contains(u) { return "\(num) \(q == 1 ? "unidad" : "unidades")" }
+        if ["unidad", "unidades", "u", "un", "ud", "uds"].contains(u) { return "\(num) \(num == "1" ? "unidad" : "unidades")" }
         return "\(num) \(limpio(unidad ?? "").isEmpty ? "g" : limpio(unidad ?? ""))"
     }
 
     static func formatoNumero(_ q: Double) -> String {
         let r = (q * 10).rounded() / 10
-        if r == r.rounded() { return String(Int(r)) }
+        // Un número absurdo (un error de tipeo en el editor) no puede cerrar la app: Int(r) se cae fuera de rango.
+        if r == r.rounded() { return abs(r) < 1e15 ? String(Int(r)) : String(format: "%.0f", r) }
         return String(format: "%.1f", r).replacingOccurrences(of: ".", with: ",")
     }
 
     /// 2400 → «2.400».
     static func formatoKcal(_ k: Double) -> String {
+        guard abs(k) < 1e15 else { return String(format: "%.0f", k) }
         let n = Int(k.rounded())
         let s = String(abs(n))
         var r = ""

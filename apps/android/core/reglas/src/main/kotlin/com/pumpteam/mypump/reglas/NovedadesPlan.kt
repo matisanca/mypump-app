@@ -200,9 +200,11 @@ object NovedadesPlan {
     }
 
     private val repsNumericas = Regex("^\\d+( a \\d+)?$")
+    private val repsProhibidas = Regex("(?i)rir|fallo|[-–—:]")
 
     internal fun formatoPauta(series: Int?, reps: String?): String? {
-        val r = reps?.ifEmpty { null }
+        // Repes con texto que no puede salir (RIR, fallo, guiones, dos puntos): se dicen solo las series.
+        val r = reps?.ifEmpty { null }?.takeUnless { repsProhibidas.containsMatchIn(it) }
         val numerico = r?.let { repsNumericas.matches(it) } ?: false
         fun s(n: Int) = "$n ${if (n == 1) "serie" else "series"}"
         return when {
@@ -379,7 +381,7 @@ object NovedadesPlan {
     internal fun formatoCantidad(q: Double, unidad: String?): String {
         val num = formatoNumero(q)
         val u = unidadNormal(unidad)
-        if (u in setOf("unidad", "unidades", "u", "un", "ud", "uds")) return "$num ${if (q == 1.0) "unidad" else "unidades"}"
+        if (u in setOf("unidad", "unidades", "u", "un", "ud", "uds")) return "$num ${if (num == "1") "unidad" else "unidades"}"
         return "$num ${limpio(unidad ?: "").ifEmpty { "g" }}"
     }
 
@@ -458,5 +460,5 @@ object NovedadesPlan {
         'ï' to 'i', 'î' to 'i', 'ó' to 'o', 'ò' to 'o', 'ö' to 'o', 'ô' to 'o', 'ú' to 'u', 'ù' to 'u', 'ü' to 'u', 'û' to 'u',
     )
 
-    internal fun clave(s: String): String = limpio(s).lowercase().map { tildes[it] ?: it }.joinToString("")
+    internal fun clave(s: String): String = java.text.Normalizer.normalize(limpio(s), java.text.Normalizer.Form.NFC).lowercase().map { tildes[it] ?: it }.joinToString("")
 }
