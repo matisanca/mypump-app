@@ -406,6 +406,11 @@ class ModeloGimnasio(
         }
     }
 
+    /** Una pasada sin esperarla, atada a la vida de la app: cambiar de pantalla no corta la subida. */
+    fun drenarEnFondo() {
+        lanzar { drenar() }
+    }
+
     private fun programarReintento() {
         if (reintentosDeFondo >= MAX_REINTENTOS_DE_FONDO || !reintentoProgramado.compareAndSet(false, true)) return
         reintentosDeFondo++

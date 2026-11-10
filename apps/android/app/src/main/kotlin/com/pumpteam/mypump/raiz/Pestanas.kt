@@ -91,6 +91,7 @@ import com.pumpteam.mypump.entreno.LocalPanelesCarga
 import com.pumpteam.mypump.entreno.DialogoPreguntas
 import com.pumpteam.mypump.entreno.EntrenoPantalla
 import com.pumpteam.mypump.entreno.RelojDescanso
+import com.pumpteam.mypump.gimnasio.GimnasioPantalla
 import com.pumpteam.mypump.guia.AvisoGuiaOculta
 import com.pumpteam.mypump.guia.BienvenidaGuiaDe
 import com.pumpteam.mypump.guia.GuiaPantalla
@@ -152,6 +153,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     }
     BackHandler(enabled = enMisDatos) { navegacion.misDatos = false }
     BackHandler(enabled = enGuiaDeMisDatos) { navegacion.guiaEnMisDatos = false }
+    BackHandler(enabled = enMisDatos && navegacion.gimnasioEnMisDatos) { navegacion.gimnasioEnMisDatos = false }
+    BackHandler(enabled = navegacion.pestana == Pestana.ENTRENO && navegacion.gimnasio) { navegacion.gimnasio = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
     BackHandler(enabled = enSalud) { navegacion.irARevision(null) }
@@ -177,8 +180,12 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                 Pestana.ENTRENO -> {
                                     val guia by modelo.guia.collectAsStateWithLifecycle()
                                     val g = guia
+                                    val gimnasio by modelo.gimnasio.collectAsStateWithLifecycle()
+                                    val gim = gimnasio
                                     if (navegacion.guia && g != null) {
                                         GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guia = false })
+                                    } else if (navegacion.gimnasio && gim != null) {
+                                        GimnasioPantalla(gim, alVolver = { navegacion.gimnasio = false })
                                     } else {
                                         EntrenoPantalla(modelo, vm.preguntasEntreno)
                                     }
@@ -189,8 +196,12 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                     if (navegacion.misDatos) {
                                         val guia by modelo.guia.collectAsStateWithLifecycle()
                                         val g = guia
+                                        val gimnasio by modelo.gimnasio.collectAsStateWithLifecycle()
+                                        val gim = gimnasio
                                         if (navegacion.guiaEnMisDatos && g != null) {
                                             GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false })
+                                        } else if (navegacion.gimnasioEnMisDatos && gim != null) {
+                                            GimnasioPantalla(gim, alVolver = { navegacion.gimnasioEnMisDatos = false })
                                         } else {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }
