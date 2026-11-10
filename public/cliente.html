@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/gimnasio.css">
 <link rel="stylesheet" href="/css/tecnica.css">
+<link rel="stylesheet" href="/css/devolucion.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--font-size-base);line-height:var(--line-height-normal);-webkit-font-smoothing:antialiased}
@@ -1601,6 +1602,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/tecnica.js"></script>
 <script src="/js/tecnica-cola.js"></script>
 <script src="/js/tecnica-ui.js"></script>
+<script src="/js/devolucion.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1784,11 +1786,29 @@ function _tecPalanca(cfg) {
   });
   window.TecnicaUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.tecnica_video === true : null);
 }
+/* «Devolución de Mati» (js/devolucion.js), detrás de `devolucion_semanal`. Apagada, o sin el servidor nuevo, no se llama nada. */
+function _devPalanca(cfg) {
+  if (!window.Devolucion || !TOKEN || DEMO) return;
+  window.Devolucion.configurar({
+    token: TOKEN,
+    rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
+    alCambiar: () => _pintarDevolucion(),
+  });
+  window.Devolucion.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.devolucion_semanal === true : null);
+}
+function _pintarDevolucion() {
+  const el = document.getElementById('rv-devolucion');
+  if (!el) return;
+  const h = window.Devolucion && !(DATA && DATA._isDemo) ? window.Devolucion.html(window.Devolucion.estado) : '';
+  if (el.innerHTML !== h) el.innerHTML = h;
+  el.hidden = !h;
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
   _gimPalanca(cfg);
   _tecPalanca(cfg);
+  _devPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -10536,6 +10556,7 @@ function renderRevision() {
   // fotos y check. El peso, el reloj y la salud del día viven en Salud
   // (se entra por la tarjeta Recuperación); el peso de la semana va en el check.
   root.innerHTML = `
+    <div id="rv-devolucion" hidden></div>
     <div id="rv-tarjetas" class="rv-tarjetas"></div>
     <div id="rv-dia" class="rv-nota" hidden></div>
     ${_avisoPlanHtml()}
@@ -10544,6 +10565,7 @@ function renderRevision() {
     <div id="fpGaleria" class="fp-galeria"></div>
     <div id="myday-checkin"></div>`;
 
+  _pintarDevolucion();
   _renderRevTarjetas();
   _pintarDiaRevision();
   _leerDiaRevision();

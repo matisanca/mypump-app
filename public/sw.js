@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v56-20261110';
+const VERSION       = 'v57-20261110-devolucion';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = '/js/vendor/supabase-js.min.js';   // vendorizada el 20-sep-2026 (antes CDN)
@@ -50,6 +50,8 @@ const SHELL = [
   '/js/tecnica-cola.js',
   '/js/tecnica-ui.js',
   '/css/tecnica.css',
+  '/js/devolucion.js',
+  '/css/devolucion.css',
   '/js/healthkit-bridge.js',
   '/js/notificaciones.js',
   '/js/app.js',
