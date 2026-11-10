@@ -705,7 +705,10 @@
       const op = this.op;
       const d = db();
       const fn = op && op.cambia ? 'cambiarEntregaGuia' : 'reservarEntregaGuia';
-      if (!op || this._enVuelo || !d || typeof d[fn] !== 'function') return;
+      if (!op || this._enVuelo) return;
+      // Un cambio que quedó en la cola con la palanca apagada no sale: se resuelve como fuera de plazo.
+      if (op.cambia && !palancaElegirHorario()) { this._alGuardar({ ok: false, motivo: 'plazo' }); return; }
+      if (!d || typeof d[fn] !== 'function') return;
       if (navigator.onLine === false) { this._programar(); return; }
       clearTimeout(this._reintento); this._reintento = null;
       this._enVuelo = true;
@@ -861,7 +864,10 @@
     reservaTarjeta(ahora) {
       if ((this.resumen && this.resumen.ok === false) || this.estado === 'oculta') return null;
       const t = ahora || new Date();
-      return [this.agenda.reserva, this.resumen && this.resumen.reserva].find(r => RA.paraTarjeta(r, t)) || null;
+      // La del resumen solo mientras la agenda no se trajo: con la agenda, manda la agenda (sin reserva o en fallo,
+      // no hay tarjeta; si no, una cancelada seguiría con «Entrar»).
+      const r = this.agenda.agenda ? this.agenda.reserva : this.resumen && this.resumen.reserva;
+      return RA.paraTarjeta(r, t) ? r : null;
     }
 
     // Ocultar guarda también la fecha; volver a mostrar borra las dos.
@@ -1800,7 +1806,10 @@
   function listaPantalla(p) {
     const r = p.m.agenda.reserva;
     if (!p.enviado || !r || r.estado !== 'confirmada') return null;
-    if (p.cambiando) return r.inicio !== p.cambiando.inicio ? r : null;
+    if (p.cambiando) {
+      const nuevo = R.instante(r.inicio), viejo = R.instante(p.cambiando.inicio);
+      return nuevo && viejo && nuevo.getTime() !== viejo.getTime() ? r : null;
+    }
     return r;
   }
 
