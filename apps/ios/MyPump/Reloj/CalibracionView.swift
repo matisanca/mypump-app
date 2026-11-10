@@ -148,7 +148,7 @@ struct CalibracionView: View {
     @State private var guardandoConsentimiento = false
     @State private var errorConsentimiento = false
 
-    /// BORRADOR, pendiente de aprobación: el texto del consentimiento.
+    /// Texto del consentimiento, aprobado el 9/11/2026.
     private static let textoConsentimiento = """
         Si lo prendés, MyPump recibe las series que grabaste y las que grabes con el Apple Watch: el movimiento del reloj, \
         el ejercicio, las reps, los kilos, la fecha y en qué muñeca llevás el reloj. No incluye tu nombre; queda asociado a tu \
