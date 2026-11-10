@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.reglas.ReglasChatAdjuntos
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
@@ -201,11 +202,15 @@ class Outbox(
 
     /** La reserva de la entrega (2.2.0, [ModeloAgenda.KIND]): su propio carril, como el audio. */
     private val reservas = Carril(aparte = true)
-    private val carriles = listOf(general, audios, reservas)
+
+    /** Las fotos y audios del chat (2.3.0, [KIND_ADJUNTO_CHAT]): una subida lenta no frena ni la guía ni el chat de texto. */
+    private val adjuntos = Carril(aparte = true)
+    private val carriles = listOf(general, audios, reservas, adjuntos)
 
     private fun carrilDe(op: Operacion): Carril = when (op.kind) {
         ModeloAudioDudas.KIND -> audios
         ModeloAgenda.KIND -> reservas
+        KIND_ADJUNTO_CHAT -> adjuntos
         else -> general
     }
 
@@ -383,6 +388,7 @@ class Outbox(
             if (!cerrada) {
                 alcance.launch { drenarCarril(audios) }
                 alcance.launch { drenarCarril(reservas) }
+                alcance.launch { drenarCarril(adjuntos) }
             }
             drenarCarril(general)
             return
@@ -390,9 +396,11 @@ class Outbox(
         coroutineScope {
             val a = async { drenarCarril(audios) }
             val r = async { drenarCarril(reservas) }
+            val x = async { drenarCarril(adjuntos) }
             drenarCarril(general)
             a.await()
             r.await()
+            x.await()
         }
     }
 
@@ -466,6 +474,8 @@ class Outbox(
         val abandonadas = mutableListOf<Operacion>()
         val vencidas = mutableListOf<Operacion>()
         val guardadas = mutableListOf<OpGuardada>()
+        /** Lo que fue directo a fallidos con su código (los adjuntos del chat que no van a entrar así). */
+        val motivoDirecto = HashMap<String, String>()
         var algunaFallo = false
         var esperaAudio = false
         // "Guardando…" solo si tarda (y nunca después de terminar: cancelado, el delay corta).
@@ -543,6 +553,13 @@ class Outbox(
                 resueltas += op.id
                 continue
             }
+            if (error?.codigo in ReglasChatAdjuntos.CODIGOS_DIRECTOS) {
+                // Lo que no va a entrar nunca así (y el tope del día de los adjuntos del chat): directo a «no salió».
+                abandonadas += op
+                resueltas += op.id
+                motivoDirecto[op.id] = error!!.codigo!!
+                continue
+            }
             val motivo = if (error != null) "${error.codigo ?: error.status}: ${error.mensaje}" else "la base devolvió vacío"
             if (registrarFallo(op, motivo, resueltas, abandonadas)) algunaFallo = true
         }
@@ -555,7 +572,7 @@ class Outbox(
         if (esperaAudio) c.racha += 1
         val ahora = reloj().toDouble()
         if (abandonadas.isNotEmpty()) {
-            abandonadas.mapTo(fallidosLista) { Fallido(it, "abandonada tras ${it.tries} intentos", ahora) }
+            abandonadas.mapTo(fallidosLista) { Fallido(it, motivoDirecto[it.id] ?: "abandonada tras ${it.tries} intentos", ahora) }
         }
         vencidas.mapTo(fallidosLista) { Fallido(it, MOTIVO_ESPERA_VENCIDA, ahora) }
         guardar()
@@ -681,7 +698,7 @@ class Outbox(
          * El avance de «Tu guía» sale solo cada 10 s mientras corre un video: tampoco avisa. Los audios de la guía tienen su
          * propio estado al lado del botón («Mandando tu audio…», «No se pudo mandar»): el aviso general lo repetiría.
          */
-        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR, AjustesDieta.KIND, ModeloGuia.KIND_AVANCE, ModeloAudioDudas.KIND, ModeloAgenda.KIND)
+        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR, AjustesDieta.KIND, ModeloGuia.KIND_AVANCE, ModeloAudioDudas.KIND, ModeloAgenda.KIND, KIND_ADJUNTO_CHAT)
 
         /**
          * Kinds que se anotan como [Operacion.intentada] antes de salir: el chat, que antes de reintentar mira si ya había
