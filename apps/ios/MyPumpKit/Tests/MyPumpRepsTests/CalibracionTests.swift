@@ -44,6 +44,53 @@ import MyPumpRepsHerramientas
         #expect(g.cerrar(en: 1_060) == nil)
     }
 
+    @Test func unHuecoDeHorasNoRellenaMasQueElAnillo() throws {
+        var g = GrabadoraSerie()
+        g.abrirVentana(en: 1_000)
+        alimentar(&g, desde: 1_000, segundos: 10)
+        alimentar(&g, desde: 1_000 + 8 * 3_600, segundos: 2)
+        #expect(g.cuadros.capacity <= 2 * (g.capacidad + 1_000), "sin el salto el array llegaba a millones de cuadros")
+        #expect((g.capacidad...(g.capacidad + 200)).contains(g.cuadros.count))
+        let h = try #require(g.ultimoHueco)
+        #expect(abs(h.desde - 1_010) < 0.1, "el hueco arranca donde terminó lo grabado")
+        #expect(abs(h.hasta - (1_000 + 8 * 3_600)) < 0.1)
+        #expect(g.cuadros.last?.gx == 0.5, "lo posterior al hueco quedó")
+    }
+
+    @Test func unHuecoCortoSeSigueRellenando() {
+        var g = GrabadoraSerie()
+        alimentar(&g, desde: 1_000, segundos: 2)
+        alimentar(&g, desde: 1_100, segundos: 2)
+        #expect(g.primero == 0)
+        #expect(g.cuadros.count > 10_000)
+        #expect(g.ultimoHueco != nil)
+    }
+
+    @Test func alCerrarCuentaConLaMismaReglaQueEnVivo() throws {
+        let serie = SenalSintetica.casos[0].cuadros
+        func muestras(_ c: ArraySlice<CuadroSensor>, _ t0: Double) -> [MuestraEjes] { c.enumerated().map { MuestraEjes(t: t0 + (Double($0.offset) + 0.5) / 100, x: $0.element.ax, y: $0.element.ay, z: $0.element.az) } }
+        var g = GrabadoraSerie()
+        g.abrirVentana(en: 1_000)
+        let m = muestras(serie[...], 1_000)
+        g.agregar(acelerometro: m, giroscopio: m)
+        let duracion = Double(serie.count) / 100
+        let sinMarca = g.contarEnVivo(hasta: 1_000 + duracion)
+        #expect((sinMarca?.reps ?? 0) >= 5, "la señal de prueba tiene que contar")
+        let silencio = (0..<2_500).map { _ in CuadroSensor(ax: serie[serie.count - 1].ax, ay: serie[serie.count - 1].ay, az: serie[serie.count - 1].az, gx: 0, gy: 0, gz: 0) }
+        let s = muestras(silencio[...], 1_000 + duracion)
+        g.agregar(acelerometro: s, giroscopio: s)
+        g.marcarFinDescanso(en: 1_000 + duracion + 24)   // terminó de descansar 24 s después de la racha: no era la serie
+        let t = 1_000 + duracion + 24.9
+        let vivo = try #require(g.contarEnVivo(hasta: t))
+        let cerrada = g.cerrar(en: t)
+        let v = try #require(cerrada)
+        #expect(vivo.reps == 0)
+        #expect(v.contar().reps == vivo.reps)
+        var sinDescanso = v
+        sinDescanso.finDescanso = nil
+        #expect(sinDescanso.contar().reps >= 5, "sin fin de descanso se cuenta como siempre")
+    }
+
     @Test func elAnilloGuardaLosUltimosCincoMinutos() throws {
         var g = GrabadoraSerie()
         g.abrirVentana(en: 1_000)

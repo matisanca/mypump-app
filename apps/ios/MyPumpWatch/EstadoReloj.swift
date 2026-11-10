@@ -74,6 +74,7 @@ final class EstadoReloj {
         conexion.alFallarVersion = { [weak self] v in self?.cambiar(enviar: false) { $0.marcarIncompatible(version: v) } }
         entreno.alMedir = { [weak self] s in self?.salud = s }
         entreno.alCambiarViva = { [weak self] viva in self?.entrenoVivo = viva }
+        entreno.alCortarse = { [weak self] in self?.sesion.cierreSalud(ahora: Self.ahoraMs) ?? .descartar }
         calibracion.transferir = { [weak self] url, metadatos in self?.conexion.transferirArchivo(url, metadatos: metadatos) }
         calibracion.alContar = { [weak self] r in self?.proponer(r) }
         calibracion.debeContar = { [weak self] in self.map { $0.contadorPrendido && $0.sesion.descanso == nil } ?? false }
@@ -116,8 +117,13 @@ final class EstadoReloj {
     /// Los sensores corren con la sesión empezada y abierta, si cuenta o si graba.
     private func ajustarSensores() {
         let inactivo = Self.ahoraMs - ultimaActividad > Self.toleranciaInactivoMs
-        calibracion.ajustar(prender: sesion.iniciada && !sesion.terminada && !sesion.todoHecho && !inactivo && (contadorPrendido || calibrando))
+        let prender = sesion.iniciada && !sesion.terminada && !sesion.todoHecho && !inactivo && (contadorPrendido || calibrando)
+        // Confirmando la última serie del día: se apagan recién cuando su ventana quedó cerrada.
+        if confirmando && !prender { return }
+        calibracion.ajustar(prender: prender)
     }
+
+    @ObservationIgnored private var confirmando = false
 
     /// 20 min sin tocar el reloj ni confirmar: un entreno olvidado no deja los sensores a 100 Hz.
     private static let toleranciaInactivoMs: Double = 20 * 60 * 1_000
@@ -304,11 +310,14 @@ final class EstadoReloj {
         }()
         let estabaGrabando = calibracion.grabando
         var c: SesionReloj.Confirmacion?
+        confirmando = true
         cambiar { c = $0.confirmar(ahora: ahora) }
+        confirmando = false
         guard let c else { return }
         propuestaSerie.reiniciar()
         // La primera serie confirmada sin «Empezar» arranca la sesión (y los sensores): esa serie no tiene ventana.
         if estabaGrabando, let etiqueta { calibracion.confirmar(etiqueta, guardar: true) } else { calibracion.abrirVentana() }
+        ajustarSensores()
         // Con el día ya terminado no se abre otro entreno de HealthKit: quedaría uno de segundos en Fitness.
         if conSalud, !sesion.terminada { entreno.empezar() }
         WKInterfaceDevice.current().play(c.record != nil ? .success : .click)

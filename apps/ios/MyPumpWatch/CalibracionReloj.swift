@@ -262,7 +262,7 @@ actor MotorCalibracion {
         g.abrirVentana(en: t)
         ventanaAbierta = numero
         guard guardar, let v else { return nil }
-        let conteo = ContadorReps.contar(Array(v.cuadros[min(v.inicioConteo, v.cuadros.count)...]))
+        let conteo = v.contar()
         guard let d = try? ArchivoCalibracion.datos(.init(encabezado: encabezado(v, conteo), cuadros: v.cuadros)),
               let url = try? almacen.guardar(d, nombre: nombre) else { return nil }
         return (url, nombre, conteo.reps)

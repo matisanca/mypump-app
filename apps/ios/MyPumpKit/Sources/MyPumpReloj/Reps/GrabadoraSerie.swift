@@ -76,6 +76,15 @@ public struct GrabadoraSerie: Sendable {
         let fin = Int(((limite - t0) * Self.hz).rounded(.down))   // el cuadro `fin` todavía puede recibir muestras
         var siguiente = primero + cuadros.count
         guard fin > siguiente else { return }
+        // Un hueco más largo que el anillo (horas con la app suspendida): de lo que se rellenaría solo quedan los últimos
+        // `capacidad` cuadros, así que el resto ni se crea.
+        if fin - siguiente > capacidad {
+            let nuevo = fin - capacidad
+            cuadrosSinMuestra += nuevo - siguiente
+            cuadros = []
+            primero = nuevo
+            siguiente = nuevo
+        }
         var ia = 0, ig = 0
         // Lo anterior al cuadro siguiente ya no entra (llegó tarde).
         while ia < acel.count, cuadro(acel[ia].t, t0) < siguiente { ia += 1 }
@@ -176,6 +185,17 @@ public struct GrabadoraSerie: Sendable {
         public var finDescanso: Int?
         /// Segundos que no quedaron en el anillo (la ventana era más larga que `topeSegundos`).
         public var recortado: Double
+
+        /// El conteo de la ventana, con la misma regla que `contarEnVivo` (lo que terminó mucho antes del fin del descanso no cuenta).
+        public func contar() -> ContadorReps.Resultado {
+            let desde = min(inicioConteo, cuadros.count)
+            return ContadorReps.contar(Array(cuadros[desde...]), noAntesDe: GrabadoraSerie.noAntesDe(finDescanso: finDescanso, desde: desde))
+        }
+    }
+
+    /// El fin del descanso (en cuadros de la ventana) como lo pide `ContadorReps.contar`: segundos desde el cuadro `desde`.
+    public static func noAntesDe(finDescanso: Int?, desde: Int, hz: Double = GrabadoraSerie.hz) -> Double? {
+        finDescanso.map { Double($0 - desde) / hz }
     }
 
     /// Cierra la ventana al confirmar la serie: devuelve lo grabado (nil si no hay nada) y deja la ventana cerrada.

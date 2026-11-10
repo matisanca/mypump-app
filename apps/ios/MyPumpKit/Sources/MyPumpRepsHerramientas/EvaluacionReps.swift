@@ -91,7 +91,8 @@ public enum EvaluacionReps {
             if recontar {
                 // La regla de hoy: los últimos `topeConteoSegundos` de la ventana (lo guardado en archivos viejos era otra).
                 let desde = max(0, r.cuadros.count - Int(GrabadoraSerie.topeConteoSegundos * e.hz))
-                conteo = ContadorReps.contar(Array(r.cuadros[desde...]), hz: e.hz)
+                conteo = ContadorReps.contar(Array(r.cuadros[desde...]), hz: e.hz,
+                                             noAntesDe: GrabadoraSerie.noAntesDe(finDescanso: e.finDescanso, desde: desde, hz: e.hz))
             } else {
                 conteo = e.conteo ?? e.contadas.map { ContadorReps.Resultado(reps: $0, periodo: 0, calidad: 0, senal: .ninguna, desde: 0, hasta: 0, quieto: false) }
             }

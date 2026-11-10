@@ -115,7 +115,9 @@ struct MisDatosView: View {
                     }
                     .accessibilityIdentifier("mis-datos-calibracion")
                 } footer: {
-                    Text("Experimental. El Apple Watch cuenta las repeticiones de cada serie y te las propone.")
+                    Text(modelo.palanca.contadorRepsReloj
+                         ? "Experimental. El Apple Watch cuenta las repeticiones de cada serie y te las propone."
+                         : "Experimental. Por ahora el Apple Watch no propone las repeticiones.")
                 }
             }
 
@@ -153,7 +155,10 @@ struct MisDatosView: View {
     }
 
     private var conFilaCalibracion: Bool {
-        cuentaCalibracion != nil && (PuenteReloj.compartido.hayReloj || !DatosCalibracion.sesiones().isEmpty)
+        guard let cuenta = cuentaCalibracion else { return false }
+        // Si se mandaron series, la fila queda aunque ya no haya reloj: desde acá se revoca.
+        return PuenteReloj.compartido.hayReloj || UserDefaults.standard.bool(forKey: DatosCalibracion.claveSeManda(cuenta))
+            || !DatosCalibracion.sesiones().isEmpty
     }
 
     private var conPermiso: Bool { [.authorized, .provisional, .ephemeral].contains(permiso) }

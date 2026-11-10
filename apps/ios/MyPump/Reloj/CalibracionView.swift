@@ -228,7 +228,9 @@ struct CalibracionView: View {
                 Text("Experimental")
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("El conteo de reps del Apple Watch es experimental: propone las reps al terminar la serie y vos las confirmás o corregís con la corona. Nunca registra una serie solo.")
+                    Text(Proveedor.modelo.palanca.contadorRepsReloj
+                         ? "El conteo de reps del Apple Watch es experimental: propone las reps al terminar la serie y vos las confirmás o corregís con la corona. Nunca registra una serie solo."
+                         : "El conteo de reps del Apple Watch es experimental y por ahora no propone las reps. Las cargás con la corona.")
                     Text(ModoCalibracion.textoPrivacidad)
                     if seManda { Text("Además se manda a MyPump para mejorar el conteo.") }
                 }

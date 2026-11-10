@@ -14,6 +14,8 @@ final class EntrenoSalud: NSObject {
     var alMedir: ((SaludEntreno) -> Void)?
     /// La sesión de entreno corre o se cortó: sin ella, con la muñeca baja el sistema suspende la app y los sensores.
     var alCambiarViva: ((Bool) -> Void)?
+    /// Cómo cerrar lo medido si el sistema corta la sesión (otro entreno en el reloj, por ejemplo): lo hecho hasta ahí no se pierde.
+    var alCortarse: (() -> CierreSalud)?
 
     private let tienda = HKHealthStore()
     private var sesion: HKWorkoutSession?
@@ -164,15 +166,16 @@ extension EntrenoSalud: HKWorkoutSessionDelegate {
     }
 
     /// Solo la sesión vigente: la que cerró `terminar` ya no está (la guarda o la descarta `completar`). Si se cortó sola,
-    /// queda libre para volver a abrirse.
+    /// se cierra lo medido y queda libre para volver a abrirse.
     fileprivate func cambioSesion(_ s: HKWorkoutSession, corre: Bool, cerro: Bool) {
         guard s === sesion else { return }
         if cerro {
-            // Se cortó sola: se cierra de verdad para que `empezar` pueda abrir otra sin chocar con esta.
-            s.end()
-            builder?.discardWorkout()
+            // Se cortó sola: se cierra de verdad para que `empezar` pueda abrir otra sin chocar con esta, y lo medido hasta
+            // acá se guarda con la misma regla que un cierre normal (sin series confirmadas, se descarta).
+            let b = builder
             sesion = nil
             builder = nil
+            if let b { cerrar(s, b, alCortarse?() ?? .descartar) } else { s.end() }
         }
         alCambiarViva?(corre)
     }

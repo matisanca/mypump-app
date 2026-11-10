@@ -350,7 +350,7 @@ struct EjercicioVista: View {
                         }
                         // El reloj puso en las reps lo que contó. Se ve mientras la corona siga en ese número; si el
                         // alumno gira, el número ya es suyo.
-                        if let n = estado.propuesta, estado.propuestaSerie.enLaCorona(s.reps) {
+                        if estado.contadorPrendido, let n = estado.propuesta, estado.propuestaSerie.enLaCorona(s.reps) {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(ConfirmacionReps.texto(n)).font(.headline).foregroundStyle(Marca.verde)
                                 Text("Experimental. Lo contó el reloj: girá para corregir.").font(.caption2).foregroundStyle(.secondary)
