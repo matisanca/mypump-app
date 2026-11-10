@@ -863,6 +863,18 @@ window.mypumpDB = {
     return await rpcMutation('entregas_app_reservar', { p_token: token, p_franja: franja, p_id: id });
   },
 
+  // Cambia la reserva confirmada a otra franja (videollamada 2.3.0, palanca
+  // `elegir_horario`): {ok, reserva} o {ok:false, motivo} (tomada, franja,
+  // tope, plazo, sin_reserva, token, error). Atómica e idempotente por p_id: el
+  // servidor toma la nueva y recién ahí libera la vieja. MUEVE UN TURNO REAL:
+  // lo llama solo la cola de la reserva de guia.js.
+  async cambiarEntregaGuia(token, reserva, franja, id) {
+    if (!_esUuidGuia(id) || typeof franja !== 'string' || !franja || typeof reserva !== 'string' || !reserva) {
+      return { success: true, data: { ok: false, motivo: 'error' }, error: null };
+    }
+    return await rpcMutation('entregas_app_cambiar', { p_token: token, p_reserva: reserva, p_franja: franja, p_id: id });
+  },
+
   // La subida del audio a la ruta que dio el ticket: POST con la anon key, el
   // Content-Type exacto del ticket (el bucket lo compara) y x-upsert false (la
   // política no deja pisar). Devuelve {ok, status, existe, red, transitorio}.

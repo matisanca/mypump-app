@@ -1784,11 +1784,18 @@ function _tecPalanca(cfg) {
   });
   window.TecnicaUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.tecnica_video === true : null);
 }
+/* «Elegir el horario» de la videollamada (js/guia.js), detrás de `elegir_horario`. Apagada, ni se muestra ni se llama a
+   entregas_app_cambiar; la tarjeta de la videollamada y «Entrar» van igual (no cambian datos). */
+function _elegirHorarioPalanca(cfg) {
+  if (!window.MyPumpGuia || !window.MyPumpGuia.aplicarPalanca || !TOKEN || DEMO) return;
+  window.MyPumpGuia.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.elegir_horario === true : null);
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
   _gimPalanca(cfg);
   _tecPalanca(cfg);
+  _elegirHorarioPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -11724,7 +11731,7 @@ async function init() {
   aplicarPendientesEntreno();
   if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
   // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio también va, como en la app.
-  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => _gimPalanca(r.ok ? r.data : null)).catch(() => {});
+  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { _gimPalanca(r.ok ? r.data : null); _elegirHorarioPalanca(r.ok ? r.data : null); }).catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;
