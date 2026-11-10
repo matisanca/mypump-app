@@ -54,7 +54,7 @@ object RirDelPlan {
 
     /** El aviso de primera vez con la leyenda en lugar de «dejando 1–2 en reserva». */
     fun calibracion(texto: String, leyenda: String?): String {
-        val l = leyenda ?: return texto
+        val l = leyenda ?: return texto.replace(" dejando 1–2 en reserva", "")   // nunca reserva en pantalla
         val frase = if (l == "Al fallo") "al fallo" else l.replaceFirstChar { it.lowercase() }
         return texto.replace("dejando 1–2 en reserva", frase)
     }

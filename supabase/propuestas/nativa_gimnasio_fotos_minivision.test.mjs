@@ -1,6 +1,7 @@
 // Prueba los endpoints propuestos pegados al server.mjs REAL, con el binario de tapado REAL, contra un doble local de PostgREST
 // y Storage. No habla con ningún servicio vivo: SUPABASE_URL apunta a 127.0.0.1 y HOME a una carpeta temporal.
 //   node --test supabase/propuestas/nativa_gimnasio_fotos_minivision.test.mjs
+import { connect as conectarTcp } from 'node:net';
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request } from 'node:http';
@@ -107,6 +108,11 @@ const doble = createServer(async (req, res) => {
 
 let hijo, puerto, puertoDoble, salida = '', murio = null, dir, tapar, generar, control, tmpServidor, foto, fotoGrande;
 function armarServidor(d) {
+  if (process.env.SERVIDOR_FINAL) {   // la versión final armada para producción, tal cual
+    const f = join(d, 'server.mjs');
+    writeFileSync(f, readFileSync(process.env.SERVIDOR_FINAL));
+    return f;
+  }
   let s = readFileSync(join(aqui, '../../mini-vision/server.mjs'), 'utf8');
   const tope = "const tope = feature === 'fotos' ? RATE_FOTOS : RATE_LIMIT;";
   assert.ok(s.includes(tope));
@@ -461,4 +467,46 @@ test('el reverso vacía objetos y filas, y el bucket recién vacío', async () =
   assert.equal(db.fotos.size, 0);
   await correr('bucket', '--confirmar');
   assert.equal(db.bucket, false);
+});
+
+// El 4xx tiene que llegar legible con la subida a medio camino: cortar la conexión ahí lo vuelve un error de red en el navegador.
+function rechazoEnCurso(headers, total) {
+  return new Promise((resolve) => {
+    const res = { status: 0, json: null, error: null, escribio: 0, cerroAntes: false };
+    let t = '', listo = false;
+    const s = conectarTcp(puerto, '127.0.0.1');
+    const fin = () => {
+      if (listo) return;
+      listo = true; clearInterval(seguir); s.destroy();
+      res.status = Number(/^HTTP\/1\.1 (\d+)/.exec(t)?.[1] || 0);
+      try { res.json = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch { res.json = null; }
+      resolve(res);
+    };
+    s.on('data', (c) => { t += c; });
+    s.on('error', (e) => { res.error = e.code || e.message; });
+    s.on('close', () => { res.cerroAntes = res.escribio < total; fin(); });
+    const lineas = Object.entries({ ...headers, host: 'prueba', connection: 'keep-alive', 'content-length': total }).map(([k, v]) => `${k}: ${v}`).join('\r\n');
+    s.write(`POST /gimnasio/upload HTTP/1.1\r\n${lineas}\r\n\r\n`);
+    const seguir = setInterval(() => {
+      if (res.escribio >= total) { clearInterval(seguir); setTimeout(fin, 150); return; }
+      s.write(Buffer.alloc(64 * 1024)); res.escribio += 64 * 1024;
+    }, 2);
+  });
+}
+
+test('un 4xx llega legible con la subida en curso', async () => {
+  const r = await rechazoEnCurso(cab({ 'x-gimnasio-token': 'token-que-no-existe' }), 2 * 1024 * 1024);
+  assert.equal(r.error, null);
+  assert.equal(r.status, 403);
+  assert.equal(r.json?.ok, false);
+  assert.equal(r.cerroAntes, false, 'el servidor no corta a mitad de la subida');
+});
+
+test('preflight del navegador: permite los encabezados', { skip: !process.env.SERVIDOR_FINAL }, async () => {
+  const r = await new Promise((resolve) => {
+    const q = request({ host: '127.0.0.1', port: puerto, path: '/gimnasio/upload', method: 'OPTIONS', headers: { origin: 'https://app.mypumpteam.com' }, agent: false }, (x) => { x.resume(); resolve(x); });
+    q.end();
+  });
+  assert.equal(r.statusCode, 204);
+  for (const h of ['x-gimnasio-token', 'x-gimnasio-id', 'x-gimnasio-foto', 'x-gimnasio-zona']) assert.ok(String(r.headers['access-control-allow-headers']).toLowerCase().includes(h), h);
 });

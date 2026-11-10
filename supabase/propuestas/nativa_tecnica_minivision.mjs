@@ -6,6 +6,7 @@
 //   if (req.method === 'POST' && req.url === '/tecnica/borrar') return handleTecnicaBorrar(req, res, origin);
 // En overLimit: la rama `feature === 'tecnica' ? RATE_TECNICA :` justo antes del `RATE_LIMIT` final de `const tope`, sin tocar las demás.
 // En send(): sumar 'x-tecnica-token, x-tecnica-id' a Access-Control-Allow-Headers.
+// Antes de server.listen: `server.requestTimeout = 660_000;` (el de Node es 300 s y cortaría una subida lenta antes que el plazo de acá).
 //
 // INVARIANTES
 // - El cliente_id sale del TOKEN, jamás del pedido. El path lo arma el servidor; a la app nunca le llega.
@@ -29,7 +30,8 @@ const DURACION_MAX_TECNICA = 75;                // +0,5 s de tolerancia como el 
 const RATE_TECNICA = 8;                           // subidas por token por día, contando reintentos
 const MAX_TECNICA_EN_CURSO = 2;                   // a la vez en todo el servicio: cada una lanza ffmpeg
 const ESPERA_TECNICA_MS = 30_000;
-const ESPERA_CUERPO_TECNICA_MS = 240_000;
+const ESPERA_CUERPO_TECNICA_MS = 600_000;         // total: 60 MB entran con ~0,8 Mb/s (con 240 s hacían falta 2 Mb/s). Exige server.requestTimeout mayor
+const ESPERA_SILENCIO_TECNICA_MS = Number(process.env.TECNICA_ESPERA_SILENCIO_MS) || 60_000;  // sin bytes: se corta y libera uno de los dos lugares
 const ESPERA_FF_TECNICA_MS = 90_000;
 const FFMPEG_TECNICA = process.env.TECNICA_FFMPEG || '/opt/homebrew/bin/ffmpeg';
 const FFPROBE_TECNICA = process.env.TECNICA_FFPROBE || '/opt/homebrew/bin/ffprobe';
@@ -63,8 +65,23 @@ function carpetaTecnica(clienteId) {                 // sin el cliente_id, que e
   return hashTec('sha256').update(`tecnica:${clienteId}`).digest('hex').slice(0, 32);
 }
 
+// Después de responder se lee lo que falte del cuerpo, con tope de bytes y de tiempo. Cortar la conexión con la subida a medio
+// camino hace que el navegador vea un corte de red y no el 4xx, y el video se reintentaría sin fin.
+const DRENAR_TECNICA_MS = 15_000;
+function drenarOCortarTecnica(req) {
+  if (req.complete || req.destroyed) return;
+  let leidos = 0;
+  const cortar = () => { clearTimeout(plazo); req.destroy(); };
+  const plazo = setTimeout(cortar, DRENAR_TECNICA_MS);
+  plazo.unref?.();
+  req.on('data', (c) => { leidos += c.length; if (leidos > MAX_TECNICA_B) cortar(); });
+  req.once('end', () => clearTimeout(plazo));
+  req.once('close', () => clearTimeout(plazo));
+  req.once('error', cortar);
+}
+
 function rechazarTecnica(req, res, status, error, origin) {
-  res.once('finish', () => req.destroy());
+  res.once('finish', () => drenarOCortarTecnica(req));
   send(res, status, { ok: false, error }, origin);
 }
 
@@ -82,16 +99,19 @@ function cuerpoADisco(req, largo, ruta) {
     if (req.destroyed || req.socket?.destroyed) return resolve(null);
     const salida = crearEscrituraTec(ruta, { mode: 0o600 });
     let total = 0, listo = false, recibido = false, cabecera = Buffer.alloc(0);
-    const fin = (v) => { if (!listo) { listo = true; clearTimeout(plazo); if (!salida.destroyed) salida.destroy(); resolve(v); } };
-    const plazo = setTimeout(() => { fin(null); req.destroy(); }, ESPERA_CUERPO_TECNICA_MS);
+    const fin = (v) => { if (!listo) { listo = true; clearTimeout(plazo); clearTimeout(silencio); if (!salida.destroyed) salida.destroy(); resolve(v); } };
+    const vencer = () => { fin(null); req.destroy(); };
+    const plazo = setTimeout(vencer, ESPERA_CUERPO_TECNICA_MS);
+    let silencio = setTimeout(vencer, ESPERA_SILENCIO_TECNICA_MS);
     salida.on('error', () => { fin(null); req.destroy(); });
     req.on('data', (c) => {
       total += c.length;
+      clearTimeout(silencio); silencio = setTimeout(vencer, ESPERA_SILENCIO_TECNICA_MS);
       if (total > largo) { fin(null); req.destroy(); return; }
       if (cabecera.length < 12) cabecera = Buffer.concat([cabecera, c]).subarray(0, 12);
       if (!salida.write(c)) { req.pause(); salida.once('drain', () => req.resume()); }
     });
-    req.on('end', () => { recibido = true; salida.end(() => { if (!listo) { listo = true; clearTimeout(plazo); resolve({ total, cabecera }); } }); });
+    req.on('end', () => { recibido = true; clearTimeout(silencio); salida.end(() => { if (!listo) { listo = true; clearTimeout(plazo); resolve({ total, cabecera }); } }); });
     req.on('close', () => { if (!recibido) fin(null); });     // después de `end` también llega `close`: ahí manda el disco
     req.on('error', () => fin(null));
   });
@@ -111,7 +131,7 @@ async function handleTecnicaUpload(req, res, origin) {
     if (largo > MAX_TECNICA_B) return rechazarTecnica(req, res, 413, 'video muy pesado', origin);
 
     const clienteId = await clienteOResponder(token, res, origin);
-    if (clienteId === undefined) { res.once('finish', () => req.destroy()); return; }
+    if (clienteId === undefined) { res.once('finish', () => drenarOCortarTecnica(req)); return; }
     if (!clienteId) return rechazarTecnica(req, res, 403, 'token inválido', origin);
 
     const antes = await rpcTecnica('mypump_tecnica_puede', { p_cliente_id: clienteId, p_id: id });

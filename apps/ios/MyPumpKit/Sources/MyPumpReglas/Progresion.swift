@@ -74,7 +74,7 @@ public enum Progresiones {
         } else if repsSube && seriesIgual {
             partes.append("Suben las reps con el mismo peso. Si las completás sobrado, subí la carga la próxima.")
         }
-        if rirBaja { partes.append("Bajamos el RIR: acercate más al fallo en cada serie.") }
+        if rirBaja { partes.append("Acercate más al fallo en cada serie.") }
 
         let cambia = !partes.isEmpty
         if !cambia {

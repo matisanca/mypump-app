@@ -52,7 +52,7 @@ public enum RIRDelPlan {
 
     /// El aviso de primera vez con la leyenda en lugar de «dejando 1–2 en reserva».
     public static func calibracion(_ texto: String, leyenda: String?) -> String {
-        guard let l = leyenda else { return texto }
+        guard let l = leyenda else { return texto.replacingOccurrences(of: " dejando 1–2 en reserva", with: "") }   // nunca reserva en pantalla
         let frase = l == "Al fallo" ? "al fallo" : l.prefix(1).lowercased() + l.dropFirst()
         return texto.replacingOccurrences(of: "dejando 1–2 en reserva", with: frase)
     }

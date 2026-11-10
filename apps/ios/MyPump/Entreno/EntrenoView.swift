@@ -1070,7 +1070,7 @@ private struct EsqueletoEntreno: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text("Nombre del ejercicio largo").font(.body.weight(.semibold))
                                     Text("Músculo principal").font(.subheadline)
-                                    Text("4 × 10 · RIR 1 · 2:30").font(.caption)
+                                    Text("4 × 10 · 2:30").font(.caption)
                                 }
                                 Spacer()
                             }

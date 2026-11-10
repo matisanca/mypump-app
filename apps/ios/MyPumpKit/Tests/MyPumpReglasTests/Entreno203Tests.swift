@@ -151,6 +151,7 @@ struct Entreno203Tests {
         d.fijarRIRDelPlan("e2", 0, efectivo: press)
         #expect(d.ejercicios["e2"]!.series[0].rir == "0", "2.3.0: todo al fallo, nunca el RIR del plan")
         #expect(RIRDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", leyenda: "Dejando 0–1 en reserva") == "… a 8 reps dejando 0–1 en reserva.")
+        #expect(RIRDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva. Queda.", leyenda: nil) == "… a 8 reps. Queda.", "sin leyenda, tampoco reserva")
     }
 
     /// E2: el descanso del ejercicio (por su clave) le gana al del plan y es el que arranca al confirmar.
@@ -247,4 +248,11 @@ struct PreparacionTests {
         #expect(Preparacion.kgEfectivo(escrito: "60,5", sugerido: "57.5") == 60.5)
         #expect(Preparacion.kgEfectivo(escrito: "", sugerido: "–") == nil)
     }
+}
+
+/// 2.3.0 (Mati): nunca RIR en pantalla. Cuando el plan lo baja, la nota habla del fallo y no nombra el RIR.
+@Test func laNotaDeLaSemanaNoNombraElRIR() throws {
+    let json = #"{"id":"e","nombre":"Press","progresion":[{"semana":1,"series":3,"reps":"10","rir":"2"},{"semana":2,"series":3,"reps":"10","rir":"1"}]}"#
+    let e = try JSONDecoder().decode(Ejercicio.self, from: Data(json.utf8))
+    #expect(Progresiones.nota(e, semanaActual: 2)?.texto == "Acercate más al fallo en cada serie.")
 }

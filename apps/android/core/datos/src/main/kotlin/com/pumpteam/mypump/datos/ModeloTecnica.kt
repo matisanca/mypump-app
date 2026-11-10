@@ -443,6 +443,6 @@ class ModeloTecnica(
         private const val MAX_REINTENTOS_DE_FONDO = 5
 
         /** El servidor corta el cuerpo a los 240 s: un poco más y el corte lo dice él. */
-        private const val ESPERA_SUBIDA_MS = 300_000L
+        private const val ESPERA_SUBIDA_MS = 660_000L   // absoluta en OkHttp: el servidor da hasta 600 s de cuerpo
     }
 }

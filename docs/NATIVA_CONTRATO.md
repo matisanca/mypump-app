@@ -505,3 +505,29 @@ La app no tiene que filtrar nada: todo lo que llega se muestra.
   "esquema": 1
 }
 ```
+
+## 12. Gimnasio por fotos y Técnica por video (2.3.0, propuesta sin aplicar)
+
+Aparecen en `apps/shared/contrato.json` con `estado: propuesta`. Hasta aplicar las migraciones, la RPC contesta PGRST202 y la
+app no muestra nada. Palancas `gimnasio_fotos` y `tecnica_video` en `mypump_app_config`, apagadas. Todo campo nuevo es opcional.
+
+| RPC | Parámetros | Devuelve |
+|---|---|---|
+| `mypump_gimnasio_get` | `p_token` | jsonb; `null` token caído, `{habilitado:false}` no mostrar |
+| `mypump_gimnasio_nuevo` | `p_token`, `p_modo` (`'completa'` por defecto) | jsonb `{ok,id}` o `{ok:false,error}` |
+| `mypump_gimnasio_enviar` | `p_token`, `p_id`, `p_no_hay`, `p_nota`, `p_consentimiento`, `p_quitar` (`'{}'`) | jsonb |
+| `mypump_gimnasio_responder` | `p_token`, `p_id`, `p_respuestas` | jsonb |
+| `mypump_tecnica_get` | `p_token` | jsonb; `null` token caído, `{habilitado:false}` no mostrar |
+| `mypump_tecnica_nuevo` | `p_token`, `p_ejercicio_slug`, `p_ejercicio_nombre`, `p_nota`, `p_consentimiento` | jsonb `{ok,id}` o `{ok:false,error}` |
+| `mypump_tecnica_cancelar` | `p_token`, `p_id` | jsonb |
+
+Mini-vision (`vision.mypumpteam.com`), POST:
+
+- `/gimnasio/upload`: cuerpo crudo, `x-gimnasio-token`, `x-gimnasio-id`, `x-gimnasio-foto`, `x-gimnasio-zona`, `Content-Length`.
+- `/gimnasio/urls` y `/gimnasio/borrar`: JSON con el token.
+- `/tecnica/upload`: cuerpo crudo, `x-tecnica-token`, `x-tecnica-id`, `Content-Length`. Hasta 60 MB y 75 s. Subir es enviar; un
+  reintento contesta `{ok:true,ya:true}`. El cuerpo tiene hasta 600 s, y se corta tras 60 s sin recibir bytes.
+- `/tecnica/url` y `/tecnica/borrar`: JSON `{token,id}`.
+
+En las dos subidas, 4xx es definitivo para la cola y 429/5xx se reintenta. El servidor contesta el 4xx y sigue leyendo lo que falte
+del cuerpo, con tope de 15 s y de bytes, para que el navegador lo vea como rechazo y no como corte.
