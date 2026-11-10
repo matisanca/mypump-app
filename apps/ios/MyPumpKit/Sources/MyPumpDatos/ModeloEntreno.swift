@@ -816,8 +816,12 @@ public final class ModeloEntreno {
         if conAnotadas {
             // Lo que sigue en la cola manda (con su fecha): lo anotado solo cubre lo que ya subió.
             let claves = Set(cola.compactMap(\.dedupeKey))
+            // Lo que terminó en fallidos (el servidor lo rechazó o la cola lo abandonó) no se pinta como hecho.
+            // (Es la misma escritura si coincide lo mandado: una corrección posterior que sí subió se sigue pintando.)
+            let caidas = await outbox?.fallidos.map(\.op) ?? []
             let propias = anotadas.filter { clave, a in
-                !claves.contains(clave) && a.rutinaId == rutina.id && a.payload["diaId"]?.comoTexto == diaId
+                !claves.contains(clave) && !caidas.contains { $0.dedupeKey == clave && $0.payload == a.payload }
+                    && a.rutinaId == rutina.id && a.payload["diaId"]?.comoTexto == diaId
                     && a.payload["semana"]?.comoNumero == Double(semana)
             }.values
             if !propias.isEmpty { seriesSinConfirmar = true }

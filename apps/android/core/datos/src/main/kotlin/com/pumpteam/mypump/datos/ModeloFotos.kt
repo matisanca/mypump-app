@@ -190,6 +190,11 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
         val clave = "${FotosProgreso.lunes(fecha)}|$pose"
         if (_pendientes.value.size >= FotosProgreso.MAX_PENDIENTES && clave !in _pendientes.value) return Resultado.ColaLlena
         if (dataUrl.length > FotosProgreso.MAX_CARACTERES) return Resultado.MuyPesada
+        // Una foto nueva de esa pose y semana reemplaza a la rechazada: si no, «Reintentar» subía la vieja encima (revisión 10/11).
+        if (clave in _rechazadas.value) {
+            _rechazadas.update { it - clave }
+            guardarRechazadas()
+        }
         val item = FotoPendiente(pose, fecha, dataUrl)
         _pendientes.update { it + (clave to item) }
         val guardo = guardarCola()

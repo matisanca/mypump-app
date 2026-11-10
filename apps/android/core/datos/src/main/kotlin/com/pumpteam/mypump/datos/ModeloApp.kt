@@ -658,7 +658,11 @@ class ModeloApp(
         try {
             val r = cliente.llamar("mypump_get_cliente_info", mapOf("p_token" to ValorJson.Texto(t)))
             val vacia = ((r as? Resultado.Ok)?.valor as? ValorJson.Lista)?.elementos?.isEmpty() == true
-            if (vacia && t == token && !_esDemo.value) marcarLinkCaido(t)
+            if (!vacia) return
+            // La cola corre en su propio hilo: lo que toca la pantalla y las preferencias va en el del modelo (revisión 10/11).
+            withContext(alcance.coroutineContext[kotlin.coroutines.ContinuationInterceptor] ?: kotlin.coroutines.EmptyCoroutineContext) {
+                if (t == token && !_esDemo.value) marcarLinkCaido(t)
+            }
         } finally {
             revisandoCaida.set(false)
         }
@@ -666,7 +670,23 @@ class ModeloApp(
 
     private fun leerCopia(): CopiaOffline? = CopiaOffline.desde(disco?.leer(ARCHIVO_COPIA))
 
+    /**
+     * Cuántas cargas completas están en curso. Con la copia guardada la fase pasa a LISTO antes de pedir nada (F2): mientras
+     * tanto, volver a la app o a la red no lanza otra carga en paralelo (revisión del 10/11).
+     */
+    private val cargasEnCurso = java.util.concurrent.atomic.AtomicInteger(0)
+    internal val cargando: Boolean get() = cargasEnCurso.get() > 0
+
     suspend fun cargar() {
+        cargasEnCurso.incrementAndGet()
+        try {
+            cargarSinGuarda()
+        } finally {
+            cargasEnCurso.decrementAndGet()
+        }
+    }
+
+    private suspend fun cargarSinGuarda() {
         if (_esDemo.value) return   // la demo no toca la red (y "tirar para actualizar" no la cierra)
         val t = token ?: run {
             _fase.value = Fase.SIN_TOKEN
@@ -857,7 +877,7 @@ class ModeloApp(
 
     /** Volvió la red (el monitor de conectividad): sale lo pendiente y, si se mostraba la copia guardada, se trae todo. */
     suspend fun alVolverLaRed() {
-        if (_fase.value != Fase.LISTO || _esDemo.value || token == null) return
+        if (_fase.value != Fase.LISTO || _esDemo.value || token == null || cargando) return
         if (_desdeCache.value) {
             cargar()
             return
@@ -911,7 +931,7 @@ class ModeloApp(
      */
     suspend fun alVolverAPrimerPlano() {
         if (retomarCuentaGuardada()) return
-        if (_fase.value != Fase.LISTO || _esDemo.value || token == null) return
+        if (_fase.value != Fase.LISTO || _esDemo.value || token == null || cargando) return
         if (_desdeCache.value) {
             cargar()
             return
@@ -929,7 +949,7 @@ class ModeloApp(
         }
         // F7 (auditoría 10/11): la rutina y la dieta se pedían solo al arrancar. Un plan publicado hoy no se veía hasta
         // cerrar la app del todo. Ahora se vuelven a pedir pasados unos minutos.
-        if (toca(Relectura.PLAN)) refrescarPlan()
+        if (toca(Relectura.PLAN) && !refrescarPlan()) olvidar(Relectura.PLAN)   // sin respuesta: se intenta en la próxima vuelta
         outbox?.drenar()
         // Las marcas de hoy se releen en cada vuelta: las pudo cambiar la web u otro teléfono (DIE-05, D25) y es un pedido
         // chico. F11: lo demás no se relee en cada vuelta (el alumno entra y sale veinte veces en un entreno).
@@ -974,6 +994,10 @@ class ModeloApp(
         return true
     }
 
+    private fun olvidar(r: Relectura) {
+        ultimaRelectura.remove(r)
+    }
+
     private fun anotarCargaCompleta() {
         val ahora = relojRelecturas()
         for (r in Relectura.entries) ultimaRelectura[r] = ahora
@@ -990,10 +1014,13 @@ class ModeloApp(
             return e.sesionIniciada.value && !e.dia.value.diaFinalizado && relojRelecturas() - ini < 4 * 3600_000.0
         }
 
-    /** F7: la rutina y la dieta de nuevo, sin el resto de la carga. Lo que no llega (red) no toca nada. */
-    internal suspend fun refrescarPlan() {
-        val t = token ?: return
-        if (_esDemo.value) return
+    /**
+     * F7: la rutina y la dieta de nuevo, sin el resto de la carga. Lo que no llega (red) no toca nada. Devuelve si alguna de
+     * las dos respondió.
+     */
+    internal suspend fun refrescarPlan(): Boolean {
+        val t = token ?: return false
+        if (_esDemo.value) return false
         val p = mapOf("p_token" to texto(t))
         val conEntreno = entrenoAbierto
         val rr: Resultado<ValorJson>?
@@ -1004,13 +1031,15 @@ class ModeloApp(
             rr = r?.await()
             dd = d.await()
         }
-        if (token != t || _esDemo.value) return
+        if (token != t || _esDemo.value) return false
         var copia = leerCopia()
+        // El entreno pudo empezar mientras viajaba el pedido: entonces la rutina nueva queda solo en la copia guardada.
+        val aplicarRutina = !entrenoAbierto
         if (rr is Resultado.Ok) {
             val fila = rr.valor.primeraFila
             val nueva = fila?.let { decodificar(it.aJson(), RutinaActiva::desde) }
             copia = copia?.copy(rutina = fila)
-            if (nueva != _rutina.value) {
+            if (aplicarRutina && nueva != _rutina.value) {
                 _rutina.value = nueva
                 prepararEntreno()
                 // Motor nuevo, o el mismo con la rutina reemplazada (eso deja el día limpio): se restaura.
@@ -1035,6 +1064,7 @@ class ModeloApp(
             }
         }
         copia?.let { disco?.guardar(ARCHIVO_COPIA, it.copy(ts = System.currentTimeMillis().toDouble()).aValor()) }
+        return rr is Resultado.Ok || dd is Resultado.Ok
     }
 
     // ── Entreno ──

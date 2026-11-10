@@ -134,6 +134,8 @@ public final class ModeloFotos {
         let clave = "\(FotosProgreso.lunes(fecha))|\(pose)"
         if pendientes.count >= FotosProgreso.maxPendientes && pendientes[clave] == nil { return .colaLlena }
         if dataUrl.count > FotosProgreso.maxCaracteres { return .muyPesada }
+        // Una foto nueva de esa pose y semana reemplaza a la rechazada: si no, «Reintentar» subía la vieja encima (revisión 10/11).
+        if rechazadas.removeValue(forKey: clave) != nil { guardarRechazadas() }
         let item = FotoPendiente(pose: pose, fecha: fecha, dataUrl: dataUrl)
         pendientes[clave] = item
         let guardo = guardarCola()

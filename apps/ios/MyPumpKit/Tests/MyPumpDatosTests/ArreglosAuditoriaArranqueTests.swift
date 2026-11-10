@@ -56,6 +56,29 @@ struct ArreglosAuditoriaArranqueTests {
         await carga.value
         #expect(m.fase == .listo)
     }
+
+    /// Revisión del 10/11: con la copia la fase pasa a `.listo` enseguida y la raíz llama a «volver a la app». Eso no
+    /// tiene que lanzar una segunda carga en paralelo (la rutina se pedía dos veces).
+    @Test func volverMientrasCargaNoPideTodoDosVeces() async throws {
+        let lento = Lento()
+        await modelo(lento).cargar()
+        lento.ms = 600
+        let t = TransporteProgramado { fn, _ in
+            try await Task.sleep(for: .milliseconds(lento.ms))
+            switch fn {
+            case "mypump_get_cliente_info": return (200, #"[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"#)
+            case "mypump_get_rutina_activa": return (200, "[" + Self.rutina + "]")
+            default: return (200, "[]")
+            }
+        }
+        let m = ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria(Self.token), raizDisco: raiz)
+        let carga = Task { await m.cargar() }
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(m.fase == .listo)
+        await m.alVolverAPrimerPlano()
+        await carga.value
+        #expect(t.llamadas.filter { $0 == "mypump_get_rutina_activa" }.count == 1)
+    }
 }
 
 /// Auditoría del 10/11, F7 y F11: al volver a la app el iPhone no pedía de nuevo la rutina ni la dieta (un plan publicado

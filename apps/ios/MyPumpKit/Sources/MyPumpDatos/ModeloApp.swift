@@ -425,7 +425,14 @@ public final class ModeloApp {
         var ts: Double
     }
 
+    /// Cuántas cargas completas están en curso. Con la copia guardada la fase pasa a `.listo` antes de pedir nada (F2):
+    /// mientras tanto, volver a la app o a la red no lanza otra carga en paralelo (revisión del 10/11).
+    @ObservationIgnored private var cargasEnCurso = 0
+    var cargando: Bool { cargasEnCurso > 0 }
+
     public func cargar() async {
+        cargasEnCurso += 1
+        defer { cargasEnCurso -= 1 }
         if esDemo { return }   // la demo no toca la red (y "tirar para actualizar" no la cierra)
         guard let t = token else { fase = .sinToken; return }
         // Todo lo que sigue es de ESTE token: si mientras tanto entró otro (un link tocado al abrir la app), lo que vuelva
@@ -676,7 +683,7 @@ public final class ModeloApp {
 
     /// Volvió la red (el monitor de la raíz): sale lo pendiente y, si se estaba mostrando la copia guardada, se trae todo.
     public func alVolverLaRed() async {
-        guard fase == .listo, !esDemo, token != nil else { return }
+        guard fase == .listo, !esDemo, token != nil, !cargando else { return }
         if desdeCache { await cargar(); return }
         await outbox?.drenar()
         await fotos?.drenar()
@@ -722,7 +729,7 @@ public final class ModeloApp {
     /// todo de nuevo.
     public func alVolverAPrimerPlano() async {
         if await retomarCuentaGuardada() { return }
-        guard fase == .listo, !esDemo, token != nil else { return }
+        guard fase == .listo, !esDemo, token != nil, !cargando else { return }
         await conAvisos?()
         if desdeCache { await cargar(); return }
         // Primero lo "de hoy" si cambió el día (lo que se toque ahora tiene que caer en el día nuevo), después las colas.
@@ -738,7 +745,7 @@ public final class ModeloApp {
         }
         // F7 (auditoría 10/11): la rutina y la dieta se pedían solo al arrancar, y iOS deja la app viva días. Un plan
         // publicado hoy no se veía hasta cerrarla del todo. Ahora se vuelven a pedir pasados unos minutos.
-        if toca(.plan) { await refrescarPlan() }
+        if toca(.plan), !(await refrescarPlan()) { olvidar(.plan) }   // sin respuesta: se intenta en la próxima vuelta
         // F11: lo demás tampoco se relee en cada vuelta (el alumno entra y sale veinte veces en un entreno).
         // La tarjeta de «Tu guía», que solo lee (`entregas_app_resumen`), sin frenar lo demás.
         if let guia, toca(.guia) { Task { await guia.actualizarResumen() } }
@@ -785,6 +792,8 @@ public final class ModeloApp {
         return true
     }
 
+    func olvidar(_ r: Relectura) { ultimaRelectura[r] = nil }
+
     func anotarCargaCompleta() {
         let ahora = relojRelecturas()
         for r in Relectura.allCases { ultimaRelectura[r] = ahora }
@@ -798,21 +807,24 @@ public final class ModeloApp {
     }
 
     /// F7: la rutina y la dieta de nuevo, sin el resto de la carga. Lo que no llega (red) no toca nada; la rutina no se
-    /// cambia con un entrenamiento abierto.
-    func refrescarPlan() async {
-        guard let t = token, !esDemo else { return }
+    /// cambia con un entrenamiento abierto. Devuelve si alguna de las dos respondió.
+    @discardableResult
+    func refrescarPlan() async -> Bool {
+        guard let t = token, !esDemo else { return false }
         let p: [String: JSONValue] = ["p_token": .texto(t)]
         let conEntreno = entrenoAbierto
         async let d = cliente.llamar("mypump_get_dieta_activa", p)
         let rr: Result<JSONValue, ErrorRPC>? = conEntreno ? nil : await cliente.llamar("mypump_get_rutina_activa", p)
         let dd = await d
-        guard token == t, !esDemo else { return }
+        guard token == t, !esDemo else { return false }
         var copia = disco?.leer(CopiaOffline.self, "offline.json")
+        // El entreno pudo empezar mientras viajaba el pedido: entonces la rutina nueva queda solo en la copia guardada.
+        let aplicarRutina = !entrenoAbierto
         if case .success(let j)? = rr {
             let fila = j.primeraFila
             let nueva = fila.flatMap { decodificar(RutinaActiva.self, $0) }
             copia?.rutina = fila
-            if nueva != rutina {
+            if aplicarRutina, nueva != rutina {
                 rutina = nueva
                 prepararEntreno()
                 // Motor nuevo, o el mismo con la rutina reemplazada (eso deja el día limpio): se restaura.
@@ -840,6 +852,9 @@ public final class ModeloApp {
             c.ts = Date().timeIntervalSince1970 * 1000
             disco?.guardar(c, "offline.json")
         }
+        if case .success? = rr { return true }
+        if case .success = dd { return true }
+        return false
     }
 
     /// GEN-05 (`avisarPlanIncompleto`): arriba de Revisión cuando al plan publicado le falta algo. No es para el

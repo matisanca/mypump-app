@@ -60,6 +60,27 @@ class ArreglosAuditoriaArranqueTest {
         assertEquals(ModeloApp.Fase.LISTO, m.fase.value)
     }
 
+    /** Revisión del 10/11: volver a la app mientras se carga con la copia no lanza una segunda carga en paralelo. */
+    @Test
+    fun volverMientrasCargaNoPideTodoDosVeces() = enUnHilo { alcance ->
+        modelo(Lento(), alcance).cargar()
+        val t = TransporteProgramado { fn, _ ->
+            delay(600)
+            when (fn) {
+                "mypump_get_cliente_info" -> 200 to """[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"""
+                "mypump_get_rutina_activa" -> 200 to "[${RUTINA}]"
+                else -> 200 to "[]"
+            }
+        }
+        val m = ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria("AAAAAAAAAAAAAAAAAAAA"), raiz, PreferenciasEnMemoria(), alcance)
+        val carga = async { m.cargar() }
+        delay(100)
+        assertEquals(ModeloApp.Fase.LISTO, m.fase.value)
+        m.alVolverAPrimerPlano()
+        carga.await()
+        assertEquals(1, t.llamadas.count { it == "mypump_get_rutina_activa" })
+    }
+
     private fun rutinaV(v: Int) = RUTINA.replace("\"version\":1", "\"version\":$v")
 
     @Test

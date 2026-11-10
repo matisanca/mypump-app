@@ -966,8 +966,11 @@ class ModeloEntreno(
             val rutinaId = _rutina.value.id
             // Lo que sigue en la cola manda (con su fecha): lo anotado solo cubre lo que ya subió.
             val claves = enCola.mapNotNull { it.dedupeKey }.toSet()
+            // Lo que terminó en fallidos (el servidor lo rechazó o la cola lo abandonó) no se pinta como hecho. Es la misma
+            // escritura si coincide lo mandado: una corrección posterior que sí subió se sigue pintando.
+            val caidas = outbox?.fallidos()?.map { it.op } ?: emptyList()
             val propias = anotadas.filter { (clave, a) ->
-                clave !in claves && a.rutinaId == rutinaId && a.payload["diaId"]?.comoTexto == diaId &&
+                clave !in claves && caidas.none { it.dedupeKey == clave && it.payload == a.payload } && a.rutinaId == rutinaId && a.payload["diaId"]?.comoTexto == diaId &&
                     a.payload["semana"]?.comoNumero == semana.toDouble()
             }.values
             if (propias.isNotEmpty()) _seriesSinConfirmar.value = true
