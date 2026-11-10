@@ -11689,7 +11689,7 @@ async function init() {
   aplicarPendientesEntreno();
   if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
   // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio también va, como en la app.
-  else if (TOKEN && !DEMO && window.mypumpDB.getAppConfig) window.mypumpDB.getAppConfig().then(_gimPalanca).catch(() => {});
+  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => _gimPalanca(r.ok ? r.data : null)).catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;

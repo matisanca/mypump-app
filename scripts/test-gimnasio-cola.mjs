@@ -94,7 +94,7 @@ let n = 0;
 function modelo(d, almacen = almacenMemoria(), token = TOK) {
   const m = new ModeloGimnasio({
     rpc: (f, x) => d.rpc(f, x), fetch: (u, o) => d.fetch(u, o), almacen, token, visionUrl: 'https://vision.ejemplo.test/',
-    esperar: () => new Promise((r) => setTimeout(r, 0)), nuevoId: () => `f${++n}`,
+    esperar: () => new Promise((r) => setTimeout(r, 0)), nuevoId: () => `f${++n}`, visible: () => false,
   });
   return m;
 }
@@ -376,6 +376,66 @@ t('firmar: una vez y no cachea de más', async () => {
 t('sin servidor de fotos ni de datos: cero subidas con la palanca apagada', async () => {
   const d = doble({ habilitado: false }); const al = almacenMemoria(); const m = await listo(modelo(d, al));
   m.reanudar(); await new Promise((r) => setTimeout(r, 5)); eq(d.subidas(), 0); eq(await m.agregar('poleas', foto()), 'noSeGuardo');
+});
+t('borrada mientras subía y el borrado falla: queda pendiente, no reaparece y frena el envío', async () => {
+  const al = almacenMemoria(); const d = doble(borrador()); const m = await listo(modelo(d, al));
+  for (const z of TODAS) m.marcarNoHay(z, true);
+  await m.agregar('otros', foto());
+  const f0 = d.fetch; let cae = true;
+  d.fetch = async (u, o) => { if (u.endsWith('upload')) await m.borrarFoto(m.subiendo); if (u.endsWith('borrar') && cae) throw new TypeError('Failed to fetch'); return f0(u, o); };
+  m._programarReintento = () => {};
+  await m.enviarCarga();
+  eq(d.llamadas.includes('mypump_gimnasio_enviar'), false, 'no se manda con el borrado pendiente'); eq(m.borrador.borrarPendientes.length, 1);
+  await m.refrescar(); eq(m.abierta.fotos.length, 0, 'no reaparece');
+  cae = false;
+  const m2 = await listo(modelo(d, al)); await m2.drenar();
+  eq(d.fotos.length, 0); eq(m2.borrador.borrarPendientes, []); eq(m2.pantalla, 'recibido');
+});
+t('mientras se reducen fotos elegidas el envío espera', async () => {
+  const d = doble(borrador()); const m = await listo(modelo(d));
+  for (const z of TODAS) m.marcarNoHay(z, true);
+  m.empezarPreparacion(); await m.enviarCarga();
+  eq(d.llamadas.includes('mypump_gimnasio_enviar'), false); si(m.envio);
+  await m.agregar('poleas', foto()); m.terminarPreparacion();
+  await new Promise((r) => setTimeout(r, 10));
+  eq(d.fotos.length, 1); eq(m.pantalla, 'recibido');
+});
+t('otra pestaña: cancelar el envío y sumar fotos manda sobre lo que esta tenía en memoria', async () => {
+  const al = almacenMemoria(); const d = doble(borrador()); const vieja = await listo(modelo(d, al)); const nueva = await listo(modelo(d, al));
+  vieja._programarReintento = () => {};
+  for (const z of TODAS) vieja.marcarNoHay(z, true);
+  await vieja._guardado; d.sinRed = true; await vieja.enviarCarga(); await vieja._guardado;
+  await nueva._sincronizar(); si(nueva.envio); await nueva.cancelarEnvio(); await nueva._guardado;
+  d.sinRed = false; await vieja.drenar();
+  eq(d.ultimoEnviar, null, 'el cancelado no sale'); eq(vieja.envio, null);
+  await nueva.agregar('poleas', foto()); await nueva._guardado;
+  await vieja.drenar(); eq(d.fotos.length, 1, 'la foto de la otra pestaña sube');
+});
+t('un get que salió antes de terminar una subida no hace desaparecer la foto', async () => {
+  const d = doble(borrador()); const m = await listo(modelo(d));
+  await m.agregar('poleas', foto());
+  const r0 = d.rpc; let solto; const freno = new Promise((r) => { solto = r; });
+  let viejo = null;
+  d.rpc = async (f, x) => { if (f.endsWith('_get')) { viejo = await r0(f, x); await freno; return viejo; } return r0(f, x); };
+  const get = m.refrescar();
+  await new Promise((r) => setTimeout(r, 0));
+  d.rpc = r0; await m.drenar();
+  solto(); await get;
+  eq(m.abierta.fotos.length, 1); si(!m.faltantes.includes('poleas'));
+});
+t('pestaña a la vista: agotados los primeros intentos sigue probando', async () => {
+  const d = doble(borrador()); const m = await listo(modelo(d));
+  m.visible = () => true; let v = 0; m.esperar = async () => { v += 1; if (v >= 8) d.sinRed = false; await new Promise((r) => setTimeout(r, 0)); };
+  d.sinRed = true; await m.agregar('poleas', foto()); await m.drenar();
+  await new Promise((r) => setTimeout(r, 40));
+  si(v >= 8, `esperas ${v}`); eq(d.fotos.length, 1); eq(m.cola.length, 0);
+});
+t('a escondidas se detiene a los 5 intentos', async () => {
+  const d = doble(borrador()); const m = await listo(modelo(d));
+  let v = 0; m.esperar = async () => { v += 1; await new Promise((r) => setTimeout(r, 0)); };
+  d.sinRed = true; await m.agregar('poleas', foto()); await m.drenar();
+  await new Promise((r) => setTimeout(r, 30));
+  eq(v, 5);
 });
 t('sin indexedDB: cae a memoria', async () => {
   si(!(await abrirAlmacen(null)).persistente);

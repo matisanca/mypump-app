@@ -24,6 +24,8 @@
   const VENCE_MS = 30 * 24 * 3600 * 1000;   // lo que nadie subió en 30 días no se guarda para siempre
   const MAX_INTENTOS_SEGUIDOS = 3;
   const MAX_REINTENTOS_FONDO = 5;
+  const ESPERA_REINTENTO_MS = 60000;
+  const ESPERA_LARGA_MS = 180000;
   const TIMEOUT_SUBIDA_MS = 150000;
   const TIMEOUT_VISION_MS = 30000;
 
@@ -71,27 +73,37 @@
     });
   }
   async function almacenIDB(idb) {
-    const d = await abrirIDB(idb);
-    d.onversionchange = () => { try { d.close(); } catch (_) {} };
+    let d = await abrirIDB(idb);
+    const vigilar = () => { d.onversionchange = () => { try { d.close(); } catch (_) {} }; };
+    vigilar();
+    // iOS puede cerrar la conexión mientras la pestaña está de fondo (por ejemplo, al ir a la cámara): se reabre una vez.
+    const con = async (fn) => {
+      try { return await fn(d); } catch (e) {
+        if (!e || e.name !== 'InvalidStateError') throw e;
+        d = await abrirIDB(idb);
+        vigilar();
+        return fn(d);
+      }
+    };
     return {
       persistente: true,
-      async leerKV(k) { const r = await promesa(d.transaction('kv').objectStore('kv').get(k)); return r ? r.v : undefined; },
-      async guardarKV(k, v) { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put({ k, v }); await fin(t); },
-      async borrarKV(k) { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); await fin(t); },
-      async agregarFoto(meta, bytes) {
-        const t = d.transaction(['cola', 'fotos'], 'readwrite');
+      leerKV: (k) => con(async (b) => { const r = await promesa(b.transaction('kv').objectStore('kv').get(k)); return r ? r.v : undefined; }),
+      guardarKV: (k, v) => con(async (b) => { const t = b.transaction('kv', 'readwrite'); t.objectStore('kv').put({ k, v }); await fin(t); }),
+      borrarKV: (k) => con(async (b) => { const t = b.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); await fin(t); }),
+      agregarFoto: (meta, bytes) => con(async (b) => {
+        const t = b.transaction(['cola', 'fotos'], 'readwrite');
         t.objectStore('fotos').put({ id: meta.id, bytes });
         t.objectStore('cola').put(meta);
         await fin(t);
-      },
-      async leerBytes(id) { const r = await promesa(d.transaction('fotos').objectStore('fotos').get(id)); return r ? r.bytes : null; },
-      async sacarFoto(id) {
-        const t = d.transaction(['cola', 'fotos'], 'readwrite');
+      }),
+      leerBytes: (id) => con(async (b) => { const r = await promesa(b.transaction('fotos').objectStore('fotos').get(id)); return r ? r.bytes : null; }),
+      sacarFoto: (id) => con(async (b) => {
+        const t = b.transaction(['cola', 'fotos'], 'readwrite');
         t.objectStore('fotos').delete(id);
         t.objectStore('cola').delete(id);
         await fin(t);
-      },
-      async listar() { return promesa(d.transaction('cola').objectStore('cola').getAll()); },
+      }),
+      listar: () => con((b) => promesa(b.transaction('cola').objectStore('cola').getAll())),
     };
   }
   /* IndexedDB si se puede; si no, memoria. Nunca falla. */
@@ -135,6 +147,7 @@
       this.ahora = deps.ahora || (() => Date.now());
       this.nuevoId = deps.nuevoId || uuid;
       this.conLock = deps.conLock || ((fn) => fn());
+      this.visible = deps.visible || (() => typeof document === 'undefined' || document.visibilityState === 'visible');
       this.cuenta = cuentaDe(this.token);
 
       this.estado = null;           // null: apagado, sin el servidor nuevo o sin red la primera vez
@@ -158,9 +171,13 @@
       this._mandandoEnvio = false;
       this._otraPasada = false;
       this._lecturas = new Set();
+      this._gets = new Set();
+      this._guardado = Promise.resolve();
+      this._mutaciones = 0;
+      this.preparando = 0;          // fotos elegidas que todavía se están reduciendo: el envío las espera
     }
 
-    _borradorVacio() { return { gimnasioId: null, noHay: [], nota: '', quitar: [], respuestas: {}, avisoVersion: null, envio: null }; }
+    _borradorVacio() { return { gimnasioId: null, noHay: [], nota: '', quitar: [], respuestas: {}, avisoVersion: null, envio: null, borrarPendientes: [] }; }
     get _kvBorrador() { return `borrador:${this.cuenta}`; }
     get _kvEstado() { return `estado:${this.cuenta}`; }
     _avisar() { try { this.alCambiar(); } catch (_) {} }
@@ -237,12 +254,17 @@
 
     // ── Servidor ──
     /* Sin el servidor nuevo o apagado para esta cuenta: nada. Sin red: lo último que se supo, solo para seguir una carga a medio hacer. */
-    async refrescar() {
-      const r = await this.rpc('mypump_gimnasio_get', { p_token: this.token });
+    async refrescar(previa) {
+      const durante = [];
+      this._gets.add(durante);
+      let r;
+      try { r = previa || await this.rpc('mypump_gimnasio_get', { p_token: this.token }); } finally { this._gets.delete(durante); }
       if (r.ok) {
         if (r.data === null || r.data === undefined) { this.estado = null; this._avisar(); return; }
         const e = G.decodificarEstado(r.data);
         if (!e) { this.apagar(); this._olvidarEstado(); this._avisar(); return; }
+        // Lo que terminó de subir mientras viajaba este `get` no está en su foto del servidor y ya salió de la cola.
+        if (e.abierta) for (const f of durante) if (f.gimnasioId === e.abierta.id && !e.abierta.fotos.some((x) => x.id === f.foto.id)) e.abierta.fotos.push(f.foto);
         await this._aplicar(e);
         try { await this.almacen.guardarKV(this._kvEstado, r.data); } catch (_) {}
         await this._releerCola(false);
@@ -270,17 +292,35 @@
       const antes = JSON.stringify(b);
       const id = e.abierta ? e.abierta.id : null;
       if (b.gimnasioId !== id) {
-        b = { ...this._borradorVacio(), gimnasioId: id, avisoVersion: b.avisoVersion, envio: b.envio && b.envio.gimnasioId === id ? b.envio : null };
+        b = { ...this._borradorVacio(), gimnasioId: id, avisoVersion: b.avisoVersion, envio: b.envio && b.envio.gimnasioId === id ? b.envio : null, borrarPendientes: id ? b.borrarPendientes : [] };
       }
       // Lo que el servidor ya tomó deja de estar pendiente (un reintento devuelve `ya`).
       if (b.envio && e.abierta && ((b.envio.tipo === 'enviar' && e.abierta.estado !== 'borrador') || (b.envio.tipo === 'responder' && e.abierta.estado !== 'a_confirmar'))) {
         b = { ...b, envio: null };
       }
       this.borrador = b;
+      // Lo que el alumno borró y todavía no se pudo sacar del servidor no vuelve a aparecer.
+      if (e.abierta && b.borrarPendientes.length) e.abierta.fotos = e.abierta.fotos.filter((f) => !b.borrarPendientes.includes(f.id));
       if (JSON.stringify(b) !== antes) await this._guardarBorrador();
     }
 
-    async _guardarBorrador() { try { await this.almacen.guardarKV(this._kvBorrador, this.borrador); } catch (_) {} }
+    /* En fila: dos escrituras seguidas no se pueden pisar al revés. */
+    _guardarBorrador() {
+      this._mutaciones += 1;
+      const copia = JSON.parse(JSON.stringify(this.borrador));
+      this._guardado = this._guardado.then(() => this.almacen.guardarKV(this._kvBorrador, copia)).catch(() => {});
+      return this._guardado;
+    }
+
+    /* Con el lock de las pestañas tomado: lo que hizo otra (cancelar, nota, fotos nuevas) manda sobre lo que esta tenía en memoria. */
+    async _sincronizar() {
+      const antes = this._mutaciones;
+      await this._guardado;
+      let b;
+      try { b = await this.almacen.leerKV(this._kvBorrador); } catch (_) {}
+      if (b && antes === this._mutaciones) this.borrador = { ...this._borradorVacio(), ...b };
+      await this._releerCola(false);
+    }
 
     /* → 'ok' | 'sinSenal' | 'error' | 'tokenCaido'. `parcial` sin gimnasio vigente cae a la completa. */
     async empezar(modo = 'completa') { return this._nuevo(modo, 1); }
@@ -335,10 +375,32 @@
       const r = await this._postVision('gimnasio/borrar', { token: this.token, foto_id: id });
       if (!r) return 'sinSenal';
       if (r.status === 409 || r.status < 200 || r.status >= 300 || !r.json || r.json.ok !== true) { await this.refrescar(); return 'error'; }
-      const a = this.abierta;
-      if (a) a.fotos = a.fotos.filter((f) => f.id !== id);
+      this._quitarDeLaCarga(id);
       this._avisar();
       return 'ok';
+    }
+
+    _quitarDeLaCarga(id) {
+      const a = this.abierta;
+      if (a) a.fotos = a.fotos.filter((f) => f.id !== id);
+    }
+
+    /* La que se borró mientras subía: si el pedido no sale se reintenta, y la carga no se manda hasta resolverlo. */
+    async _anotarBorrado(id) {
+      if (!this.borrador.borrarPendientes.includes(id)) this.borrador.borrarPendientes = [...this.borrador.borrarPendientes, id];
+      this._quitarDeLaCarga(id);
+      await this._guardarBorrador();
+    }
+
+    /* true: no queda ninguno pendiente. */
+    async _resolverBorrados() {
+      for (const id of [...this.borrador.borrarPendientes]) {
+        const r = await this._postVision('gimnasio/borrar', { token: this.token, foto_id: id });
+        if (!r || r.status === 429 || r.status >= 500) return false;     // red o falla nuestra: sigue pendiente
+        this.borrador.borrarPendientes = this.borrador.borrarPendientes.filter((x) => x !== id);
+        await this._guardarBorrador();
+      }
+      return true;
     }
 
     _sacarDeMemoria(id) {
@@ -382,6 +444,10 @@
     }
     limpiarAvisoFoto() { this.avisoFoto = null; }
 
+    /* La pantalla avisa cuántas fotos elegidas se están reduciendo: al terminar, sale lo que estaba esperando. */
+    empezarPreparacion() { this.preparando += 1; }
+    terminarPreparacion() { this.preparando = Math.max(0, this.preparando - 1); if (!this.preparando) this.drenarEnFondo(); }
+
     /* Lo llaman el `online`, volver a la pestaña y el arranque: un corte largo no agota los reintentos para siempre. */
     reanudar() { this._reintentosDeFondo = 0; this.drenarEnFondo(); }
 
@@ -396,7 +462,7 @@
         do {
           this._otraPasada = false;
           await this.conLock(() => this._pasada());
-        } while (this._otraPasada && this.estado && this.cola.some((c) => !this._conError.has(c.id)));
+        } while (this._otraPasada && this.estado && (this.borrador.envio || this.cola.some((c) => !this._conError.has(c.id))));
       } finally {
         this._drenando = false;
         this._avisar();
@@ -409,7 +475,8 @@
     }
 
     async _pasada() {
-      await this._releerCola(false);
+      await this._sincronizar();
+      let cortada = false;
       let refrescarAlFinal = false;
       let seguidas = 0;
       let item;
@@ -418,6 +485,14 @@
         this._avisar();
         const r = await this._subir(item);
         this.subiendo = null;
+        if (this._borrarAlSubir.has(item.id) && (r.tipo === 'red' || r.tipo === 'reintentar')) {
+          // Pudo haber llegado aunque no se sepa: se pide sacarla igual.
+          this._borrarAlSubir.delete(item.id);
+          await this._anotarBorrado(item.id);
+          this._avisar();
+          if (r.tipo === 'red') { this._programarReintento(); cortada = true; break; }
+          continue;
+        }
         if (r.tipo === 'ok') {
           await this._sacarSubida(item);
           seguidas = 0;
@@ -432,25 +507,35 @@
         } else if (r.tipo === 'reintentar') {
           this._conError.add(item.id);
           seguidas += 1;
-          if (seguidas >= MAX_INTENTOS_SEGUIDOS) { this._programarReintento(); break; }
+          if (seguidas >= MAX_INTENTOS_SEGUIDOS) { this._programarReintento(); cortada = true; break; }
           this._avisar();
           await this.esperar(Math.pow(2, seguidas) * 1000);
         } else {      // red: en la web no hay quién avise si fue un corte de un momento
           this._programarReintento();
+          cortada = true;
           break;
         }
         this._avisar();
       }
       this._borrarAlSubir.clear();
       if (refrescarAlFinal) await this.refrescar();
+      await this._sincronizar();
+      // Apareció algo mientras tanto (otra pestaña, una foto recién guardada): primero eso.
+      if (!cortada && this._siguiente() && this.cola.some((c) => !this._conError.has(c.id))) { this._otraPasada = true; return; }
+      if (this.borrador.borrarPendientes.length && !(await this._resolverBorrados())) { this._programarReintento(); return; }
       await this._mandarEnvio();
     }
 
+    /* Mientras la pestaña esté a la vista y quede algo por salir no se abandona: con señal mala o un wifi sin internet el
+       navegador nunca avisa `online`. Pasados los primeros intentos, más espaciado. */
     _programarReintento() {
-      if (this._reintentoProgramado || this._reintentosDeFondo >= MAX_REINTENTOS_FONDO) return;
+      if (this._reintentoProgramado) return;
+      const quedaAlgo = this.cola.length > 0 || !!this.borrador.envio || this.borrador.borrarPendientes.length > 0;
+      const agotado = this._reintentosDeFondo >= MAX_REINTENTOS_FONDO;
+      if (agotado && !(quedaAlgo && this.visible())) return;
       this._reintentoProgramado = true;
       this._reintentosDeFondo += 1;
-      this.esperar(60000).then(() => { this._reintentoProgramado = false; return this.drenar(); }).catch(() => {});
+      this.esperar(agotado ? ESPERA_LARGA_MS : ESPERA_REINTENTO_MS).then(() => { this._reintentoProgramado = false; return this.drenar(); }).catch(() => {});
     }
 
     async _subir(p) {
@@ -486,12 +571,14 @@
       this._sacarDeMemoria(item.id);
       try { await this.almacen.sacarFoto(item.id); } catch (_) {}
       if (this._borrarAlSubir.delete(item.id)) {
-        await this.borrarFoto(item.id);
+        await this._anotarBorrado(item.id);     // sale antes del envío, con reintento (_resolverBorrados)
         return;
       }
       const a = this.abierta;
+      const subida = { id: item.id, zona: item.zona, ronda: a && a.estado === 'borrador' ? 0 : 1 };
+      for (const g of this._gets) g.push({ gimnasioId: item.gimnasioId, foto: subida });
       if (a && item.gimnasioId === a.id && !a.fotos.some((f) => f.id === item.id)) {
-        a.fotos.push({ id: item.id, zona: item.zona, ronda: a.estado === 'borrador' ? 0 : 1 });
+        a.fotos.push(subida);
         this._urlsVencen = 0;
       }
     }
@@ -545,7 +632,7 @@
 
     async _mandarEnvio() {
       const e = this.borrador.envio;
-      if (!e || this._mandandoEnvio || this.cola.some((c) => c.gimnasioId === e.gimnasioId)) return;
+      if (!e || this._mandandoEnvio || this.preparando > 0 || this.cola.some((c) => c.gimnasioId === e.gimnasioId)) return;
       this._mandandoEnvio = true;
       try {
         let r;

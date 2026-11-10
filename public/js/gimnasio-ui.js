@@ -132,9 +132,10 @@
     if (!m) return;
     ui.procesando = true;
     ui.error = null;
+    m.empezarPreparacion();
     pintar();
     let aviso = null;
-    for (const f of archivos) {
+    try { for (const f of archivos) {
       if (!pregunta && !m.puedeAgregar) { aviso = 'tope'; break; }
       let foto;
       // De a una: en un teléfono, varias de 12 MP decodificadas juntas tiran la pestaña.
@@ -143,9 +144,11 @@
       if (r === 'tope') { aviso = 'tope'; break; }
       if (r === 'noSeGuardo') { ui.error = T.noSeGuardo; break; }
       m.drenarEnFondo();
+    } } finally {
+      ui.procesando = false;
+      if (aviso) m.avisoFoto = aviso;
+      m.terminarPreparacion();
     }
-    if (aviso) m.avisoFoto = aviso;
-    ui.procesando = false;
     pintar();
   }
 
@@ -233,7 +236,7 @@
       <div class="gim-cuenta" id="gimNotaCuenta">${n}/${G.MAX_NOTA}</div>
       ${m.faltantes.length ? nota(T.faltanZonas(m.faltantes.length), true, 'gimFaltanRev') : ''}
       ${avisoEnvioHtml(m)}
-      <button type="button" class="btn-primary" data-gim="enviar" id="gimEnviar"${m.puedeEnviar ? '' : ' disabled'}>${e(T.botonEnviar)}</button>`;
+      <button type="button" class="btn-primary" data-gim="enviar" id="gimEnviar"${m.puedeEnviar && !ui.procesando ? '' : ' disabled'}>${e(T.botonEnviar)}</button>`;
   }
 
   function pEnviando(m) {
@@ -291,7 +294,7 @@
       <div class="gim-nav">
         ${i > 0 ? `<button type="button" class="btn-secondary" data-gim="anterior" id="gimAnterior">${e(T.anterior)}</button>` : ''}
         ${i < ps.length - 1 ? `<button type="button" class="btn-primary" data-gim="siguiente" id="gimSiguiente">${e(T.siguiente)}</button>`
-          : `<button type="button" class="btn-primary" data-gim="enviarRespuestas" id="gimEnviarRespuestas">${e(T.botonEnviar)}</button>`}
+          : `<button type="button" class="btn-primary" data-gim="enviarRespuestas" id="gimEnviarRespuestas"${ui.procesando ? ' disabled' : ''}>${e(T.botonEnviar)}</button>`}
       </div>`;
   }
 
@@ -527,6 +530,9 @@
       r.addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-gim]');
         if (!b || b.disabled || !ui.modelo) return;
+        // Si el navegador no le sacó el foco al campo, la pantalla que viene no se pintaría.
+        const foco = document.activeElement;
+        if (foco && r.contains(foco) && foco !== b && (foco.tagName === 'INPUT' || foco.tagName === 'TEXTAREA')) foco.blur();
         const f = ACCIONES[b.dataset.gim];
         if (f) { const p = f(b); if (p && p.catch) p.catch(() => {}); }
       });
@@ -563,7 +569,7 @@
 
   const conLock = (token) => (fn) => {
     if (!navigator.locks || !navigator.locks.request) return fn();
-    return navigator.locks.request(`gimnasio-cola-${token}`, { ifAvailable: true }, (lock) => (lock ? fn() : undefined));
+    return navigator.locks.request(`gimnasio-cola-${token}`, () => fn());
   };
 
   /* op: { token, rpc, visionUrl, irA(escena), alCambiarEntrada() } */
@@ -587,12 +593,15 @@
     if (ui.modelo) return;
     ui.arrancando = true;
     try {
+      // Antes de abrir nada en el teléfono: a una cuenta sin la función no se le crea ni la base.
+      const primera = await ui.op.rpc('mypump_gimnasio_get', { p_token: ui.op.token });
+      if (primera.ok ? !raiz.Gimnasio.decodificarEstado(primera.data) : (primera.status === 404 || primera.codigo === 'PGRST202' || primera.clase === 'permanente')) return;
       const almacen = await raiz.GimnasioCola.abrirAlmacen();
       const m = new raiz.GimnasioCola.ModeloGimnasio({
         rpc: ui.op.rpc, almacen, token: ui.op.token, visionUrl: ui.op.visionUrl, conLock: conLock(ui.op.token),
       });
       await m.cargar();
-      await m.refrescar();
+      await m.refrescar(primera);
       m.alCambiar = pintar;
       ui.modelo = m;
       ui.ultimoRefresco = Date.now();
