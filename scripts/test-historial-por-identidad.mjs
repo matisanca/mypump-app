@@ -131,7 +131,7 @@ t('writeSet registra el nombre EFECTIVO (la fuente de la identidad)', () => {
   const cuerpo = HTML.slice(i, i + 1500);
   // Como la app 2.3.0: el nombre con que la serie se registró manda (corregir no la pasa al sustituto);
   // si no hay, el del sustituto, y recién después el del slot.
-  if (!/ejercicioNombre\s*=\s*s\.nombreRegistrado \|\| \(swap \? swap\.current\.nombre : ex\.nombre\)/.test(cuerpo))
+  if (!/ejercicioNombre\s*=\s*web230\(\)\s*\?\s*\(s\.nombreRegistrado \|\| \(swap \? swap\.current\.nombre : ex\.nombre\)\)\s*:\s*\(swap \? swap\.current\.nombre : \(s\.nombreRegistrado \|\| ex\.nombre\)\)/.test(cuerpo))
     throw new Error('writeSet ya no snapshotea el nombre del sustituto (ni el registrado): la clave dejaría de reflejar lo que se hizo');
   const j = HTML.indexOf('async function loadRegistrosCarga()');
   if (!HTML.slice(j, j + 2500).includes('setObj.nombreRegistrado = reg.ejercicio_nombre'))

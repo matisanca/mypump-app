@@ -3435,14 +3435,18 @@ async function ensureSesionIniciada() {
   if (!RUTINA_ID) { _sesionIniciada = true; return null; }   // demo mode — no writes
   if (_sesionInflight) return _sesionInflight;               // reusar llamada en vuelo
   _sesionInflight = (async () => {
-    const res = await window.mypumpDB.iniciarSesion(TOKEN, DATA.dia.id, DATA.rutina.semana_actual || 1);
+    const diaId = DATA.dia.id, semana = DATA.rutina.semana_actual || 1;
+    const res = await window.mypumpDB.iniciarSesion(TOKEN, diaId, semana);
     if (res && res.success && res.data) {
-      _sesionId = res.data;
-      _sesionIniciada = true;
-      // Persistir para restaurar estado al recargar la página
-      const key = `mypump_sesion_${TOKEN}_${DATA.dia.id}`;
-      localStorage.setItem(key, _sesionId);
-      localStorage.setItem(`${key}_semana`, DATA.rutina.semana_actual || 1);
+      // Persistir para restaurar estado al recargar la página (la del día que se pidió, aunque ya se haya cambiado de día).
+      const key = `mypump_sesion_${TOKEN}_${diaId}`;
+      localStorage.setItem(key, res.data);
+      localStorage.setItem(`${key}_semana`, semana);
+      // Cambió de día mientras viajaba: esta sesión no es la del día abierto.
+      if (DATA.dia.id === diaId && (DATA.rutina.semana_actual || 1) === semana) {
+        _sesionId = res.data;
+        _sesionIniciada = true;
+      }
     }
     _sesionInflight = null;   // liberar guard → permite reintento si falló
     return _sesionId;
@@ -3458,9 +3462,9 @@ function writeSet(exId, setIdx) {
   // (lo que realmente hizo). El ejercicio_id se mantiene → no rompe histórico/progresión.
   const swap = STATE.exerciseSwaps[exId];
   // Una serie ya registrada conserva el nombre con que se hizo: corregirla después de sustituir no la pasa al sustituto.
-  const ejercicioNombre = s.nombreRegistrado || (swap ? swap.current.nombre : ex.nombre);
+  const ejercicioNombre = web230() ? (s.nombreRegistrado || (swap ? swap.current.nombre : ex.nombre)) : (swap ? swap.current.nombre : (s.nombreRegistrado || ex.nombre));
   // La variante del ejercicio solo completa una serie de ESTE ejercicio y con el selector a la vista.
-  const _conSelector = !!getVariantesEntry(getEffectiveEx(ex));
+  const _conSelector = !web230() || !!getVariantesEntry(getEffectiveEx(ex));
   Outbox.enqueue('carga', {
     // F2 — capturar sesión/día/semana AL ENCOLAR: un drenado tardío (tras
     // cambiar de día) va a la sesión correcta, no a la del día abierto.
@@ -4650,7 +4654,13 @@ function _csPanelEx() {
 }
 const _CS_TERMINALES = new Set(['completo', 'completo_sin_datos', 'saltado']);
 function _csDebeVerse(exId, s) {
-  if (!s || _csTeclado || STATE.scene !== 'train') return false;
+  if (!s || STATE.scene !== 'train') return false;
+  if (_csTeclado) {
+    // Rehacer la tarjeta saca el campo sin focusout en algunos navegadores: sin un campo enfocado, el teclado ya no está.
+    const a = document.activeElement;
+    if (a && a.matches && a.matches('input,textarea')) return false;
+    _csTeclado = false;
+  }
   if ((_csCorr && _csCorr.exId === exId) || _csFoto) return true;
   return !s.completo && !_CS_TERMINALES.has(getExStatus(exId));
 }
@@ -5472,14 +5482,15 @@ async function confirmarSerie(exId, idx, foto) {   // foto: viene del OK de la c
     renderTrain();
   }
   const isWarmup = ex.tipo === 'calentamiento';
-  const noKg = exNoKg(ex);
+  // Con la carga simple decide el ejercicio que se hace: el sustituto puede llevar peso aunque el del plan no, y al revés.
+  const noKg = exNoKg(foto ? getEffectiveEx(ex) : ex);
   const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
 
   // 2.0.3: el RIR ya no se elige; se guarda el del plan (la recuperación cuenta las series duras con él).
   // Lo que no lleva RIR (calentamiento, cardio, core, peso corporal) queda sin RIR.
   const exHecho = getEffectiveEx(ex);   // el sustituto, si lo hay (la app decide con el ejercicio que se hace)
   if (setObj.rir === '' && !setObj.nombreRegistrado && ReglasEntreno.llevaRir(exHecho.tipo, esSinPeso(exHecho))) {
-    setObj.rir = '0';   // todo al fallo (2.3.0); nunca el RIR del plan
+    setObj.rir = web230() ? '0' : ReglasEntreno.rirAGuardar(getProgresionActual(exHecho, DATA.rutina.semana_actual).rir);   // 2.3.0: todo al fallo
   }
   const editoManual = setObj.reps !== '' || setObj.kg !== '';
   if (!editoManual) {
@@ -6405,12 +6416,12 @@ document.addEventListener('visibilitychange', () => {
   // las marcas y las comidas libres eran las de AYER y el anillo mostraba lo
   // de ayer como "hoy". Al volver a foco en otro día se recargan.
   if (!document.hidden && STATE.diaPasado) _dietaAlVolverAlFoco();
-  if (!document.hidden && !STATE.diaPasado && STATE.comidasFecha && STATE.comidasFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
+  if (!document.hidden && _cajaHoy().comidasFecha && _cajaHoy().comidasFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
     loadComidasMarcadas();
     if (typeof loadComidasLibres === 'function') loadComidasLibres();
   }
   // Los ajustes se releen siempre al volver: lo que se ajustó en la app con la web abierta no se pisa.
-  if (!document.hidden && !STATE.diaPasado && STATE.ajustesFecha && TOKEN && !(DATA && DATA._isDemo)) loadAjustesDieta();
+  if (!document.hidden && _cajaHoy().ajustesFecha && TOKEN && !(DATA && DATA._isDemo)) loadAjustesDieta();
   if (!document.hidden && STATE.mydayFecha && STATE.mydayFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
     loadMyday();   // hábitos y vasos de agua de HOY, no los de ayer
   }
@@ -6563,6 +6574,7 @@ async function guardarComidaLibre(datos, fecha) {
   if (res && res.success && res.data && res.data[0]) {
     const caja = _cajaDe(f);
     if (caja) caja.comidasLibres.push(res.data[0]);
+    if (STATE.diaPasado && STATE.diaPasado.fecha === f) _ordenDia++;
     if (STATE.scene === 'diet') renderDiet();
     return true;
   }
@@ -6573,6 +6585,7 @@ async function borrarComidaLibre(id) {
   const f = fechaVistaDieta();
   const prev = STATE.comidasLibres;
   STATE.comidasLibres = prev.filter(c => c.id !== id);   // optimista
+  if (STATE.diaPasado) _ordenDia++;
   renderDiet();
   const res = await window.mypumpDB.borrarComidaLibre(TOKEN, id);
   if (!res || !res.success) {
@@ -6750,6 +6763,7 @@ function _encolarMarca(fecha, comidaId, marca, opcionAlDesmarcar) {
 // Un reemplazo (o volver al alimento del plan) cambia el alimento de esa posición: la cantidad puesta a mano era del
 // anterior y en otra unidad, así que se descarta. Con otros ajustes en el día, el resumen se rehace igual.
 function _planCambio(comidaId, opt, idx) {
+  if (!web230()) return;
   const aj = STATE.ajustesDieta[comidaId];
   if (aj && aj.opcion === opt && aj.cantidades[String(idx)] !== undefined) {
     const nuevo = AjustesDieta.clonarAjuste(aj);
@@ -6760,6 +6774,7 @@ function _planCambio(comidaId, opt, idx) {
 
 // Cambió lo que se ve (opción, tipo de día, un reemplazo): con ajustes en el día, el resumen que lee Mati se rehace.
 function _reencolarResumen() {
+  if (!web230()) return;
   if (_dietaSinEscritura() || !DIETA_ID || !Object.keys(STATE.ajustesDieta).length) return;
   if (STATE.diaPasado ? !vistaEditable() : STATE.ajustesCargados !== hoyLocal()) return;
   guardarAjustesDieta(Object.assign({}, STATE.ajustesDieta), null);
@@ -6782,7 +6797,7 @@ function _cajaDe(fecha) {
 }
 function fechaVistaDieta() { return STATE.diaPasado ? STATE.diaPasado.fecha : hoyLocal(); }
 function fechasDieta() {
-  if (!web230() || _dietaSinEscritura() || !DIETA_ID) return [];
+  if (!window.DiasDieta || !web230() || _dietaSinEscritura() || !DIETA_ID) return [];
   return DiasDieta.seleccionables(hoyLocal(), DiasDieta.hoyServidor());
 }
 function vistaEditable() { const p = STATE.diaPasado; return !p || (!p.cargando && !p.sinRed && !p.otroPlan); }
@@ -6806,13 +6821,13 @@ function _marcasDeFilas(rows) {
 }
 function _cerrarHojaDieta() { if ($('#modalHost .dz-hoja')) closeModal(); }
 
-function _dietaVolverAHoy(sinPintar) {
+function _dietaVolverAHoy(sinPintar, conservarHoja) {
   _vueltaDia++;
   const p = STATE.diaPasado;
   if (!p) return;
   Object.assign(STATE, p.hoy);
   STATE.diaPasado = null;
-  _cerrarHojaDieta();
+  if (!conservarHoja) _cerrarHojaDieta();
   _opcionesIniciales();
   if (!sinPintar && STATE.scene === 'diet') renderDiet();
 }
@@ -7069,9 +7084,9 @@ function abrirCopiarAHoy(origenPedido) {
     const comidas = p.comidas.filter(i => st.elegidas.has(i.id));
     // Las «igual» van también: cada una descuenta la suya de hoy y no le roba la coincidencia a una nueva.
     const libres = p.libres.filter(i => st.elegidas.has(i.id) || i.estado === 'igual');
-    _dietaVolverAHoy(true);
+    _dietaVolverAHoy(false, true);   // la hoja sigue arriba mientras copia: abajo ya está hoy
     const r = await _copiarAHoy(comidas, libres, reemplazar);
-    closeModal();
+    if (hoja.isConnected) closeModal();
     if (STATE.scene === 'diet') renderDiet();
     if (r.libresFallidas > 0 || r.saltadas > 0) {
       const t = [];
@@ -7184,7 +7199,7 @@ function renderDiet() {
   // Mirando otro día: cargando o sin señal, solo la tira y la vuelta a hoy (nunca se trata un corte como un día vacío).
   const barraDias = _barraDiasHtml();
   const pasado = STATE.diaPasado;
-  if (STATE.scene === 'diet') $('#hdrEyebrow').textContent = `DIETA · ${DiasDieta.rotuloCorto(fechaVistaDieta(), hoyLocal()).toUpperCase()}`;
+  if (STATE.scene === 'diet') $('#hdrEyebrow').textContent = window.DiasDieta ? `DIETA · ${DiasDieta.rotuloCorto(fechaVistaDieta(), hoyLocal()).toUpperCase()}` : 'DIETA · HOY';
   if (pasado && (pasado.cargando || pasado.sinRed)) {
     root.innerHTML = barraDias + (pasado.cargando
       ? '<div class="dz-dia-estado" role="status">Cargando…</div>'
@@ -8590,13 +8605,12 @@ function openDetail(exId) {
         <div class="detail-chart">${sparkSVG(ex.series, 312, 136)}</div>
         ${recentRows.length ? `
         <table class="detail-table">
-          <thead><tr><th>Fecha</th><th>Peso</th><th>Reps</th><th>RIR</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Peso</th><th>Reps</th></tr></thead>
           <tbody>
             ${recentRows.map(r => `<tr>
               <td>${fechaLocalDe(r.registrado_en)}</td>
               <td>${r.peso_kg}kg</td>
               <td>${r.reps_realizadas||r.reps||'—'}</td>
-              <td>${r.rir_real ?? '—'}</td>
             </tr>`).join('')}
           </tbody>
         </table>` : ''}
