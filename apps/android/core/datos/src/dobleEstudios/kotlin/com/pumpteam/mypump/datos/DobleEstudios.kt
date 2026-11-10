@@ -22,6 +22,8 @@ class DobleEstudios : Transporte {
     @Volatile var topeDia = false
     /** Cuántas veces `enviar` contesta `faltan_archivos` antes de aceptar. */
     @Volatile var faltanVeces = 0
+    /** La imagen que se baja al abrir un estudio propio (las pruebas de interfaz ponen una que se pueda ver). */
+    @Volatile var imagenParaVer: ByteArray = JPEG_MINIMO
 
     /** Estados forzados para las próximas subidas, en orden. 0 = sin red en esa. */
     val proximasSubidas = ArrayDeque<Int>()
@@ -49,7 +51,7 @@ class DobleEstudios : Transporte {
         }
         llamadas += nombre
         if (sinRed) throw IOException("sin red (doble)")
-        if (nombre == "estudios/archivo") return@synchronized Respuesta(200, if (f.endsWith(".pdf")) pdfDePrueba(2) else JPEG_MINIMO)
+        if (nombre == "estudios/archivo") return@synchronized Respuesta(200, if (f.endsWith(".pdf")) pdfDePrueba(2) else imagenParaVer)
         val (status, cuerpo) = atender(nombre, pedido)
         Respuesta(status, cuerpo.toByteArray())
     }

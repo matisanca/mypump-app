@@ -73,7 +73,10 @@ object TextosEstudios {
     fun fotoN(n: Int) = "Foto $n"
     fun pdfN(n: Int) = "PDF $n"
     fun paginaDe(n: Int, total: Int) = "Página $n de $total"
-    const val cerrar = "Cerrar"
+    const val cancelar = "Cancelar"
+    const val probarDeNuevo = "Probar de nuevo"
+    /** Fuera del contrato: «Ya me lo hice», «Deshacer» o «Enviar» no se pudieron guardar (sin señal o falla del servidor). */
+    const val noSePudoGuardar = "No se pudo guardar. Probá de nuevo."
     const val diaAnterior = "Un día antes"
     const val diaSiguiente = "Un día después"
     const val tituloSinNombre = "Estudio"

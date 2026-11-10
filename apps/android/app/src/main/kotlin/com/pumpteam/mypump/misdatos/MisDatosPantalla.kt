@@ -128,6 +128,18 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                     Separador(sangria = 58.dp)
                 }
             }
+            // «Estudios y órdenes»: con la palanca apagada, sin el servidor nuevo o sin habilitar, la fila no existe.
+            val estudios by modelo.estudios.collectAsStateWithLifecycle()
+            estudios?.let { x ->
+                val estadoEstudios by x.estado.collectAsStateWithLifecycle()
+                estadoEstudios?.let { e ->
+                    FilaEnlace(
+                        Iconos.Documento, c.marcaTexto, com.pumpteam.mypump.reglas.TextosEstudios.entrada,
+                        etiqueta = "mis-datos-estudios", subtitulo = com.pumpteam.mypump.reglas.Estudios.subtitulo(e),
+                    ) { navegacion?.estudiosEnMisDatos = true }
+                    Separador(sangria = 58.dp)
+                }
+            }
             FilaEnlace(Iconos.Libro, c.marcaTexto, "Respaldo científico del plan", etiqueta = "mis-datos-respaldo") { fuentes = true }
             Separador(sangria = 58.dp)
             FilaEnlace(Iconos.Privacidad, c.agua, "Política de privacidad") { abrirEnNavegador(contexto, URL_PRIVACIDAD) }
@@ -186,6 +198,7 @@ private fun FilaEnlace(
     titulo: String,
     colorTexto: Color = MyPump.colores.texto,
     etiqueta: String? = null,
+    subtitulo: String? = null,
     alTocar: () -> Unit,
 ) {
     val c = MyPump.colores
@@ -200,7 +213,14 @@ private fun FilaEnlace(
         horizontalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
         if (icono != null) IconoAzulejo(icono, color)
-        Text(titulo, style = MaterialTheme.typography.bodyLarge, color = colorTexto, modifier = Modifier.weight(1f))
+        if (subtitulo == null) {
+            Text(titulo, style = MaterialTheme.typography.bodyLarge, color = colorTexto, modifier = Modifier.weight(1f))
+        } else {
+            Column(Modifier.weight(1f)) {
+                Text(titulo, style = MaterialTheme.typography.bodyLarge, color = colorTexto)
+                Text(subtitulo, style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
+            }
+        }
         Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
     }
 }
