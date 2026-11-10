@@ -77,6 +77,8 @@ object TextosEstudios {
     const val probarDeNuevo = "Probar de nuevo"
     /** Fuera del contrato: «Ya me lo hice», «Deshacer» o «Enviar» no se pudieron guardar (sin señal o falla del servidor). */
     const val noSePudoGuardar = "No se pudo guardar. Probá de nuevo."
+    /** Fuera del contrato: el servidor dio por cerrado un envío y no lo confirmó. El mismo texto que en iOS. */
+    const val noSePudoEnviar = "No se pudo enviar. Probá de nuevo."
     const val diaAnterior = "Un día antes"
     const val diaSiguiente = "Un día después"
     const val tituloSinNombre = "Estudio"

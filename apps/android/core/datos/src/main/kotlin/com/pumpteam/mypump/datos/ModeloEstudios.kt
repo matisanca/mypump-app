@@ -76,7 +76,8 @@ object ColaEstudios {
 
 /**
  * «Estudios y órdenes». Mismo criterio de cola que [ModeloGimnasio]: en disco, sobrevive a cerrar la app y a quedarse sin
- * señal, un error del servidor (5xx o 429) no gasta el archivo y todo 4xx es definitivo para ese archivo. Con la palanca
+ * señal y un error del servidor (5xx o 429) no gasta el archivo. Tampoco lo gasta lo que no habla del archivo sino del link
+ * o del envío (401, 403, 404 y 409 de la subida); el resto de los 4xx es definitivo para ese archivo. Con la palanca
  * `estudios_app` apagada [ModeloApp] no llama a nada de esto: [estado] queda en null y no se ve ni se pide nada.
  *
  * Son datos de salud: los archivos esperan en [carpetaArchivos] (fuera de toda copia de seguridad y de la galería), se
@@ -92,7 +93,7 @@ class ModeloEstudios(
     private val esperar: suspend (Long) -> Unit = { delay(it) },
     private val lanzar: (suspend () -> Unit) -> Unit = {},
 ) {
-    enum class Aviso { RECIBIDO, RECIBIDO_CON_RECHAZO, TOPE_DIA, RECHAZADO }
+    enum class Aviso { RECIBIDO, RECIBIDO_CON_RECHAZO, TOPE_DIA, RECHAZADO, ERROR }
     enum class Salida { OK, FECHA, SIN_SENAL, ERROR }
     data class Progreso(val va: Int, val total: Int)
     data class Nuevo(val archivo: File, val mime: String)
@@ -264,7 +265,7 @@ class ModeloEstudios(
     // ── Cola ──
 
     private enum class Fin { LISTO, SEGUIR, RED, MAS_TARDE, PARAR }
-    private enum class Subida { OK, PERDIDO, DESCARTAR, REINTENTAR, RED }
+    private enum class Subida { OK, PERDIDO, DESCARTAR, REINTENTAR, TOKEN, REABRIR, CERRADO, RED }
 
     /** Una pasada a la vez, un envío detrás de otro. Red: corta y espera a que vuelva. 5xx o 429: espera y reintenta. */
     suspend fun drenar() {
@@ -371,6 +372,20 @@ class ModeloEstudios(
                     if (seguidas >= MAX_INTENTOS_SEGUIDOS) return Fin.MAS_TARDE
                     esperar(1000L shl seguidas)
                 }
+                // 401 (link regenerado) o 403 (la cuenta ya no tiene la función): no es el archivo. La cola queda entera
+                // y lo que valga lo dice el próximo `get`.
+                Subida.TOKEN -> return Fin.PARAR
+                // 404: el servidor no conoce el envío. Se abre de nuevo y se sube todo otra vez (lo ya subido contesta `ya`).
+                Subida.REABRIR -> {
+                    if (!otraVuelta(env.id)) {
+                        vueltas.remove(env.id)
+                        return Fin.MAS_TARDE
+                    }
+                    actualizar(env, env.copy(creado = false, archivos = env.archivos.map { it.copy(subido = false) }))
+                    return Fin.SEGUIR
+                }
+                // 409: el envío ya no recibe porque ya quedó enviado. `enviar` lo confirma (`ya`).
+                Subida.CERRADO -> return cerrar(env, yaCerrado = true)
                 Subida.RED -> return Fin.RED
             }
         }
@@ -379,7 +394,11 @@ class ModeloEstudios(
             descartar(env, Aviso.RECHAZADO)
             return Fin.SEGUIR
         }
+        return cerrar(env)
+    }
 
+    /** `enviar`. Con [yaCerrado] (la subida contestó 409) solo se confirma: si el servidor no dice que sí, el envío no gira. */
+    private suspend fun cerrar(env: EnvioEstudios, yaCerrado: Boolean = false): Fin {
         val p = mapOf("p_token" to texto(token), "p_id" to texto(env.id), "p_archivos" to ValorJson.Numero(env.archivos.size.toDouble()))
         return when (val r = cliente.llamar("mypump_estudios_enviar", p)) {
             is Resultado.Ok -> {
@@ -387,6 +406,10 @@ class ModeloEstudios(
                 when {
                     j == ValorJson.Nulo -> Fin.PARAR
                     j["ok"] == ValorJson.Booleano(true) -> terminar(env)
+                    yaCerrado -> {
+                        descartar(env, Aviso.ERROR)
+                        Fin.SEGUIR
+                    }
                     else -> when (j["error"]?.comoTexto) {
                         // En el servidor hay menos que acá: se suben de nuevo (los que ya están contestan `ya`).
                         "faltan_archivos", "sin_archivos" -> {
@@ -439,6 +462,12 @@ class ModeloEstudios(
             throw e
         } catch (_: Exception) {
             return Subida.RED
+        }
+        // Lo que no habla del archivo sino del link o del envío no gasta el archivo.
+        when (r.status) {
+            401, 403 -> return Subida.TOKEN
+            404 -> return Subida.REABRIR
+            409 -> return Subida.CERRADO
         }
         return when (Estudios.clasificarSubida(r.status, parsear(r.cuerpo)?.get("ok") == ValorJson.Booleano(true))) {
             Estudios.Accion.OK -> Subida.OK

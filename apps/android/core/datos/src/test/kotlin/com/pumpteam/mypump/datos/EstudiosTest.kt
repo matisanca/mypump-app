@@ -221,6 +221,119 @@ class EstudiosTest {
         assertTrue(a.m.cola.value.isEmpty())
     }
 
+    // ── Los códigos de `POST /estudios/upload`, uno por uno ──
+
+    /** Un envío de dos archivos listo para salir, con [codigos] como próximas respuestas forzadas de la subida. */
+    private suspend fun conDosArchivos(vararg codigos: Int): Pair<DobleEstudios, Armado> {
+        val d = DobleEstudios.escenario("vacio")
+        val a = armar(d)
+        a.m.refrescar()
+        assertTrue(a.m.encolar(nuevos(a.raiz, pdf to Estudios.MIME_PDF, jpeg to Estudios.MIME_JPEG), null))
+        d.proximasSubidas.addAll(codigos.toList())
+        return d to a
+    }
+
+    private suspend fun elLinkOLaFuncionNoGastanElArchivo(codigo: Int) {
+        val (d, a) = conDosArchivos(codigo)
+        a.m.drenar()
+        assertEquals(1, d.intentosDeSubida, "no insiste con el segundo archivo")
+        assertEquals(2, a.m.cola.value.single().archivos.size)
+        assertEquals(0, a.m.cola.value.single().rechazados)
+        assertEquals(2, a.carpeta.listFiles()!!.size)
+        assertNull(a.m.aviso.value)
+        assertNull(a.m.progreso.value)
+        assertFalse(a.m.sinSenal.value)
+        assertEquals(2, ColaEstudios.leer(a.disco).single().archivos.size, "también en disco")
+        a.m.drenar()   // con el link o la función de vuelta, la próxima pasada sale entera y con los mismos ids
+        assertTrue(a.m.cola.value.isEmpty())
+        assertEquals(2, d.enviados.single().archivos.size)
+        assertEquals(ModeloEstudios.Aviso.RECIBIDO, a.m.aviso.value)
+    }
+
+    @Test fun subida401LinkRegeneradoConservaLaCola(): Unit = runBlocking { elLinkOLaFuncionNoGastanElArchivo(401) }
+
+    @Test fun subida403SinLaFuncionConservaLaCola(): Unit = runBlocking { elLinkOLaFuncionNoGastanElArchivo(403) }
+
+    @Test fun subida404ReabreElEnvioYSubeTodoDeNuevo(): Unit = runBlocking {
+        val (d, a) = conDosArchivos(200, 404)
+        a.m.drenar()
+        assertEquals(2, d.llamadas.count { it == "mypump_estudios_envio_nuevo" })
+        assertEquals(4, d.intentosDeSubida, "el que ya estaba contesta `ya`")
+        assertEquals(1, d.envios.size)
+        assertEquals(2, d.enviados.single().archivos.size)
+        assertTrue(a.m.cola.value.isEmpty())
+        assertEquals(ModeloEstudios.Aviso.RECIBIDO, a.m.aviso.value)
+    }
+
+    @Test fun subida404SinFinNoGiraNiPierdeNada(): Unit = runBlocking {
+        val (d, a) = conDosArchivos(404, 404, 404, 404, 404, 404)
+        a.m.drenar()
+        assertEquals(ModeloEstudios.MAX_VUELTAS + 1, d.intentosDeSubida)
+        assertEquals(2, a.m.cola.value.single().archivos.size, "queda guardado para más tarde")
+        assertEquals(2, a.carpeta.listFiles()!!.size)
+        assertNull(a.m.aviso.value)
+    }
+
+    @Test fun subida409EnvioYaEnviadoSeConfirmaYTermina(): Unit = runBlocking {
+        val (d, a) = conDosArchivos(200, 0)   // sube uno y se corta
+        a.m.drenar()
+        assertTrue(a.m.sinSenal.value)
+        d.envios.single().estado = "enviado"   // el servidor lo dio por enviado: ya no recibe
+        a.m.drenar()
+        assertEquals(3, d.intentosDeSubida, "un solo intento más: el 409")
+        assertEquals(1, d.llamadas.count { it == "mypump_estudios_enviar" })
+        assertTrue(a.m.cola.value.isEmpty())
+        assertTrue(a.carpeta.listFiles().isNullOrEmpty())
+        assertEquals(ModeloEstudios.Aviso.RECIBIDO, a.m.aviso.value)
+    }
+
+    @Test fun subida409SinConfirmarNoGiraNiGastaReintentos(): Unit = runBlocking {
+        val (d, a) = conDosArchivos(409)
+        a.m.drenar()
+        assertEquals(1, d.intentosDeSubida)
+        assertEquals(1, d.llamadas.count { it == "mypump_estudios_enviar" })
+        assertTrue(d.enviados.isEmpty())
+        assertTrue(a.m.cola.value.isEmpty())
+        assertTrue(a.carpeta.listFiles().isNullOrEmpty())
+        assertEquals(ModeloEstudios.Aviso.ERROR, a.m.aviso.value)
+    }
+
+    @Test fun subidaElRestoDeLos4xxEsDefinitivoParaEseArchivo(): Unit = runBlocking {
+        for (codigo in listOf(400, 411, 413, 415, 422)) {
+            val (d, a) = conDosArchivos(codigo)
+            a.m.drenar()
+            assertEquals(2, d.intentosDeSubida, "$codigo: no se reintenta")
+            assertEquals(Estudios.MIME_JPEG, d.enviados.single().archivos.single().mime, "$codigo: el otro sigue")
+            assertTrue(a.m.cola.value.isEmpty(), "$codigo")
+            assertTrue(a.carpeta.listFiles().isNullOrEmpty(), "$codigo")
+            assertEquals(ModeloEstudios.Aviso.RECIBIDO_CON_RECHAZO, a.m.aviso.value, "$codigo")
+        }
+    }
+
+    @Test fun subida429Y5xxReintentanConElMismoId(): Unit = runBlocking {
+        for (codigo in listOf(429, 500, 502, 503, 504)) {
+            val (d, a) = conDosArchivos(codigo)
+            val ids = a.m.cola.value.single().archivos.map { it.id }
+            a.m.drenar()
+            assertEquals(3, d.intentosDeSubida, "$codigo: el mismo archivo va de nuevo")
+            assertEquals(ids, d.enviados.single().archivos.map { it.id }, "$codigo: con el mismo id")
+            assertEquals(a.m.cola.value, emptyList<EnvioEstudios>(), "$codigo")
+            assertEquals(ModeloEstudios.Aviso.RECIBIDO, a.m.aviso.value, "$codigo")
+        }
+    }
+
+    @Test fun subidaSinRedConservaTodoYReintentaConElMismoId(): Unit = runBlocking {
+        val (d, a) = conDosArchivos(0)
+        val ids = a.m.cola.value.single().archivos.map { it.id }
+        a.m.drenar()
+        assertTrue(a.m.sinSenal.value)
+        assertEquals(2, a.carpeta.listFiles()!!.size)
+        assertNull(a.m.aviso.value)
+        a.m.drenar()
+        assertEquals(ids, d.enviados.single().archivos.map { it.id })
+        assertFalse(a.m.sinSenal.value)
+    }
+
     @Test fun topeDelDia(): Unit = runBlocking {
         val d = DobleEstudios.escenario("topeDia")
         val a = armar(d)

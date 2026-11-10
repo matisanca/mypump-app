@@ -306,6 +306,7 @@ private fun EstadoDeLaSubida(cola: List<EnvioEstudios>, progreso: ModeloEstudios
             }
             ModeloEstudios.Aviso.RECHAZADO -> Renglon(Iconos.Alerta, T.archivoRechazado, c.alerta, Modifier.testTag("estudios-rechazado"), vivo = true, fuerte = true)
             ModeloEstudios.Aviso.TOPE_DIA -> Renglon(Iconos.Alerta, T.topeDia, c.alerta, Modifier.testTag("estudios-tope-dia"), vivo = true, fuerte = true)
+            ModeloEstudios.Aviso.ERROR -> Renglon(Iconos.Alerta, T.noSePudoEnviar, c.alerta, Modifier.testTag("estudios-no-se-pudo-enviar"), vivo = true, fuerte = true)
             null -> Unit
         }
     }
