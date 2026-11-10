@@ -141,6 +141,10 @@ class ModeloApp(
 
     private val _estadoGuardado = MutableStateFlow(EstadoGuardado.QUIETO)
     val estadoGuardado: StateFlow<EstadoGuardado> = _estadoGuardado.asStateFlow()
+    private val _perdidos = MutableStateFlow(0)
+
+    /** F5 (auditoría 10/11): cuántas cosas la cola no pudo guardar (quedan a la vista con «Reintentar» hasta que salgan). */
+    val perdidos: StateFlow<Int> = _perdidos.asStateFlow()
 
     // Dieta
     private val _excluir = MutableStateFlow<List<String>>(emptyList())
@@ -522,7 +526,10 @@ class ModeloApp(
         outbox?.cerrar()
         // Las ops de la migración esperan a la palanca remota (`cargar` la lee y se la pasa): hallazgo 2 del 15-oct.
         UltimaCuenta.anotar(t, preferencias)
-        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true, retenerSwaps = faltaDecidirSwaps(d)) { op ->
+        val cola = Outbox(
+            archivo = d.archivo("outbox.json"), ventanaAbandonoMs = VENTANA_ABANDONO_MS, alcance = alcance, retenerLegadas = true,
+            retenerSwaps = faltaDecidirSwaps(d),
+        ) { op ->
             escrituras.ejecutar(op)
         }
         outbox = cola
@@ -544,8 +551,18 @@ class ModeloApp(
         // Los avisos llegan desde el hilo de la cola: los StateFlow se pueden tocar desde cualquier hilo y así el orden se
         // conserva (en iOS se pasa al principal con un Task por aviso).
         alcance.launch {
+            _perdidos.value = cola.perdidos().size
             cola.observar(estado = { e -> _estadoGuardado.value = e }, abandonadas = ::alAbandonar, guardadas = ::alGuardar)
         }
+    }
+
+    /** F5: «Reintentar» de «No se pudo guardar». */
+    suspend fun reintentarPerdidos() {
+        val cola = outbox ?: return
+        cola.reintentarPerdidos()
+        _perdidos.value = cola.perdidos().size
+        cola.drenar()
+        _perdidos.value = cola.perdidos().size
     }
 
     /** Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…". */
@@ -572,6 +589,7 @@ class ModeloApp(
      * ("no salió → Reintentar"), como `marcarChatFallido` de la web.
      */
     private fun alAbandonar(ops: List<Operacion>) {
+        outbox?.let { cola -> alcance.launch { _perdidos.value = cola.perdidos().size } }
         _guia.value?.alAbandonar(ops)
         // La cola abandonó el día (8 intentos o un rechazo de la base, como el 22023 de un día demasiado grande).
         if (ops.any { it.kind == AjustesDieta.KIND && it.dedupeKey == AjustesDieta.clave(FechaLocal.hoy()) }) _ajustesSinGuardar.value = true
@@ -1736,6 +1754,8 @@ class ModeloApp(
     }
 
     companion object {
+        /** F5: lo mínimo que se sigue intentando algo que el servidor rechaza antes de darlo por perdido. */
+        const val VENTANA_ABANDONO_MS = 30L * 60 * 1000
         /** Ver [faltaDecidirSwaps]. */
         internal fun faltaDecidirSwapsEn(d: Disco): Boolean = d.carpeta.list().orEmpty().any { n ->
             if (!n.startsWith("swaps_") || !n.endsWith(".json")) return@any false

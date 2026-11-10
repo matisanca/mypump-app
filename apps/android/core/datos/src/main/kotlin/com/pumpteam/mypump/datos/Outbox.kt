@@ -44,6 +44,11 @@ data class Operacion(
      * ([Outbox.TOPE_ESPERA_AUDIO_MS]) va a fallidos con «No se pudo mandar» y «Reintentar». null si nunca esperó.
      */
     val esperaDesde: Double? = null,
+    /**
+     * F5 (auditoría 10/11): cuándo la rechazó el servidor por primera vez (ms). Se abandona recién pasada
+     * [Outbox.ventanaAbandonoMs], no al minuto. null si nunca la rechazó.
+     */
+    val primerRechazo: Double? = null,
 ) {
     fun aValor(): ValorJson = ValorJson.Objeto(
         buildMap {
@@ -56,6 +61,7 @@ data class Operacion(
             legado?.let { put("legado", ValorJson.Booleano(it)) }
             intentada?.let { put("intentada", ValorJson.Booleano(it)) }
             esperaDesde?.let { put("esperaDesde", ValorJson.Numero(it)) }
+            primerRechazo?.let { put("primerRechazo", ValorJson.Numero(it)) }
         },
     )
 
@@ -78,6 +84,7 @@ data class Operacion(
                 legado = (o["legado"] as? ValorJson.Booleano)?.valor,
                 intentada = (o["intentada"] as? ValorJson.Booleano)?.valor,
                 esperaDesde = o["esperaDesde"]?.comoNumero,
+                primerRechazo = o["primerRechazo"]?.comoNumero,
             )
         }
     }
@@ -155,6 +162,11 @@ sealed interface ResultadoOp {
 class Outbox(
     private val archivo: File?,
     val maxIntentos: Int = 8,
+    /**
+     * F5 (auditoría 10/11): lo mínimo que se sigue intentando una op rechazada antes de abandonarla (ms). Antes eran los 8
+     * intentos, más o menos un minuto: un mal rato del servidor o una versión publicada con un cambio la perdía.
+     */
+    val ventanaAbandonoMs: Long = 0,
     /** En los tests se apaga el reintento automático para forzar las pasadas a mano, como `await Outbox.flush()`. */
     private val reintentoAutomatico: Boolean = true,
     private val alcance: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
@@ -169,7 +181,8 @@ class Outbox(
     private val reloj: () -> Long = System::currentTimeMillis,
     private var ejecutor: suspend (Operacion) -> ResultadoOp,
 ) {
-    data class Fallido(val op: Operacion, val motivo: String, val cuando: Double)
+    /** [reintentable]: la abandonó la cola tras sus intentos (F5: se puede volver a mandar con «Reintentar»). */
+    data class Fallido(val op: Operacion, val motivo: String, val cuando: Double, val reintentable: Boolean = false)
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val confinado: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(1)
@@ -555,7 +568,8 @@ class Outbox(
         if (esperaAudio) c.racha += 1
         val ahora = reloj().toDouble()
         if (abandonadas.isNotEmpty()) {
-            abandonadas.mapTo(fallidosLista) { Fallido(it, "abandonada tras ${it.tries} intentos", ahora) }
+            abandonadas.mapTo(fallidosLista) { Fallido(it, "abandonada tras ${it.tries} intentos", ahora, reintentable = it.id in porIntentos) }
+            porIntentos.removeAll(abandonadas.map { it.id }.toSet())
         }
         vencidas.mapTo(fallidosLista) { Fallido(it, MOTIVO_ESPERA_VENCIDA, ahora) }
         guardar()
@@ -594,14 +608,49 @@ class Outbox(
     private fun registrarFallo(op: Operacion, motivo: String, resueltas: MutableSet<String>, abandonadas: MutableList<Operacion>): Boolean {
         val i = ops.indexOfFirst { it.id == op.id }
         if (i < 0) return false
-        val nueva = ops[i].copy(tries = ops[i].tries + 1)
+        val ahora = reloj().toDouble()
+        val nueva = ops[i].copy(tries = ops[i].tries + 1, primerRechazo = ops[i].primerRechazo ?: ahora)
         ops[i] = nueva
-        if (nueva.tries >= maxIntentos) {
+        if (nueva.tries >= maxIntentos && ahora - (nueva.primerRechazo ?: ahora) >= ventanaAbandonoMs) {
             resueltas += op.id
             abandonadas += nueva
+            porIntentos += op.id
             return false
         }
         return true
+    }
+
+    /** Las abandonadas por intentos (F5): las únicas que «Reintentar» puede volver a mandar. */
+    private val porIntentos = mutableSetOf<String>()
+
+    /**
+     * F5: lo que la cola abandonó y el cliente puede volver a mandar (sin las silenciosas, los audios ni el chat, que tienen
+     * su propio «Reintentar» en su pantalla).
+     */
+    suspend fun perdidos(): List<Fallido> = withContext(confinado) { perdidosSinConfinar() }
+
+    private fun perdidosSinConfinar(): List<Fallido> =
+        fallidosLista.filter { it.reintentable && it.op.kind !in SILENCIOSAS && carrilDe(it.op) === general && it.op.kind != "chat" }
+
+    /**
+     * F5: «Reintentar» de «No se pudo guardar»: lo perdido vuelve a la cola con los intentos en cero (si ya hay una más nueva
+     * con la misma clave, gana esa). Devuelve cuántas volvieron.
+     */
+    suspend fun reintentarPerdidos(): Int = withContext(confinado) {
+        val lista = perdidosSinConfinar()
+        if (lista.isEmpty()) return@withContext 0
+        val ids = lista.map { it.op.id }.toSet()
+        fallidosLista.removeAll { it.op.id in ids }
+        var vueltas = 0
+        for (f in lista.sortedBy { it.op.ts }) {
+            val k = f.op.dedupeKey
+            if (k != null && ops.any { it.dedupeKey == k }) continue
+            ops += f.op.copy(tries = 0, primerRechazo = null)
+            vueltas++
+        }
+        guardar()
+        if (vueltas > 0) programar(general, 0)
+        vueltas
     }
 
     private fun avisar(e: EstadoGuardado) {
@@ -615,7 +664,10 @@ class Outbox(
             "ops" to ValorJson.Lista(ops.map { it.aValor() }),
             "fallidos" to ValorJson.Lista(
                 fallidosLista.map {
-                    ValorJson.objeto("op" to it.op.aValor(), "motivo" to ValorJson.Texto(it.motivo), "cuando" to ValorJson.Numero(it.cuando))
+                    ValorJson.objeto(
+                        "op" to it.op.aValor(), "motivo" to ValorJson.Texto(it.motivo), "cuando" to ValorJson.Numero(it.cuando),
+                        "reintentable" to ValorJson.Booleano(it.reintentable),
+                    )
                 },
             ),
         )
@@ -633,7 +685,10 @@ class Outbox(
             val fallidos = (o["fallidos"] as? JsonArray)?.mapNotNull { f ->
                 val fo = f as? JsonObject ?: return@mapNotNull null
                 val op = fo["op"]?.let { Operacion.desde(it) } ?: return@mapNotNull null
-                Fallido(op, (fo["motivo"] as? JsonPrimitive)?.content ?: "", (fo["cuando"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0)
+                Fallido(
+                    op, (fo["motivo"] as? JsonPrimitive)?.content ?: "", (fo["cuando"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0,
+                    reintentable = (fo["reintentable"] as? JsonPrimitive)?.content == "true",
+                )
             } ?: emptyList()
             return ops to fallidos
         }
