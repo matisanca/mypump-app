@@ -194,7 +194,8 @@ public struct PreguntaGimnasio: Equatable, Sendable, Identifiable {
     public let fotos: [String]
 
     public init?(_ j: JSONValue) {
-        guard let id = j["id"]?.comoTexto, !id.isEmpty, let texto = j["texto"]?.comoTexto else { return nil }
+        guard let id = j["id"]?.comoTexto, !id.isEmpty,
+              let texto = j["texto"]?.comoTexto ?? (j["clase"]?.comoTexto == "confirmar" ? TextosGimnasio.confirmarTarjeta : nil) else { return nil }
         self.id = id
         self.texto = texto
         clase = j["clase"]?.comoTexto.flatMap(Clase.init(rawValue:)) ?? .desconocida
@@ -250,14 +251,14 @@ public struct CargaGimnasio: Equatable, Sendable {
         fotos = (j["fotos"]?.listaGim ?? []).compactMap { f in
             guard let i = f["id"]?.comoTexto, let z = f["zona"]?.comoTexto else { return nil }
             var ronda = 0
-            if case .numero(let n)? = f["ronda"] { ronda = Int(n) }
+            if case .numero(let n)? = f["ronda"], let r = Int(exactly: n) { ronda = r }
             return FotoGimnasio(id: i, zona: z, ronda: ronda)
         }
         zonasNoHay = (j["zonas_no_hay"]?.listaGim ?? []).compactMap(\.comoTexto)
         equipos = (j["equipos"]?.listaGim ?? []).compactMap { e in
             guard let t = e["tipo"]?.comoTexto else { return nil }
             var cantidad = 1
-            if case .numero(let n)? = e["cantidad"], n >= 1 { cantidad = Int(n) }
+            if case .numero(let n)? = e["cantidad"], n >= 1, let c = Int(exactly: n.rounded(.down)) { cantidad = c }
             return EquipoGimnasio(tipo: t, nombre: e["nombre"]?.comoTexto ?? t.replacingOccurrences(of: "_", with: " "),
                                   zona: e["zona"]?.comoTexto ?? Gimnasio.zonaOpcional, cantidad: cantidad)
         }

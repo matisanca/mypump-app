@@ -770,7 +770,7 @@ class ModeloApp(
         }
         outbox?.drenar()
         _fotos.value?.drenar()
-        _gimnasio.value?.takeIf { it.palancaRecordada }?.drenar()
+        _gimnasio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
     }
 
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
@@ -778,7 +778,7 @@ class ModeloApp(
         val g = _gimnasio.value ?: return
         if (g.palancaRecordada) {
             g.refrescar()
-            g.drenar()
+            g.drenarEnFondo()   // decenas de fotos no frenan el resto de la carga
         } else {
             g.apagar()
         }

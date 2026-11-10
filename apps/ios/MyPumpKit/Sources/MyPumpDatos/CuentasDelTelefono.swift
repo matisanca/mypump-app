@@ -142,9 +142,11 @@ enum CuentasDelTelefono {
         var total = 0
         for nombre in nombres {
             let otra = Disco(carpeta: base.appendingPathComponent(nombre, isDirectory: true))
-            guard let viejas = otra.leer([PendienteGimnasio].self, PendienteGimnasio.archivo), !viejas.isEmpty,
-                  Self.clienteId(de: otra) == clienteId, gimnasio.adoptar(viejas, desde: otra) else { continue }
+            let viejas = otra.leer([PendienteGimnasio].self, PendienteGimnasio.archivo) ?? []
+            let envioPendiente = otra.leer(BorradorGimnasio.self, BorradorGimnasio.archivo)?.envio != nil
+            guard !viejas.isEmpty || envioPendiente, Self.clienteId(de: otra) == clienteId, gimnasio.adoptar(viejas, desde: otra) else { continue }
             otra.borrar(PendienteGimnasio.archivo)
+            otra.borrar(BorradorGimnasio.archivo)
             try? FileManager.default.removeItem(at: otra.url(PendienteGimnasio.carpeta))
             total += viejas.count
         }

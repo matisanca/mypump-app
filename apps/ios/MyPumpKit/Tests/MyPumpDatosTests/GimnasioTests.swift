@@ -28,6 +28,7 @@ struct GimnasioTests {
         #expect(!m.entradaVisible)
         #expect(m.pantalla == .inicio)
         #expect(m.necesitaAviso)
+        m.aceptarAviso()
         #expect(await m.empezar() == .ok)
         #expect(!m.necesitaAviso)
         #expect(m.pantalla == .zonas)
@@ -48,6 +49,70 @@ struct GimnasioTests {
         #expect(d.cabecerasUltimaSubida["x-gimnasio-token"] == token)
         #expect(d.fotos[0].bytes == jpeg)
         #expect(!d.llamadas.joined().contains("cliente_id"))
+    }
+
+    @Test func sinAvisoVigenteNoSeEnvia() async {
+        let d = DobleGimnasio.escenario("borrador")
+        d.consentimientoAceptado = false
+        let (m, _) = armar(d)
+        await m.refrescar()
+        #expect(m.necesitaAviso)
+        _ = await m.empezar(modo: "completa")
+        #expect(m.necesitaAviso, "empezar no acepta el aviso por su cuenta")
+        await m.enviarCarga()
+        #expect(m.envio == nil)
+        #expect(m.avisoEnvio == .sinConsentimiento)
+        #expect(d.ultimoEnviar == nil)
+    }
+
+    @Test func volverAEditarNoPierdeLaFoto() async {
+        let d = DobleGimnasio.escenario("borrador")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        _ = m.agregar(zona: "poleas", jpeg: jpeg)
+        d.sinRed = true
+        await m.enviarCarga()
+        #expect(m.envio != nil)
+        m.cancelarEnvio()
+        #expect(m.envio == nil)
+        #expect(m.cola.count == 1)
+    }
+
+    @Test func seBarrenLosArchivosHuerfanos() async throws {
+        let d = DobleGimnasio.escenario("borrador")
+        let (m, raiz) = armar(d)
+        await m.refrescar()
+        d.sinRed = true
+        _ = m.agregar(zona: "poleas", jpeg: jpeg)
+        let viva = m.fotos(zona: "poleas")[0].archivoLocal!
+        let huerfana = viva.deletingLastPathComponent().appendingPathComponent("huerfana.jpg")
+        try jpeg.write(to: huerfana)
+        _ = armar(d, raiz: raiz)
+        #expect(!FileManager.default.fileExists(atPath: huerfana.path))
+        #expect(FileManager.default.fileExists(atPath: viva.path))
+    }
+
+    @Test func sinRedSoloSeSigueUnaCargaAMedias() async {
+        let d = DobleGimnasio.escenario("listo")
+        let (m, raiz) = armar(d)
+        await m.refrescar()
+        d.sinRed = true
+        let (m2, _) = armar(d, raiz: raiz)
+        await m2.refrescar()
+        #expect(m2.estado == nil)
+    }
+
+    @Test func elLinkNuevoAdoptaFotosYEnvio() async {
+        let d = DobleGimnasio.escenario("borrador")
+        let (m, raiz) = armar(d)
+        await m.refrescar()
+        _ = m.agregar(zona: "poleas", jpeg: jpeg)
+        d.sinRed = true
+        await m.enviarCarga()
+        let nuevo = ModeloGimnasio(cliente: ClienteRPC(transporte: d), token: "tk-otro", disco: Disco(raiz: raiz, token: "tk-otro"), esperar: { _ in })
+        #expect(nuevo.adoptar(m.cola, desde: Disco(raiz: raiz, token: token)))
+        #expect(nuevo.cola.count == 1)
+        #expect(nuevo.envio != nil)
     }
 
     @Test func corteDeRedAMitadYReanuda() async {

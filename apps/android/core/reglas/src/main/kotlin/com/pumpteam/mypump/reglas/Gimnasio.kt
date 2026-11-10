@@ -138,7 +138,7 @@ data class PreguntaGimnasio(
     companion object {
         fun desde(j: ValorJson): PreguntaGimnasio? {
             val id = j["id"]?.comoTexto?.takeIf { it.isNotEmpty() } ?: return null
-            val texto = j["texto"]?.comoTexto ?: return null
+            val texto = j["texto"]?.comoTexto ?: (if (j["clase"]?.comoTexto == "confirmar") TextosGimnasio.confirmarTarjeta else return null)
             val clave = j["clase"]?.comoTexto
             return PreguntaGimnasio(
                 id = id,

@@ -26,6 +26,7 @@ class GimnasioTest {
         assertFalse(m.entradaVisible)
         assertEquals(Gimnasio.Pantalla.INICIO, m.pantalla)
         assertTrue(m.necesitaAviso)
+        m.aceptarAviso()
         assertEquals(ModeloGimnasio.Salida.OK, m.empezar())
         assertFalse(m.necesitaAviso)
         assertEquals(9, m.faltantes.size)
@@ -43,6 +44,71 @@ class GimnasioTest {
         assertEquals("terceros-v1", d.ultimoEnviar?.get("p_consentimiento")?.comoTexto)
         assertEquals(token, d.cabecerasUltimaSubida["x-gimnasio-token"])
         assertTrue(jpeg.contentEquals(d.fotos[0].bytes))
+    }
+
+    @Test fun sinAvisoVigenteNoSeEnvia(): Unit = runBlocking {
+        val d = DobleGimnasio.escenario("borrador")
+        d.consentimientoAceptado = false
+        val m = armar(d)
+        m.refrescar()
+        assertTrue(m.necesitaAviso)
+        m.empezar()
+        assertTrue(m.necesitaAviso, "empezar no acepta el aviso por su cuenta")
+        m.enviarCarga()
+        assertNull(m.borrador.value.envio)
+        assertEquals(ModeloGimnasio.AvisoEnvio.SinConsentimiento, m.avisoEnvio.value)
+        assertNull(d.ultimoEnviar)
+    }
+
+    @Test fun volverAEditarNoPierdeLaFoto(): Unit = runBlocking {
+        val d = DobleGimnasio.escenario("borrador")
+        val m = armar(d)
+        m.refrescar()
+        m.agregar("poleas", jpeg)
+        d.sinRed = true
+        m.enviarCarga()
+        assertNotNull(m.borrador.value.envio)
+        m.cancelarEnvio()
+        assertNull(m.borrador.value.envio)
+        assertEquals(1, m.cola.value.size)
+    }
+
+    @Test fun seBarrenLosArchivosHuerfanos(): Unit = runBlocking {
+        val d = DobleGimnasio.escenario("borrador")
+        val r = raiz()
+        val m = armar(d, r)
+        m.refrescar()
+        d.sinRed = true
+        m.agregar("poleas", jpeg)
+        val viva = m.fotos("poleas")[0].archivoLocal!!
+        val huerfana = java.io.File(viva.parentFile, "huerfana.jpg").apply { writeBytes(jpeg) }
+        armar(d, r)
+        assertFalse(huerfana.exists())
+        assertTrue(viva.exists())
+    }
+
+    @Test fun sinRedSoloSeSigueUnaCargaAMedias(): Unit = runBlocking {
+        val d = DobleGimnasio.escenario("listo")
+        val r = raiz()
+        armar(d, r).refrescar()
+        d.sinRed = true
+        val m2 = armar(d, r)
+        m2.refrescar()
+        assertNull(m2.estado.value)
+    }
+
+    @Test fun elLinkNuevoAdoptaFotosYEnvio(): Unit = runBlocking {
+        val d = DobleGimnasio.escenario("borrador")
+        val r = raiz()
+        val m = armar(d, r)
+        m.refrescar()
+        m.agregar("poleas", jpeg)
+        d.sinRed = true
+        m.enviarCarga()
+        val nuevo = ModeloGimnasio(ClienteRpc(transporte = d), "tk-otro", Disco(r, "tk-otro"), esperar = {})
+        assertTrue(nuevo.adoptar(m.cola.value, Disco(r, token)))
+        assertEquals(1, nuevo.cola.value.size)
+        assertNotNull(nuevo.borrador.value.envio)
     }
 
     @Test fun corteDeRedAMitadYReanuda(): Unit = runBlocking {

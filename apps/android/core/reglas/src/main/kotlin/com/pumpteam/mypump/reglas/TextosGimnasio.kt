@@ -3,8 +3,7 @@ package com.pumpteam.mypump.reglas
 /**
  * Todo lo que lee el alumno en «Gimnasio por fotos», en un solo lugar: para cambiar un texto se cambia acá y en el gemelo
  * `TextosGimnasio.swift`, sin tocar lógica (`apps/shared/vectores/gimnasio.json` hace fallar las pruebas si difieren). Lista
- * para el OK de Mati en `privado/TEXTOS_PARA_OK.md`. Crédito: «Adaptado por Mati», nunca IA; la única excepción es el aviso de
- * terceros que exige Apple.
+ * para el OK de Mati en `privado/TEXTOS_PARA_OK.md`.
  */
 object TextosGimnasio {
     const val tarjetaTitulo = "Tu gimnasio"
@@ -56,6 +55,10 @@ object TextosGimnasio {
     const val yaNoEsta = "Esto ya no está"
     const val cambieDeGimnasio = "Cambié de gimnasio"
     const val marcarLoQueNoEsta = "Marcá lo que ya no está"
+    const val volverAEditar = "Volver a editar"
+    const val cerrar = "Cerrar"
+    const val listoTeclado = "Listo"
+    const val kg = "kg"
 
     /** Para los vectores: clave → texto. */
     val todos: Map<String, String> = linkedMapOf(
@@ -69,5 +72,6 @@ object TextosGimnasio {
         "siguiente" to siguiente, "noSe" to noSe, "si" to si, "no" to no, "noPuedoFoto" to noPuedoFoto, "marcarTodas" to marcarTodas,
         "elegirKilos" to elegirKilos, "kilosInvalidos" to kilosInvalidos, "faltaAlgo" to faltaAlgo, "yaNoEsta" to yaNoEsta,
         "cambieDeGimnasio" to cambieDeGimnasio, "marcarLoQueNoEsta" to marcarLoQueNoEsta,
+        "volverAEditar" to volverAEditar, "cerrar" to cerrar, "listoTeclado" to listoTeclado, "kg" to kg,
     )
 }

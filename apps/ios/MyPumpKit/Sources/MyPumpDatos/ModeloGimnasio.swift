@@ -90,6 +90,17 @@ public final class ModeloGimnasio {
         self.cliente = cliente; self.token = token; self.disco = disco; self.esperar = esperar
         cola = disco?.leer([PendienteGimnasio].self, PendienteGimnasio.archivo) ?? []
         borrador = disco?.leer(BorradorGimnasio.self, BorradorGimnasio.archivo) ?? BorradorGimnasio()
+        barrerHuerfanos()
+    }
+
+    /// Un cierre entre el JPEG y el índice deja un archivo que nadie sube ni borra.
+    private func barrerHuerfanos() {
+        guard let disco else { return }
+        let carpeta = disco.url(PendienteGimnasio.carpeta)
+        let vivos = Set(cola.map { "\($0.id).jpg" })
+        for f in (try? FileManager.default.contentsOfDirectory(atPath: carpeta.path)) ?? [] where !vivos.contains(f) {
+            try? FileManager.default.removeItem(at: carpeta.appendingPathComponent(f))
+        }
     }
 
     // MARK: Lo que lee la pantalla
@@ -156,12 +167,13 @@ public final class ModeloGimnasio {
             guard let e = EstadoGimnasio(j) else { apagar(); disco?.borrar(Self.archivoEstado); return }
             aplicar(e)
             disco?.guardar(j, Self.archivoEstado)
-        case .failure(let e) where e.funcionInexistente || e.status == 404:
+        case .failure(let e) where e.funcionInexistente || e.status == 404 || e.clase == .permanente:
             apagar()
-        case .failure(let e) where e.clase == .permanente:
-            apagar()
+            disco?.borrar(Self.archivoEstado)
         case .failure:
-            if estado == nil, let j = disco?.leer(JSONValue.self, Self.archivoEstado), let e = EstadoGimnasio(j) { aplicar(e) }
+            // Solo para seguir una carga a medio hacer: lo demás, sin señal, no se muestra (contrato, sección 1).
+            if estado == nil, let j = disco?.leer(JSONValue.self, Self.archivoEstado), let e = EstadoGimnasio(j),
+               e.abierta?.estado == "borrador" || e.abierta?.estado == "a_confirmar" { aplicar(e) }
         }
     }
 
@@ -184,7 +196,6 @@ public final class ModeloGimnasio {
     /// Abre una carga. `parcial` sin gimnasio vigente cae a la completa.
     @discardableResult
     public func empezar(modo: String = "completa") async -> Resultado {
-        if let e = estado { borrador.avisoVersion = e.consentimientoVersion; guardarBorrador() }
         return await nuevo(modo: modo, reintentos: 1)
     }
 
@@ -215,7 +226,8 @@ public final class ModeloGimnasio {
     /// Encola el JPEG ya reducido (1600 px, 0,8, sin EXIF). Después hay que drenar.
     public func agregar(zona: String, jpeg: Data, pregunta: String? = nil) -> Foto {
         guard let a = abierta, let disco else { return .noSeGuardo }
-        guard puedeAgregar else { avisoFoto = .tope; return .tope }
+        // Las de una pregunta tienen su propio cupo en el servidor: el tope de 80 es el de la carga.
+        guard pregunta != nil || puedeAgregar else { avisoFoto = .tope; return .tope }
         let id = UUID().uuidString.lowercased()
         guard guardarJPEG(jpeg, id: id, en: disco) else { return .noSeGuardo }
         cola.append(PendienteGimnasio(id: id, gimnasioId: a.id, zona: zona, pregunta: pregunta))
@@ -276,7 +288,7 @@ public final class ModeloGimnasio {
         guardarBorrador()
     }
 
-    public func limpiarAvisos() { avisoFoto = nil; avisoEnvio = nil }
+    public func limpiarAvisoFoto() { avisoFoto = nil }
 
     // MARK: Cola
 
@@ -388,6 +400,7 @@ public final class ModeloGimnasio {
     /// «Enviar a Mati»: queda anotado en disco y sale al vaciarse la cola; si no hay red, cuando vuelva.
     public func enviarCarga() async {
         guard let a = abierta, let e = estado else { return }
+        guard !necesitaAviso else { avisoEnvio = .sinConsentimiento; return }   // la raíz muestra el aviso antes de seguir
         avisoEnvio = nil
         totalEnvio = totalFotos
         subidasEnvio = abierta?.fotos.count ?? 0
@@ -404,6 +417,12 @@ public final class ModeloGimnasio {
         borrador.envio = EnvioGimnasio(tipo: .responder, gimnasioId: a.id)
         guardarBorrador()
         await drenar()
+    }
+
+    /// Volver a editar: lo que estaba en la cola sigue subiendo, pero la carga no se manda hasta que la vuelva a enviar.
+    public func cancelarEnvio() {
+        borrador.envio = nil
+        guardarBorrador()
     }
 
     private func mandarEnvio() async {
@@ -454,6 +473,8 @@ public final class ModeloGimnasio {
                 borrador.envio = nil
                 guardarBorrador()
                 avisoEnvio = .error
+            } else {
+                programarReintento()
             }
         }
     }
@@ -510,11 +531,17 @@ public final class ModeloGimnasio {
     /// Las fotos que quedaron en la carpeta de otro link de la misma persona (`CuentasDelTelefono.adoptarGimnasio`).
     func adoptar(_ otras: [PendienteGimnasio], desde otra: Disco) -> Bool {
         guard let disco else { return false }
+        var todas = true
         for p in otras where !cola.contains(where: { $0.id == p.id }) {
-            guard let datos = try? Data(contentsOf: otra.url("\(PendienteGimnasio.carpeta)/\(p.id).jpg")), guardarJPEG(datos, id: p.id, en: disco) else { continue }
+            guard let datos = try? Data(contentsOf: otra.url("\(PendienteGimnasio.carpeta)/\(p.id).jpg")), guardarJPEG(datos, id: p.id, en: disco) else { todas = false; continue }
             cola.append(p)
         }
-        return guardarCola()
+        if let viejo = otra.leer(BorradorGimnasio.self, BorradorGimnasio.archivo), borrador.envio == nil, borrador.noHay.isEmpty, borrador.nota.isEmpty, borrador.respuestas.isEmpty,
+           borrador.gimnasioId == nil || borrador.gimnasioId == viejo.gimnasioId {
+            borrador = viejo
+            guardarBorrador()
+        }
+        return guardarCola() && todas
     }
 }
 

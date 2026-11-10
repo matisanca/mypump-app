@@ -2,8 +2,7 @@ import Foundation
 
 /// Todo lo que lee el alumno en «Gimnasio por fotos», en un solo lugar: para cambiar un texto se cambia acá y en el gemelo
 /// `TextosGimnasio.kt`, sin tocar lógica (`apps/shared/vectores/gimnasio.json` hace fallar las pruebas si difieren).
-/// Lista para el OK de Mati en `privado/TEXTOS_PARA_OK.md`. Crédito: «Adaptado por Mati», nunca IA; la única excepción es
-/// el aviso de terceros que exige Apple.
+/// Lista para el OK de Mati en `privado/TEXTOS_PARA_OK.md`.
 public enum TextosGimnasio {
     // Entrada
     public static let tarjetaTitulo = "Tu gimnasio"
@@ -62,4 +61,8 @@ public enum TextosGimnasio {
     public static let yaNoEsta = "Esto ya no está"
     public static let cambieDeGimnasio = "Cambié de gimnasio"
     public static let marcarLoQueNoEsta = "Marcá lo que ya no está"
+    public static let volverAEditar = "Volver a editar"
+    public static let cerrar = "Cerrar"
+    public static let listoTeclado = "Listo"
+    public static let kg = "kg"
 }

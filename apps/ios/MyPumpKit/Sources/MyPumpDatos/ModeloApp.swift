@@ -600,7 +600,7 @@ public final class ModeloApp {
         if desdeCache { await cargar(); return }
         await outbox?.drenar()
         await fotos?.drenar()
-        if palanca.gimnasioFotos { await gimnasio?.drenar() }
+        if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
     }
 
     /// Con la palanca apagada no se llama a nada: la app es la de siempre.
@@ -608,7 +608,7 @@ public final class ModeloApp {
         guard let gimnasio else { return }
         if palanca.gimnasioFotos {
             await gimnasio.refrescar()
-            await gimnasio.drenar()
+            gimnasio.drenarEnFondo()   // decenas de fotos no frenan el resto de la carga
         } else {
             gimnasio.apagar()
         }

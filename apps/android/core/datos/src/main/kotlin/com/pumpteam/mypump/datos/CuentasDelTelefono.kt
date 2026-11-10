@@ -124,9 +124,11 @@ internal object CuentasDelTelefono {
         var total = 0
         for (otra in otras(disco)) {
             val viejas = PendienteGimnasio.leerCola(otra)
-            if (viejas.isEmpty() || clienteId(otra) != clienteId) continue
+            val envioPendiente = otra.leer(BorradorGimnasio.ARCHIVO)?.let { BorradorGimnasio.desde(ValorJson.desde(it)) }?.envio != null
+            if ((viejas.isEmpty() && !envioPendiente) || clienteId(otra) != clienteId) continue
             if (gimnasio.adoptar(viejas, otra)) {
                 otra.borrar(PendienteGimnasio.ARCHIVO)
+                otra.borrar(BorradorGimnasio.ARCHIVO)
                 otra.archivo(PendienteGimnasio.CARPETA).deleteRecursively()
                 total += viejas.size
             }

@@ -143,6 +143,17 @@ class ModeloGimnasio(
     private val _borrador = MutableStateFlow(disco?.leer(BorradorGimnasio.ARCHIVO)?.let { BorradorGimnasio.desde(ValorJson.desde(it)) } ?: BorradorGimnasio())
     val borrador: StateFlow<BorradorGimnasio> = _borrador.asStateFlow()
 
+    init {
+        barrerHuerfanos()
+    }
+
+    /** Un cierre entre el JPEG y el índice deja un archivo que nadie sube ni borra. */
+    private fun barrerHuerfanos() {
+        val carpeta = disco?.archivo(PendienteGimnasio.CARPETA) ?: return
+        val vivos = _cola.value.map { "${it.id}.jpg" }.toSet()
+        carpeta.listFiles()?.filter { it.name !in vivos }?.forEach { it.delete() }
+    }
+
     private val drenando = Mutex()
     private val mandandoEnvio = AtomicBoolean(false)
     private val reintentoProgramado = AtomicBoolean(false)
@@ -211,8 +222,12 @@ class ModeloGimnasio(
             is Resultado.Falla -> {
                 if (r.error.funcionInexistente || r.error.status == 404 || r.error.clase == ErrorRpc.Clase.PERMANENTE) {
                     apagar()
+                    disco?.borrar(ARCHIVO_ESTADO)
                 } else if (_estado.value == null) {
-                    disco?.leer(ARCHIVO_ESTADO)?.let { EstadoGimnasio.desde(ValorJson.desde(it)) }?.let(::aplicar)
+                    // Solo para seguir una carga a medio hacer: lo demás, sin señal, no se muestra (contrato, sección 1).
+                    disco?.leer(ARCHIVO_ESTADO)?.let { EstadoGimnasio.desde(ValorJson.desde(it)) }
+                        ?.takeIf { it.abierta?.estado == "borrador" || it.abierta?.estado == "a_confirmar" }
+                        ?.let(::aplicar)
                 }
             }
         }
@@ -237,7 +252,6 @@ class ModeloGimnasio(
     }
 
     suspend fun empezar(modo: String = "completa"): Salida {
-        _estado.value?.let { e -> guardar(_borrador.value.copy(avisoVersion = e.consentimientoVersion)) }
         return nuevo(modo, 1)
     }
 
@@ -274,7 +288,8 @@ class ModeloGimnasio(
     fun agregar(zona: String, jpeg: ByteArray, pregunta: String? = null): Foto {
         val a = abierta ?: return Foto.NO_SE_GUARDO
         val d = disco ?: return Foto.NO_SE_GUARDO
-        if (!puedeAgregar) {
+        // Las de una pregunta tienen su propio cupo en el servidor: el tope de 80 es el de la carga.
+        if (pregunta == null && !puedeAgregar) {
             _avisoFoto.value = Gimnasio.AvisoFoto.TOPE
             return Foto.TOPE
         }
@@ -476,6 +491,10 @@ class ModeloGimnasio(
     suspend fun enviarCarga() {
         val a = abierta ?: return
         val e = _estado.value ?: return
+        if (necesitaAviso) {   // la raíz muestra el aviso antes de seguir
+            _avisoEnvio.value = AvisoEnvio.SinConsentimiento
+            return
+        }
         _avisoEnvio.value = null
         _totalEnvio.value = totalFotos
         _subidasEnvio.value = a.fotos.size
@@ -490,6 +509,15 @@ class ModeloGimnasio(
         _avisoEnvio.value = null
         guardar(_borrador.value.copy(envio = EnvioGimnasio(EnvioGimnasio.Tipo.RESPONDER, a.id)))
         drenar()
+    }
+
+    /** Volver a editar: lo que estaba en la cola sigue subiendo, pero la carga no se manda hasta que la vuelva a enviar. */
+    fun cancelarEnvio() {
+        guardar(_borrador.value.copy(envio = null))
+    }
+
+    fun limpiarAvisoFoto() {
+        _avisoFoto.value = null
     }
 
     private suspend fun mandarEnvio() {
@@ -512,6 +540,8 @@ class ModeloGimnasio(
                 is Resultado.Falla -> if (r.error.clase == ErrorRpc.Clase.PERMANENTE) {   // 22023: error de programación, no se reintenta
                     guardar(_borrador.value.copy(envio = null))
                     _avisoEnvio.value = AvisoEnvio.Error
+                } else {
+                    programarReintento()
                 }
             }
         } finally {
@@ -604,17 +634,25 @@ class ModeloGimnasio(
     /** Las fotos que quedaron en la carpeta de otro link de la misma persona ([CuentasDelTelefono.adoptarGimnasio]). */
     internal fun adoptar(otras: List<PendienteGimnasio>, desde: Disco): Boolean {
         disco ?: return false
+        var todas = true
         for (p in otras) {
             if (_cola.value.any { it.id == p.id }) continue
             val datos = try {
                 desde.archivo("${PendienteGimnasio.CARPETA}/${p.id}.jpg").readBytes()
             } catch (_: Exception) {
+                todas = false
                 continue
             }
-            if (!escribirAtomico(archivo(p.id), datos)) continue
+            if (!escribirAtomico(archivo(p.id), datos)) {
+                todas = false
+                continue
+            }
             _cola.update { it + p }
         }
-        return guardarCola()
+        val viejo = desde.leer(BorradorGimnasio.ARCHIVO)?.let { BorradorGimnasio.desde(ValorJson.desde(it)) }
+        val b = _borrador.value
+        if (viejo != null && b.envio == null && b.noHay.isEmpty() && b.nota.isEmpty() && b.respuestas.isEmpty() && (b.gimnasioId == null || b.gimnasioId == viejo.gimnasioId)) guardar(viejo)
+        return guardarCola() && todas
     }
 
     companion object {

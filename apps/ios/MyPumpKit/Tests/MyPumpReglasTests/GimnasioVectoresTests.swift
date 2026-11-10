@@ -42,6 +42,7 @@ final class GimnasioVectoresTests: XCTestCase {
             "noPuedoFoto": TextosGimnasio.noPuedoFoto, "marcarTodas": TextosGimnasio.marcarTodas, "elegirKilos": TextosGimnasio.elegirKilos,
             "kilosInvalidos": TextosGimnasio.kilosInvalidos, "faltaAlgo": TextosGimnasio.faltaAlgo, "yaNoEsta": TextosGimnasio.yaNoEsta,
             "cambieDeGimnasio": TextosGimnasio.cambieDeGimnasio, "marcarLoQueNoEsta": TextosGimnasio.marcarLoQueNoEsta,
+            "volverAEditar": TextosGimnasio.volverAEditar, "cerrar": TextosGimnasio.cerrar, "listoTeclado": TextosGimnasio.listoTeclado, "kg": TextosGimnasio.kg,
         ]
         XCTAssertEqual(Set(enCodigo.keys), Set(t.keys))
         for (k, s) in enCodigo { XCTAssertEqual(t[k]?.comoTexto, s, k) }
