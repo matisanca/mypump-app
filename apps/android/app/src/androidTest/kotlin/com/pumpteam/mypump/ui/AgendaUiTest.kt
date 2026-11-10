@@ -280,7 +280,7 @@ class AgendaUiTest : PruebaUi() {
             mostrar(etiqueta("agenda-confirmada"))
             assertTrue(texto(etiqueta("videollamada-hoy")).startsWith("Tu videollamada de comienzo es hoy a las "))
             assertTrue(texto(etiqueta("videollamada-hoy")).endsWith("El botón para entrar se habilita 10 minutos antes."))
-            assertTrue(texto(etiqueta("videollamada-cuenta")).startsWith("Se habilita en "))
+            assertTrue(p.descripcion(etiqueta("videollamada-entrar-apagado")).startsWith("Entrar, todavía no. Se habilita en "))
             assertFalse(p.existe(etiqueta("agenda-entrar")))
             Telefono.captura("agenda-12-sin-sala-abierta-$modo")
             // Mati entra al Meet: el daemon carga `sala_abierta_en` y la consulta de cada 30 s lo trae.
@@ -403,7 +403,7 @@ class AgendaUiTest : PruebaUi() {
         // La tarjeta fija arriba de Entreno (2.3.0): «Entrar» apagado con la cuenta regresiva.
         p.nodo(etiqueta("videollamada"))
         assertTrue(p.existe(etiqueta("videollamada-entrar-apagado")))
-        assertTrue(texto(etiqueta("videollamada-cuenta")).startsWith("Se habilita en "))
+        assertTrue(p.descripcion(etiqueta("videollamada-entrar-apagado")).startsWith("Entrar, todavía no. Se habilita en "))
         assertFalse(p.existe(etiqueta("agenda-entrar")))
         Telefono.captura("agenda-11-entreno-sin-sala-claro")
         // Mati entra: la consulta de cada 30 s de la tarjeta lo trae.

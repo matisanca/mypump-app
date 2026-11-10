@@ -91,8 +91,11 @@ class VideollamadaUiTest : PruebaUi() {
         assertTrue(p.existe(texto("Elegí un horario")))
         foto("and-elegir-$m")
         p.tocar(etiqueta("horario-franja-00000000-0000-4000-8000-000000000001"))
-        assertTrue(texto(etiqueta("horario-confirmar")).startsWith("Confirmar "))
-        assertTrue(texto(etiqueta("horario-confirmar")).endsWith(", 10:00"))
+        p.esperar("confirmar") { texto(etiqueta("horario-confirmar")).startsWith("Confirmar ").takeIf { it } }
+        // 10:00 de Argentina en el horario del teléfono (el emulador puede estar en otra zona).
+        val local = java.time.LocalTime.of(10, 0).atDate(java.time.LocalDate.now(ReglasAgenda.ARGENTINA)).atZone(ReglasAgenda.ARGENTINA)
+            .withZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalTime()
+        assertTrue(texto(etiqueta("horario-confirmar")).endsWith(", %02d:%02d".format(local.hour, local.minute)))
         foto("and-elegir-seleccion-$m")
         p.tocar(etiqueta("horario-confirmar"))
         p.nodo(etiqueta("horario-listo"), ms = 30_000)
@@ -103,7 +106,7 @@ class VideollamadaUiTest : PruebaUi() {
         p.tocar(etiqueta("horario-listo-cerrar"))
         // La tarjeta fija, ya con el día y la hora.
         p.nodo(etiqueta("videollamada"), ms = 30_000)
-        assertTrue(p.existe(etiqueta("videollamada-entrar-apagado")))
+        p.nodo(etiqueta("videollamada-entrar-apagado"), ms = 30_000)
         assertTrue(d.a("entregas_app_cambiar").isEmpty())
     }
 
@@ -120,7 +123,9 @@ class VideollamadaUiTest : PruebaUi() {
         assertTrue(p.existe(texto("Tu videollamada de comienzo")))
         assertTrue(p.existe(texto(ReglasAgenda.TEXTO_DESDE_ACA)))
         assertTrue(p.existe(etiqueta("videollamada-entrar-apagado")))
-        assertTrue(texto(etiqueta("videollamada-cuenta")).startsWith("Se habilita "))
+        // La cuenta la lee TalkBack dentro del botón apagado (el texto suelto no se repite).
+        assertTrue(p.existe(etiqueta("videollamada-cuenta")))
+        assertTrue(p.descripcion(etiqueta("videollamada-entrar-apagado")).startsWith("Entrar, todavía no. Se habilita "))
         assertFalse(p.existe(etiqueta("agenda-entrar")))
         foto("and-tarjeta-dias-antes-$m")
         p.tocar(etiqueta("videollamada-como-entro"))
@@ -132,7 +137,7 @@ class VideollamadaUiTest : PruebaUi() {
         p.nodo(etiqueta("horario-ahora-es"))
         assertTrue(texto(etiqueta("horario-ahora-es")).contains("Podés cambiarlo 1 vez, hasta el "))
         p.tocar(etiqueta("horario-franja-00000000-0000-4000-8000-000000000004"))
-        assertTrue(texto(etiqueta("horario-confirmar")).startsWith("Cambiar al "))
+        p.esperar("cambiar al") { texto(etiqueta("horario-confirmar")).startsWith("Cambiar al ").takeIf { it } }
         foto("and-cambiar-$m")
         p.tocar(etiqueta("horario-confirmar"))
         p.nodo(etiqueta("horario-listo"), ms = 30_000)
@@ -142,7 +147,7 @@ class VideollamadaUiTest : PruebaUi() {
         assertEquals("00000000-0000-4000-8000-000000000004", pedido.getString("p_franja"))
         p.tocar(etiqueta("horario-listo-cerrar"))
         // Sin cambios restantes: ya no se ofrece cambiar, y se escribe por el chat.
-        p.esperar("sin cambiar") { !p.existe(etiqueta("videollamada-cambiar")) }
+        p.esperar("sin cambiar") { (!p.existe(etiqueta("videollamada-cambiar"))).takeIf { it } }
         assertTrue(p.existe(texto("¿Necesitás cambiarla? Escribinos por el chat.")))
     }
 
