@@ -235,7 +235,7 @@ struct AgendaVistaTests {
         #expect(ReglasAgenda.textoBloqueada(2) == "Cuando termines los videos de arriba se habilita la agenda. Te faltan 2.")
         #expect(ReglasAgenda.textoNoAutorizada == "Cuando termines de ver todo te habilitamos la agenda.")
         #expect(ReglasAgenda.Aviso.tomada.texto == "Ese horario se ocupó recién, elegí otro.")
-        #expect(ReglasAgenda.textoSinFranjas == "Ahora no hay horarios libres. Te escribimos por WhatsApp para coordinar.")
+        #expect(ReglasAgenda.textoSinFranjas == "Ahora no hay horarios libres. Mirá de nuevo más tarde o escribinos por el chat.")
     }
 
     @Test func enArgentinaPorDia() throws {
@@ -245,9 +245,9 @@ struct AgendaVistaTests {
         #expect(d.map(\.titulo) == ["jueves 12 de noviembre", "viernes 13 de noviembre"])
         #expect(d[0].chips.map(\.texto) == ["10:00 a 12:00", "14:00 a 16:00"])
         #expect(!ReglasAgenda.difiereDeArgentina(d.flatMap(\.chips).map(\.inicio), zona: ba))
-        #expect(ReglasAgenda.textoConfirmar(d[0].chips[0], zona: ba) == "¿Confirmás la entrega el jueves 12 a las 10:00? Dura unas 2 horas.")
+        #expect(ReglasAgenda.textoConfirmar(d[0].chips[0], zona: ba) == "¿Confirmás tu videollamada de comienzo el jueves 12 a las 10:00? Dura unas 2 horas.")
         let r = ReservaAgenda(inicio: "2026-11-12T10:00:00-03:00", fin: "2026-11-12T12:00:00-03:00", estado: .confirmada)
-        #expect(ReglasAgenda.textoConfirmada(r, zona: ba) == "Tu entrega: jueves 12 de noviembre, 10:00 a 12:00")
+        #expect(ReglasAgenda.textoConfirmada(r, zona: ba) == "Jueves 12 de noviembre, de 10:00 a 12:00")
     }
 
     /// Mati cambia horarios y duración solo con datos (10, 11 y 12, llamadas más cortas): nada fijo en 2 h ni en 10 o 14.
@@ -257,8 +257,8 @@ struct AgendaVistaTests {
         let fs = agenda(#"{"ok":true,"autorizada":true,"habilitada":true,"franjas":[{"id":"f1","inicio":"2026-11-12T11:00:00-03:00","fin":"2026-11-12T12:00:00-03:00"},{"id":"f2","inicio":"2026-11-12T12:00:00-03:00","fin":"2026-11-12T12:45:00-03:00"}]}"#).franjas
         let d = ReglasAgenda.dias(fs, zona: ba, ahora: ahora)
         #expect(d[0].chips.map(\.texto) == ["11:00 a 12:00", "12:00 a 12:45"])
-        #expect(ReglasAgenda.textoConfirmar(d[0].chips[0], zona: ba) == "¿Confirmás la entrega el jueves 12 a las 11:00? Dura alrededor de 1 hora.")
-        #expect(ReglasAgenda.textoConfirmar(d[0].chips[1], zona: ba) == "¿Confirmás la entrega el jueves 12 a las 12:00? Dura unos 45 minutos.")
+        #expect(ReglasAgenda.textoConfirmar(d[0].chips[0], zona: ba) == "¿Confirmás tu videollamada de comienzo el jueves 12 a las 11:00? Dura alrededor de 1 hora.")
+        #expect(ReglasAgenda.textoConfirmar(d[0].chips[1], zona: ba) == "¿Confirmás tu videollamada de comienzo el jueves 12 a las 12:00? Dura unos 45 minutos.")
         // Duran distinto: el encabezado no promete una sola duración.
         #expect(ReglasAgenda.textoElegir(d[0].chips) == "Elegí un horario para la videollamada.")
         #expect(ReglasAgenda.textoElegir([d[0].chips[0]]) == "Elegí un horario para la videollamada. Dura alrededor de 1 hora.")
@@ -292,14 +292,14 @@ struct AgendaVistaTests {
         #expect(dm.map(\.titulo) == ["jueves 12 de noviembre", "viernes 13 de noviembre"])
         #expect(dm[0].chips[0].texto == "14:00 a 16:00" && dm[1].chips[0].texto == "02:00 a 04:00")
         #expect(ReglasAgenda.difiereDeArgentina(dm.flatMap(\.chips).map(\.inicio), zona: madrid))
-        #expect(ReglasAgenda.textoConfirmar(dm[0].chips[0], zona: madrid) == "¿Confirmás la entrega el jueves 12 a las 14:00 (10:00 en Argentina)? Dura unas 2 horas.")
+        #expect(ReglasAgenda.textoConfirmar(dm[0].chips[0], zona: madrid) == "¿Confirmás tu videollamada de comienzo el jueves 12 a las 14:00 (10:00 en Argentina)? Dura unas 2 horas.")
         let mexico = try #require(TimeZone(identifier: "America/Mexico_City"))
         let dx = ReglasAgenda.dias(fs, zona: mexico, ahora: ahora)
         // México (sin horario de verano desde 2022) es UTC−6: 3 h menos.
         #expect(dx.map(\.titulo) == ["jueves 12 de noviembre"] && dx[0].chips.map(\.texto) == ["07:00 a 09:00", "19:00 a 21:00"])
         let r = ReservaAgenda(inicio: "2026-11-12T10:00:00-03:00", fin: "2026-11-12T12:00:00-03:00", estado: .confirmada)
-        #expect(ReglasAgenda.textoConfirmada(r, zona: mexico) == "Tu entrega: jueves 12 de noviembre, 07:00 a 09:00")
-        #expect(ReglasAgenda.textoEsperandoSala(r, zona: madrid) == "Tu entrega es hoy a las 14:00. Cuando Mati abra la videollamada se habilita el botón para entrar.")
+        #expect(ReglasAgenda.textoConfirmada(r, zona: mexico) == "Jueves 12 de noviembre, de 07:00 a 09:00")
+        #expect(ReglasAgenda.textoEsperandoSala(r, zona: madrid) == "Tu videollamada de comienzo es hoy a las 14:00. El botón para entrar se habilita 10 minutos antes.")
     }
 
     @Test func lasQueYaEmpezaronOVienenRotasNoVan() throws {
@@ -312,7 +312,7 @@ struct AgendaVistaTests {
         #expect(d.flatMap(\.chips).map(\.id) == ["ok"] && d[0].chips[0].texto == "10:00 a 12:00")
     }
 
-    @Test func entrarSoloConLaSalaAbiertaOALaHoraDeInicio() throws {
+    @Test func entrarDesdeDiezMinutosAntesOConLaSalaAbierta() throws {
         let ba = try #require(TimeZone(identifier: "America/Argentina/Buenos_Aires"))
         let r = ReservaAgenda(inicio: "2026-11-12T10:00:00-03:00", fin: "2026-11-12T12:00:00-03:00", estado: .confirmada,
                               meetUrl: URL(string: "https://meet.google.com/abc"))
@@ -320,18 +320,22 @@ struct AgendaVistaTests {
         #expect(!ReglasAgenda.enVentana(r, ahora: fecha("2026-11-12T09:29:00-03:00")))
         #expect(ReglasAgenda.enVentana(r, ahora: fecha("2026-11-12T09:30:00-03:00")))
         #expect(!ReglasAgenda.enVentana(r, ahora: fecha("2026-11-12T12:00:00-03:00")))
-        // Sin `sala_abierta_en`: sin botón hasta la hora de inicio (el respaldo), y mientras tanto se espera la sala.
-        #expect(!ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T09:50:00-03:00")))
+        // Sin `sala_abierta_en` (Mati, 10/11): el botón desde 10 min antes; Meet restringido, Mati lo admite.
+        #expect(!ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T09:49:00-03:00")))
+        #expect(ReglasAgenda.estadoEntrar(r, ahora: fecha("2026-11-12T09:49:00-03:00")) == .falta(segundos: 60))
+        #expect(ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T09:50:00-03:00")))
+        #expect(ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T09:45:00-03:00"), desdeMin: 15), "el servidor lo puede cambiar")
+        // En la ventana se sigue consultando hasta tener la sala (para «Mati ya está en la sala»).
         #expect(ReglasAgenda.esperandoSala(r, ahora: fecha("2026-11-12T09:50:00-03:00")))
         #expect(!ReglasAgenda.esperandoSala(r, ahora: fecha("2026-11-12T09:00:00-03:00")), "antes de la ventana no se consulta")
         #expect(ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T10:00:00-03:00")))
-        #expect(!ReglasAgenda.esperandoSala(r, ahora: fecha("2026-11-12T10:00:00-03:00")))
-        #expect(ReglasAgenda.textoEntrar(r, zona: ba) == "Tu entrega empezó a las 10:00")
+        #expect(ReglasAgenda.textoEntrar(r, zona: ba) == "Ya podés entrar")
         #expect(!ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T12:00:00-03:00")))
         // Con `sala_abierta_en`: el botón enseguida, con «Mati ya está en la videollamada».
         var abierta = r; abierta.salaAbiertaEn = "2026-11-12T09:52:00-03:00"
         #expect(ReglasAgenda.puedeEntrar(abierta, ahora: fecha("2026-11-12T09:53:00-03:00")))
-        #expect(ReglasAgenda.textoEntrar(abierta, zona: ba) == "Mati ya está en la videollamada")
+        #expect(ReglasAgenda.textoEntrar(abierta, zona: ba) == "Mati ya está en la sala")
+        #expect(!ReglasAgenda.esperandoSala(abierta, ahora: fecha("2026-11-12T09:53:00-03:00")))
         #expect(!ReglasAgenda.puedeEntrar(abierta, ahora: fecha("2026-11-12T12:01:00-03:00")))
         // Sin link o sin confirmar: nunca.
         var sinLink = abierta; sinLink.meetUrl = nil
@@ -343,7 +347,7 @@ struct AgendaVistaTests {
         #expect(ReglasAgenda.esHoy(r, zona: ba, ahora: fecha("2026-11-12T07:00:00-03:00")))
         #expect(!ReglasAgenda.esHoy(r, zona: ba, ahora: fecha("2026-11-11T22:00:00-03:00")))
         #expect(!ReglasAgenda.esHoy(r, zona: ba, ahora: fecha("2026-11-12T12:30:00-03:00")))
-        #expect(ReglasAgenda.textoEsperandoSala(r, zona: ba) == "Tu entrega es hoy a las 10:00. Cuando Mati abra la videollamada se habilita el botón para entrar.")
+        #expect(ReglasAgenda.textoEsperandoSala(r, zona: ba) == "Tu videollamada de comienzo es hoy a las 10:00. El botón para entrar se habilita 10 minutos antes.")
         // Decodificar: opcional y tolerante.
         let a = agenda(#"{"ok":true,"autorizada":true,"habilitada":true,"reserva":{"inicio":"2026-11-12T10:00:00-03:00","fin":"2026-11-12T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/abc","sala_abierta_en":"2026-11-12T09:52:00-03:00"}}"#)
         #expect(a.reserva?.salaAbiertaEn == "2026-11-12T09:52:00-03:00")
@@ -484,4 +488,89 @@ struct AgendaEditableTests {
 
 enum AgendaReservaTests {
     static let franjasDe = #"[{"id":"f1","inicio":"2026-11-12T10:00:00-03:00","fin":"2026-11-12T11:00:00-03:00"}]"#
+}
+
+
+@Suite("Videollamada 2.3.0: tarjeta, cuenta regresiva, avisos y cambio")
+struct VideollamadaReglasTests {
+    let ba = TimeZone(identifier: "America/Argentina/Buenos_Aires")!
+    let r = ReservaAgenda(id: "r1", inicio: "2026-11-12T10:00:00-03:00", fin: "2026-11-12T11:00:00-03:00", estado: .confirmada,
+                          meetUrl: URL(string: "https://meet.google.com/abc"))
+
+    @Test func nuncaDiceEntrega() {
+        #expect(ReglasAgenda.nombre(.comienzo) == "videollamada de comienzo")
+        #expect(ReglasAgenda.nombre(.revision) == "videollamada de revisión")
+        #expect(ReglasAgenda.tituloTarjeta(.revision) == "Tu videollamada de revisión")
+        #expect(ReglasAgenda.Textos().titulo == "Agendá tu videollamada de comienzo")
+        let todos = [ReglasAgenda.textoDesdeAca, ReglasAgenda.textoAdmite, ReglasAgenda.textoCambiar, ReglasAgenda.textoSinFranjas,
+                     ReglasAgenda.etiquetaObligatorio, ReglasAgenda.textoEsperandoSala(r, zona: ba)] + ReglasAgenda.ayudaEntrar
+            + ReglasAgenda.avisosLocales(r, ahora: fecha("2026-11-10T09:00:00-03:00"), zona: ba).flatMap { [$0.titulo, $0.cuerpo] }
+        for t in todos {
+            #expect(!t.lowercased().contains("entrega") && !t.contains(":") || t.contains("10:00"), "\(t)")
+            #expect(!t.lowercased().contains("whatsapp") && !t.lowercased().contains("coach") && !t.lowercased().contains("entrenador"), "\(t)")
+        }
+    }
+
+    @Test func tipoTolerante() {
+        #expect(agenda(#"{"ok":true,"tipo":"revision","reserva":{"inicio":"2026-11-12T10:00:00-03:00","fin":"2026-11-12T11:00:00-03:00","estado":"confirmada","tipo":"REVISION"}}"#).reserva?.tipo == .revision)
+        #expect(agenda(#"{"ok":true,"tipo":"otra"}"#).tipo == .comienzo)
+        #expect(agenda(#"{"ok":true,"entrar_desde_min":500}"#).entrarDesdeMin == nil)
+        #expect(agenda(#"{"ok":true,"entrar_desde_min":15}"#).entrarDesdeMin == 15)
+        #expect(agenda(#"{"ok":true,"cambio":"si"}"#).cambio == nil)
+    }
+
+    @Test func cuentaRegresiva() {
+        func t(_ ahora: String) -> String? { ReglasAgenda.textoCuenta(ReglasAgenda.estadoEntrar(r, ahora: fecha(ahora))) }
+        #expect(t("2026-11-10T09:00:00-03:00") == "Se habilita 10 minutos antes de empezar")
+        #expect(t("2026-11-11T12:00:00-03:00") == "Se habilita en 21 h 50 min")
+        #expect(t("2026-11-12T07:50:00-03:00") == "Se habilita en 2 h")
+        #expect(t("2026-11-12T09:25:00-03:00") == "Se habilita en 25 min")
+        #expect(t("2026-11-12T09:49:30-03:00") == "Se habilita en menos de 1 min")
+        #expect(t("2026-11-12T09:50:00-03:00") == nil)
+        #expect(ReglasAgenda.estadoEntrar(r, ahora: fecha("2026-11-12T11:00:00-03:00")) == .nada)
+        var sinLink = r; sinLink.meetUrl = nil
+        #expect(ReglasAgenda.estadoEntrar(sinLink, ahora: fecha("2026-11-12T09:55:00-03:00")) == .preparando)
+    }
+
+    @Test func etiquetaYHoraDeArgentina() throws {
+        #expect(ReglasAgenda.cuando(r, zona: ba, ahora: fecha("2026-11-12T08:00:00-03:00")) == "Hoy")
+        #expect(ReglasAgenda.cuando(r, zona: ba, ahora: fecha("2026-11-11T23:00:00-03:00")) == "Mañana")
+        #expect(ReglasAgenda.cuando(r, zona: ba, ahora: fecha("2026-11-09T23:00:00-03:00")) == "En 3 días")
+        let madrid = try #require(TimeZone(identifier: "Europe/Madrid"))
+        #expect(ReglasAgenda.horaArgentina(fecha(r.inicio), zona: madrid) == "10:00 en Argentina")
+        #expect(ReglasAgenda.horaArgentina(fecha(r.inicio), zona: ba) == nil)
+        #expect(ReglasAgenda.textoConfirmada(r, zona: madrid) == "Jueves 12 de noviembre, de 14:00 a 15:00")
+    }
+
+    @Test func tarjetaDesdeQueSeAgendaHastaQueTermina() {
+        #expect(ReglasAgenda.paraTarjeta(r, ahora: fecha("2026-11-01T10:00:00-03:00")))
+        #expect(ReglasAgenda.paraTarjeta(r, ahora: fecha("2026-11-12T10:59:00-03:00")))
+        #expect(!ReglasAgenda.paraTarjeta(r, ahora: fecha("2026-11-12T11:00:00-03:00")))
+        var fallo = r; fallo.estado = .fallo
+        #expect(!ReglasAgenda.paraTarjeta(fallo, ahora: fecha("2026-11-01T10:00:00-03:00")))
+    }
+
+    @Test func avisosUnDiaAntesYAlHabilitarse() {
+        let a = ReglasAgenda.avisosLocales(r, ahora: fecha("2026-11-10T09:00:00-03:00"), zona: ba)
+        #expect(a.map(\.id) == [ReglasAgenda.idAvisoDia, ReglasAgenda.idAvisoEntrar])
+        #expect(a[0].fecha == fecha("2026-11-11T10:00:00-03:00") && a[1].fecha == fecha("2026-11-12T09:50:00-03:00"))
+        #expect(a[0].titulo == "Mañana es tu videollamada de comienzo" && a[0].cuerpo == "Es a las 10:00. Vas a entrar desde la app, en Entreno.")
+        #expect(a[1].titulo == "Ya podés entrar a tu videollamada de comienzo")
+        // Agendada para dentro de unas horas: solo el de entrar.
+        #expect(ReglasAgenda.avisosLocales(r, ahora: fecha("2026-11-12T08:00:00-03:00"), zona: ba).map(\.id) == [ReglasAgenda.idAvisoEntrar])
+        var p = r; p.estado = .pendiente
+        #expect(ReglasAgenda.avisosLocales(p, ahora: fecha("2026-11-10T09:00:00-03:00"), zona: ba).isEmpty)
+    }
+
+    @Test func cambioConTopeYPlazo() {
+        let base = #"{"ok":true,"autorizada":true,"habilitada":true,"franjas":[{"id":"f9","inicio":"2026-11-13T12:00:00-03:00","fin":"2026-11-13T13:00:00-03:00"}],"reserva":{"id":"r1","inicio":"2026-11-12T10:00:00-03:00","fin":"2026-11-12T11:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/abc"},"cambio":"#
+        let ahora = fecha("2026-11-10T09:00:00-03:00")
+        #expect(ReglasAgenda.puedeCambiar(agenda(base + #"{"permitido":true,"restantes":1,"hasta":"2026-11-11T10:00:00-03:00"}}"#), ahora: ahora))
+        #expect(!ReglasAgenda.puedeCambiar(agenda(base + #"{"permitido":true,"restantes":0}}"#), ahora: ahora))
+        #expect(!ReglasAgenda.puedeCambiar(agenda(base + #"{"permitido":true,"hasta":"2026-11-10T08:00:00-03:00"}}"#), ahora: ahora))
+        #expect(!ReglasAgenda.puedeCambiar(agenda(base + #"{"permitido":false}}"#), ahora: ahora))
+        let c = CambioAgenda(permitido: true, restantes: 1, hasta: "2026-11-11T10:00:00-03:00")
+        #expect(ReglasAgenda.textoTope(c, zona: ba) == "Podés cambiarlo 1 vez, hasta el miércoles 11 a las 10:00.")
+        #expect(ReglasAgenda.textoAhoraEs(r, zona: ba) == "Ahora es el jueves 12 a las 10:00.")
+    }
 }

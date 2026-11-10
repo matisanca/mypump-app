@@ -29,6 +29,34 @@ public struct FranjaAgenda: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
+/// Qué videollamada es (videollamada 2.3.0). Al alumno nunca se le dice «entrega»: «de comienzo» o «de revisión». Sin el
+/// campo, o con uno que no se conoce, es la de comienzo (la única que existía).
+public enum TipoVideollamada: String, Codable, Equatable, Sendable {
+    case comienzo, revision
+
+    init(_ s: String?) { self = s.flatMap { TipoVideollamada(rawValue: $0.trimmingCharacters(in: .whitespaces).lowercased()) } ?? .comienzo }
+}
+
+/// Si la reserva se puede cambiar desde la app (`cambio` de `entregas_app_agenda`, CONTRATO_RPC de la videollamada). Lo decide
+/// el servidor: cuántos cambios le quedan y hasta cuándo. Sin el objeto, no se puede.
+public struct CambioAgenda: Codable, Equatable, Sendable {
+    public var permitido: Bool
+    public var restantes: Int?
+    /// ISO con zona: después de esto no se cambia desde la app.
+    public var hasta: String?
+
+    public init(permitido: Bool, restantes: Int? = nil, hasta: String? = nil) { self.permitido = permitido; self.restantes = restantes; self.hasta = hasta }
+
+    enum CodingKeys: String, CodingKey { case permitido, restantes, hasta }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        permitido = c.booleano(.permitido) ?? false
+        restantes = c.entero(.restantes).map { max(0, $0) }
+        hasta = c.texto(.hasta).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+    }
+}
+
 /// La reserva del cliente: `pendiente` (el daemon de la Mini todavía no creó el evento), `confirmada` (con el link de
 /// Meet) o `fallo` (`motivo: tomada|error`: se eligió otra).
 public struct ReservaAgenda: Codable, Equatable, Sendable {
@@ -45,14 +73,16 @@ public struct ReservaAgenda: Codable, Equatable, Sendable {
     /// Cuándo entró Mati al Meet (lo carga el daemon de la Mini con la Meet API). Opcional: sin esto no hay botón para
     /// entrar hasta la hora de inicio (cambio de Mati del 6/11: el cliente nunca entra directo).
     public var salaAbiertaEn: String?
+    /// De comienzo o de revisión (sin el campo, de comienzo).
+    public var tipo: TipoVideollamada
 
     public init(id: String? = nil, inicio: String, fin: String, estado: Estado, meetUrl: URL? = nil, motivo: String? = nil,
-                salaAbiertaEn: String? = nil) {
+                salaAbiertaEn: String? = nil, tipo: TipoVideollamada = .comienzo) {
         self.id = id; self.inicio = inicio; self.fin = fin; self.estado = estado; self.meetUrl = meetUrl; self.motivo = motivo
-        self.salaAbiertaEn = salaAbiertaEn
+        self.salaAbiertaEn = salaAbiertaEn; self.tipo = tipo
     }
 
-    enum CodingKeys: String, CodingKey { case id, inicio, fin, estado, meetUrl = "meet_url", motivo, salaAbiertaEn = "sala_abierta_en" }
+    enum CodingKeys: String, CodingKey { case id, inicio, fin, estado, meetUrl = "meet_url", motivo, salaAbiertaEn = "sala_abierta_en", tipo }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -72,6 +102,7 @@ public struct ReservaAgenda: Codable, Equatable, Sendable {
         }
         motivo = c.texto(.motivo).flatMap { $0.isEmpty ? nil : $0 }
         salaAbiertaEn = c.texto(.salaAbiertaEn).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+        tipo = TipoVideollamada(c.texto(.tipo))
     }
 
     /// La reserva sigue en pie (no se eligen otras franjas).
@@ -97,11 +128,19 @@ public struct AgendaGuia: Codable, Equatable, Sendable {
     public var avisoMin: Int?
     /// Los textos que Mati edita (`clave → texto`, spec §7): pisan los de la app. Solo los que vienen como texto no vacío.
     public var textos: [String: String]
+    /// De comienzo o de revisión: la que se va a agendar (la reserva trae la suya). Sin el campo, de comienzo.
+    public var tipo: TipoVideollamada
+    /// Si la reserva vigente se puede cambiar desde la app. nil: no (servidor viejo o sin reserva).
+    public var cambio: CambioAgenda?
+    /// Desde cuántos minutos antes del inicio se habilita «Entrar» (nil: los 10 de la app).
+    public var entrarDesdeMin: Int?
 
     public init(ok: Bool, motivo: String? = nil, autorizada: Bool = false, habilitada: Bool = false, faltan: Int? = nil, zona: String? = nil,
-                franjas: [FranjaAgenda] = [], reserva: ReservaAgenda? = nil, avisoMin: Int? = nil, textos: [String: String] = [:]) {
+                franjas: [FranjaAgenda] = [], reserva: ReservaAgenda? = nil, avisoMin: Int? = nil, textos: [String: String] = [:],
+                tipo: TipoVideollamada = .comienzo, cambio: CambioAgenda? = nil, entrarDesdeMin: Int? = nil) {
         self.ok = ok; self.motivo = motivo; self.autorizada = autorizada; self.habilitada = habilitada; self.faltan = faltan
         self.zona = zona; self.franjas = franjas; self.reserva = reserva; self.avisoMin = avisoMin; self.textos = textos
+        self.tipo = tipo; self.cambio = cambio; self.entrarDesdeMin = entrarDesdeMin
     }
 
     public init(json: JSONValue) {
@@ -112,7 +151,10 @@ public struct AgendaGuia: Codable, Equatable, Sendable {
         self = a
     }
 
-    enum CodingKeys: String, CodingKey { case ok, motivo, autorizada, habilitada, faltan, zona, franjas, reserva, avisoMin = "aviso_min", textos }
+    enum CodingKeys: String, CodingKey {
+        case ok, motivo, autorizada, habilitada, faltan, zona, franjas, reserva, avisoMin = "aviso_min", textos, tipo, cambio
+        case entrarDesdeMin = "entrar_desde_min"
+    }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -124,10 +166,15 @@ public struct AgendaGuia: Codable, Equatable, Sendable {
         faltan = c.entero(.faltan).map { max(0, $0) }
         zona = c.texto(.zona).flatMap { $0.isEmpty ? nil : $0 }
         reserva = (try? c.decodeIfPresent(ReservaAgenda.self, forKey: .reserva)) ?? nil
-        // Las franjas solo valen con la agenda habilitada y sin una reserva vigente (como dice el contrato).
+        cambio = (try? c.decodeIfPresent(CambioAgenda.self, forKey: .cambio)) ?? nil
+        tipo = TipoVideollamada(c.texto(.tipo))
+        entrarDesdeMin = c.entero(.entrarDesdeMin).flatMap { (1...60).contains($0) ? $0 : nil }
+        // Las franjas solo valen con la agenda habilitada y sin una reserva vigente (como dice el contrato). Con una
+        // vigente, solo si el servidor deja cambiarla (`cambio.permitido`): son los horarios para el cambio.
         let fs = c.lista(FranjaAgenda.self, .franjas)
         var vistas = Set<String>()
-        franjas = habilitada && reserva?.vigente != true ? fs.filter { vistas.insert($0.id).inserted } : []
+        let paraCambio = reserva?.estado == .confirmada && cambio?.permitido == true
+        franjas = habilitada && (reserva?.vigente != true || paraCambio) ? fs.filter { vistas.insert($0.id).inserted } : []
         // Hasta un día antes; lo que no tiene sentido queda en los 30 de la app.
         avisoMin = c.entero(.avisoMin).flatMap { (0...1440).contains($0) ? $0 : nil }
         let crudos = (try? c.decodeIfPresent([String: JSONValue].self, forKey: .textos)) ?? nil

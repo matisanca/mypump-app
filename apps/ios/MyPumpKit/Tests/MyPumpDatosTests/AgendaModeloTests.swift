@@ -373,9 +373,9 @@ struct AgendaModeloTests {
     }
 
     @Test func enLaFranjaSeConsultaHastaQueMatiAbreLaSala() async {
-        // Confirmada y empieza en 10 min, sin la sala abierta: se consulta hasta que el daemon carga `sala_abierta_en`.
+        // Confirmada y empieza en 20 min (antes de los 10 de «Entrar»), sin la sala abierta: se consulta hasta que el daemon carga `sala_abierta_en`.
         let iso = ISO8601DateFormatter()
-        let i = iso.string(from: Date().addingTimeInterval(600)), f = iso.string(from: Date().addingTimeInterval(600 + 7200))
+        let i = iso.string(from: Date().addingTimeInterval(1200)), f = iso.string(from: Date().addingTimeInterval(1200 + 7200))
         func agenda(_ sala: Bool) -> String {
             #"{"ok":true,"autorizada":true,"habilitada":true,"reserva":{"inicio":"\#(i)","fin":"\#(f)","estado":"confirmada","meet_url":"https://meet.google.com/abc"\#(sala ? #","sala_abierta_en":"\#(i)""# : "")}}"#
         }
@@ -428,6 +428,52 @@ struct AgendaModeloTests {
         #expect(n.vistaAgenda == .noAutorizada(faltan: 1))
         // Sin agenda en la muestra: nada (la maqueta de la 2.1.0).
         #expect(ModeloGuia(muestra: GuiaMuestra.guia).vistaAgenda == .nada)
+    }
+
+    // MARK: - Cambiar el horario (videollamada 2.3.0, palanca `elegir_horario`)
+
+    @Test func cambiarVaPorLaColaConLaReservaQueSeDejaYElTopeDelServidor() async {
+        let conCambio = #"{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":\#(franjas),"cambio":{"permitido":true,"restantes":1,"hasta":"2099-11-11T10:00:00-03:00"},"reserva":{"id":"r1","inicio":"2099-11-12T10:00:00-03:00","fin":"2099-11-12T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x","tipo":"revision"}}"#
+        let s = ServidorAgenda(["entregas_app_agenda": conCambio,
+                                "entregas_app_cambiar": #"{"ok":true,"reserva":{"id":"r1","inicio":"2099-11-13T10:00:00-03:00","fin":"2099-11-13T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x","tipo":"revision"}}"#])
+        let (m, cola, _) = armar(s)
+        await m.agenda.consultar()
+        #expect(m.agenda.puedeCambiar && m.agenda.agenda?.franjas.count == 2, "con cambio permitido vienen las franjas")
+        #expect(m.agenda.reserva?.tipo == .revision)
+        let nueva = m.agenda.agenda!.franjas.first { $0.id == "f2" }!
+        s.responder("entregas_app_agenda", #"{"ok":true,"autorizada":true,"habilitada":true,"cambio":{"permitido":false,"restantes":0},"franjas":\#(franjas),"reserva":{"id":"r1","inicio":"2099-11-13T10:00:00-03:00","fin":"2099-11-13T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x"}}"#)
+        await m.agenda.cambiar(a: nueva)
+        let ops = await cola.operaciones.filter { $0.kind == ModeloAgenda.kind }
+        #expect(ops.count == 1 && ops[0].payload["cambia"] == .texto("r1"))
+        await cola.drenarTodo()
+        let pedidos = s.llamadas(a: "entregas_app_cambiar")
+        #expect(pedidos.count == 1 && pedidos[0]["p_reserva"] == .texto("r1") && pedidos[0]["p_franja"] == .texto("f2"))
+        #expect(s.llamadas(a: "entregas_app_reservar").isEmpty, "cambiar no reserva otra")
+        await hasta { m.agenda.reserva?.inicio == "2099-11-13T10:00:00-03:00" }
+        #expect(m.agenda.reserva?.estado == .confirmada)
+        await hasta { !m.agenda.puedeCambiar }
+        #expect(!m.agenda.puedeCambiar && m.agenda.agenda?.franjas.isEmpty == true, "sin cambios restantes: sin franjas")
+    }
+
+    @Test func elTopeOElPlazoDejanElAvisoDeEscribirPorElChat() async {
+        let conCambio = #"{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":\#(franjas),"cambio":{"permitido":true},"reserva":{"id":"r1","inicio":"2099-11-12T10:00:00-03:00","fin":"2099-11-12T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x"}}"#
+        let s = ServidorAgenda(["entregas_app_agenda": conCambio, "entregas_app_cambiar": #"{"ok":false,"motivo":"tope"}"#])
+        let (m, cola, _) = armar(s)
+        await m.agenda.consultar()
+        await m.agenda.cambiar(a: m.agenda.agenda!.franjas[1])
+        await cola.drenarTodo()
+        await hasta { m.agenda.aviso == .sinCambio }
+        #expect(m.agenda.aviso == .sinCambio && m.agenda.reserva?.inicio == "2099-11-12T10:00:00-03:00", "la reserva queda como estaba")
+    }
+
+    @Test func sinPermisoDeCambioNoSeEncolaNada() async {
+        let s = ServidorAgenda(["entregas_app_agenda": #"{"ok":true,"autorizada":true,"habilitada":true,"franjas":\#(franjas),"reserva":{"id":"r1","inicio":"2099-11-12T10:00:00-03:00","fin":"2099-11-12T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x"}}"#])
+        let (m, cola, _) = armar(s)
+        await m.agenda.consultar()
+        #expect(m.agenda.agenda?.franjas.isEmpty == true, "una 2.2.0: con la reserva vigente no van franjas")
+        await m.agenda.cambiar(a: FranjaAgenda(id: "f2", inicio: "2099-11-12T14:00:00-03:00", fin: "2099-11-12T16:00:00-03:00"))
+        let ops = await cola.operaciones
+        #expect(ops.isEmpty)
     }
 }
 

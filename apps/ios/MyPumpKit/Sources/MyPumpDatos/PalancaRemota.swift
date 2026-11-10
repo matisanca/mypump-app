@@ -22,6 +22,9 @@ public struct PalancaRemota: Equatable, Sendable {
     public var gimnasioFotos = false
     /// Técnica por video (`tecnica_video`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo.
     public var tecnicaVideo = false
+    /// Elegir y cambiar el horario de la videollamada en la pantalla nueva (`elegir_horario`, 2.3.0). Sin la clave,
+    /// apagada: la agenda de la guía queda como en la 2.2.0 y no se llama a `entregas_app_cambiar`.
+    public var elegirHorario = false
 
     public init() {}
 
@@ -54,6 +57,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["reloj_contador_reps"] { contadorRepsReloj = b }
         if case .bool(let b)? = j["gimnasio_fotos"] { gimnasioFotos = b }
         if case .bool(let b)? = j["tecnica_video"] { tecnicaVideo = b }
+        if case .bool(let b)? = j["elegir_horario"] { elegirHorario = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }
