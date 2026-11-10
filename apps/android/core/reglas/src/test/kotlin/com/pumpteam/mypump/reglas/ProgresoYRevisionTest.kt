@@ -197,3 +197,29 @@ class AvisoFotosTest {
         assertEquals("Esta semana todavía no subiste tus fotos. Sacalas en el mismo lugar y con la misma luz que siempre, con la misma ropa, el celu vertical a la altura del ombligo y a 2 o 3 metros. Frente, perfil y espalda. Así vemos bien cómo venís", FotosProgreso.AVISO_CUERPO)
     }
 }
+
+/** Gemelo de `ProgresoEnAustraliaTests`: un alumno en Australia ve la sesión el día que la hizo. */
+class ProgresoEnAustraliaTest {
+    private val sidney = ZoneId.of("Australia/Sydney")
+
+    /**
+     * Las 6:10 del martes 10/11 en Sídney son las 19:10 UTC del lunes 9/11: la web agrupaba por la fecha UTC y la mostraba un
+     * día atrás (hasta el 19/9). Las nativas usan la fecha local del teléfono.
+     */
+    @Test
+    fun laSesionDeLaMananaNoQuedaUnDiaAtras() {
+        val filas = listOf(reg("2026-11-09T19:40:00+00:00", 82.5), reg("2026-11-09T19:10:00.123456+00:00", 80.0))
+        assertEquals("2026-11-10", FechaLocal.de("2026-11-09T19:10:00+00:00", sidney))
+        assertEquals("2026-11-10", HistorialEntreno.fechaLocal("2026-11-09T19:10:00+00:00", sidney))
+        assertEquals(setOf("2026-11-10"), ProgresoEjercicio.sesiones(filas, sidney).toSet())
+        assertEquals(mapOf("2026-11-10" to 82.5), ProgresoSemana.ejercicio("x", filas, sidney).sesiones)
+        assertEquals("1 sesión entrenada esta semana", ProgresoSemana.linea(listOf(ProgresoSemana.ejercicio("x", filas, sidney)), "2026-11-10")?.texto)
+    }
+
+    /** Dos series del mismo día local que caen en dos fechas UTC siguen siendo una sesión. */
+    @Test
+    fun unaSesionQueCruzaLaMedianocheUtcEsUna() {
+        val filas = listOf(reg("2026-11-10T00:30:00+00:00", 80.0), reg("2026-11-09T23:50:00+00:00", 80.0))
+        assertEquals(setOf("2026-11-10"), ProgresoEjercicio.sesiones(filas, sidney).toSet())
+    }
+}

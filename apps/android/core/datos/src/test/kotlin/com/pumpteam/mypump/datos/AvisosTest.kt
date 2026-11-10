@@ -106,4 +106,38 @@ class LinkPegadoTest {
         // Como la web: el token después de "?" sin "t=" no es un link de acceso.
         assertNull(FormatoToken.extraer("https://app.mypumpteam.com/?$t"))
     }
+
+    /** Un token válido no puede salir con «No reconocí ese link» por lo que le agrega el copiar y pegar (gemelo de iOS). */
+    @Test
+    fun loQueAgregaElPegarNoLoRompe() {
+        val t = "abcdefghij0123456789ABCDEFGHIJ_-"
+        for (
+            pegado in listOf(
+                "\u200E$t\u200F",
+                "\uFEFFhttps://app.mypumpteam.com/?t=$t\u200B",
+                "$t.",
+                "«$t»",
+                "(https://app.mypumpteam.com/acceso/$t)",
+                "Tu link: https://app.mypumpteam.com/acceso/$t entrá cuando puedas",
+                "https://app.mypumpteam.com/? t=$t",
+                "https://app.mypumpteam.com/?t=\n$t",
+                "  \n$t\n  ",
+                "?t=$t",
+            )
+        ) assertEquals(t, FormatoToken.extraer(pegado), "no reconoció: $pegado")
+    }
+
+    @Test
+    fun loQueNoTraeTokenSigueSinReconocerse() {
+        for (
+            pegado in listOf(
+                "https://app.mypumpteam.com/",
+                "hola este mensaje largo no trae ningun link",
+                "holaestemensajelargonotraeningunlink ok",
+                "https://app.mypumpteam.com/?t=corto",
+                "https://app.mypumpteam.com/?t=corto hola que tal todo",
+                "",
+            )
+        ) assertNull(FormatoToken.extraer(pegado), "reconoció: $pegado")
+    }
 }

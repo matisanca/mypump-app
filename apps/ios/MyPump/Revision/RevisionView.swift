@@ -32,6 +32,7 @@ struct RevisionView: View {
                                 }
                                 .fixedSize(horizontal: false, vertical: true)
                                 avisoPlan
+                                notaSemanal
                                 // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                                 HStack(alignment: .top, spacing: Espacio.l) {
                                     VStack(alignment: .leading, spacing: Espacio.xl) { fotos }
@@ -49,7 +50,7 @@ struct RevisionView: View {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
                                 // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
                                 VStack(spacing: Espacio.m) { recuperacion; progreso }
-                                avisoPlan; fotos; check
+                                avisoPlan; notaSemanal; fotos; check
                             }
                                 .anchoLectura()
                         }
@@ -149,6 +150,15 @@ struct RevisionView: View {
         FotosSemana(modelo: modeloFotos, muestras: muestras.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(muestras.salud))
             .id("fotos")
     }
+    private var notaSemanal: some View {
+        Text(SemanaRevision.explicacion)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("nota-revision-semanal")
+    }
+
     private var check: some View {
         CheckSemanal(revision: revision, muestra: DemoUI.lleno ? MuestrasExtra.checkinLleno : muestras.checkin,
                      saludSemana: saludSemana, sincronizarSalud: sincronizarSalud).id("check")

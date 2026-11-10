@@ -47,6 +47,14 @@ final class RevisionUITests: XCTestCase {
         adjuntarCaptura("t2-revision-solo-la-semana")
     }
 
+    /// Un alumno no sabía si la revisión era diaria o semanal.
+    func testRevisionDiceQueEsSemanal() throws {
+        let nota = app.staticTexts["nota-revision-semanal"].firstMatch
+        for _ in 0..<4 where !nota.exists { app.swipeUp() }
+        XCTAssertTrue(nota.waitForExistence(timeout: 20), "Revisión no explica cada cuánto se hace")
+        XCTAssertTrue(nota.label.contains("semanal"), nota.label)
+    }
+
     /// 5.1.1(i) y 1.4.1: desde Mis datos se abren el respaldo científico y la política de privacidad. Las dos hojas
     /// cuelgan de la misma vista, así que vale correrlo también en iOS 17.
     func testMisDatosAbreElRespaldoYLaPolitica() throws {

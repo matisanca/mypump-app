@@ -51,3 +51,26 @@ struct ProgresoTests {
         #expect(r.esPR)
     }
 }
+
+@Suite("Progreso: un alumno en Australia ve la sesión el día que la hizo")
+struct ProgresoEnAustraliaTests {
+    let sidney = TimeZone(identifier: "Australia/Sydney")!
+
+    /// Las 6:10 del martes 10/11 en Sídney son las 19:10 UTC del lunes 9/11: la web agrupaba por la fecha UTC y la mostraba
+    /// un día atrás (hasta el 19/9). Las nativas usan la fecha local del teléfono.
+    @Test func laSesionDeLaMananaNoQuedaUnDiaAtras() throws {
+        let filas = [reg("2026-11-09T19:40:00+00:00", 82.5), reg("2026-11-09T19:10:00.123456+00:00", 80)]
+        #expect(FechaLocal.de("2026-11-09T19:10:00+00:00", zona: sidney) == "2026-11-10")
+        #expect(HistorialEntreno.fechaLocal("2026-11-09T19:10:00+00:00", zona: sidney) == "2026-11-10")
+        #expect(ProgresoEjercicio.sesiones(filas, zona: sidney) == ["2026-11-10"])
+        #expect(ProgresoSemana.ejercicio(nombre: "x", filas: filas, zona: sidney).sesiones == ["2026-11-10": 82.5])
+        #expect(ProgresoSemana.linea([ProgresoSemana.ejercicio(nombre: "x", filas: filas, zona: sidney)], hoy: "2026-11-10")?.texto
+            == "1 sesión entrenada esta semana")
+    }
+
+    /// Dos entrenos del mismo día local que caen en dos fechas UTC siguen siendo una sesión.
+    @Test func unaSesionQueCruzaLaMedianocheUTCEsUna() {
+        let filas = [reg("2026-11-10T00:30:00+00:00", 80), reg("2026-11-09T23:50:00+00:00", 80)]
+        #expect(ProgresoEjercicio.sesiones(filas, zona: sidney) == ["2026-11-10"])
+    }
+}

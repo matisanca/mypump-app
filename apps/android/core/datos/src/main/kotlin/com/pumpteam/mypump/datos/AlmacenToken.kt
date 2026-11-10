@@ -50,9 +50,13 @@ object FormatoToken {
 
     fun valido(t: String): Boolean = FORMA.matches(t)
 
-    /** Lo que pega el cliente: el link entero, a medias o el token solo (index.html:376-423). */
+    /**
+     * Lo que pega el cliente: el link entero, a medias o el token solo (index.html:376-423). Le saca lo que agrega el copiar
+     * y pegar, para que un token válido no salga con «No reconocí ese link»: caracteres invisibles (las marcas de dirección
+     * de WhatsApp) y la puntuación de la frase alrededor.
+     */
     fun extraer(texto: String): String? {
-        val t = texto.trim()
+        val t = limpio(texto)
         if (valido(t)) return t
         // `?t=<token>` del link del coach.
         val consulta = t.substringAfter('?', "").substringBefore('#')
@@ -66,11 +70,21 @@ object FormatoToken {
         // El token como último tramo de la ruta (`…/acceso/<token>`).
         val ultimo = t.split('/').lastOrNull { it.isNotEmpty() }?.substringBefore('?')
         if (ultimo != null && valido(ultimo)) return ultimo
-        // El mensaje entero de WhatsApp ("Hola! Este es tu link: https://…/?t=…"): el `[?&]t=` de la web.
-        return EN_EL_MENSAJE.find(t)?.groupValues?.get(1)
+        // El mensaje entero de WhatsApp ("Hola! Este es tu link: https://…/?t=…"): el `[?&]t=` de la web, y un espacio o un
+        // salto de línea alrededor del `t=` (nunca adentro del token: se cortaría o se pegaría con el texto que sigue).
+        EN_EL_MENSAJE.find(t)?.let { return it.groupValues[1] }
+        // El link con el token en la ruta, adentro de un mensaje.
+        return EN_LA_RUTA.find(t)?.groupValues?.get(1)
     }
 
-    private val EN_EL_MENSAJE = Regex("[?&]t=([a-zA-Z0-9_-]{16,64})")
+    private val EN_EL_MENSAJE = Regex("""[?&]\s*t\s*=\s*([a-zA-Z0-9_-]{16,64})""")
+    private val EN_LA_RUTA = Regex("/acceso/([a-zA-Z0-9_-]{16,64})")
+
+    /** Nunca incluye `-` ni `_`, que son parte del token, ni `?`, que puede ser el principio de `?t=…` pegado a medias. */
+    private const val BORDES = ".,;:!()[]{}<>\"'«»“”‘’"
+
+    private fun limpio(texto: String): String =
+        texto.filterNot { Character.getType(it) == Character.FORMAT.toInt() }.trim { it.isWhitespace() || it in BORDES }
 
     // `decode(String, Charset)` es de Android 13 (API 33): en 9 a 12 cerraba la app al abrir el link del coach
     // (NoSuchMethodError, lo encontró el emulador de Android 9 el 15-oct). La del nombre del charset existe desde siempre.

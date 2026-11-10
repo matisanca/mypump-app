@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.acceso
 
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import com.pumpteam.mypump.datos.AlmacenToken
 import com.pumpteam.mypump.datos.escribirAtomico
@@ -8,6 +9,7 @@ import java.io.File
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -22,8 +24,10 @@ import javax.crypto.spec.GCMParameterSpec
  * - El archivo va en `noBackupFilesDir`: no viaja en la copia de Google ni en el pase a otro teléfono, y además las
  *   reglas de backup excluyen la carpeta de la cuenta. Restaurar un token en otro teléfono sería entrar a una cuenta sin
  *   el link.
- * - Si la clave del Keystore no está (se borró, se restauró el archivo sin ella, el Keystore se rompió) o el archivo no se
- *   puede descifrar, no hay token: la app muestra "pegá tu link". El archivo huérfano se borra.
+ * - Si la clave del Keystore no está (se borró, se restauró el archivo sin ella) o el archivo no se puede descifrar con ella,
+ *   no hay token: la app muestra "pegá tu link". Solo se borra el archivo que no descifra con la clave. Sin clave se deja: desde
+ *   Android 12 una falla pasajera del Keystore también se ve como `getKey` nulo, y `ModeloApp` vuelve a leer al volver a primer
+ *   plano. Un archivo huérfano no molesta, `guardar` lo pisa.
  *
  * Formato: `[versión=1][IV de 12 bytes][texto cifrado + etiqueta de 16]`, con el alias como dato asociado (un archivo de
  * otra clave o de otra versión no se descifra por accidente).
@@ -31,6 +35,7 @@ import javax.crypto.spec.GCMParameterSpec
 class TokenEnKeystore(
     private val archivo: File,
     private val alias: String = ALIAS,
+    private val abrirKeystore: () -> KeyStore = { KeyStore.getInstance(PROVEEDOR).apply { load(null) } },
 ) : AlmacenToken {
     @Synchronized
     override fun leer(): String? {
@@ -40,20 +45,18 @@ class TokenEnKeystore(
         } catch (_: IOException) {
             return null
         }
-        val clave = claveExistente()
-        if (clave == null) {
-            // Sin la clave el archivo no sirve para nada: "pegá tu link".
-            archivo.delete()
-            return null
-        }
+        val clave = claveExistente() ?: return null
         return try {
             descifrar(clave, datos)
-        } catch (_: GeneralSecurityException) {
-            archivo.delete()
+        } catch (e: GeneralSecurityException) {
+            // Solo lo definitivo borra: el archivo no es de esta clave, o la clave quedó invalidada.
+            if (e is AEADBadTagException || e is KeyPermanentlyInvalidatedException) archivo.delete()
             null
         } catch (_: IllegalArgumentException) {
             archivo.delete()
             null
+        } catch (_: RuntimeException) {
+            null   // falla del Keystore (`ProviderException`; `KeyStoreConnectException` hasta Android 11): pasajera
         }
     }
 
@@ -67,18 +70,22 @@ class TokenEnKeystore(
             val clave = claveExistente() ?: crearClave()
             if (!escribirAtomico(archivo, cifrar(clave, token))) archivo.delete()
         } catch (_: GeneralSecurityException) {
-            // Sin Keystore no se guarda en claro: el token queda en memoria hasta cerrar la app y después se pide el link.
-            archivo.delete()
+            // Sin Keystore no se guarda en claro: el token queda en memoria. Lo que había no se borra: es una falla pasajera y
+            // puede ser la cuenta que anda. Quien necesite saber si se guardó lo lee de vuelta.
+        } catch (_: RuntimeException) {
+            // Lo mismo, con las fallas del Keystore que no son `GeneralSecurityException`.
         }
     }
 
-    private fun keyStore(): KeyStore = KeyStore.getInstance(PROVEEDOR).apply { load(null) }
+    private fun keyStore(): KeyStore = abrirKeystore()
 
     private fun claveExistente(): SecretKey? = try {
         keyStore().getKey(alias, null) as? SecretKey
     } catch (_: GeneralSecurityException) {
         null
     } catch (_: IOException) {
+        null
+    } catch (_: RuntimeException) {
         null
     }
 

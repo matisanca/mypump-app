@@ -122,6 +122,8 @@ public enum DiaCalendario {
 /// 7 = domingo; 7 es la semana ISO de siempre): su lunes es el lunes ISO de (fecha + (7 − día)), la misma cuenta que el
 /// servidor. Vectores: apps/shared/vectores/aviso_revision.json.
 public enum SemanaRevision {
+    /// Lo que dice la pantalla de Revisión: un alumno no sabía si era diaria o semanal. Sin nombrar un día: cada alumno tiene el suyo.
+    public static let explicacion = "La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días."
     public static let diaPorDefecto = 7
     /// El aviso sale el día de revisión a las 11:00, hora del teléfono (es cuando se arma la ronda de Mati).
     public static let minutosAviso = 11 * 60

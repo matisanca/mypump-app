@@ -256,7 +256,7 @@ class MarcasComidasTest {
         assertEquals(antes, s.escrituras.size)
     }
 
-    private companion object {
+    companion object {
         const val TOKEN = "AAAAAAAAAAAAAAAAAAAA"
         const val ESTRUCTURA = """{"macros_target":{"kcal":2000,"prot":150,"carb":200,"fat":60},"comidas":[""" +
             """{"id":"desayuno","name":"Desayuno","options":[{"name":"A","foods":[{"name":"Avena","qty":100,"unit":"g","kcal":380,"prot":13,"carb":67,"fat":7},{"name":"Huevos","qty":3,"unit":"u","kcal":234,"prot":18,"carb":0,"fat":18}]},{"name":"B","foods":[{"name":"Yogur","qty":200,"unit":"g","kcal":120,"prot":10,"carb":14,"fat":3}]}]},""" +
