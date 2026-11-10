@@ -47,6 +47,8 @@ for (const m of seccionFns.matchAll(/^(mypump_[a-z0-9_]+|_mypump_[a-z0-9_]+)\(([
   if (firmas.has(nombre)) for (const p of params) firmas.get(nombre).add(p);
   else firmas.set(nombre, params);
 }
+// Aplicada a mano desde supabase/propuestas de la rama nativa-230 (nativa_008b); todavía no está en el esquema volcado.
+firmas.set('mypump_get_revision_dia', new Set(['p_token']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.

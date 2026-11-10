@@ -4650,7 +4650,7 @@ function _csPanelEx() {
 }
 const _CS_TERMINALES = new Set(['completo', 'completo_sin_datos', 'saltado']);
 function _csDebeVerse(exId, s) {
-  if (!s || _csTeclado) return false;
+  if (!s || _csTeclado || STATE.scene !== 'train') return false;
   if ((_csCorr && _csCorr.exId === exId) || _csFoto) return true;
   return !s.completo && !_CS_TERMINALES.has(getExStatus(exId));
 }
@@ -11189,6 +11189,7 @@ function setScene(scene) {
   // El aviso de las fotos es de esta visita a Revisión: al irse, se va (como en la app).
   if (scene !== 'revision') STATE.fpMsg = null;
   STATE.scene = scene;
+  csPintarPanel();   // el panel de carga es de Entreno
   $$('.tab').forEach(t => {
     // 'salud' no tiene tab propio (se entra desde Mi Día). Sin este mapeo el
     // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
