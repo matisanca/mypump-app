@@ -8,9 +8,42 @@ import MyPumpDatos
 /// el mismo de la card grande de Salud; acá solo se resume. Sin cuenta (demo y bocetos), `modelo` es nil.
 struct RecuperacionTarjeta: View {
     let modelo: ModeloSalud?
+    /// PROPUESTA: en el teléfono, una fila dentro de la tarjeta «Cómo vengo» (ícono del sistema, una línea y el número).
+    var enFila = false
     let abrir: () -> Void
 
     var body: some View {
+        if enFila { fila } else { completa }
+    }
+
+    private var fila: some View {
+        Button(action: abrir) {
+            FilaDestino(simbolo: "battery.75percent", color: .exito, titulo: "Recuperación", detalle: resumen) {
+                if let modelo, case .conScore(let c) = modelo.cardRecuperacion {
+                    Text("\(c.fila.score ?? 0)").font(Letra.dato)
+                        .foregroundStyle(CardRecuperacionView.color(c.banda, apagado: c.confianza?.apagado == true))
+                }
+            }
+        }
+        .buttonStyle(FilaPresionable())
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Abre Salud")
+        .accessibilityIdentifier("tarjeta-recuperacion-revision")
+    }
+
+    /// La línea de la fila: lo mismo que dice la tarjeta completa, en corto.
+    private var resumen: String {
+        guard let modelo else { return "Con tu cuenta, acá vas a ver tu recuperación de cada día." }
+        switch modelo.cardRecuperacion {
+        case .conScore(let c): return [c.bandaTexto, Self.linea(c)].compactMap { $0 }.joined(separator: " · ")
+        case .oculto: return "Ocultaste el número de recuperación. Tocá para ver tus datos de salud."
+        case .calibrando(let dias, _, _, _): return "Aprendiendo tu normal: \(dias) de 14 días"
+        case .conectadoSinScore(let caso, _): return caso.frase
+        case .sinConectar: return "Conectá tu reloj o Salud para ver tu recuperación de cada día."
+        }
+    }
+
+    private var completa: some View {
         Button(action: abrir) {
             VStack(alignment: .leading, spacing: 12) {
                 EncabezadoSalud(icono: "🔋", titulo: "Recuperación")
@@ -88,9 +121,26 @@ struct RecuperacionTarjeta: View {
 /// la pestaña Progreso. Sin línea (la demo, o sin entrenos esta semana), lo genérico.
 struct ProgresoTarjeta: View {
     let linea: ProgresoSemana.Linea?
+    var enFila = false
     let abrir: () -> Void
 
     var body: some View {
+        if enFila { fila } else { completa }
+    }
+
+    private var fila: some View {
+        Button(action: abrir) {
+            FilaDestino(simbolo: linea?.record == true ? "trophy.fill" : "chart.line.uptrend.xyaxis",
+                        color: linea?.record == true ? .oro : .marca, titulo: "Tu progreso",
+                        detalle: linea?.texto ?? "Tu fuerza y tus récords, ejercicio por ejercicio.") { EmptyView() }
+        }
+        .buttonStyle(FilaPresionable())
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Abre tu fuerza y tus récords")
+        .accessibilityIdentifier("tarjeta-progreso-revision")
+    }
+
+    private var completa: some View {
         Button(action: abrir) {
             VStack(alignment: .leading, spacing: 12) {
                 EncabezadoSalud(icono: "📈", titulo: "Tu progreso")

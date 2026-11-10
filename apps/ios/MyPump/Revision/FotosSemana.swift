@@ -26,11 +26,9 @@ struct FotosSemana: View {
     private var avisoFotos: some View {
         VStack(alignment: .leading, spacing: Espacio.xs) {
             Text(FotosProgreso.avisoTitulo).font(.headline)
-            Text(FotosProgreso.avisoCuerpo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            Text(FotosProgreso.avisoCuerpo).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Espacio.s)
-        .background(Color.marcaSuave, in: .rect(cornerRadius: Radio.control, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("aviso-fotos")
     }
@@ -39,8 +37,16 @@ struct FotosSemana: View {
         let semanas = FotosProgreso.semanas(fotos)
         let racha = FotosProgreso.racha(fotos)
         VStack(alignment: .leading, spacing: Espacio.s) {
-            EncabezadoSeccion(titulo: "Fotos de la semana", detalle: hechas.count == 3 ? "Completas" : "\(hechas.count)/3")
+            EncabezadoAvance(titulo: "Fotos de la semana", hechos: hechas.count, total: 3, completo: "Completas")
             VStack(alignment: .leading, spacing: Espacio.m) {
+                // Con letra de accesibilidad, los tres marcos pasan a ser filas (no entran las palabras).
+                let disposicion = tamañoLetra.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(spacing: Espacio.xs))
+                    : AnyLayout(HStackLayout(spacing: Espacio.s))
+                disposicion {
+                    ForEach(FotosProgreso.poses, id: \.clave) { pose in lugar(pose) }
+                }
+
                 if FotosProgreso.mostrarAviso(cargadas: modelo?.cargadas ?? true, posesDeLaSemana: hechas) { avisoFotos }
                 Label {
                     Text("Mismo lugar, misma luz, en ayunas. Las ve \(Text("solo Mati").bold()): no se publican ni salen de la app.")
@@ -50,14 +56,6 @@ struct FotosSemana: View {
                 .labelStyle(EtiquetaCompacta())
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-
-                // Con letra de accesibilidad, los tres marcos pasan a ser filas (no entran las palabras).
-                let disposicion = tamañoLetra.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(spacing: Espacio.xs))
-                    : AnyLayout(HStackLayout(spacing: Espacio.s))
-                disposicion {
-                    ForEach(FotosProgreso.poses, id: \.clave) { pose in lugar(pose) }
-                }
 
                 if let mensaje {
                     Text(mensaje)

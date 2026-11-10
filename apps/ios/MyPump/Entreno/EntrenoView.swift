@@ -289,13 +289,8 @@ private struct ListaEntreno: View {
         let d = motor.dia.dia
         let total = motor.totalEjercicios, hechos = motor.hechos
         let cerrado = motor.dia.diaFinalizado || motor.hecho(d)
-        // Con letra de accesibilidad el anillo va abajo: al costado le dejaba al texto un tercio del ancho y cortaba las
-        // palabras ("cerra-do").
-        let apilada = tamañoLetra.isAccessibilitySize
-        let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.m))
-                                  : AnyLayout(HStackLayout(alignment: .center, spacing: Espacio.m))
-        return disposicion {
-            VStack(alignment: .leading, spacing: 6) {
+        return VStack(alignment: .leading, spacing: Espacio.s) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Día \(motor.numero(d)) · Semana \(motor.semanaMostrada) de \(motor.totalMostrado)").textoCeja()
                 Text(titulo)
                     .font(.tituloDia)
@@ -303,23 +298,23 @@ private struct ListaEntreno: View {
                     .lineLimit(tamañoLetra.isAccessibilitySize ? 3 : 1)
                     .minimumScaleFactor(tamañoLetra.isAccessibilitySize ? 1 : 0.6)
                     .accessibilityAddTraits(.isHeader)
-                Label(cerrado ? "Día cerrado esta semana" : (total == 1 ? "1 ejercicio" : "\(total) ejercicios"),
-                      systemImage: cerrado ? "checkmark.seal.fill" : "list.bullet")
-                    .labelStyle(EtiquetaCompacta())
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(cerrado ? Color.marcaTexto : Color.secondary)
             }
-            if !apilada { Spacer(minLength: 0) }
-            AnilloProgreso(fraccion: Double(hechos) / Double(max(total, 1)), grosor: 7) {
-                VStack(spacing: -2) {
-                    Text("\(hechos)").font(.numeroChico).contentTransition(.numericText())
-                    Text("de \(total)").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+            // El avance del día con los segmentos de la carga: un ejercicio, un segmento.
+            VStack(alignment: .leading, spacing: 6) {
+                AvanceSegmentos(total: total, hechos: hechos, alto: 6)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    if cerrado {
+                        Label("Día cerrado esta semana", systemImage: "checkmark.seal.fill")
+                            .labelStyle(EtiquetaCompacta())
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.marcaTexto)
+                    } else {
+                        Text("\(hechos)").font(.numeroChico).contentTransition(.numericText())
+                        Text(total == 1 ? "de 1 ejercicio" : "de \(total) ejercicios")
+                            .font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                    }
                 }
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .padding(8)
             }
-            .frame(width: min(ladoAnillo, 108), height: min(ladoAnillo, 108))
             .animation(.snappy, value: hechos)
             .accessibilityElement()
             .accessibilityLabel("\(hechos) de \(total) ejercicios hechos")
@@ -332,6 +327,13 @@ private struct ListaEntreno: View {
 
     @ViewBuilder
     private var cuerpo: some View {
+        // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre): ni su lugar en la pila.
+        if !motor.todoHecho {
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                cronometro(motor.cronometro())
+            }
+        }
+
         let banner = motor.banner
         if banner.cambian > 0 {
             AvisoProgresion(icono: "chart.line.uptrend.xyaxis",
@@ -339,13 +341,6 @@ private struct ListaEntreno: View {
         } else if banner.calibracion {
             AvisoProgresion(icono: "scope",
                             texto: Text("Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3): no te guardes reps."))
-        }
-
-        // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre): ni su lugar en la pila.
-        if !motor.todoHecho {
-            TimelineView(.periodic(from: .now, by: 1)) { _ in
-                cronometro(motor.cronometro())
-            }
         }
 
         ForEach(motor.bloques, id: \.indice) { b in
@@ -388,7 +383,7 @@ private struct ListaEntreno: View {
                 } label: {
                     Label(TextosEntreno.empezar, systemImage: "play.fill")
                 }
-                .buttonStyle(BotonMarca())
+                .buttonStyle(BotonAccion())
                 .sensoryFeedback(.impact(weight: .medium), trigger: motor.inicioSesion)
                 .accessibilityIdentifier("empezar-entrenamiento")
                 Text("Arranca el cronómetro de la sesión. O empezá directo: corre solo con tu primera serie.")
@@ -534,6 +529,10 @@ private struct AvisoProgresion: View {
     var tono: Color = .marcaTexto
 
     var body: some View {
+        if tono == .marcaTexto { NotaDiscreta(icono: icono, texto: texto) } else { conFondo }
+    }
+
+    private var conFondo: some View {
         HStack(alignment: .top, spacing: Espacio.s) {
             Image(systemName: icono)
                 .font(.subheadline.weight(.semibold))
@@ -625,28 +624,23 @@ struct SelectorDias: View {
                     .font(.caption2.weight(.bold))
                     .textCase(.uppercase)
                     .tracking(0.6)
-                    .opacity(activo ? 0.65 : 1)
-                    .foregroundStyle(activo ? Color(uiColor: .systemBackground) : Color.secondary)
+                    .foregroundStyle(activo ? Color.marcaTexto : Color.secondary)
                 Text(corto.isEmpty ? "Día" : corto)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                    .foregroundStyle(activo ? Color(uiColor: .systemBackground) : Color.primary)
+                    .foregroundStyle(Color.primary)
             }
-            .frame(minWidth: 70, minHeight: 44)
-            .padding(.vertical, 8)
+            .frame(minWidth: 64, minHeight: 40)
+            .padding(.vertical, 4)
             .padding(.horizontal, 14)
             .background {
                 if activo {
-                    RoundedRectangle(cornerRadius: Radio.control + 2, style: .continuous)
-                        .fill(Color.primary)
+                    Capsule()
+                        .fill(Color.tarjeta)
+                        .overlay { Capsule().strokeBorder(Color.marca, lineWidth: 2) }
                         .matchedGeometryEffect(id: "seleccion", in: ns)
                 } else {
-                    RoundedRectangle(cornerRadius: Radio.control + 2, style: .continuous)
-                        .fill(Color.tarjeta)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: Radio.control + 2, style: .continuous)
-                                .strokeBorder(Color.borde, lineWidth: 1)
-                        }
+                    Capsule().fill(Color.campo)
                 }
             }
             .overlay(alignment: .topTrailing) {

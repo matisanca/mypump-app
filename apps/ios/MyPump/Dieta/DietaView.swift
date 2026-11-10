@@ -773,24 +773,45 @@ private struct BotonesMarca: View {
 
     private func boton(_ e: MarcaComida.Estado, _ texto: String, icono: String, id: String) -> some View {
         let activo = estado == e
-        let tinta: Color = e == .comido ? .marca : .alerta
+        let principal = e == .comido
+        let grande = tamañoLetra.isAccessibilitySize
         return Button {
             let nuevo: MarcaComida.Estado? = activo ? nil : e
             toque = Toque(n: toque.n + 1, nuevo: nuevo)
             alElegir(nuevo)
         } label: {
             Label(texto, systemImage: activo ? "\(icono).circle.fill" : icono)
-                .font(.subheadline.weight(.semibold))
+                .font(principal && estado == nil ? .headline : .subheadline.weight(.semibold))
                 .contentTransition(.symbolEffect(.replace))
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .padding(.horizontal, principal ? 0 : 18)
+                .frame(maxWidth: principal || grande ? .infinity : nil, minHeight: 48)
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(activo ? (e == .comido ? Color.sobreMarca : Color.alerta) : Color.primary.opacity(0.8))
-        .background(activo ? (e == .comido ? tinta : tinta.opacity(0.16)) : Color.campo, in: .rect(cornerRadius: 12, style: .continuous))
+        .foregroundStyle(tinta(e, activo: activo))
+        .background(fondo(e, activo: activo), in: .capsule)
         .accessibilityIdentifier("\(id)-\(comidaId)")
         .accessibilityAddTraits(activo ? .isSelected : [])
         .accessibilityHint(activo ? "Tocá para desmarcar" : "")
+    }
+
+    private func tinta(_ e: MarcaComida.Estado, activo: Bool) -> Color {
+        switch (e, estado) {
+        case (.comido, nil): .sobreMarca                    // sin marcar: el botón que avanza
+        case (.comido, .comido?): .marcaTexto               // hecha: tranquila, en verde suave
+        case (.saltado, .saltado?): .alerta
+        default: .secondary
+        }
+    }
+
+    private func fondo(_ e: MarcaComida.Estado, activo: Bool) -> Color {
+        switch (e, estado) {
+        case (.comido, nil): .marca
+        case (.comido, .comido?): .marcaSuave
+        case (.saltado, .saltado?): Color.alerta.opacity(0.16)
+        case (.comido, _): .campo
+        default: .clear
+        }
     }
 }
 
@@ -891,10 +912,36 @@ private struct Cabecera: View {
                     unaDebajoDeOtra
                 }
             } else {
-                ViewThatFits(in: .horizontal) {
-                    tresColumnas
-                    unaDebajoDeOtra
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(consumo.kcal.enteroSeguro, format: .number).font(Letra.heroe).contentTransition(.numericText())
+                        .minimumScaleFactor(0.5).lineLimit(1)
+                    Text(meta > 0 ? "de \(meta.enteroSeguro.formatted()) kcal" : (esHoy ? "kcal hoy" : "kcal"))
+                        .font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
                 }
+                .padding(.bottom, -10)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(esHoy ? "Consumido hoy" : "Consumido ese día")
+                .accessibilityValue(meta > 0 ? "\(consumo.kcal.enteroSeguro) de \(meta.enteroSeguro) kcal" : "\(consumo.kcal.enteroSeguro) kcal")
+                .accessibilityIdentifier("consumido-kcal")
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.campo)
+                        Capsule().fill(Color.marca).frame(width: meta > 0 ? max(consumo.kcal > 0 ? 10 : 0, g.size.width * min(1, consumo.kcal / meta)) : 0)
+                    }
+                }
+                .frame(height: 10)
+                .accessibilityHidden(true)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        ForEach(macros, id: \.0) { MacroSinCaja(nombre: $0.0, consumido: $0.1, objetivo: $0.2, color: $0.3) }
+                    }
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(macros, id: \.0) { FilaMacro(nombre: $0.0, consumido: $0.1, objetivo: $0.2, color: $0.3) }
+                    }
+                }
+                .padding(.top, 2)
+                Divider()
             }
             Group {
                 if consumo.hechas + consumo.salteadas == 0 {
@@ -994,6 +1041,29 @@ private struct ColumnaMacro: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(color.opacity(0.08), in: .rect(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(nombre)
+        .accessibilityValue("\(consumido.enteroSeguro) de \((objetivo ?? 0).enteroSeguro) g")
+    }
+}
+
+/// PROPUESTA: un macro sin caja de color: el nombre, lo consumido en Archivo, el objetivo al lado y su barra fina.
+private struct MacroSinCaja: View {
+    let nombre: String
+    let consumido: Double
+    let objetivo: Double?
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(nombre).font(.caption.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
+            (Text("\(consumido.enteroSeguro)").font(Letra.dato).monospacedDigit()
+                + Text(" / \((objetivo ?? 0).enteroSeguro) g").font(.caption).foregroundColor(.secondary))
+                .lineLimit(1).fixedSize()
+                .contentTransition(.numericText())
+            BarraMacro(consumido: consumido, objetivo: objetivo, color: color)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(nombre)
         .accessibilityValue("\(consumido.enteroSeguro) de \((objetivo ?? 0).enteroSeguro) g")
