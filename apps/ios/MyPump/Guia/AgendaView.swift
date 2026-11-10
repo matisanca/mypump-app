@@ -103,6 +103,8 @@ struct AgendaEntrega: View {
                 }
                 if let aviso { Text(aviso.texto).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("agenda-demo") }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("agenda")
             // En la franja, con la guía abierta: la agenda cada 30 s (el link si falta y la sala).
             .task(id: r) { await modelo.agenda.vigilarSala() }
         }
