@@ -220,6 +220,7 @@ android {
         getByName("androidTest").assets.srcDir(raizRepo.resolve("apps/shared/fixtures"))
         // El doble del servidor del gimnasio (el mismo de las pruebas JVM de :core:datos). Nunca entra en la app.
         getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleGimnasio/kotlin"))
+        getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleTecnica/kotlin"))
     }
 
     packaging {
@@ -326,6 +327,8 @@ dependencies {
     // «Tu guía»: Media3 (ExoPlayer + PlayerView) para los videos (MP4 públicos del bucket `videos-entrega`, sin bajarlos).
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
+    implementation(libs.media3.transformer)   // Técnica por video: 720p sin audio antes de subir
+    implementation(libs.media3.effect)
     // Dieta: el código de barras con el escáner de Google (sin permiso de cámara; ver libs.versions.toml).
     implementation(libs.play.services.code.scanner)
     testImplementation(platform(libs.junit.bom))

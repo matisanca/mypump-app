@@ -67,6 +67,8 @@ fun EntrenoPantalla(modelo: ModeloApp, preguntador: Preguntador) {
     val alcance = LocalAlcanceApp.current
     // El ejercicio abierto (el lugar en la rutina). Sobrevive a cambiar de pestaña y a rotar.
     var abierto by rememberSaveable { mutableStateOf<String?>(null) }
+    var tecnicaSlug by rememberSaveable { mutableStateOf<String?>(null) }
+    var tecnicaNombre by rememberSaveable { mutableStateOf("") }
     // La lista conserva dónde estaba al volver de un ejercicio.
     val desplazamiento = rememberScrollState()
     val m = motor
@@ -120,15 +122,28 @@ fun EntrenoPantalla(modelo: ModeloApp, preguntador: Preguntador) {
                         alCompletarDia = alCompletarDia,
                     )
                 } else {
-                    EjercicioPantalla(
-                        motor = m,
-                        v = v,
-                        lugar = lugar,
-                        preguntador = preguntador,
-                        alVolver = { abierto = null },
-                        alAbrir = { abierto = it },
-                        alCompletarDia = alCompletarDia,
-                    )
+                    val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
+                    val tec = tecnica
+                    val slug = tecnicaSlug
+                    if (tec != null && slug != null) {
+                        androidx.activity.compose.BackHandler { tecnicaSlug = null }
+                        com.pumpteam.mypump.tecnica.EnviarTecnicaPantalla(tec, slug, tecnicaNombre, alVolver = { tecnicaSlug = null })
+                    } else {
+                        EjercicioPantalla(
+                            motor = m,
+                            v = v,
+                            lugar = lugar,
+                            preguntador = preguntador,
+                            alVolver = { abierto = null },
+                            alAbrir = { abierto = it },
+                            alCompletarDia = alCompletarDia,
+                            tecnica = tec,
+                            alMandarTecnica = { s, n ->
+                                tecnicaNombre = n
+                                tecnicaSlug = s
+                            },
+                        )
+                    }
                 }
             }
         }

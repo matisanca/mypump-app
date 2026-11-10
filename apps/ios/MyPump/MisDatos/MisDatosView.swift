@@ -23,6 +23,7 @@ struct MisDatosView: View {
     @AppStorage("mypump-theme") private var tema = ""
     @State private var fuentes = false
     @State private var verGimnasio = false
+    @State private var verTecnica = false
     @State private var pagina: Pagina?
     /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
     /// en el iPhone (para poder exportarlas o borrarlas aunque ya no haya reloj).
@@ -93,6 +94,15 @@ struct MisDatosView: View {
                         Label { Text("Ver mi guía") } icon: { IconoAzulejo("play.rectangle.fill", color: .marcaTexto) }
                     }
                     .accessibilityIdentifier("mis-datos-guia")
+                }
+                if let t = modelo.tecnica, t.habilitado || verTecnica {
+                    Button { verTecnica = true } label: {
+                        fila(TextosTecnica.entradaMisDatos, icono: "video.fill", color: .marcaTexto)
+                    }
+                    .accessibilityIdentifier("mis-datos-tecnica")
+                    .sheet(isPresented: $verTecnica) {
+                        MiTecnicaRaiz(modelo: t, alCerrar: { verTecnica = false }).presentationDragIndicator(.visible)
+                    }
                 }
                 if let g = modelo.gimnasio, g.entradaVisible || verGimnasio {
                     Button { verGimnasio = true } label: {

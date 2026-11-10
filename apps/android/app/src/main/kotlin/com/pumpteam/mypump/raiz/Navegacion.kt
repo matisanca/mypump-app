@@ -82,6 +82,7 @@ class Navegacion(
     guiaEnMisDatos: Boolean = false,
     gimnasio: Boolean = false,
     gimnasioEnMisDatos: Boolean = false,
+    tecnicaEnMisDatos: Boolean = false,
 ) {
     var pestana by mutableStateOf(pestana)
     var misDatos by mutableStateOf(misDatos)
@@ -97,6 +98,9 @@ class Navegacion(
 
     /** «Mi gimnasio» abierto desde Mis datos. */
     var gimnasioEnMisDatos by mutableStateOf(gimnasioEnMisDatos)
+
+    /** «Mi técnica» abierto desde Mis datos. */
+    var tecnicaEnMisDatos by mutableStateOf(tecnicaEnMisDatos)
 
     /**
      * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check), como `anclaRevision` de
@@ -120,6 +124,7 @@ class Navegacion(
             misDatos = false
             guiaEnMisDatos = false
             gimnasioEnMisDatos = false
+            tecnicaEnMisDatos = false
         }
         if (p == pestana && p == Pestana.ENTRENO) {
             guia = false
@@ -144,6 +149,7 @@ class Navegacion(
                 misDatos = true
                 guiaEnMisDatos = false
                 gimnasioEnMisDatos = false
+                tecnicaEnMisDatos = false
             }
         }
     }
@@ -154,6 +160,7 @@ class Navegacion(
         misDatos = false
         guiaEnMisDatos = false
         gimnasioEnMisDatos = false
+        tecnicaEnMisDatos = false
         anclaRevision = ancla
     }
 
@@ -171,7 +178,7 @@ class Navegacion(
 
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos) },
             restore = {
                 Navegacion(
                     Pestana.entries.firstOrNull { p -> p.name == it[0] } ?: Pestana.ENTRENO,
@@ -182,6 +189,7 @@ class Navegacion(
                     it.getOrNull(5) as? Boolean ?: false,
                     it.getOrNull(6) as? Boolean ?: false,
                     it.getOrNull(7) as? Boolean ?: false,
+                    it.getOrNull(8) as? Boolean ?: false,
                 )
             },
         )

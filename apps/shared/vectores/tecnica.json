@@ -1,0 +1,369 @@
+{
+ "_": "Lo que comparten las dos apps en Técnica por video (tecnica/CONTRATO_APP.md). Si un texto o un caso difiere, fallan las pruebas de las dos.",
+ "consentimiento": "terceros-tecnica-v1",
+ "topesDeFabrica": {
+  "duracion_min_s": 4,
+  "duracion_max_s": 75,
+  "bytes_max": 62914560,
+  "por_semana": 3
+ },
+ "maxNota": 300,
+ "textos": {
+  "entradaEjercicio": "Mandar mi técnica",
+  "entradaMisDatos": "Mi técnica",
+  "avisoTerceros": "Para analizar tu técnica, partes de tu video las procesan servicios externos de inteligencia artificial, con la cara tapada y sin tu nombre. Mati revisa todo antes de que te llegue. El video se borra a los 90 días y lo podés sacar cuando quieras",
+  "avisoBoton": "Entendido, empezar",
+  "consejo": "Apoyá el teléfono a unos 3 metros, a la altura de la cadera. De costado es lo mejor para casi todos los ejercicios. Que entre todo tu cuerpo. Una serie, de hasta 75 segundos. No grabes a otras personas",
+  "notaPregunta": "¿Querés que mire algo en particular?",
+  "botonEnviar": "Enviar a Mati",
+  "subiendo": "Subiendo tu video",
+  "recibido": "Recibido. Mati lo va a mirar y te llega la devolución en 1 a 2 días",
+  "loQueEstaBien": "Lo que está bien",
+  "paraCorregir": "Para corregir",
+  "queSeVe": "Qué se ve",
+  "porQueImporta": "Por qué importa",
+  "comoHacerlo": "Cómo hacerlo",
+  "verEnElVideo": "Ver en el video",
+  "noSePudoVer": "Lo que no se pudo ver",
+  "mandameOtro": "Mandame otro video",
+  "sinCorrecciones": "Mati miró tu serie y no hay nada para corregir. Seguí así",
+  "rechazoCorto": "El video es muy corto. Grabá al menos 2 o 3 repeticiones completas.",
+  "rechazoLargo": "El video es muy largo. Mandá una sola serie, de hasta 75 segundos.",
+  "rechazoPesado": "El video pesa demasiado. Probá con uno más corto.",
+  "rechazoIlegible": "No pudimos abrir el video. Probá grabarlo de nuevo.",
+  "topeSemanal": "Ya mandaste 3 videos esta semana. Vas a poder mandar otro en unos días",
+  "enCurso": "Ya tenés un video en revisión",
+  "agregarVideo": "Grabar o elegir video",
+  "grabarVideo": "Grabar video",
+  "elegirGaleria": "Elegir de la galería",
+  "preparando": "Preparando tu video",
+  "cambiarVideo": "Cambiar video",
+  "enviandoSeguir": "Queda guardado y se envía solo cuando vuelva la señal",
+  "esperandoSenal": "Esperando señal",
+  "cancelarEnvio": "Cancelar envío",
+  "elegirEjercicio": "¿De qué ejercicio?",
+  "sinEjercicios": "Todavía no tenés ejercicios en tu rutina",
+  "sinEnvios": "Todavía no mandaste ningún video",
+  "sacarVideo": "Sacar mi video",
+  "sacarConfirma": "¿Sacar tu video?",
+  "sacarDetalle": "Se borra y no se puede recuperar",
+  "sacarOcupado": "Lo estamos mirando. Probá en un rato",
+  "cerrar": "Cerrar",
+  "cancelar": "Cancelar",
+  "errorGenerico": "No se pudo enviar. Probá de nuevo",
+  "sinSenal": "Se cortó la conexión. Probá de nuevo cuando tengas señal.",
+  "noSeGuardo": "No se pudo guardar el video en el teléfono. Probá de nuevo",
+  "errorVideo": "No se pudo abrir el video. Probá de nuevo",
+  "otroRecibido": "Listo"
+ },
+ "plantillas": [
+  {
+   "clave": "tituloDevolucion",
+   "valor": "Sentadilla",
+   "texto": "Tu técnica en Sentadilla"
+  },
+  {
+   "clave": "revisadoEl",
+   "valor": "12/11",
+   "texto": "Lo revisó Mati el 12/11"
+  },
+  {
+   "clave": "videoListo",
+   "n": 42,
+   "texto": "Video listo: 42 segundos"
+  },
+  {
+   "clave": "videoListo",
+   "n": 1,
+   "texto": "Video listo: 1 segundo"
+  }
+ ],
+ "subida": [
+  {
+   "status": 200,
+   "ok": true,
+   "error": null,
+   "accion": "ok",
+   "rechazo": null
+  },
+  {
+   "status": 200,
+   "ok": false,
+   "error": null,
+   "accion": "reintentar",
+   "rechazo": null
+  },
+  {
+   "status": 429,
+   "ok": false,
+   "error": "ocupado, probá en un rato",
+   "accion": "reintentar",
+   "rechazo": null
+  },
+  {
+   "status": 500,
+   "ok": false,
+   "error": null,
+   "accion": "reintentar",
+   "rechazo": null
+  },
+  {
+   "status": 502,
+   "ok": false,
+   "error": "guardado sin registrar",
+   "accion": "reintentar",
+   "rechazo": null
+  },
+  {
+   "status": 503,
+   "ok": false,
+   "error": "no se pudo subir, probá en un rato",
+   "accion": "reintentar",
+   "rechazo": null
+  },
+  {
+   "status": 400,
+   "ok": false,
+   "error": "video muy corto",
+   "accion": "descartar",
+   "rechazo": "corto"
+  },
+  {
+   "status": 400,
+   "ok": false,
+   "error": "video muy largo",
+   "accion": "descartar",
+   "rechazo": "largo"
+  },
+  {
+   "status": 400,
+   "ok": false,
+   "error": "el video no se puede leer",
+   "accion": "descartar",
+   "rechazo": "ilegible"
+  },
+  {
+   "status": 400,
+   "ok": false,
+   "error": "el archivo debe ser un video MP4 o MOV",
+   "accion": "descartar",
+   "rechazo": "ilegible"
+  },
+  {
+   "status": 400,
+   "ok": false,
+   "error": "id inválido",
+   "accion": "descartar",
+   "rechazo": "ilegible"
+  },
+  {
+   "status": 413,
+   "ok": false,
+   "error": "video muy pesado",
+   "accion": "descartar",
+   "rechazo": "pesado"
+  },
+  {
+   "status": 403,
+   "ok": false,
+   "error": "token inválido",
+   "accion": "guardar",
+   "rechazo": null
+  },
+  {
+   "status": 404,
+   "ok": false,
+   "error": "envío no encontrado",
+   "accion": "descartar",
+   "rechazo": "otro"
+  },
+  {
+   "status": 409,
+   "ok": false,
+   "error": "este envío ya no recibe video",
+   "accion": "descartar",
+   "rechazo": "otro"
+  },
+  {
+   "status": 411,
+   "ok": false,
+   "error": "falta el largo",
+   "accion": "descartar",
+   "rechazo": "otro"
+  }
+ ],
+ "validar": [
+  {
+   "duracion": 3.9,
+   "bytes": 1000,
+   "rechazo": "corto"
+  },
+  {
+   "duracion": 4,
+   "bytes": 1000,
+   "rechazo": null
+  },
+  {
+   "duracion": 75,
+   "bytes": 62914560,
+   "rechazo": null
+  },
+  {
+   "duracion": 75.6,
+   "bytes": 1000,
+   "rechazo": "largo"
+  },
+  {
+   "duracion": 30,
+   "bytes": 62914561,
+   "rechazo": "pesado"
+  },
+  {
+   "duracion": 0,
+   "bytes": 0,
+   "rechazo": "ilegible"
+  }
+ ],
+ "decodificar": [
+  {
+   "_": "palanca apagada para esta cuenta",
+   "json": {
+    "habilitado": false
+   },
+   "nulo": true
+  },
+  {
+   "_": "objeto cualquiera",
+   "json": {
+    "algo": 1
+   },
+   "nulo": true
+  },
+  {
+   "_": "estado desconocido se descarta, topes rotos valen los de fábrica, publicado sin devolución se descarta",
+   "json": {
+    "habilitado": true,
+    "consentimiento_version": "terceros-tecnica-v1",
+    "consentimiento_aceptado": 1,
+    "topes": {
+     "duracion_max_s": "x",
+     "bytes_max": -1
+    },
+    "envios": [
+     {
+      "id": "a",
+      "estado": "enviado",
+      "ejercicio_nombre": "Remo"
+     },
+     {
+      "id": "b",
+      "estado": "procesando",
+      "ejercicio_nombre": "Remo"
+     },
+     {
+      "id": "c",
+      "estado": "publicado",
+      "ejercicio_nombre": "Remo"
+     },
+     {
+      "estado": "enviado"
+     },
+     "basura"
+    ]
+   },
+   "ids": [
+    "a"
+   ],
+   "aceptado": false,
+   "duracionMax": 75,
+   "bytesMax": 62914560
+  },
+  {
+   "_": "devolución completa con campos de más, corrección sin título afuera, momento negativo nulo, orden por prioridad",
+   "json": {
+    "habilitado": true,
+    "consentimiento_version": "v9",
+    "consentimiento_aceptado": true,
+    "topes": {
+     "duracion_min_s": 5,
+     "duracion_max_s": 60,
+     "bytes_max": 1000,
+     "por_semana": 2
+    },
+    "extra": {
+     "x": 1
+    },
+    "envios": [
+     {
+      "id": "d",
+      "estado": "publicado",
+      "ejercicio_slug": "remo",
+      "ejercicio_nombre": "Remo",
+      "tiene_video": true,
+      "publicado_en": "2026-11-12T15:00:00+00:00",
+      "devolucion": {
+       "credito": "Lo revisó Mati",
+       "ejercicio": "Remo",
+       "bien": [
+        "Espalda firme",
+        3
+       ],
+       "confianza": 0.9,
+       "correcciones": [
+        {
+         "prioridad": 2,
+         "titulo": "B",
+         "que_se_ve": "b",
+         "por_que": "b",
+         "como_corregir": "b",
+         "momento_s": -1
+        },
+        {
+         "prioridad": 1,
+         "titulo": "A",
+         "que_se_ve": "a",
+         "por_que": "a",
+         "como_corregir": "a",
+         "momento_s": 12.5
+        },
+        {
+         "prioridad": 3
+        }
+       ],
+       "no_evaluable": [
+        {
+         "que": "Cadera",
+         "motivo": "No se ve"
+        },
+        {
+         "motivo": "x"
+        }
+       ],
+       "pedir_otro_video": {
+        "necesario": true,
+        "como": "De costado"
+       }
+      }
+     }
+    ]
+   },
+   "ids": [
+    "d"
+   ],
+   "aceptado": true,
+   "duracionMax": 60,
+   "bytesMax": 1000,
+   "titulos": [
+    "A",
+    "B"
+   ],
+   "momentos": [
+    12.5,
+    null
+   ],
+   "bien": 1,
+   "noEvaluable": 1,
+   "otroVideo": "De costado"
+  }
+ ]
+}

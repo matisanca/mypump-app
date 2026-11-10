@@ -123,6 +123,8 @@ fun EjercicioPantalla(
     alVolver: () -> Unit,
     alAbrir: (String) -> Unit,
     alCompletarDia: (ModeloEntreno.DiaCompletado) -> Unit,
+    tecnica: com.pumpteam.mypump.datos.ModeloTecnica? = null,
+    alMandarTecnica: (slug: String, nombre: String) -> Unit = { _, _ -> },
 ) {
     val alcance = LocalAlcanceApp.current
     // Al entrar, la card queda abierta: pide el historial y marca leídos los comentarios (SES-08). Si el motor ya la abrió
@@ -209,6 +211,7 @@ fun EjercicioPantalla(
                         }
                     },
                 )
+                com.pumpteam.mypump.tecnica.BotonMandarTecnica(tecnica, t.efectivo.ejercicio, alMandarTecnica)
                 ComoSeHace(t, Modifier.bringIntoViewRequester(pedirMovimiento))
                 Comentarios(motor, lugar, t, focoComentario, Modifier.bringIntoViewRequester(pedirComentarios))
                 Cierre(motor, v, lugar, t, preguntador, alAbrir, alCompletarDia)

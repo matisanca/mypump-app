@@ -74,7 +74,7 @@ struct EjercicioView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .topeArriba()
                             VStack(alignment: .leading, spacing: Espacio.l) {
-                                series(t); aSuperar(t); acciones(t, lector); comentarios(t); cierre(t)
+                                series(t); aSuperar(t); acciones(t, lector); BotonMandarTecnica(ejercicio: t.efectivo.ejercicio); comentarios(t); cierre(t)
                             }
                             .frame(maxWidth: .infinity, alignment: .top)
                             .fixedSize(horizontal: false, vertical: true)
@@ -85,7 +85,7 @@ struct EjercicioView: View {
                         // En el teléfono, lo que se usa en el gimnasio va primero: la pauta y la tabla quedan a la
                         // vista sin desplazar; el "cómo se hace" (fotos grandes y técnica) va después.
                         VStack(alignment: .leading, spacing: Espacio.l) {
-                            encabezado(t, lector); metricas(t); nota(t); series(t); aSuperar(t); acciones(t, lector)
+                            encabezado(t, lector); metricas(t); nota(t); series(t); aSuperar(t); acciones(t, lector); BotonMandarTecnica(ejercicio: t.efectivo.ejercicio)
                             comoSeHace(t); comentarios(t); cierre(t)
                         }
                         .anchoLectura()

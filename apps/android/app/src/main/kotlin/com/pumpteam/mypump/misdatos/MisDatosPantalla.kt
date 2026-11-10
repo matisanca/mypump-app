@@ -120,6 +120,14 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                     Separador(sangria = 58.dp)
                 }
             }
+            val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
+            tecnica?.let { x ->
+                val estadoTecnica by x.estado.collectAsStateWithLifecycle()
+                if (estadoTecnica != null) {
+                    FilaEnlace(Iconos.Video, c.marcaTexto, com.pumpteam.mypump.reglas.TextosTecnica.entradaMisDatos, etiqueta = "mis-datos-tecnica") { navegacion?.tecnicaEnMisDatos = true }
+                    Separador(sangria = 58.dp)
+                }
+            }
             FilaEnlace(Iconos.Libro, c.marcaTexto, "Respaldo científico del plan", etiqueta = "mis-datos-respaldo") { fuentes = true }
             Separador(sangria = 58.dp)
             FilaEnlace(Iconos.Privacidad, c.agua, "Política de privacidad") { abrirEnNavegador(contexto, URL_PRIVACIDAD) }

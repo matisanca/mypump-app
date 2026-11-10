@@ -35,6 +35,7 @@ enum Proveedor {
             if d.bool(forKey: "sinRed") { transporte = SinRed() }
             // `-gimnasioDePrueba <escenario>`: el servidor del gimnasio de mentira y lo demás de las muestras (ver `GimnasioDePrueba`).
             else if let caso = d.string(forKey: "gimnasioDePrueba") { transporte = GimnasioDePrueba(doble: .escenario(caso), sinRutina: d.bool(forKey: "gimnasioSinRutina")) }
+            else if let caso = d.string(forKey: "tecnicaDePrueba") { transporte = TecnicaDePrueba(doble: .escenario(caso)) }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
             else if let caso = d.string(forKey: "recuperacionDePrueba") { transporte = RecuperacionDePrueba(caso: caso) }
             // `-semanaDePrueba completa|incompleta`: el check y las fotos de esta semana inventados (ver `SemanaDePrueba`).
@@ -64,6 +65,21 @@ enum Proveedor {
 #if DEBUG
 /// Todo pedido falla como sin señal (`-sinRed YES`).
 #if DEBUG
+/// `-tecnicaDePrueba`: lo de técnica lo contesta el doble (sin red), y la cuenta y el plan salen de las muestras.
+private struct TecnicaDePrueba: Transporte {
+    let doble: DobleTecnica
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = pedido.url?.path ?? ""
+        let f = ruta.components(separatedBy: "/").last ?? ""
+        if ruta.contains("/tecnica/") || f.hasPrefix("mypump_tecnica") || f == "mypump_get_app_config" { return try await doble.enviar(pedido) }
+        var cuerpo = Data("[]".utf8)
+        if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
+           let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }
+        return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
 /// `-gimnasioDePrueba`: lo del gimnasio lo contesta el doble (sin red), y la cuenta y el plan salen de las muestras.
 private struct GimnasioDePrueba: Transporte {
     let doble: DobleGimnasio

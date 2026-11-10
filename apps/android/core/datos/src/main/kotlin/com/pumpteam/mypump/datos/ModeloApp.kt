@@ -239,6 +239,10 @@ class ModeloApp(
     private val _gimnasio = MutableStateFlow<ModeloGimnasio?>(null)
     val gimnasio: StateFlow<ModeloGimnasio?> = _gimnasio.asStateFlow()
 
+    /** Técnica por video: existe con cuenta, pero solo llama al servidor con la palanca `tecnica_video` prendida. */
+    private val _tecnica = MutableStateFlow<ModeloTecnica?>(null)
+    val tecnica: StateFlow<ModeloTecnica?> = _tecnica.asStateFlow()
+
     /** Progreso: se carga al abrir la pestaña (como la web). */
     private val _progreso = MutableStateFlow<ModeloProgreso?>(null)
     val progreso: StateFlow<ModeloProgreso?> = _progreso.asStateFlow()
@@ -490,6 +494,7 @@ class ModeloApp(
         _revision.value = null
         _fotos.value = null
         _gimnasio.value = null
+        _tecnica.value = null
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
@@ -528,6 +533,7 @@ class ModeloApp(
         _revision.value = ModeloRevision(cliente, t, cola, alcance, d)
         _fotos.value = ModeloFotos(cliente, t, d)
         _gimnasio.value = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        _tecnica.value = ModeloTecnica(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
@@ -666,6 +672,7 @@ class ModeloApp(
         val colaCuenta = outbox
         val fotosCuenta = _fotos.value
         val gimnasioCuenta = _gimnasio.value
+        val tecnicaCuenta = _tecnica.value
         val clienteId = _info.value?.clienteId
         if (discoCuenta != null && colaCuenta != null && !clienteId.isNullOrEmpty()) {
             CuentasDelTelefono.anotar(clienteId, discoCuenta)
@@ -675,6 +682,7 @@ class ModeloApp(
             if (CuentasDelTelefono.adoptarSwaps(clienteId, discoCuenta)) colaCuenta.retenerSwapsHastaDecidir()
             fotosCuenta?.let { f -> CuentasDelTelefono.adoptarFotos(clienteId, discoCuenta, f) }
             gimnasioCuenta?.let { g -> CuentasDelTelefono.adoptarGimnasio(clienteId, discoCuenta, g) }
+            tecnicaCuenta?.let { x -> CuentasDelTelefono.adoptarTecnica(clienteId, discoCuenta, x) }
             if (!vigente()) return
         }
 
@@ -693,6 +701,7 @@ class ModeloApp(
         palancaLeida?.let {
             _palanca.value = it
             _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
+            _tecnica.value?.recordarPalanca(it.tecnicaVideo)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -755,6 +764,7 @@ class ModeloApp(
             launch { _suplementacion.value?.refrescar() }
         }
         sincronizarGimnasio()
+        sincronizarTecnica()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -771,6 +781,18 @@ class ModeloApp(
         outbox?.drenar()
         _fotos.value?.drenar()
         _gimnasio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+        _tecnica.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+    }
+
+    /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
+    private suspend fun sincronizarTecnica() {
+        val x = _tecnica.value ?: return
+        if (x.palancaRecordada) {
+            x.refrescar()
+            x.drenarEnFondo()   // un video grande no frena el resto de la carga
+        } else {
+            x.apagar()
+        }
     }
 
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
@@ -828,6 +850,7 @@ class ModeloApp(
         _chat.value?.sondear()
         _fotos.value?.drenar()
         sincronizarGimnasio()
+        sincronizarTecnica()
         _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }
