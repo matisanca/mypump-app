@@ -103,6 +103,20 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import kotlin.math.abs
 import kotlin.math.min
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
+import com.pumpteam.mypump.datos.enviarAudio
+import com.pumpteam.mypump.datos.enviarFoto
+import com.pumpteam.mypump.datos.reintentarAdjunto
+import com.pumpteam.mypump.datos.descartarAdjunto
+import com.pumpteam.mypump.modelos.AdjuntoChat
+import com.pumpteam.mypump.reglas.ReglasChatAdjuntos
 
 /**
  * El chat con Mati (CHA-01…06), gemelo de ChatView.swift: las burbujas a los costados agrupadas por autor (la colita y la
@@ -143,6 +157,48 @@ fun ChatPantalla(modelo: ModeloApp) {
     val estadoLista = rememberLazyListState()
     val tapado by remember { derivedStateOf { estadoLista.canScrollForward } }
 
+    // Fotos y audios (2.3.0): solo con la palanca `chat_adjuntos` y el cliente habilitado.
+    val conAdjuntos = (ch?.adjuntosActivos?.collectAsStateWithLifecycle()?.value ?: false) && !demo
+    val anuncio = ch?.anuncio?.collectAsStateWithLifecycle()?.value
+    val contexto = LocalContext.current
+    val chActual by rememberUpdatedState(ch)
+    val reproductor = remember { ReproductorChat() }
+    val grabacion = remember(contexto) {
+        GrabacionChat(contexto) { f, s ->
+            val c = chActual
+            if (c == null) f.delete() else alcance.launch { c.enviarAudio(f, s) }
+        }
+    }
+    if (ch != null) grabacion.maximo = ch.audioMaximo
+    var fotoGrande by remember { mutableStateOf<ImageBitmap?>(null) }
+    val (pedirMicrofono, alertaMicrofono) = rememberPedirMicrofono()
+    // Ir a otra pestaña o a segundo plano con un audio grabándose lo manda (como WhatsApp); lo que suena se frena.
+    val ciclo = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(ciclo) {
+        val o = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_STOP) {
+                grabacion.soltar()
+                reproductor.pausar()
+            }
+        }
+        ciclo.addObserver(o)
+        onDispose {
+            ciclo.removeObserver(o)
+            grabacion.soltar()
+            reproductor.soltar()
+        }
+    }
+    // Lo que avisa la cola (tope, foto que no abre, audio muy corto): se muestra un rato y TalkBack lo lee.
+    var anuncioVisible by remember { mutableStateOf<String?>(null) }
+    val vista = LocalView.current
+    LaunchedEffect(anuncio?.first) {
+        val t = anuncio?.second ?: return@LaunchedEffect
+        anuncioVisible = t
+        vista.announceForAccessibility(t)
+        delay(4_000)
+        anuncioVisible = null
+    }
+
     fun enviar() {
         val c = ch ?: return
         if (!puedeEnviar) return
@@ -166,7 +222,7 @@ fun ChatPantalla(modelo: ModeloApp) {
                 if (cargando && hilo.mensajes.isEmpty()) {
                     EsqueletoChat()
                 } else {
-                    Conversacion(modelo, ch, hilo, cargando, sinTraer, estadoLista)
+                    Conversacion(modelo, ch, hilo, cargando, sinTraer, estadoLista, reproductor) { fotoGrande = it }
                 }
             }
             Compositor(
@@ -175,9 +231,16 @@ fun ChatPantalla(modelo: ModeloApp) {
                 demo = demo,
                 puedeEnviar = puedeEnviar,
                 alEnviar = ::enviar,
+                conAdjuntos = conAdjuntos,
+                grabacion = grabacion,
+                aviso = anuncioVisible,
+                pedirMicrofono = pedirMicrofono,
+                alFoto = { jpeg -> ch?.let { c -> alcance.launch { c.enviarFoto(jpeg) } } },
             )
         }
     }
+    fotoGrande?.let { VisorFoto(it) { fotoGrande = null } }
+    alertaMicrofono()
 }
 
 /**
@@ -216,7 +279,16 @@ private fun BarraChat(tapado: Boolean) {
  * lista cierra el teclado.
  */
 @Composable
-private fun Conversacion(modelo: ModeloApp, ch: ModeloChat?, hilo: HiloChat, cargando: Boolean, sinTraer: Boolean, estadoLista: LazyListState) {
+private fun Conversacion(
+    modelo: ModeloApp,
+    ch: ModeloChat?,
+    hilo: HiloChat,
+    cargando: Boolean,
+    sinTraer: Boolean,
+    estadoLista: LazyListState,
+    reproductor: ReproductorChat,
+    verFoto: (ImageBitmap) -> Unit,
+) {
     val alcance = LocalAlcanceApp.current
     val reducir = reducirMovimiento()
     val filas = remember(hilo.mensajes) { TextosChat.filas(hilo.mensajes).asReversed() }
@@ -245,7 +317,14 @@ private fun Conversacion(modelo: ModeloApp, ch: ModeloChat?, hilo: HiloChat, car
                     f.burbuja,
                     conCola = f.cierraGrupo,
                     hora = f.hora,
-                    alReintentar = { alcance.launch { ch?.reintentar(f.burbuja.id) } },
+                    alReintentar = {
+                        val a = f.burbuja.adjunto
+                        alcance.launch { if (a != null) ch?.reintentarAdjunto(a.id) else ch?.reintentar(f.burbuja.id) }
+                    },
+                    chat = ch,
+                    reproductor = reproductor,
+                    verFoto = verFoto,
+                    alBorrar = { f.burbuja.adjunto?.let { a -> alcance.launch { ch?.descartarAdjunto(a.id) } } },
                     modifier = ancho.padding(top = if (f.iniciaGrupo) Espacio.s else 2.dp),
                 )
             }
@@ -391,7 +470,17 @@ private fun SeparadorDia(texto: String, modifier: Modifier = Modifier) {
  * abandonó, con "no salió" y Reintentar (el texto nunca se pierde). TalkBack lee "Vos: …" o "Mati: …" y el estado.
  */
 @Composable
-private fun Burbuja(m: BurbujaChat, conCola: Boolean, hora: String?, alReintentar: () -> Unit, modifier: Modifier = Modifier) {
+private fun Burbuja(
+    m: BurbujaChat,
+    conCola: Boolean,
+    hora: String?,
+    alReintentar: () -> Unit,
+    modifier: Modifier = Modifier,
+    chat: ModeloChat? = null,
+    reproductor: ReproductorChat? = null,
+    verFoto: (ImageBitmap) -> Unit = {},
+    alBorrar: () -> Unit = {},
+) {
     val c = MyPump.colores
     val mio = !m.esDelCoach
     val forma = remember(mio, conCola) { FormaBurbuja(mia = mio, conCola = conCola) }
@@ -404,24 +493,30 @@ private fun Burbuja(m: BurbujaChat, conCola: Boolean, hora: String?, alReintenta
         modifier
             .padding(start = if (mio) 56.dp else 0.dp, end = if (mio) 0.dp else 56.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "${if (mio) "Vos" else "Mati"}: ${m.contenido}"
+                contentDescription = "${if (mio) "Vos" else "Mati"}: ${descripcionBurbuja(m)}"
                 if (estado != null) stateDescription = estado
             },
         horizontalAlignment = if (mio) Alignment.End else Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Box(
-            Modifier
-                .alpha(if (m.pendiente && !m.fallo) 0.6f else 1f)
-                .background(if (mio) c.marca else c.tarjeta, forma)
-                .then(if (mio) Modifier else Modifier.border(1.dp, c.borde, forma))
-                .padding(horizontal = 14.dp, vertical = 9.dp),
-        ) {
-            SelectionContainer {
-                Text(m.contenido, style = MaterialTheme.typography.bodyLarge, color = if (mio) c.sobreMarca else c.texto)
+        val adjunto = m.adjunto
+        if (adjunto != null && reproductor != null) {
+            AdjuntoEnBurbuja(m, adjunto, chat, reproductor, forma, verFoto)
+        } else {
+            Box(
+                Modifier
+                    .alpha(if (m.pendiente && !m.fallo) 0.6f else 1f)
+                    .background(if (mio) c.marca else c.tarjeta, forma)
+                    .then(if (mio) Modifier else Modifier.border(1.dp, c.borde, forma))
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+            ) {
+                SelectionContainer {
+                    Text(m.contenido, style = MaterialTheme.typography.bodyLarge, color = if (mio) c.sobreMarca else c.texto)
+                }
             }
         }
         when {
+            m.fallo && adjunto != null -> FalloAdjunto(m.motivoFallo, alReintentar, alBorrar)
             m.fallo -> Row(
                 Modifier.padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -492,7 +587,18 @@ fun AvatarMati(lado: Dp, modifier: Modifier = Modifier) {
  * el `maxlength` de la web). En la demo, Enviar apagado y el aviso.
  */
 @Composable
-private fun Compositor(texto: String, alCambiar: (String) -> Unit, demo: Boolean, puedeEnviar: Boolean, alEnviar: () -> Unit) {
+private fun Compositor(
+    texto: String,
+    alCambiar: (String) -> Unit,
+    demo: Boolean,
+    puedeEnviar: Boolean,
+    alEnviar: () -> Unit,
+    conAdjuntos: Boolean = false,
+    grabacion: GrabacionChat? = null,
+    aviso: String? = null,
+    pedirMicrofono: () -> Unit = {},
+    alFoto: (ByteArray) -> Unit = {},
+) {
     val c = MyPump.colores
     val n = remember(texto) { TextosChat.caracteres(texto) }
     Column(
@@ -510,12 +616,32 @@ private fun Compositor(texto: String, alCambiar: (String) -> Unit, demo: Boolean
                 Text("En la demo los mensajes no se envían.", style = Letras.caption, color = c.textoSecundario)
             }
         }
+        val grabando = grabacion?.grabando == true
+        val avisoGrabacion = grabacion?.aviso
+        val avisoVisible = aviso ?: avisoGrabacion
+        if (avisoVisible != null) {
+            Text(
+                avisoVisible,
+                style = Letras.caption,
+                color = c.textoSecundario,
+                modifier = Modifier.widthIn(max = AnchoLectura).fillMaxWidth().padding(horizontal = Espacio.xs).testTag("chat-aviso"),
+            )
+            if (avisoGrabacion != null) {
+                LaunchedEffect(avisoGrabacion) {
+                    delay(4_000)
+                    grabacion.aviso = null
+                }
+            }
+        }
         Row(
             Modifier.widthIn(max = AnchoLectura).fillMaxWidth(),
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(Espacio.xs),
         ) {
-            BasicTextField(
+            if (conAdjuntos && !grabando) BotonFotoChat(alFoto)
+            if (grabando && grabacion != null) {
+                BarraGrabando(grabacion, Modifier.weight(1f))
+            } else BasicTextField(
                 value = texto,
                 onValueChange = alCambiar,
                 minLines = 1,
@@ -555,8 +681,53 @@ private fun Compositor(texto: String, alCambiar: (String) -> Unit, demo: Boolean
                     }
                 },
             )
-            BotonEnviar(puedeEnviar, alEnviar)
+            if (conAdjuntos && grabacion != null && (grabando || texto.isEmpty())) {
+                BotonMicrofono(grabacion, pedirMicrofono)
+            } else {
+                BotonEnviar(puedeEnviar, alEnviar)
+            }
         }
+    }
+}
+
+/** Lo que lee TalkBack de una burbuja: el texto, o «Foto» / «Audio de 42 segundos». */
+private fun descripcionBurbuja(m: BurbujaChat): String {
+    val a = m.adjunto ?: return m.contenido
+    return when {
+        a.borrado -> ReglasChatAdjuntos.TEXTO_NO_DISPONIBLE
+        a.tipo == AdjuntoChat.Tipo.FOTO -> ReglasChatAdjuntos.TEXTO_FOTO_ACCESIBLE
+        else -> ReglasChatAdjuntos.textoAudioAccesible(a.duracion)
+    }
+}
+
+/** Una foto o un audio que no salió: el motivo, «Borrar» y, si tiene sentido, «Reintentar». */
+@Composable
+private fun FalloAdjunto(motivo: String?, alReintentar: () -> Unit, alBorrar: () -> Unit) {
+    val c = MyPump.colores
+    Column(Modifier.padding(horizontal = 6.dp).testTag("chat-adjunto-fallo"), horizontalAlignment = Alignment.End) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(Iconos.Error, contentDescription = null, tint = c.peligro, modifier = Modifier.size(13.dp))
+            Text(ReglasChatAdjuntos.textoFallo(motivo), style = Letras.caption, color = c.peligro)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            AccionChica(ReglasChatAdjuntos.TEXTO_BORRAR, c.peligro, "chat-adjunto-borrar", alBorrar)
+            if (ReglasChatAdjuntos.sePuedeReintentar(motivo)) AccionChica(ReglasChatAdjuntos.TEXTO_REINTENTAR, c.marcaTexto, "chat-reintentar", alReintentar)
+        }
+    }
+}
+
+@Composable
+private fun AccionChica(texto: String, color: Color, etiqueta: String, alTocar: () -> Unit) {
+    Box(
+        Modifier
+            .defaultMinSize(minHeight = 32.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(role = Role.Button, onClick = alTocar)
+            .padding(horizontal = 4.dp)
+            .testTag(etiqueta),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(texto, style = Letras.caption.copy(fontWeight = FontWeight.SemiBold), color = color)
     }
 }
 
