@@ -102,6 +102,9 @@ class Navegacion(
     /** «Mi técnica» abierto desde Mis datos. */
     var tecnicaEnMisDatos by mutableStateOf(tecnicaEnMisDatos)
 
+    /** «Novedades de tu plan» abierto desde Mis datos (no sobrevive a rotar: vuelve a Mis datos). */
+    var novedadesEnMisDatos by mutableStateOf(false)
+
     /**
      * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check), como `anclaRevision` de
      * `Navegacion.swift`. Revisión la consume al llegar.
@@ -125,6 +128,7 @@ class Navegacion(
             guiaEnMisDatos = false
             gimnasioEnMisDatos = false
             tecnicaEnMisDatos = false
+            novedadesEnMisDatos = false
         }
         if (p == pestana && p == Pestana.ENTRENO) {
             guia = false
@@ -161,6 +165,7 @@ class Navegacion(
         guiaEnMisDatos = false
         gimnasioEnMisDatos = false
         tecnicaEnMisDatos = false
+        novedadesEnMisDatos = false
         anclaRevision = ancla
     }
 

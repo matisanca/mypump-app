@@ -106,6 +106,16 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
             // «Tu guía» después de la entrega (o quitada de Entreno): una sola fila, solo con resumen `ok: true`.
             val guia by modelo.guia.collectAsStateWithLifecycle()
             val navegacion = LocalNavegacion.current
+            // «Novedades de tu plan» (palanca `novedades_plan`): el lugar fijo, primero.
+            val novedades by modelo.novedades.collectAsStateWithLifecycle()
+            val palanca by modelo.palanca.collectAsStateWithLifecycle()
+            val esDemoNov by modelo.esDemo.collectAsStateWithLifecycle()
+            if (novedades != null && (palanca.novedadesPlan || esDemoNov)) {
+                FilaEnlace(Iconos.Chispas, c.marcaTexto, com.pumpteam.mypump.novedades.TextosNovedades.ENTRADA_MIS_DATOS, etiqueta = "mis-datos-novedades") {
+                    navegacion?.novedadesEnMisDatos = true
+                }
+                Separador(sangria = 58.dp)
+            }
             guia?.let { g ->
                 if (lugarDeLaGuia(g).second == ReglasGuia.Lugar.MIS_DATOS) {
                     FilaEnlace(Iconos.Video, c.marcaTexto, "Ver mi guía", etiqueta = "mis-datos-guia") { navegacion?.guiaEnMisDatos = true }
