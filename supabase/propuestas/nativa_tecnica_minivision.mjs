@@ -148,8 +148,13 @@ async function handleTecnicaUpload(req, res, origin) {
     if (!Number.isFinite(duracion) || duracion < DURACION_MIN_TECNICA) return send(res, 400, { ok: false, error: 'video muy corto' }, origin);
     if (duracion > DURACION_MAX_TECNICA) return send(res, 400, { ok: false, error: 'video muy largo' }, origin);
 
-    await correrTecnica(FFMPEG_TECNICA, ['-nostdin', '-v', 'error', '-y', '-i', entrada, '-map', '0:v:0', '-c', 'copy', '-an', '-sn', '-dn', '-map_metadata', '-1',
-      '-map_chapters', '-1', '-movflags', '+faststart', salida]);
+    try {
+      await correrTecnica(FFMPEG_TECNICA, ['-nostdin', '-v', 'error', '-y', '-protocol_whitelist', 'file', '-i', entrada, '-t', String(DURACION_MAX_TECNICA), '-map', '0:v:0', '-c', 'copy', '-an', '-sn', '-dn', '-map_metadata', '-1',
+        '-map_chapters', '-1', '-movflags', '+faststart', salida]);
+    } catch (e) {
+      if (e.killed || e.code === 'ENOENT') throw e;           // colgado o sin binario: 503, se puede reintentar
+      return send(res, 400, { ok: false, error: 'el video no se puede leer' }, origin);
+    }
     const peso = (await statTec(salida)).size;
     if (peso <= 0 || peso > MAX_TECNICA_B) return send(res, 413, { ok: false, error: 'video muy pesado' }, origin);
 

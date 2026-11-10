@@ -231,10 +231,10 @@ test('duración: muy corto y muy largo, 400', async () => {
   assert.equal(db.objetos.size, 0);
   await sinTemporales();
 });
-test('ffmpeg falla: 503, nada guardado, fila intacta', async () => {
+test('ffmpeg no puede con el archivo: 400, nada guardado, fila intacta', async () => {
   writeFileSync(`${control}.ffmpeg`, '1');
   const r = await subir();
-  assert.equal(r.status, 503); assert.equal(db.objetos.size, 0);
+  assert.equal(r.status, 400); assert.equal(db.objetos.size, 0);
   assert.equal(db.filas.get(ID_A).estado, 'borrador');
   await sinTemporales();
 });

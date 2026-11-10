@@ -49,6 +49,13 @@ AS $$
      AND jsonb_typeof(p->'correcciones') = 'array'
      AND jsonb_array_length(p->'correcciones') <= 3
      AND jsonb_typeof(p->'no_evaluable') = 'array'
+     AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p->'bien') b WHERE jsonb_typeof(b) <> 'object' OR jsonb_typeof(b->'texto') IS DISTINCT FROM 'string')
+     AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p->'correcciones') c WHERE jsonb_typeof(c) <> 'object'
+                       OR jsonb_typeof(c->'prioridad') IS DISTINCT FROM 'number' OR jsonb_typeof(c->'momento_s') IS DISTINCT FROM 'number'
+                       OR (c->>'prioridad') !~ '^[0-9]+$'
+                       OR jsonb_typeof(c->'titulo') IS DISTINCT FROM 'string' OR jsonb_typeof(c->'que_se_ve') IS DISTINCT FROM 'string'
+                       OR jsonb_typeof(c->'por_que') IS DISTINCT FROM 'string' OR jsonb_typeof(c->'como_corregir') IS DISTINCT FROM 'string')
+     AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p->'no_evaluable') n WHERE jsonb_typeof(n) <> 'object' OR jsonb_typeof(n->'que') IS DISTINCT FROM 'string')
      AND NOT mypump_tecnica_texto_prohibido(p);
 $$;
 
@@ -382,7 +389,10 @@ DECLARE
 BEGIN
   WITH x AS (
     UPDATE mypump_tecnica SET estado = 'enviado', intentos = 0, reaperturas = reaperturas + 1, actualizado_en = NOW()
-     WHERE estado = 'error' AND reaperturas < p_max AND actualizado_en < NOW() - make_interval(hours => p_horas) AND path IS NOT NULL AND video_borrado_en IS NULL RETURNING 1)
+     WHERE estado = 'error' AND reaperturas < p_max AND actualizado_en < NOW() - make_interval(hours => p_horas) AND path IS NOT NULL AND video_borrado_en IS NULL
+       AND COALESCE(error_detalle, '') NOT ILIKE '%SalidaInvalida%'      -- si el modelo no da una salida válida, reintentar solo gasta cuota
+       AND NOT EXISTS (SELECT 1 FROM mypump_tecnica o WHERE o.cliente_id = mypump_tecnica.cliente_id AND o.estado IN ('borrador','enviado','procesando'))
+     RETURNING 1)
   SELECT count(*) INTO n FROM x;
   RETURN n;
 END;
@@ -436,6 +446,30 @@ AS $$
   FROM (SELECT * FROM mypump_tecnica WHERE estado = 'a_revisar' ORDER BY escalar_a_mati DESC, publicar_desde LIMIT p_limite) t;
 $$;
 
+-- Siempre de día en Argentina, y con la palanca prendida.
+CREATE OR REPLACE FUNCTION mypump_tecnica_hora_de_publicar()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXTRACT(HOUR FROM NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN 10 AND 19;
+$$;
+
+CREATE OR REPLACE FUNCTION mypump_tecnica_palanca()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE((SELECT valor = 'true'::JSONB FROM mypump_app_config WHERE clave = 'tecnica_video'), FALSE);
+$$;
+
+REVOKE ALL ON FUNCTION mypump_tecnica_hora_de_publicar(), mypump_tecnica_palanca() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_tecnica_hora_de_publicar(), mypump_tecnica_palanca() TO service_role;
+
 -- El OK de Mati. `p_devolucion` es la versión final, editada o no. Antes de la ventana queda `aprobado` y sale sola cuando llega la hora.
 CREATE OR REPLACE FUNCTION mypump_tecnica_aprobar(p_id UUID, p_devolucion JSONB, p_aprobado_por TEXT)
 RETURNS JSONB
@@ -455,8 +489,8 @@ BEGIN
   v_final := COALESCE(p_devolucion, v_fila.devolucion);
   IF NOT mypump_tecnica_devolucion_valida(v_final) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'devolucion_invalida'); END IF;
   UPDATE mypump_tecnica SET devolucion = v_final, aprobado_por = btrim(p_aprobado_por), aprobado_en = NOW(),
-         estado = CASE WHEN NOW() >= publicar_desde THEN 'publicado' ELSE 'aprobado' END,
-         publicado_en = CASE WHEN NOW() >= publicar_desde THEN NOW() END, actualizado_en = NOW()
+         estado = CASE WHEN NOW() >= publicar_desde AND mypump_tecnica_hora_de_publicar() AND mypump_tecnica_palanca() THEN 'publicado' ELSE 'aprobado' END,
+         publicado_en = CASE WHEN NOW() >= publicar_desde AND mypump_tecnica_hora_de_publicar() AND mypump_tecnica_palanca() THEN NOW() END, actualizado_en = NOW()
    WHERE id = p_id RETURNING * INTO v_fila;
   RETURN jsonb_build_object('ok', TRUE, 'ya', FALSE, 'estado', v_fila.estado, 'publicar_desde', v_fila.publicar_desde);
 END;
@@ -490,7 +524,7 @@ AS $$
 DECLARE
   n INTEGER;
 BEGIN
-  WITH x AS (UPDATE mypump_tecnica SET estado = 'publicado', publicado_en = NOW(), actualizado_en = NOW() WHERE estado = 'aprobado' AND NOW() >= publicar_desde RETURNING 1)
+  WITH x AS (UPDATE mypump_tecnica SET estado = 'publicado', publicado_en = NOW(), actualizado_en = NOW() WHERE estado = 'aprobado' AND NOW() >= publicar_desde AND mypump_tecnica_hora_de_publicar() AND mypump_tecnica_palanca() RETURNING 1)
   SELECT count(*) INTO n FROM x;
   RETURN n;
 END;

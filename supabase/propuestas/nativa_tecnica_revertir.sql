@@ -14,6 +14,8 @@ DROP FUNCTION IF EXISTS mypump_tecnica_avisado(UUID);
 DROP FUNCTION IF EXISTS mypump_tecnica_publicar_vencidas();
 DROP FUNCTION IF EXISTS mypump_tecnica_descartar(UUID, TEXT, TEXT);
 DROP FUNCTION IF EXISTS mypump_tecnica_aprobar(UUID, JSONB, TEXT);
+DROP FUNCTION IF EXISTS mypump_tecnica_palanca();
+DROP FUNCTION IF EXISTS mypump_tecnica_hora_de_publicar();
 DROP FUNCTION IF EXISTS mypump_tecnica_a_revisar(INTEGER);
 DROP FUNCTION IF EXISTS mypump_tecnica_guardar(UUID, TEXT, JSONB, JSONB, BOOLEAN, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT);
 DROP FUNCTION IF EXISTS mypump_tecnica_reabrir_errores(INTEGER, INTEGER);
