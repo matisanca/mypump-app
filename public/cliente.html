@@ -602,6 +602,45 @@ main{padding:var(--space-4)}
 .chat-input{flex:1;min-width:0;resize:none;max-height:110px;padding:10px 12px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:15px;line-height:1.4}
 .chat-send{flex:0 0 auto;width:44px;height:44px;border:0;border-radius:var(--radius-md);background:var(--color-brand);color:var(--color-on-brand);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 .chat-send:disabled{opacity:.4;cursor:default}
+/* Fotos y audios en el chat (palanca chat_adjuntos) */
+.chat-msg.has-adj{padding:4px;background:none;border:0;max-width:min(88%,252px)}
+.chat-msg.has-adj .ex-com-head{padding:2px 8px 4px}
+.chat-adj-foto{display:block;padding:0;border:1px solid var(--color-border);border-radius:18px;overflow:hidden;background:var(--color-bg-tertiary);width:228px;max-width:100%;aspect-ratio:4/3;cursor:zoom-in;position:relative}
+.chat-adj-foto img{display:block;width:100%;height:100%;object-fit:cover}
+.chat-adj-foto.is-cargando::after,.chat-msg.is-tmp:not(.is-fallo) .chat-adj-foto::after{content:"";position:absolute;inset:0;margin:auto;width:24px;height:24px;border-radius:50%;border:2.5px solid color-mix(in oklab,var(--color-text-muted) 40%,transparent);border-top-color:var(--color-text-muted);animation:chatGira .8s linear infinite}
+.chat-adj-foto .chat-adj-nocarga{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;font-size:12px;color:var(--color-text-secondary);text-align:center}
+@keyframes chatGira{to{transform:rotate(360deg)}}
+.chat-adj-audio{display:flex;align-items:center;gap:10px;width:232px;max-width:100%;padding:8px 14px 8px 8px;border-radius:18px;border:1px solid var(--color-border);background:var(--color-bg-tertiary)}
+.chat-msg.is-cliente .chat-adj-audio{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
+.chat-msg.is-coach .chat-adj-audio{background:var(--color-brand-subtle);border-color:var(--color-brand)}
+.chat-adj-play{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;background:color-mix(in oklab,currentColor 16%,transparent);color:inherit}
+.chat-msg.is-coach .chat-adj-play{color:var(--color-brand)}
+.chat-adj-onda{flex:1;display:flex;align-items:center;gap:2px;height:22px}
+.chat-adj-onda i{flex:1;border-radius:2px;background:currentColor;opacity:.35;min-height:3px}
+.chat-adj-onda i.on{opacity:1}
+.chat-adj-dur{font-family:var(--font-num);font-size:12px;opacity:.85;min-width:30px;text-align:right}
+.chat-adj-nodisp{padding:9px 14px;border-radius:18px;font-size:13px;font-style:italic;color:var(--color-text-secondary);background:var(--color-bg-tertiary);border:1px solid var(--color-border)}
+.chat-adj-fallo{margin-top:4px;font-size:12px;color:var(--color-danger);text-align:right}
+.chat-adj-acciones{display:flex;gap:6px;justify-content:flex-end;margin-top:4px}
+.chat-adj-acciones .chat-reintentar{margin-top:0}
+.chat-adj-acciones .is-borrar{color:var(--color-danger)}
+.chat-btn{flex:0 0 auto;width:44px;height:44px;border-radius:22px;border:1px solid var(--color-border);background:var(--color-bg-secondary,var(--color-bg-tertiary));color:var(--color-brand);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.chat-btn input{display:none}
+.chat-btn[hidden],.chat-send[hidden]{display:none}
+.chat-btn.is-grabando{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand);transform:scale(1.25);transition:transform .15s}
+.chat-btn.is-cancelando{background:var(--color-danger);border-color:var(--color-danger)}
+.chat-grabando{flex:1;min-width:0;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border-radius:22px;border:1px solid var(--color-border);background:var(--color-bg-primary);font-size:13px}
+.chat-grabando .punto{width:10px;height:10px;border-radius:50%;background:var(--color-danger);animation:chatLatido 1.4s ease-in-out infinite}
+.chat-grabando .tiempo{font-family:var(--font-num);font-weight:600;font-size:15px;color:var(--color-text-primary)}
+.chat-grabando .ayuda{margin-left:auto;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-grabando .ayuda.is-alerta{color:var(--color-danger);font-weight:600}
+.chat-grabando button{margin-left:auto;background:none;border:0;font:inherit;font-weight:600;color:var(--color-danger);min-height:44px;cursor:pointer}
+@keyframes chatLatido{50%{opacity:.25}}
+.chat-aviso{position:fixed;left:0;right:0;bottom:calc(132px + env(safe-area-inset-bottom));margin-inline:auto;max-width:440px;width:calc(100% - 32px);z-index:37;padding:8px 12px;border-radius:12px;background:var(--color-bg-tertiary);border:1px solid var(--color-border);font-size:13px;color:var(--color-text-secondary);text-align:center}
+.chat-visor{position:fixed;inset:0;z-index:200;background:#000;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom}
+.chat-visor img{max-width:100%;max-height:100%;object-fit:contain}
+.chat-visor button{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.chat-grabando .punto,.chat-adj-foto::after{animation:none}.chat-btn.is-grabando{transform:none}}
 /* Botón del header. El chat NO es un 6º tab: seis tabs dejan cada uno en
    ~62px en un iPhone SE. Mismo criterio que la escena Salud. */
 .hdr-chat{position:relative}
@@ -1601,6 +1640,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/tecnica.js"></script>
 <script src="/js/tecnica-cola.js"></script>
 <script src="/js/tecnica-ui.js"></script>
+<script src="/js/chat-adjuntos.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1789,6 +1829,7 @@ async function leerPalancaWeb230() {
   const cfg = await window.mypumpDB.getAppConfig();
   _gimPalanca(cfg);
   _tecPalanca(cfg);
+  if (typeof chatAdjPalanca === 'function') chatAdjPalanca(cfg).catch(() => {});
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -2745,18 +2786,24 @@ function chatMerge(filas) {
   const vistos = new Set(c.msgs.map(m => m.id));
   let entraron = 0;
   for (const f of (filas || [])) {
-    if (!f || vistos.has(f.id)) continue;
+    if (!f) continue;
+    // La foto o el audio que acaba de salir de acá ya estaba en el hilo con su id real: la fila de verdad la reemplaza.
+    if (vistos.has(f.id)) {
+      const i = c.msgs.findIndex(m => m && m._conf && m.id === f.id);
+      if (i < 0) continue;
+      c.msgs.splice(i, 1);
+    }
     // Al llegar el mensaje de verdad, se va la burbuja optimista que lo estaba
     // representando. Se matchea por texto+autor porque el id lo pone el
     // server: el cliente no lo puede saber de antemano.
-    if (f.autor === 'cliente') {
+    if (f.autor === 'cliente' && !f.adjunto) {
       // TODAS las que tengan ese texto, no solo la primera: desde la mig 075
       // el servidor deduplica el mismo mensaje dentro de 2 minutos, así que
       // dos burbujas optimistas pueden corresponder a una sola fila — y la
       // sobrante quedaba en "enviando…" para siempre.
       for (let i = c.msgs.length - 1; i >= 0; i--) {
         const m = c.msgs[i];
-        if (m && m._tmp && m.autor === 'cliente' && m.contenido === f.contenido) c.msgs.splice(i, 1);
+        if (m && m._tmp && !m.adjunto && m.autor === 'cliente' && m.contenido === f.contenido) c.msgs.splice(i, 1);
       }
     }
     vistos.add(f.id);
@@ -2764,7 +2811,7 @@ function chatMerge(filas) {
     entraron++;
   }
   c.msgs.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
-  const ultimo = c.msgs.filter(m => !m._tmp).slice(-1)[0];
+  const ultimo = c.msgs.filter(m => !m._tmp && !m._conf).slice(-1)[0];
   if (ultimo) c.cursor = ultimo.created_at;
   return entraron;
 }
@@ -2818,6 +2865,8 @@ function chatHora(iso) {
 function renderChat() {
   const el = document.getElementById('scene-chat');
   if (!el) return;
+  // Con un audio grabándose no se rehace nada (se perdería el botón que se está apretando): se rehace al soltar.
+  if (_chatGrab) { _chatGrab.renderPendiente = true; return; }
   // El hilo se rehace entero (también el textarea). Si Mati contesta mientras
   // el cliente escribe, el poll re-renderiza y el borrador desaparecía con el
   // cursor adentro. Se guarda y se restaura.
@@ -2826,7 +2875,7 @@ function renderChat() {
   const teniaFoco = !!(inpPrev && document.activeElement === inpPrev);
   const sel = teniaFoco ? [inpPrev.selectionStart, inpPrev.selectionEnd] : null;
 
-  const msgs = STATE.chat.msgs;
+  const msgs = chatAdjActivo() ? STATE.chat.msgs.concat(CHAT_ADJ.burbujas()).sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)) : STATE.chat.msgs;
   let hilo;
   if (!msgs.length) {
     hilo = `<div class="chat-vacio"><strong>Escribile a Mati</strong>
@@ -2841,6 +2890,7 @@ function renderChat() {
       if (dia && dia !== ultimoDia) { partes.push(`<div class="chat-dia">${escapeHtml(dia)}</div>`); ultimoDia = dia; }
       const mio = m.autor === 'cliente';
       const estado = m._fallo ? 'no salió' : (m._tmp ? 'enviando…' : escapeHtml(chatHora(m.created_at)));
+      if (m.adjunto && window.ChatAdjuntos) { partes.push(chatAdjBurbuja(m, mio, estado)); continue; }
       partes.push(`<div class="ex-com chat-msg ${mio ? 'is-cliente' : 'is-coach'}${m._tmp && !m._fallo ? ' is-tmp' : ''}${m._fallo ? ' is-fallo' : ''}">
         <div class="ex-com-head">
           <span class="ex-com-autor">${mio ? 'Vos' : 'Mati'}</span>
@@ -2855,13 +2905,16 @@ function renderChat() {
 
   el.innerHTML = hilo + `
     <div class="chat-composer">
+      ${chatAdjActivo() ? chatAdjBotonFoto() : ''}
       <textarea class="chat-input" id="chatInput" rows="1" placeholder="Escribile a Mati…" maxlength="1000"></textarea>
+      ${chatAdjActivo() ? chatAdjBotonMic() : ''}
       <button class="chat-send" id="chatSend" type="button" aria-label="Enviar" disabled>
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
       </button>
     </div>`;
 
   el.querySelectorAll('[data-rt]').forEach(b => { b.onclick = () => reintentarChat(b.dataset.rt); });
+  if (window.ChatAdjuntos) chatAdjConectar(el);
 
   const mas = document.getElementById('chatMas');
   if (mas) mas.onclick = async () => { mas.disabled = true; mas.textContent = 'Cargando…'; await loadChat(true); renderChat(); };
@@ -2869,12 +2922,16 @@ function renderChat() {
   const inp = document.getElementById('chatInput');
   const btn = document.getElementById('chatSend');
   if (inp && btn) {
+    const mic = document.getElementById('chatMic');
     const ajustar = () => {
       btn.disabled = !inp.value.trim();
+      // Con el campo vacío el micrófono ocupa el lugar de Enviar, como en WhatsApp.
+      if (mic) { const vacio = !inp.value.trim(); mic.hidden = !vacio; btn.hidden = vacio; }
       inp.style.height = 'auto';
       inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
     };
     inp.addEventListener('input', ajustar);
+    ajustar();
     if (borrador) {
       inp.value = borrador; ajustar();
       if (teniaFoco) { try { inp.focus({ preventScroll: true }); if (sel) inp.setSelectionRange(sel[0], sel[1]); } catch (e) {} }
@@ -2925,6 +2982,372 @@ function chatScrollAlFondo() {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' });
   }));
+}
+
+/* ── Fotos y audios (palanca `chat_adjuntos`, js/chat-adjuntos.js) ──────────
+ * La cola de archivos es aparte del Outbox (que vive en localStorage y no
+ * aguanta archivos): IndexedDB por cuenta, «enviando…» / «no salió» con
+ * Reintentar y Borrar. Lo que pasa con el archivo del lado de la Mini no se
+ * nombra en la pantalla. */
+let CHAT_ADJ = null;
+let _chatGrab = null;                 // la grabación en curso
+const _chatAdjUrls = new Map();       // id → url para <img>/<audio> (no se vuelve a pedir en cada render)
+const _chatAdjAudio = { el: null, id: null };
+let _chatAdjAvisoVisto = 0;
+let _chatAdjRenderRaf = 0;
+
+function chatAdjActivo() { return !!(CHAT_ADJ && CHAT_ADJ.activo && !chatEsDemo()); }
+
+async function chatAdjPalanca(cfg) {
+  if (!window.ChatAdjuntos || !TOKEN || chatEsDemo()) return;
+  const vision = (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '';
+  if (!vision) return;
+  const palanca = cfg && typeof cfg === 'object' ? cfg.chat_adjuntos === true : null;
+  if (!CHAT_ADJ) {
+    CHAT_ADJ = new window.ChatAdjuntos.ModeloChatAdjuntos({
+      token: TOKEN, visionUrl: vision, almacen: await window.ChatAdjuntos.abrirAlmacen(),
+      rpc: (fn, p) => window.mypumpDB.gimnasioRpc(fn, p),
+      alCambiar: chatAdjAlCambiar,
+    });
+    await CHAT_ADJ.consultar(palanca);
+    await CHAT_ADJ.cargar();
+    window.addEventListener('online', () => CHAT_ADJ.despertar());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { chatAdjSoltarGrabacion(true); if (_chatAdjAudio.el) _chatAdjAudio.el.pause(); }
+      else CHAT_ADJ.despertar();
+    });
+  } else {
+    await CHAT_ADJ.consultar(palanca);
+  }
+  if (STATE.scene === 'chat') renderChat();
+}
+
+function chatAdjAlCambiar() {
+  const c = CHAT_ADJ;
+  // Lo que acaba de entrar queda en el hilo con su id real hasta que el poll trae la fila.
+  let entro = false;
+  for (const [id, conf] of c.confirmados) {
+    c.confirmados.delete(id);
+    if (!conf.comentarioId || STATE.chat.msgs.some(m => m.id === conf.comentarioId)) continue;
+    STATE.chat.msgs.push({
+      id: conf.comentarioId, autor: 'cliente', created_at: conf.createdAt || new Date().toISOString(), _conf: true,
+      contenido: '', adjunto: { id, tipo: conf.tipo, duracion_s: conf.segundos, borrado: false },
+    });
+    entro = true;
+  }
+  if (entro) setTimeout(() => { chatPollTick().catch(() => {}); }, 1500);
+  if (c.anuncio && c.anuncio.n !== _chatAdjAvisoVisto) { _chatAdjAvisoVisto = c.anuncio.n; chatAdjAviso(c.anuncio.texto); }
+  if (STATE.scene !== 'chat') return;
+  cancelAnimationFrame(_chatAdjRenderRaf);
+  _chatAdjRenderRaf = requestAnimationFrame(() => renderChat());
+}
+
+/* El aviso (tope, foto que no abre, audio muy corto): un rato y se va. Con role=status lo lee el lector de pantalla. */
+function chatAdjAviso(texto) {
+  let a = document.getElementById('chatAviso');
+  if (!a) {
+    a = document.createElement('div');
+    a.id = 'chatAviso'; a.className = 'chat-aviso'; a.setAttribute('role', 'status');
+    document.body.appendChild(a);
+  }
+  a.textContent = texto; a.hidden = false;
+  clearTimeout(a._t);
+  a._t = setTimeout(() => { a.hidden = true; }, 4000);
+}
+
+const _CHAT_ICONOS = {
+  camara: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.2"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg>',
+  play: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>',
+  pausa: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  cerrar: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+};
+const _CHAT_ONDA = [0.35, 0.6, 0.9, 0.55, 0.75, 0.4, 0.95, 0.7, 0.5, 0.85, 0.45, 0.65, 1, 0.6, 0.4, 0.8, 0.55, 0.9, 0.5, 0.7, 0.35, 0.6, 0.85, 0.45];
+
+function chatAdjBotonFoto() {
+  return `<label class="chat-btn" id="chatFoto" aria-label="${escapeHtml(ChatAdjuntos.T.ADJUNTAR)}" tabindex="0" role="button">
+    ${_CHAT_ICONOS.camara}<input type="file" accept="image/*" id="chatFotoInput" tabindex="-1"></label>`;
+}
+function chatAdjBotonMic() {
+  return `<button class="chat-btn" id="chatMic" type="button" aria-label="${escapeHtml(ChatAdjuntos.T.GRABAR)}" title="${escapeHtml(ChatAdjuntos.T.AYUDA_GRABAR)}">${_CHAT_ICONOS.mic}</button>`;
+}
+
+function chatAdjBurbuja(m, mio, estado) {
+  const CA = window.ChatAdjuntos, a = m.adjunto, id = escapeHtml(a.id);
+  let cuerpo;
+  if (a.borrado) cuerpo = `<div class="chat-adj-nodisp">${escapeHtml(CA.T.NO_DISPONIBLE)}</div>`;
+  else if (a.tipo === 'foto') {
+    const u = _chatAdjUrls.get(a.id);
+    cuerpo = `<button class="chat-adj-foto${u ? '' : ' is-cargando'}" type="button" data-adj-foto="${id}" aria-label="${escapeHtml(CA.T.FOTO)}">${u ? `<img src="${escapeHtml(u)}" alt="">` : ''}</button>`;
+  } else {
+    const dur = a.duracion_s != null ? a.duracion_s : null;
+    const suena = _chatAdjAudio.id === a.id && _chatAdjAudio.el && !_chatAdjAudio.el.paused;
+    cuerpo = `<div class="chat-adj-audio" data-adj-caja="${id}">
+      <button class="chat-adj-play" type="button" data-adj-audio="${id}" aria-label="${escapeHtml(suena ? CA.T.PAUSAR : CA.T.REPRODUCIR)}">${suena ? _CHAT_ICONOS.pausa : _CHAT_ICONOS.play}</button>
+      <div class="chat-adj-onda" aria-hidden="true">${_CHAT_ONDA.map(h => `<i style="height:${Math.round(h * 100)}%"></i>`).join('')}</div>
+      <span class="chat-adj-dur" data-adj-dur="${id}" data-total="${dur != null ? dur : ''}">${dur != null ? CA.duracion(dur) : ''}</span>
+    </div>`;
+  }
+  const accesible = a.borrado ? CA.T.NO_DISPONIBLE : (a.tipo === 'foto' ? CA.T.FOTO : CA.textoAudioAccesible(a.duracion_s));
+  const fallo = m._fallo ? `<div class="chat-adj-fallo" role="status">${escapeHtml(CA.textoFallo(m._motivo))}</div>
+    <div class="chat-adj-acciones">
+      <button class="chat-reintentar is-borrar" type="button" data-adj-borrar="${id}">${escapeHtml(CA.T.BORRAR)}</button>
+      ${CA.sePuedeReintentar(m._motivo) ? `<button class="chat-reintentar" type="button" data-adj-rt="${id}">${escapeHtml(CA.T.REINTENTAR)}</button>` : ''}
+    </div>` : '';
+  return `<div class="ex-com chat-msg has-adj ${mio ? 'is-cliente' : 'is-coach'}${m._tmp && !m._fallo ? ' is-tmp' : ''}" aria-label="${mio ? 'Vos' : 'Mati'}: ${escapeHtml(accesible)}">
+    <div class="ex-com-head"><span class="ex-com-autor">${mio ? 'Vos' : 'Mati'}</span><span class="ex-com-fecha">${m._fallo ? '' : estado}</span></div>
+    ${cuerpo}${fallo}
+  </div>`;
+}
+
+function chatAdjConectar(el) {
+  const CA = window.ChatAdjuntos;
+  el.querySelectorAll('[data-adj-rt]').forEach(b => { b.onclick = () => CHAT_ADJ && CHAT_ADJ.reintentar(b.dataset.adjRt); });
+  el.querySelectorAll('[data-adj-borrar]').forEach(b => { b.onclick = () => CHAT_ADJ && CHAT_ADJ.descartar(b.dataset.adjBorrar); });
+  // Las fotos que faltan: una firma para todas las visibles.
+  const fotos = [...el.querySelectorAll('[data-adj-foto]')];
+  const faltan = fotos.filter(f => !_chatAdjUrls.has(f.dataset.adjFoto)).map(f => f.dataset.adjFoto);
+  for (const f of fotos) {
+    const id = f.dataset.adjFoto;
+    f.onclick = () => { const u = _chatAdjUrls.get(id); if (u) chatAdjVisor(u); else chatAdjCargarFoto(f, id, faltan); };
+    if (!_chatAdjUrls.has(id)) chatAdjCargarFoto(f, id, faltan);
+  }
+  el.querySelectorAll('[data-adj-audio]').forEach(b => { b.onclick = () => chatAdjAlternarAudio(b.dataset.adjAudio, b); });
+  chatAdjPintarAvance();
+
+  const foto = document.getElementById('chatFoto'), input = document.getElementById('chatFotoInput');
+  if (foto && input) {
+    foto.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } };
+    input.onchange = async () => {
+      const f = input.files && input.files[0];
+      input.value = '';
+      if (!f || !CHAT_ADJ) return;
+      try { await CHAT_ADJ.encolar('foto', await chatAdjPrepararFoto(f)); chatScrollAlFondo(); }
+      catch (_) { chatAdjAviso(CA.T.FOTO_ILEGIBLE); }
+    };
+  }
+  const mic = document.getElementById('chatMic');
+  if (mic) chatAdjConectarMic(mic);
+}
+
+async function chatAdjCargarFoto(boton, id, visibles) {
+  if (!CHAT_ADJ) return;
+  const u = await CHAT_ADJ.url(id, visibles);
+  if (!boton.isConnected) { if (u) _chatAdjUrls.set(id, u); return; }
+  boton.classList.remove('is-cargando');
+  if (!u) { boton.innerHTML = `<span class="chat-adj-nocarga">${escapeHtml(window.ChatAdjuntos.T.NO_CARGA)}</span>`; return; }
+  _chatAdjUrls.set(id, u);
+  boton.innerHTML = `<img src="${escapeHtml(u)}" alt="">`;
+}
+
+function chatAdjVisor(url) {
+  const v = document.createElement('div');
+  v.className = 'chat-visor'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', window.ChatAdjuntos.T.FOTO);
+  v.innerHTML = `<img src="${escapeHtml(url)}" alt="${escapeHtml(window.ChatAdjuntos.T.FOTO)}"><button type="button" aria-label="${escapeHtml(window.ChatAdjuntos.T.CERRAR)}">${_CHAT_ICONOS.cerrar}</button>`;
+  const antes = document.activeElement;
+  const cerrar = () => { v.remove(); document.removeEventListener('keydown', tecla); try { antes && antes.focus(); } catch (_) {} };
+  const tecla = (e) => { if (e.key === 'Escape') cerrar(); };
+  v.querySelector('button').onclick = cerrar;
+  v.onclick = (e) => { if (e.target === v) cerrar(); };
+  document.addEventListener('keydown', tecla);
+  document.body.appendChild(v);
+  v.querySelector('button').focus();
+}
+
+async function chatAdjAlternarAudio(id, boton) {
+  const CA = window.ChatAdjuntos;
+  let a = _chatAdjAudio.el;
+  if (_chatAdjAudio.id === id && a) {
+    if (a.paused) a.play().catch(() => {}); else a.pause();
+    return;
+  }
+  if (a) a.pause();
+  let u = _chatAdjUrls.get(id);
+  if (!u) {
+    boton.disabled = true;
+    u = await CHAT_ADJ.url(id, [...document.querySelectorAll('[data-adj-audio]')].map(b => b.dataset.adjAudio));
+    boton.disabled = false;
+    if (!u) { chatAdjAviso(CA.T.NO_CARGA); return; }
+    _chatAdjUrls.set(id, u);
+  }
+  const mime = CHAT_ADJ.mime(id);
+  a = new Audio();
+  if (mime && a.canPlayType && !a.canPlayType(mime.split(';')[0])) { chatAdjAviso(CA.T.NO_SE_ESCUCHA); return; }
+  a.preload = 'auto';
+  a.src = u;
+  _chatAdjAudio.el = a; _chatAdjAudio.id = id;
+  const pintar = () => chatAdjPintarAvance();
+  a.addEventListener('timeupdate', pintar);
+  a.addEventListener('play', pintar);
+  a.addEventListener('pause', pintar);
+  a.addEventListener('ended', () => { a.currentTime = 0; pintar(); });
+  a.addEventListener('error', () => { chatAdjAviso(CA.T.NO_SE_ESCUCHA); _chatAdjAudio.id = null; pintar(); });
+  a.play().catch(() => {});
+}
+
+function chatAdjPintarAvance() {
+  const CA = window.ChatAdjuntos, a = _chatAdjAudio.el;
+  document.querySelectorAll('[data-adj-caja]').forEach(caja => {
+    const id = caja.dataset.adjCaja;
+    const esta = a && _chatAdjAudio.id === id;
+    const durEl = caja.querySelector('[data-adj-dur]');
+    const total = Number(durEl.dataset.total) || (esta && Number.isFinite(a.duration) ? a.duration : 0);
+    const suena = esta && !a.paused;
+    const avance = esta && total ? Math.min(1, a.currentTime / total) : 0;
+    caja.querySelectorAll('.chat-adj-onda i').forEach((b, i, t) => b.classList.toggle('on', i / t.length < avance));
+    if (total) durEl.textContent = CA.duracion(suena ? Math.max(0, total - a.currentTime) : total);
+    const btn = caja.querySelector('[data-adj-audio]');
+    btn.innerHTML = suena ? _CHAT_ICONOS.pausa : _CHAT_ICONOS.play;
+    btn.setAttribute('aria-label', suena ? CA.T.PAUSAR : CA.T.REPRODUCIR);
+  });
+}
+
+/* La foto: 1600 px, 0,75 y sin metadatos (redibujarla en un canvas ya los descarta; quitarMetadatos por las dudas). */
+function chatAdjPrepararFoto(file) {
+  const R = window.ChatAdjuntos.R;
+  return new Promise((ok, no) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onerror = () => { URL.revokeObjectURL(url); no(new Error('imagen')); };
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        if (!w || !h) throw new Error('vacía');
+        const intentar = (lado, calidad, siguiente) => {
+          const esc = Math.min(1, lado / Math.max(w, h));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w * esc)); c.height = Math.max(1, Math.round(h * esc));
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          c.toBlob(async (b) => {
+            if (!b) { URL.revokeObjectURL(url); no(new Error('jpeg')); return; }
+            let bytes = new Uint8Array(await b.arrayBuffer());
+            if (window.Gimnasio && window.Gimnasio.quitarMetadatos) bytes = window.Gimnasio.quitarMetadatos(bytes) || bytes;
+            if (bytes.length > R.BYTES_MAXIMOS && siguiente) return siguiente();
+            URL.revokeObjectURL(url);
+            ok(bytes);
+          }, 'image/jpeg', calidad);
+        };
+        intentar(R.FOTO_LADO_MAXIMO, R.FOTO_CALIDAD, () => intentar(1200, 0.6, null));
+      } catch (e) { URL.revokeObjectURL(url); no(e); }
+    };
+    img.src = url;
+  });
+}
+
+/* El micrófono: mantener apretado graba, soltar manda, deslizar a la izquierda cancela. Con teclado (o lector de
+   pantalla) un toque empieza y otro manda. A los 2 minutos se corta solo y se manda. */
+function chatAdjConectarMic(mic) {
+  const CA = window.ChatAdjuntos;
+  let x0 = 0, porPuntero = false;
+  mic.addEventListener('pointerdown', async (e) => {
+    if (_chatGrab) return;
+    e.preventDefault();
+    porPuntero = true;
+    x0 = e.clientX;
+    try { mic.setPointerCapture(e.pointerId); } catch (_) {}
+    await chatAdjEmpezar(mic, false);
+  });
+  mic.addEventListener('pointermove', (e) => {
+    if (!_chatGrab || _chatGrab.porToque) return;
+    _chatGrab.cancelando = (x0 - e.clientX) > CA.R.DESLIZAR_PARA_CANCELAR_PX;
+    chatAdjPintarGrabacion();
+  });
+  const soltar = (cancelar) => {
+    if (!_chatGrab || _chatGrab.porToque) return;
+    chatAdjTerminar(!(cancelar || _chatGrab.cancelando));
+  };
+  mic.addEventListener('pointerup', () => soltar(false));
+  mic.addEventListener('pointercancel', () => soltar(true));
+  mic.addEventListener('contextmenu', (e) => e.preventDefault());
+  mic.addEventListener('click', (e) => {
+    // El clic que sigue a un pointerup no hace nada; el del teclado (detail 0) alterna.
+    if (porPuntero && e.detail !== 0) { porPuntero = false; return; }
+    porPuntero = false;
+    if (_chatGrab) { if (_chatGrab.porToque) chatAdjTerminar(true); return; }
+    chatAdjEmpezar(mic, true);
+  });
+}
+
+async function chatAdjEmpezar(mic, porToque) {
+  const CA = window.ChatAdjuntos;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') { chatAdjAviso(CA.T.SIN_GRABADOR); return; }
+  const mime = CA.mimeGrabacion((m) => MediaRecorder.isTypeSupported(m));
+  // La primera vez el navegador pregunta: el dedo ya se soltó, así que solo se pide y se explica cómo grabar.
+  let permiso = 'prompt';
+  try { permiso = (await navigator.permissions.query({ name: 'microphone' })).state; } catch (_) {}
+  if (permiso === 'denied') { chatAdjAviso(CA.T.SIN_MICROFONO); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+  catch (e) { chatAdjAviso(e && e.name === 'NotAllowedError' ? CA.T.SIN_MICROFONO : CA.T.SIN_GRABADOR); return; }
+  if (permiso === 'prompt' && !porToque) { stream.getTracks().forEach(t => t.stop()); chatAdjAviso(CA.T.AYUDA_GRABAR); return; }
+  let rec;
+  try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 48000 } : undefined); }
+  catch (_) { stream.getTracks().forEach(t => t.stop()); chatAdjAviso(CA.T.SIN_GRABADOR); return; }
+  const g = { rec, stream, trozos: [], inicio: Date.now(), porToque, cancelando: false, renderPendiente: false, mic, reloj: null, mandar: true };
+  _chatGrab = g;
+  rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) g.trozos.push(ev.data); };
+  rec.onstop = () => chatAdjFinGrabacion(g);
+  rec.start(250);
+  if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_) {} }
+  // La barra reemplaza al campo mientras se graba.
+  const inp = document.getElementById('chatInput');
+  if (inp) inp.hidden = true;
+  const foto = document.getElementById('chatFoto');
+  if (foto) foto.hidden = true;
+  const barra = document.createElement('div');
+  barra.className = 'chat-grabando'; barra.id = 'chatGrabando';
+  barra.innerHTML = `<span class="punto" aria-hidden="true"></span><span class="tiempo" aria-live="off">0:00</span>${porToque ? `<button type="button">${escapeHtml(CA.T.CANCELAR)}</button>` : `<span class="ayuda">‹ ${escapeHtml(CA.T.DESLIZAR)}</span>`}`;
+  if (porToque) barra.querySelector('button').onclick = () => chatAdjTerminar(false);
+  mic.parentNode.insertBefore(barra, mic);
+  mic.classList.add('is-grabando');
+  mic.setAttribute('aria-label', CA.T.MANDAR_AUDIO);
+  g.reloj = setInterval(() => {
+    chatAdjPintarGrabacion();
+    if ((Date.now() - g.inicio) / 1000 >= CHAT_ADJ.audioMaximo) chatAdjTerminar(true);
+  }, 100);
+}
+
+function chatAdjPintarGrabacion() {
+  const g = _chatGrab, CA = window.ChatAdjuntos;
+  const barra = document.getElementById('chatGrabando');
+  if (!g || !barra) return;
+  const s = (Date.now() - g.inicio) / 1000;
+  barra.querySelector('.tiempo').textContent = CA.duracion(s);
+  const ayuda = barra.querySelector('.ayuda');
+  if (ayuda) {
+    const alerta = s >= CA.R.AUDIO_AVISO;
+    ayuda.textContent = alerta ? CA.T.QUEDAN_DIEZ : `‹ ${CA.T.DESLIZAR}`;
+    ayuda.classList.toggle('is-alerta', alerta || g.cancelando);
+  }
+  g.mic.classList.toggle('is-cancelando', g.cancelando);
+}
+
+function chatAdjTerminar(mandar) {
+  const g = _chatGrab;
+  if (!g || g.terminando) return;
+  g.terminando = true;
+  g.mandar = mandar;
+  g.segundos = (Date.now() - g.inicio) / 1000;
+  clearInterval(g.reloj);
+  try { g.rec.stop(); } catch (_) { chatAdjFinGrabacion(g); }
+}
+function chatAdjSoltarGrabacion(mandar) { if (_chatGrab) chatAdjTerminar(mandar); }
+
+async function chatAdjFinGrabacion(g) {
+  if (g.listo) return;
+  g.listo = true;
+  // Cortado sin soltar (una llamada, el micrófono que se fue): se manda lo grabado, como al soltar.
+  if (g.segundos == null) { clearInterval(g.reloj); g.segundos = (Date.now() - g.inicio) / 1000; }
+  g.stream.getTracks().forEach(t => t.stop());
+  _chatGrab = null;
+  const pendiente = g.renderPendiente;
+  const blob = new Blob(g.trozos, { type: (g.rec.mimeType || 'audio/mp4') });
+  if (g.mandar && CHAT_ADJ) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    await CHAT_ADJ.encolar('audio', bytes, Math.min(g.segundos, CHAT_ADJ.audioMaximo));
+    chatScrollAlFondo();
+  }
+  if (pendiente || STATE.scene === 'chat') renderChat();
 }
 
 // El Outbox se rindió con este mensaje: se marca la burbuja y se le da al
