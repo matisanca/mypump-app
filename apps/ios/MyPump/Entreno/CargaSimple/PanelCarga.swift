@@ -16,7 +16,10 @@ struct PanelCarga: View {
     @State private var kgCorreccion: Double?
     @State private var textoCorreccion = ""
     @State private var cargaConfirmada = 0
+    @State private var selloVisible = false
     @FocusState private var enCorreccionKg: Bool
+    @Environment(\.accessibilityReduceMotion) private var reducir
+    @Environment(\.dynamicTypeSize) private var letra
 
     var body: some View {
         Group {
@@ -24,13 +27,14 @@ struct PanelCarga: View {
             if !teclado, let s = motor.cargaSimple(lugar), debeVerse(s) {
                 contenido(s)
                     .frame(maxWidth: 560)
-                    .padding(.horizontal, Espacio.m)
+                    .padding(.horizontal, Espacio.m + 2)
                     .padding(.top, Espacio.s)
                     .padding(.bottom, Espacio.xs)
                     .frame(maxWidth: .infinity)
-                    .background(.bar)
-                    .overlay(alignment: .top) { Divider() }
+                    .background { SuperficiePanelCarga() }
+                    .overlay(alignment: .top) { filaDeshacer.alignmentGuide(.top) { $0[.bottom] + Espacio.s } }
                     .sensoryFeedback(.success, trigger: cargaConfirmada)
+                    .sensoryFeedback(trigger: motor.guardia.desde) { _, nueva in nueva != nil ? .warning : nil }
                     .onAppear { entrenamiento.panelesCarga += 1 }
                     .onDisappear { entrenamiento.panelesCarga -= 1 }
             }
@@ -45,7 +49,7 @@ struct PanelCarga: View {
     }
 
     @ViewBuilder private func contenido(_ s: CargaSimple) -> some View {
-        VStack(spacing: Espacio.xs) {
+        Group {
             if let c = motor.corrigiendo, c.lugar == lugar, c.indice < s.series.count {
                 correccion(c.indice, s)
             } else if let i = s.activa, !EstadosEjercicio.terminales.contains(motor.dia.estado(lugar)) {
@@ -53,8 +57,8 @@ struct PanelCarga: View {
             } else {
                 terminado
             }
-            filaDeshacer
         }
+        .animation(reducir ? nil : EstiloCarga.resorte, value: s.completo)
     }
 
     private func activa(_ i: Int, _ s: CargaSimple) -> some View {
@@ -62,26 +66,38 @@ struct PanelCarga: View {
         let kg = s.series[i].kg
         let enGuardia = motor.guardia.serie == i && motor.guardia.desde != nil
         return VStack(spacing: Espacio.xs) {
-            HStack {
+            ProgresoSeries(total: s.series.count, hechas: s.confirmadas, actual: i)
+            // Con letra de accesibilidad, el descanso va abajo del título: al lado partía las palabras.
+            let cabecera = letra.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.xxs))
+                                                     : AnyLayout(HStackLayout(spacing: Espacio.xs))
+            cabecera {
                 // El récord entra en el renglón del título: la tarjeta puede estar fuera de vista y el panel no cambia de alto.
                 if let a = motor.avisoRecord, a.lugar == lugar {
                     Label(a.texto, systemImage: "trophy.fill").labelStyle(EtiquetaCompacta()).font(.subheadline.weight(.bold))
                         .foregroundStyle(Color.record).accessibilityIdentifier("aviso-record-panel")
                 } else {
-                    Text("Serie \(i + 1) de \(s.series.count)").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                    Text("Serie \(i + 1) de \(s.series.count)")
+                        .font(Archivo.fuente(15, peso: 700, relativoA: .subheadline))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .contentTransition(.numericText())
+                        .animation(EstiloCarga.resorte, value: i)
+                        .accessibilityAddTraits(.isHeader)
                 }
-                Spacer()
+                if !letra.isAccessibilitySize { Spacer() }
                 DescansoChip(motor: motor)
             }
-            DialReps(reps: reps, diferencia: s.diferencia(i), referencia: textoReferencia(i, s)) { d in
+            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            DialReps(reps: reps, diferencia: s.diferencia(i), referencia: textoReferencia(i, s), clave: i) { d in
                 aviso = nil
                 motor.cambiarCarga(lugar) { $0.ajustarReps(i, d) }
                 motor.limpiarGuardia()
             }
             Button { confirmar(i) } label: { etiquetaOK(reps: reps, kg: kg, i: i, s, enGuardia: enGuardia) }
-                .buttonStyle(BotonMarca())
-                .tint(enGuardia ? Color.alerta : nil)
+                .buttonStyle(BotonConfirmar(alerta: enGuardia))
                 .disabled(!s.puedeConfirmar(i))
+                .overlay { sello }
                 .accessibilityIdentifier("ok-serie")
                 .accessibilityLabel(etiquetaAccesibleOK(reps: reps, kg: kg, i: i, s, enGuardia: enGuardia))
             if let t = aviso ?? motor.dia.ejercicios[lugar]?.series[safe: i]?.aviso, !t.isEmpty {
@@ -99,8 +115,36 @@ struct PanelCarga: View {
         Task {
             aviso = nil
             let r = await motor.okSerie(lugar, i, venceEn: UIAccessibility.isVoiceOverRunning ? nil : 6) { await preguntador.preguntar($0) }
-            if r == .registrada { cargaConfirmada += 1 }
+            if r == .registrada {
+                cargaConfirmada += 1
+                sellar()
+            }
             if r == .faltanDatos { aviso = "Faltan datos para registrar esta serie." }
+        }
+    }
+
+    /// Medio segundo de tilde sobre el botón: la serie quedó anotada, sin tapar nada ni frenar el próximo toque.
+    private func sellar() {
+        guard !reducir else { return }
+        withAnimation(.snappy(duration: 0.18)) { selloVisible = true }
+        Task {
+            try? await Task.sleep(for: .milliseconds(620))
+            withAnimation(.snappy(duration: 0.22)) { selloVisible = false }
+        }
+    }
+
+    @ViewBuilder private var sello: some View {
+        if selloVisible {
+            ZStack {
+                Capsule().fill(Color.marca)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 26, weight: .black))
+                    .foregroundStyle(Color.sobreMarca)
+                    .symbolEffect(.bounce, value: selloVisible)
+            }
+            .allowsHitTesting(false)
+            .transition(.opacity)
+            .accessibilityHidden(true)
         }
     }
 
@@ -115,15 +159,18 @@ struct PanelCarga: View {
 
     @ViewBuilder private func etiquetaOK(reps: Int?, kg: Double?, i: Int, _ s: CargaSimple, enGuardia: Bool) -> some View {
         if enGuardia {
-            Text("¿Ya hiciste la serie? Tocá de nuevo").frame(maxWidth: .infinity).lineLimit(1).minimumScaleFactor(0.7)
+            Text("¿Ya hiciste la serie? Tocá de nuevo").font(.headline).frame(maxWidth: .infinity).lineLimit(1).minimumScaleFactor(0.7)
         } else if s.pideElegirReps && !s.series[i].tocada {
-            Text("Marcá tus reps").frame(maxWidth: .infinity).lineLimit(1).minimumScaleFactor(0.7)
+            Text("Marcá tus reps").font(.headline).frame(maxWidth: .infinity).lineLimit(1).minimumScaleFactor(0.7)
         } else if !s.sinKg && kg == nil {
-            Text("Elegí la carga").frame(maxWidth: .infinity).lineLimit(1).minimumScaleFactor(0.7)
+            Text("Elegí la carga").font(.headline).frame(maxWidth: .infinity).lineLimit(1).minimumScaleFactor(0.7)
         } else {
-            HStack(spacing: 8) {
-                Text("OK").fontWeight(.heavy)
-                Text(s.sinKg ? "\(reps ?? 0) reps" : "\(reps ?? 0) × \(KgTexto.de(kg)) kg").fontWeight(.semibold).monospacedDigit()
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text("OK").font(Archivo.fuente(22, peso: 900, relativoA: .title3))
+                Text(s.sinKg ? "\(reps ?? 0) reps" : "\(reps ?? 0) × \(KgTexto.de(kg)) kg")
+                    .font(Archivo.fuente(20, peso: 700, relativoA: .headline))
+                    .contentTransition(.numericText())
+                    .animation(.snappy(duration: 0.2), value: reps)
             }
             .frame(maxWidth: .infinity)
             .lineLimit(1)
@@ -137,31 +184,44 @@ struct PanelCarga: View {
         return s.sinKg ? "OK, registrar \(reps ?? 0) repeticiones" : "OK, registrar \(reps ?? 0) repeticiones con \(KgTexto.de(kg)) kilos"
     }
 
-    /// Reserva siempre su renglón: si apareciera y desapareciera, el panel saltaría y el dial se movería bajo el dedo.
-    private var filaDeshacer: some View {
-        HStack(spacing: 6) {
+    /// Flota arriba del panel: no le cambia el alto (el dial no se mueve bajo el dedo) ni guarda un renglón vacío.
+    @ViewBuilder private var filaDeshacer: some View {
+        Group {
             if let d = motor.deshacible {
-                Text("Serie \(d.indice + 1) anotada.").font(.footnote).foregroundStyle(.secondary)
-                Button("Deshacer") { motor.deshacerOK() }.font(.footnote.weight(.semibold)).accessibilityIdentifier("deshacer-ok")
-            } else {
-                Text(" ").font(.footnote).accessibilityHidden(true)
+                HStack(spacing: Espacio.xs) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.marcaTexto).accessibilityHidden(true)
+                    Text("Serie \(d.indice + 1) anotada.").font(.subheadline.weight(.medium))
+                    Button("Deshacer") { motor.deshacerOK() }
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Color.marcaTexto)
+                        .fixedSize()
+                        .frame(minHeight: 44)
+                        .contentShape(.rect)
+                        .accessibilityIdentifier("deshacer-ok")
+                }
+                .padding(.horizontal, Espacio.m)
+                .frame(minHeight: 44)
+                .vidrio()
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(reducir ? nil : EstiloCarga.resorte, value: motor.deshacible?.indice)
     }
 
     private func correccion(_ i: Int, _ s: CargaSimple) -> some View {
         VStack(spacing: Espacio.xs) {
             HStack {
-                Text("Corrigiendo la serie \(i + 1)").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                Text("Corrigiendo la serie \(i + 1)").font(Archivo.fuente(15, peso: 700, relativoA: .subheadline)).accessibilityAddTraits(.isHeader)
                 Spacer()
                 Button("Cancelar") { motor.cancelarCorreccion() }.font(.subheadline.weight(.semibold)).accessibilityIdentifier("correccion-cancelar")
             }
-            DialReps(reps: repsCorreccion, diferencia: nil, referencia: "Solo cambia esta serie") { d in
+            DialReps(reps: repsCorreccion, diferencia: nil, referencia: "Solo cambia esta serie", clave: i) { d in
                 repsCorreccion = min(Int(Verosimilitud.repsMax), max(1, repsCorreccion + d))
             }
             if !s.sinKg { kgCorreccionFila(s) }
             if let t = aviso { Label(t, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(Color.peligro) }
-            Button("Guardar corrección") {
+            Button {
                 enCorreccionKg = false
                 Task {
                     switch await motor.guardarCorreccion(reps: repsCorreccion, kg: kgCorreccion, preguntar: { await preguntador.preguntar($0) }) {
@@ -169,8 +229,10 @@ struct PanelCarga: View {
                     default: aviso = nil
                     }
                 }
+            } label: {
+                Text("Guardar corrección").font(Archivo.fuente(19, peso: 800, relativoA: .headline))
             }
-            .buttonStyle(BotonMarca())
+            .buttonStyle(BotonConfirmar())
             .accessibilityIdentifier("correccion-guardar")
         }
         .onChange(of: i, initial: true) { _, _ in
@@ -183,30 +245,36 @@ struct PanelCarga: View {
     private func kgCorreccionFila(_ s: CargaSimple) -> some View {
         HStack(spacing: Espacio.s) {
             Button { if let k = kgCorreccion { kgCorreccion = AumentoCarga.mover(k, pasos: -1, equipo: s.equipo) } } label: {
-                Image(systemName: "minus.circle.fill").font(.title2).frame(width: 44, height: 44)
+                Image(systemName: "minus")
             }
-            .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Bajar el peso").accessibilityIdentifier("correccion-kg-menos")
+            .buttonStyle(BotonCircularCarga(lado: 44, tamañoIcono: 16)).foregroundStyle(.primary).accessibilityLabel("Bajar el peso").accessibilityIdentifier("correccion-kg-menos")
             TextField("—", text: Binding(get: { enCorreccionKg ? textoCorreccion : KgTexto.de(kgCorreccion) },
                                          set: { t in textoCorreccion = t; let n = CamposSerie.normalizar("kg", t); kgCorreccion = n.isEmpty ? nil : Double(n) }))
-                .keyboardType(.decimalPad).multilineTextAlignment(.center).font(.title3.weight(.semibold).monospacedDigit())
-                .focused($enCorreccionKg).frame(width: 90, height: 44).background(Color.campo, in: .rect(cornerRadius: 10))
+                .keyboardType(.decimalPad).multilineTextAlignment(.center).font(Archivo.fuente(24, peso: 800, relativoA: .title3).monospacedDigit())
+                .focused($enCorreccionKg).frame(width: 96, height: 44)
                 .accessibilityLabel("Peso de la serie en kilos").accessibilityIdentifier("correccion-kg")
                 .onChange(of: enCorreccionKg) { _, f in if f { textoCorreccion = KgTexto.de(kgCorreccion) } }
             Button { if let k = kgCorreccion { kgCorreccion = AumentoCarga.mover(k, pasos: 1, equipo: s.equipo) } } label: {
-                Image(systemName: "plus.circle.fill").font(.title2).frame(width: 44, height: 44)
+                Image(systemName: "plus")
             }
-            .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Subir el peso").accessibilityIdentifier("correccion-kg-mas")
+            .buttonStyle(BotonCircularCarga(lado: 44, tamañoIcono: 16)).foregroundStyle(.primary).accessibilityLabel("Subir el peso").accessibilityIdentifier("correccion-kg-mas")
         }
     }
 
     private var terminado: some View {
         VStack(spacing: Espacio.xs) {
-            Label("Ejercicio completo", systemImage: "checkmark.circle.fill").font(.headline).foregroundStyle(Color.marcaTexto)
-                .labelStyle(EtiquetaCompacta()).accessibilityIdentifier("ejercicio-completo")
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 44, weight: .semibold))
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(Color.sobreMarca, Color.marca)
+                .symbolEffect(.bounce, value: cargaConfirmada)
+                .accessibilityHidden(true)
+            Text("Ejercicio completo").font(Archivo.fuente(20, peso: 800, relativoA: .title3))
+                .accessibilityIdentifier("ejercicio-completo")
             Text("Tocá una serie si querés corregirla.").font(.footnote).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, Espacio.s)
+        .padding(.vertical, Espacio.xs)
     }
 }
 
@@ -216,12 +284,24 @@ private struct DescansoChip: View {
 
     var body: some View {
         if motor.descanso.visible {
-            HStack(spacing: 6) {
+            HStack(spacing: Espacio.xs) {
                 Text(motor.descanso.listo ? "A la serie" : "Descanso \(motor.descanso.texto)")
-                    .font(.footnote.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(motor.descanso.listo ? Color.marcaTexto : Color.secondary)
+                    .font(Archivo.fuente(14, peso: 700, relativoA: .footnote).monospacedDigit())
+                    .lineLimit(1)
+                    .fixedSize()
+                    .contentTransition(.numericText(countsDown: true))
+                    .foregroundStyle(motor.descanso.listo ? Color.marcaTexto : Color.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(motor.descanso.listo ? Color.marcaSuave : Color.campo, in: .capsule)
                 if !motor.descanso.listo {
-                    Button("Saltar") { motor.saltarDescanso() }.font(.footnote.weight(.semibold)).accessibilityIdentifier("saltar-descanso")
+                    Button("Saltar") { motor.saltarDescanso() }
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.marcaTexto)
+                        .fixedSize()
+                        .frame(minHeight: 44)
+                        .contentShape(.rect)
+                        .accessibilityIdentifier("saltar-descanso")
                 }
             }
         }
