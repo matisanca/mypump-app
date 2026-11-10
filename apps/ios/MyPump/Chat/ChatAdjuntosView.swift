@@ -595,6 +595,7 @@ struct BotonFotoChat: View {
             if UserDefaults.standard.bool(forKey: "chatAdjuntosConFallo") {
                 s.rechazar = true
                 _ = await m.enviarFoto(ServidorChatUI.foto(tono: 0.55))
+                await cola.drenarAudios()   // en la app lo dispara ModeloApp; acá no hay quien
             }
         }
         return m
