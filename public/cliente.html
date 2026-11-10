@@ -6209,10 +6209,15 @@ function porcionReferencia(food) {
           'cacahuate', 'frutos secos', 'semilla', 'girasol', 'chia', 'lino', 'mix de')) {
     return fmtCount(g / 30, 'puñado');
   }
-  // Proteína en polvo — scoop = 30 g.
+  // Proteína en polvo — scoop = 30 g. Cuenta de a media medida (15 g → ½ scoop,
+  // 45 g → 1½ scoops): redondear al scoop entero hacía servir el doble. Con
+  // menos de 7,5 g no llega a media medida y no hay referencia. No usa fmtCount
+  // porque plural('scoop') daría "scoopes".
   if (has('whey', 'proteina en polvo', 'caseina') || (has('proteina') && g <= 60)) {
-    const scoops = Math.max(1, Math.round(g / 30));
-    return scoops === 1 ? '1 scoop (1 medida)' : scoops + ' scoops';
+    const scoops = Math.round((g / 30) * 2) / 2;
+    if (scoops <= 0) return null;
+    if (scoops === 1) return '1 scoop (1 medida)';
+    return nStr(scoops) + (scoops < 1 ? ' scoop' : ' scoops');
   }
   if (has('atun')) {
     const n = g / 120;
