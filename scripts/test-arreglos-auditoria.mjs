@@ -102,5 +102,72 @@ console.log('F3 · la dieta que no llegó por un corte');
   });
 }
 
+console.log('F6 · fotos rechazadas y fotos nuevas durante una subida');
+{
+  const ls = new Map();
+  const ctx = {
+    console, TOKEN: 'tok', STATE: { scene: 'otra' }, navigator: { onLine: true },
+    localStorage: { getItem: (k) => ls.has(k) ? ls.get(k) : null, setItem: (k, v) => ls.set(k, String(v)), removeItem: (k) => ls.delete(k) },
+    loadFotos: async () => {}, renderMydayFotos: () => {},
+  };
+  vm.createContext(ctx);
+  vm.runInContext(`const FOTOQ_KEY = () => 'mypump_fotoq_' + TOKEN;\n` +
+    ['_fotoqLeer', '_fotoqGuardar', '_fotoqSacar', '_fotosRechazadas', '_fotosRechazadasGuardar', '_fotoRechazar', '_fotoReintentar',
+     '_fotoDescartar', 'flushFotos', '_flushFotosPasada'].map(funcion).join('\n') +
+    `\nconst FOTOS_RECHAZADAS_KEY = () => 'mypump_fotos_rechazadas_' + TOKEN;\nlet _fotosDrenando = false;`, ctx);
+  await t('un rechazo de la cola queda en «no se pudo subir» (no se borra)', async () => {
+    ctx._fotoqGuardar({ 'L|frente': { pose: 'frente', fecha: 'F', dataUrl: 'data:a' } });
+    ctx._subirFoto = async () => ({ ok: false, fatal: true, error: 'fecha fuera de rango' });
+    await ctx.flushFotos();
+    igual(Object.keys(ctx._fotoqLeer()), [], 'cola');
+    igual(ctx._fotosRechazadas()['L|frente'].motivo, 'fecha fuera de rango', 'rechazada');
+    ctx._subirFoto = async () => ({ ok: true });
+    await ctx._fotoReintentar('L|frente');
+    igual(Object.keys(ctx._fotosRechazadas()), [], 'al reintentar y entrar, se va');
+  });
+  await t('una foto sacada mientras otra sube no se pierde', async () => {
+    ctx._fotoqGuardar({ 'L|frente': { pose: 'frente', fecha: 'F', dataUrl: 'data:a' } });
+    ctx._subirFoto = async () => {
+      // Mientras sube la de frente, el alumno saca la de perfil.
+      const q = ctx._fotoqLeer(); q['L|perfil'] = { pose: 'perfil', fecha: 'F', dataUrl: 'data:b' }; ctx._fotoqGuardar(q);
+      ctx._subirFoto = async () => ({ ok: false, red: true });
+      return { ok: true };
+    };
+    await ctx.flushFotos();
+    igual(Object.keys(ctx._fotoqLeer()), ['L|perfil'], 'la nueva sigue en la cola');
+  });
+}
+
+console.log('F14 · lo escrito no se borra si falla el envío');
+{
+  let alertas = 0;
+  const ls = new Map();
+  const ctx = {
+    console, TOKEN: 'tok', STATE: {}, DATA: { dia: { id: 'd1' } }, RUTINA_ID: 'r',
+    alert: () => { alertas++; }, loadComentarios: async () => {},
+    localStorage: { getItem: (k) => ls.has(k) ? ls.get(k) : null, setItem: (k, v) => ls.set(k, String(v)), removeItem: (k) => ls.delete(k) },
+    window: { mypumpDB: { agregarComentario: async () => ({ success: false }), finalizarSesion: async () => ({ success: false }) } },
+    _csVaciarDeshacer: () => {}, ensureSesionIniciada: async () => {}, Outbox: { flush: async () => {} }, minutosSesion: () => 30,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(['enviarComentarioEjercicio', '_notasCierreKey', '_notasCierreGuardadas', '_notasCierreAnotar', 'writeFinish'].map(funcion).join('\n') + '\nlet _sesionId = "s1";', ctx);
+  await t('el comentario que no salió queda escrito', async () => {
+    await ctx.enviarComentarioEjercicio('ex1', 'Press', '  me dolió el hombro ');
+    igual(ctx.STATE.borradoresComentario.ex1, 'me dolió el hombro', 'borrador');
+    ctx.window.mypumpDB.agregarComentario = async () => ({ success: true });
+    await ctx.enviarComentarioEjercicio('ex1', 'Press', 'me dolió el hombro');
+    igual(ctx.STATE.borradoresComentario.ex1, undefined, 'al salir se borra');
+  });
+  await t('las notas del cierre quedan si el cierre falla', async () => {
+    await ctx.writeFinish('poco tiempo hoy');
+    igual(ctx._notasCierreGuardadas(), 'poco tiempo hoy', 'notas');
+    if (!/_notasCierreGuardadas\(\)/.test(html.slice(html.indexOf('id="sessionNotes"') - 200, html.indexOf('id="sessionNotes"') + 300))) throw new Error('el modal no vuelve a mostrar las notas');
+  });
+  await t('el OK de la carga simple no espera al historial del siguiente', async () => {
+    const f = funcion('confirmarSerie');
+    if (!/if \(foto\) loadHistorico\(next\.id\)\.then/.test(f)) throw new Error('confirmarSerie sigue esperando el historial con el OK');
+  });
+}
+
 console.log(`\n${ok} OK · ${fail} fallas`);
 process.exit(fail ? 1 : 0);

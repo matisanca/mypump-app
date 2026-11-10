@@ -1092,6 +1092,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .fp-vergaleria{width:100%;margin-top:var(--space-3);height:44px;border:1px solid color-mix(in oklab,var(--color-brand) 45%,var(--color-border));background:color-mix(in oklab,var(--color-brand) 8%,var(--color-bg-primary));color:var(--color-text-primary);border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer}
 .fp-vergaleria:active{transform:scale(.98)}
 .fp-msg{margin-top:var(--space-2);font-size:12px;color:var(--color-text-muted);min-height:16px}
+.fp-link{background:none;border:0;padding:4px 6px;font:inherit;font-weight:700;color:var(--color-brand);cursor:pointer}
 .fp-msg.is-ok{color:var(--color-brand);font-weight:600}
 .fp-msg.is-warn{color:var(--color-warning)}
 .fp-msg.is-err{color:var(--color-danger)}
@@ -2703,8 +2704,13 @@ async function loadComentarios() {
 async function enviarComentarioEjercicio(exId, exNombre, contenido) {
   contenido = (contenido || '').trim();
   if (!contenido || !TOKEN || (DATA && DATA._isDemo)) return;
+  // F14 (auditoría 10/11): lo escrito queda como borrador hasta que el servidor
+  // lo confirme. Antes el campo se vaciaba aunque el envío fallara.
+  STATE.borradoresComentario = STATE.borradoresComentario || {};
+  STATE.borradoresComentario[exId] = contenido;
   const res = await window.mypumpDB.agregarComentario(TOKEN, 'ejercicio', exId, exNombre, contenido);
-  if (!res || !res.success) { alert('No se pudo enviar el comentario. Probá de nuevo.'); return; }
+  if (!res || !res.success) { alert('No se pudo enviar el comentario. Quedó escrito para que lo mandes de nuevo.'); return; }
+  delete STATE.borradoresComentario[exId];
   await loadComentarios();
 }
 
@@ -3537,8 +3543,15 @@ function writeSet(exId, setIdx) {
   }, `carga_${DATA.dia.id}_${exId}_${setIdx}`);
 }
 
+/* F14 (auditoría 10/11): las notas del cierre quedan guardadas hasta que el
+ * servidor cierre el día. Antes el modal se cerraba y, si fallaba, se perdían. */
+function _notasCierreKey() { return `mypump_notas_cierre_${TOKEN}_${DATA && DATA.dia ? DATA.dia.id : ''}`; }
+function _notasCierreGuardadas() { try { return localStorage.getItem(_notasCierreKey()) || ''; } catch (_) { return ''; } }
+function _notasCierreAnotar(n) { try { if (n) localStorage.setItem(_notasCierreKey(), n); else localStorage.removeItem(_notasCierreKey()); } catch (_) {} }
+
 async function writeFinish(notas) {
   if (!RUTINA_ID) return;
+  _notasCierreAnotar(notas || '');
   _csVaciarDeshacer();
   // Garantizar que exista la sesión antes de finalizar (defensivo: el cliente
   // podría cerrar sin haber confirmado ninguna serie).
@@ -3567,6 +3580,7 @@ async function writeFinish(notas) {
     return;
   }
   // Día cerrado = día HECHO (aunque no se hayan tildado todos los ejercicios).
+  _notasCierreAnotar('');
   _diaFinalizado = true;
   STATE.progressLoaded = false;   // Revisión / Fuerza vuelven a traer el historial con lo de hoy
   localStorage.setItem(`mypump_sesion_${TOKEN}_${DATA.dia.id}_finalizada`, '1');
@@ -5294,7 +5308,7 @@ function renderExCard(ex, blockIdx) {
           <div class="ex-comments-title">Comentarios</div>
           <div class="ex-comments-list">${items || '<div class="ex-com-empty">Todavía no hay comentarios. Dejale una nota a Mati o contale cómo te fue.</div>'}</div>
           <div class="ex-comment-form">
-            <textarea class="ex-comment-input" rows="2" placeholder="Escribí una nota… (ej: hice plano con mancuernas porque la máquina estaba ocupada)" data-comment-input="${ex.id}"></textarea>
+            <textarea class="ex-comment-input" rows="2" placeholder="Escribí una nota… (ej: hice plano con mancuernas porque la máquina estaba ocupada)" data-comment-input="${ex.id}">${escapeHtml((STATE.borradoresComentario || {})[ex.id] || '')}</textarea>
             <button class="ex-comment-send" data-comment-send="${ex.id}">Enviar</button>
           </div>
         </div>`;
@@ -5598,7 +5612,13 @@ async function confirmarSerie(exId, idx, foto) {   // foto: viene del OK de la c
       STATE.expandedId = next.id;
       // Cargar el histórico del siguiente ANTES de renderizar, para que el peso
       // sugerido / récord / última vez aparezcan al primer load (bug del auto-avance).
-      if (!Array.isArray(DATA.historico_por_ejercicio[next.id])) await loadHistorico(next.id);
+      // F14 (auditoría 10/11): con el OK de la carga simple (`foto`) no se espera:
+      // la ventana de Deshacer, que es la copia de esta serie, se guarda recién
+      // al volver de acá, y con la red colgada cerrar la app perdía el OK.
+      if (!Array.isArray(DATA.historico_por_ejercicio[next.id])) {
+        if (foto) loadHistorico(next.id).then(() => { if (STATE.expandedId === next.id && STATE.scene === 'train') renderTrain(); }).catch(() => {});
+        else await loadHistorico(next.id);
+      }
       marcarLeidosEjercicio(next.id);
     }
   }
@@ -6051,7 +6071,7 @@ function openFinishModal() {
         <div class="modal-text">${totalSets} series · ${totalReps} reps · ${Math.round(tonnage)}kg de volumen.</div>
         <div>
           <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--color-text-secondary);font-weight:500">Notas de la sesión <span style="color:var(--color-text-muted);font-weight:400">· opcional</span></label>
-          <textarea class="session-textarea" id="sessionNotes" placeholder="ej: molestia leve hombro derecho, jalón se sintió pesado…"></textarea>
+          <textarea class="session-textarea" id="sessionNotes" placeholder="ej: molestia leve hombro derecho, jalón se sintió pesado…">${escapeHtml(_notasCierreGuardadas())}</textarea>
         </div>
         <button class="btn-primary" id="finConfirm">${ICONS.flag} Confirmar y cerrar</button>
         <button class="btn-secondary" id="finCancel">Cancelar</button>
@@ -6102,7 +6122,7 @@ async function openEarlyFinishModal() {
         ${warningHtml}
         <div>
           <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--color-text-secondary);font-weight:500">Notas de la sesión <span style="color:var(--color-text-muted);font-weight:400">· opcional</span></label>
-          <textarea class="session-textarea" id="sessionNotes" placeholder="ej: poco tiempo hoy, saltó press de banca…"></textarea>
+          <textarea class="session-textarea" id="sessionNotes" placeholder="ej: poco tiempo hoy, saltó press de banca…">${escapeHtml(_notasCierreGuardadas())}</textarea>
         </div>
         <button class="btn-primary" id="finConfirm">${ICONS.flag} Confirmar y cerrar</button>
         <button class="btn-secondary" id="finCancel">Cancelar</button>
@@ -9935,6 +9955,45 @@ function _fotoqGuardar(q) {
   try { localStorage.setItem(FOTOQ_KEY(), JSON.stringify(q)); return true; }
   catch (_) { return false; }   // QuotaExceededError → el caller avisa
 }
+/* F6 (auditoría 10/11): saca de la cola SOLO la foto que se mandó, leyendo la
+ * cola de nuevo. Antes la pasada guardaba su copia vieja de la cola: una foto
+ * sacada mientras otra subía se perdía, y una nueva de la misma pose también. */
+function _fotoqSacar(k, item) {
+  const q = _fotoqLeer();
+  if (q[k] && (!item || q[k].dataUrl === item.dataUrl)) { delete q[k]; _fotoqGuardar(q); }
+}
+/* F6: las que el servidor rechazó al subirse solas. Antes se borraban sin
+ * avisar; ahora quedan a la vista con «Reintentar» y «Descartar». */
+const FOTOS_RECHAZADAS_KEY = () => `mypump_fotos_rechazadas_${TOKEN}`;
+function _fotosRechazadas() {
+  try { return JSON.parse(localStorage.getItem(FOTOS_RECHAZADAS_KEY()) || '{}') || {}; } catch (_) { return {}; }
+}
+function _fotosRechazadasGuardar(r) {
+  try {
+    if (Object.keys(r).length) localStorage.setItem(FOTOS_RECHAZADAS_KEY(), JSON.stringify(r));
+    else localStorage.removeItem(FOTOS_RECHAZADAS_KEY());
+  } catch (_) {}
+}
+function _fotoRechazar(k, item, motivo) {
+  const r = _fotosRechazadas();
+  r[k] = { item, motivo: String(motivo || '') };
+  _fotosRechazadasGuardar(r);
+}
+async function _fotoReintentar(k) {
+  const r = _fotosRechazadas();
+  const x = r[k];
+  if (!x) return;
+  delete r[k]; _fotosRechazadasGuardar(r);
+  const q = _fotoqLeer();
+  if (!q[k]) { q[k] = x.item; _fotoqGuardar(q); }
+  await flushFotos();
+}
+// Las claves son «YYYY-MM-DD|pose»: lo demás se filtra antes de ir a un atributo.
+function _claveFotoSegura(k) { return String(k).replace(/[^0-9A-Za-z|_-]/g, ''); }
+function _fotoDescartar(k) {
+  const r = _fotosRechazadas();
+  delete r[k]; _fotosRechazadasGuardar(r);
+}
 
 // Reduce a dataURL JPEG. 900px/0.7 alcanza para comparar fisico
 // (1024/0.8 es para OCR de etiquetas). El re-encode por canvas ademas
@@ -10036,20 +10095,24 @@ async function flushFotos() {
 async function _flushFotosPasada(q, keys) {
   for (const k of keys) {
     const item = q[k];
-    if (!item || !item.dataUrl) { delete q[k]; continue; }
+    if (!item || !item.dataUrl) { _fotoqSacar(k, item); continue; }
     const res = await _subirFoto(item.pose, item.dataUrl, item.fecha);
-    if (res.ok) { delete q[k]; _fotoqGuardar(q); continue; }
+    if (res.ok) { _fotoqSacar(k, item); continue; }
     // Un item RECHAZADO (4xx salvo 429) se descarta: si no queda adelante en la
     // cola y bloquea para siempre a las que vienen atras.
     // Un error del servidor (5xx, 429) o de RED no gasta la foto: con la Mini
     // caída Cloudflare contesta 502/530, que contaba como error del server, y al
     // octavo intento la foto se borraba. Ahora espera; si nunca entra, la corta
     // la ventana de fechas del servidor (+1/−7), que la rechaza con un 400.
-    if (res.fatal) { delete q[k]; _fotoqGuardar(q); continue; }
-    _fotoqGuardar(q);
+    // F6: el rechazo ya no se borra en silencio: queda a la vista.
+    if (res.fatal) {
+      const actual = _fotoqLeer()[k];
+      if (actual && actual.dataUrl === item.dataUrl) _fotoRechazar(k, item, res.error);
+      _fotoqSacar(k, item);
+      continue;
+    }
     break;   // sin conexión / server caido / tope del día: se reintenta después
   }
-  _fotoqGuardar(q);
   await loadFotos();
   STATE.fotosUrls = null;          // subio algo de la cola: refirmar
   if (STATE.scene === 'revision') renderMydayFotos();
@@ -10208,6 +10271,9 @@ function renderMydayFotos() {
         <div class="fp-slots">${slots}</div>
         ${serie >= 2 ? `<div class="fp-serie">${serie} semanas seguidas registradas</div>` : ''}
         ${comparador}
+        ${Object.keys(_fotosRechazadas()).sort().map(k => `<div class="fp-msg is-err" data-foto-rechazada="${_claveFotoSegura(k)}">Esta foto no se pudo subir
+          <button class="fp-link" data-foto-reintentar="${_claveFotoSegura(k)}">Reintentar</button>
+          <button class="fp-link" data-foto-descartar="${_claveFotoSegura(k)}">Descartar</button></div>`).join('')}
         <div class="fp-msg" id="fpMsg"></div>
       </div>
     </div>`;
@@ -10230,6 +10296,8 @@ function renderMydayFotos() {
   }
 
   el.querySelectorAll('.fp-slot').forEach(b => b.addEventListener('click', () => _pedirFoto(b.dataset.pose)));
+  el.querySelectorAll('[data-foto-reintentar]').forEach(b => b.addEventListener('click', () => { _fotoReintentar(b.dataset.fotoReintentar).catch(() => {}); }));
+  el.querySelectorAll('[data-foto-descartar]').forEach(b => b.addEventListener('click', () => { _fotoDescartar(b.dataset.fotoDescartar); renderMydayFotos(); }));
   const ver = document.getElementById('fpVerGaleria');
   if (ver) ver.addEventListener('click', abrirGaleriaFotos);
 }
@@ -10311,14 +10379,14 @@ async function _tomarFoto(pose, origen) {
 
     const res = await _subirFoto(pose, dataUrl, hoyLocal());
     if (res.ok) {
-      const q2 = _fotoqLeer(); delete q2[key]; _fotoqGuardar(q2);
+      _fotoqSacar(key, { dataUrl });
       await loadFotos();
       STATE.fotosUrls = null;      // que se refirme y aparezca la miniatura
       renderMydayFotos();
       setMsg('Listo, guardada ✓', 'is-ok');
     } else if (res.fatal) {
       // La foto no va a entrar nunca: sacarla de la cola y decir por que.
-      const q2 = _fotoqLeer(); delete q2[key]; _fotoqGuardar(q2);
+      _fotoqSacar(key, { dataUrl });
       renderMydayFotos();
       setMsg(`No se pudo guardar: ${res.error}`, 'is-err');
     } else if (guardo) {
