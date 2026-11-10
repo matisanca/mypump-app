@@ -2198,7 +2198,7 @@ function computeProgresionNota(ej, semanaActual) {
   const cur = byWeek(sem);
   if (!cur) return null;
 
-  const _CALIBRACION = 'Semana de calibración: buscá el fallo muscular, no te guardes reps. Las reps son una guía (±2-3): si apuntás a 12 y te salen 9 o 14, perfecto. La idea es encontrar tu peso real llegando cerca del fallo.';
+  const _CALIBRACION = 'Semana de calibración. Llevá cada serie al fallo, sin guardarte reps. Las reps son una guía, si apuntás a 12 y te salen 9 o 14 está perfecto. La idea es encontrar tu peso real.';
 
   const prev = (sem > 1) ? (ej.progresion.find(p => p.semana === sem - 1) || ej.progresion[sem - 2]) : null;
   if (!prev) {
@@ -2220,14 +2220,14 @@ function computeProgresionNota(ej, semanaActual) {
   if      (repsDown && seriesSame) parts.push(`Esta semana bajan las reps (de ${prev.reps} a ${cur.reps}). Subí la carga: apuntá a más kilos que la semana pasada, manteniendo buena técnica.`);
   else if (repsDown && seriesUp)   parts.push(`Más series y menos reps: subí un poco la carga y sumá volumen.`);
   else if (seriesUp && repsSame)   parts.push(`Sumamos una serie: mismo peso, más volumen total esta semana.`);
-  else if (repsUp && seriesSame)   parts.push(`Suben las reps con el mismo peso. Si las completás sobrado, subí la carga la próxima.`);
+  else if (repsUp && seriesSame)   parts.push(`Suben las reps con el mismo peso. Si te salen más reps que las de la pauta, hacelas y subí la carga la próxima.`);
 
-  if (rirDown) parts.push(`Acercate más al fallo en cada serie.`);
+  if (rirDown) parts.push(`Llevá cada serie al fallo.`);
 
   const cambia = parts.length > 0;
   if (!cambia) {
-    if (repsSame && seriesSame) parts.push(`Mantené el peso de la semana pasada e intentá superar tus reps, siempre cerca del fallo. Si te sobra, subí la carga.`);
-    else parts.push(`Seguí la pauta de esta semana (${cur.series ?? '—'}×${cur.reps ?? '—'}) y trabajá cerca del fallo; si te sobra, subí la carga.`);
+    if (repsSame && seriesSame) parts.push(`Mantené el peso de la semana pasada e intentá superar tus reps, siempre al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.`);
+    else parts.push(`Seguí la pauta de esta semana (${cur.series ?? '—'}×${cur.reps ?? '—'}) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.`);
   }
   return { texto: parts.join(' '), cambia, calibracion: false };
 }
@@ -3576,7 +3576,7 @@ async function writeFinish(notas) {
   // cliente o inexistente): antes eso pasaba como éxito y el día quedaba en
   // verde en el teléfono sin cerrar en la base.
   if (!res || res.success === false || res.data === false) {
-    alert('No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo.');
+    alert('No se pudo terminar el entrenamiento. Revisá tu conexión e intentá de nuevo.');
     return;
   }
   // Día cerrado = día HECHO (aunque no se hayan tildado todos los ejercicios).
@@ -3651,7 +3651,7 @@ async function confirmEmpezarBloqueNuevo() {
   _csVaciarDeshacer();
   const ok = await MyPump.ui.showConfirmModal({
     title:        '¡Nuevo bloque!',
-    body:         'Terminaste tu plan. Tu coach ya te dejó preparado el siguiente bloque. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo — tus cargas anteriores quedan guardadas.',
+    body:         'Terminaste este bloque. Ya te dejé preparado el siguiente. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo y tus cargas anteriores quedan guardadas.',
     confirmLabel: 'Empezar bloque nuevo',
     cancelLabel:  'Ahora no',
   });
@@ -3675,7 +3675,7 @@ async function doEmpezarBloqueNuevo() {
     const recargar = await MyPump.ui.showConfirmModal({
       title: sinRed ? 'Sin conexión' : 'Ups',
       body: sinRed ? 'No llegó la respuesta del servidor. Recargá para ver si el bloque nuevo ya quedó activo.'
-                   : 'No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribile a tu coach.',
+                   : 'No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribime por el chat.',
       confirmLabel: sinRed ? 'Recargar' : 'Ok', cancelLabel: sinRed ? 'Cerrar' : '',
     });
     if (sinRed && recargar) {
@@ -4178,7 +4178,7 @@ function renderTrain() {
       </div>
       ${_diaFinalizado
         ? `<div class="finish-cerrado-msg">Tu sesión de hoy quedó guardada.</div>`
-        : `<button class="btn-primary" id="finishBtn">${ICONS.flag} Cerrar sesión de hoy</button>`}
+        : `<button class="btn-primary" id="finishBtn">${ICONS.flag} Terminar el entrenamiento de hoy</button>`}
     </div>`;
   }
 
@@ -4190,7 +4190,7 @@ function renderTrain() {
   if (_nCambian > 0) {
     html += `<div class="prog-banner">Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</div>`;
   } else if (_esCalibracion) {
-    html += `<div class="prog-banner is-calibracion">Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3) — no te guardes reps.</div>`;
+    html += `<div class="prog-banner is-calibracion">Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto.</div>`;
   }
 
   // F3 — Inicio claro del cronómetro de sesión (el timer de DESCANSO es otro y
@@ -4260,7 +4260,7 @@ function renderTrain() {
       <button class="btn-week-advance" style="background:var(--color-brand)" onclick="confirmEmpezarBloqueNuevo()">
         Empezar bloque nuevo
       </button>
-      <div style="font-size:11px;color:var(--color-text-muted);text-align:center;margin-top:6px;font-family:var(--font-num)">Terminaste tu plan. Tu próximo bloque ya está listo.</div>
+      <div style="font-size:11px;color:var(--color-text-muted);text-align:center;margin-top:6px;font-family:var(--font-num)">Terminaste este bloque. El próximo ya está listo.</div>
     </div>`;
   }
 
@@ -4275,7 +4275,7 @@ function renderTrain() {
         <div class="fs-cell"><span class="lbl">Restan</span><span class="val">${pendingCount}<small>ej</small></span></div>
       </div>
       <button class="btn-secondary-outline" id="earlyFinishBtn" ${!hasStarted?'style="opacity:.5"':''}>
-        ${ICONS.flag} Cerrar sesión de hoy
+        ${ICONS.flag} Terminar el entrenamiento de hoy
       </button>
     </div>`;
   }
@@ -4669,8 +4669,8 @@ function _csFilasHtml(ex, s) {
 function _csPistaCalibracion(ex, s) {
   const i = s.activa;
   if (i == null || s.sinKg || s.carga != null || CS.repsDelPlan(s.repsPlan) == null || s.ultimaVez.length || s.series[i].kg != null) return '';
-  const plan = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'al fallo' : 'dejando 1–2 en reserva';
-  return `<div class="cs-nota">Primera vez con este ejercicio: elegí un peso con el que llegues a ${escapeHtml(String(s.repsPlan))} reps ${plan}. Queda de referencia para la próxima.</div>`;
+  const plan = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? ' al fallo' : '';
+  return `<div class="cs-nota">Primera vez con este ejercicio: elegí un peso con el que llegues a ${escapeHtml(String(s.repsPlan))} reps${plan}. Queda de referencia para la próxima.</div>`;
 }
 function _csTarjetaHtml(ex, s, conPrep, leyenda, selector) {
   return `<div class="cs" data-cs="${ex.id}">
@@ -5416,7 +5416,7 @@ function renderSetRow(ex, s, i, isActive) {
   // guiar la elección del peso en vez de dejar el input mudo. No aplica a los
   // ejercicios sin peso (peso corporal).
   const calibHint = (!conf && isActive && !hasSug && !typed && !noKg && sugRepsPlan != null)
-    ? `<div class="set-sug-hint is-calib">Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps ${ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'al fallo' : 'dejando 1–2 en reserva'}. Queda de referencia para la próxima.</div>`
+    ? `<div class="set-sug-hint is-calib">Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps${ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? ' al fallo' : ''}. Queda de referencia para la próxima.</div>`
     : '';
   return `
   <div class="${cls}" data-set="${ex.id}|${i}">
@@ -5920,8 +5920,8 @@ async function mostrarOnboardingPermisos() {
     } : {
       icono: '🔔',
       titulo: 'Que no se te pase nada',
-      texto: 'Un recordatorio para entrenar, y el aviso del check de los domingos. '
-           + 'Nada más: no te vamos a llenar el teléfono de notificaciones.',
+      texto: 'Un recordatorio para entrenar y el aviso semanal de tu revisión. '
+           + 'Nada más, no te vamos a llenar el teléfono de notificaciones.',
       detalle: 'Podés elegir cuáles querés y a qué hora, cuando quieras.',
       cta: 'Activar recordatorios',
     };
@@ -6067,7 +6067,7 @@ function openFinishModal() {
     <div class="modal-back" id="finBack">
       <div class="modal-sheet">
         <div class="modal-handle"></div>
-        <div class="modal-title">Cerrar sesión de hoy</div>
+        <div class="modal-title">Terminar el entrenamiento de hoy</div>
         <div class="modal-text">${totalSets} series · ${totalReps} reps · ${Math.round(tonnage)}kg de volumen.</div>
         <div>
           <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--color-text-secondary);font-weight:500">Notas de la sesión <span style="color:var(--color-text-muted);font-weight:400">· opcional</span></label>
@@ -6117,7 +6117,7 @@ async function openEarlyFinishModal() {
     <div class="modal-back" id="finBack">
       <div class="modal-sheet">
         <div class="modal-handle"></div>
-        <div class="modal-title">Cerrar sesión de hoy</div>
+        <div class="modal-title">Terminar el entrenamiento de hoy</div>
         <div class="modal-text">${totalSets} series · ${Math.round(tonnage)}kg de volumen · ${mins||'—'} min.</div>
         ${warningHtml}
         <div>
@@ -8895,7 +8895,7 @@ const _TXT_SALUD = {
     relojes:    'Apple Watch, Oura, Garmin…',
     sincroniza: 'la app Salud del iPhone',
     desdeApp:   'la app de iPhone',
-    revocar:    'Ajustes → Privacidad y seguridad → Salud → MyPump',
+    revocar:    'Ajustes → Privacidad y seguridad → Salud → Pump Team',
   },
   android: {
     app:        'Health Connect',
@@ -8908,7 +8908,7 @@ const _TXT_SALUD = {
     relojes:    'Galaxy Watch, Mi Band, Garmin, Fitbit…',
     sincroniza: 'Health Connect',
     desdeApp:   'la app del teléfono',
-    revocar:    'Ajustes → Salud y bienestar → Health Connect → MyPump',
+    revocar:    'Ajustes → Salud y bienestar → Health Connect → Pump Team',
   },
 };
 const _T = (k) => _TXT_SALUD[_esAndroid() ? 'android' : 'ios'][k];
@@ -9235,14 +9235,14 @@ function renderMydayRecuperacion() {
   const drivers = _recDrivers(row);
   let frase;
   if (row.discordancia) {
-    frase = 'Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís.';
+    frase = 'Tus números de hoy no coinciden con cómo te sentís. Seguí tu plan.';
   } else if (row.estado_autonomico === 'maladaptacion') {
-    frase = 'Tu cuerpo viene peleando con la carga. Hoy conviene aflojar.';
+    frase = 'Tu recuperación viene baja hace varios días. Seguí tu plan y contámelo por el chat.';
   } else if (row.estado_autonomico === 'fatiga_acumulada') {
-    frase = 'Venís con fatiga acumulada de varios días.';
+    frase = 'Venís con varios días de recuperación baja. Seguí tu plan y contámelo por el chat.';
   } else if (!drivers) {
-    frase = banda === 'alta' ? 'Venís bien. Aprovechalo.'
-          : banda === 'baja' ? 'Hoy tu cuerpo pide más descanso.'
+    frase = banda === 'alta' ? 'Recuperación alta hoy.'
+          : banda === 'baja' ? 'Recuperación baja hoy. Seguí tu plan y si se repite varios días, contámelo por el chat.'
           : 'Estás en tu rango normal.';
   } else { frase = ''; }
 
@@ -10736,10 +10736,10 @@ function _renderRevTarjetas() {
       rec = txt('Ocultaste el número de recuperación. Tocá para ver tus datos de salud.');
     } else if (row && row.score != null && row.estado !== 'calibrando') {
       const banda = row.banda || 'media';
-      const frase = row.discordancia ? 'Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís.'
-        : row.estado_autonomico === 'maladaptacion' ? 'Tu cuerpo viene peleando con la carga. Hoy conviene aflojar.'
-        : row.estado_autonomico === 'fatiga_acumulada' ? 'Venís con fatiga acumulada de varios días.'
-        : banda === 'alta' ? 'Venís bien. Aprovechalo.' : banda === 'baja' ? 'Hoy tu cuerpo pide más descanso.' : 'Estás en tu rango normal.';
+      const frase = row.discordancia ? 'Tus números de hoy no coinciden con cómo te sentís. Seguí tu plan.'
+        : row.estado_autonomico === 'maladaptacion' ? 'Tu recuperación viene baja hace varios días. Seguí tu plan y contámelo por el chat.'
+        : row.estado_autonomico === 'fatiga_acumulada' ? 'Venís con varios días de recuperación baja. Seguí tu plan y contámelo por el chat.'
+        : banda === 'alta' ? 'Recuperación alta hoy.' : banda === 'baja' ? 'Recuperación baja hoy. Seguí tu plan y si se repite varios días, contámelo por el chat.' : 'Estás en tu rango normal.';
       rec = `<div class="rv-score"><span class="rv-num rec-${banda}">${row.score}</span><span class="rv-de">de 100</span>
           <span class="rv-banda rec-${banda}">${_REC_BANDA_TXT[banda] || ''}</span></div>${txt(frase)}`;
     } else if (row && (row.estado === 'calibrando' || (row.score == null && row.estado !== 'insuficiente'))) {
