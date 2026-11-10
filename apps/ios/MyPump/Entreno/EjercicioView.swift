@@ -24,6 +24,8 @@ struct EjercicioView: View {
     @State private var video: URL?
     @State private var demoHecha = false
     @State private var eligiendoDescanso = false
+    @State private var doliendo = false
+    @State private var app = Proveedor.modelo
     @FocusState private var escribiendo: Bool
 
     var body: some View {
@@ -74,7 +76,7 @@ struct EjercicioView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .topeArriba()
                             VStack(alignment: .leading, spacing: Espacio.l) {
-                                series(t); aSuperar(t); acciones(t, lector); BotonMandarTecnica(ejercicio: t.efectivo.ejercicio); comentarios(t); cierre(t)
+                                series(t); aSuperar(t); acciones(t, lector); EstadoMolestia(lugar: lugar) { doliendo = true }; BotonMandarTecnica(ejercicio: t.efectivo.ejercicio); comentarios(t); cierre(t)
                             }
                             .frame(maxWidth: .infinity, alignment: .top)
                             .fixedSize(horizontal: false, vertical: true)
@@ -85,7 +87,7 @@ struct EjercicioView: View {
                         // En el teléfono, lo que se usa en el gimnasio va primero: la pauta y la tabla quedan a la
                         // vista sin desplazar; el "cómo se hace" (fotos grandes y técnica) va después.
                         VStack(alignment: .leading, spacing: Espacio.l) {
-                            encabezado(t, lector); metricas(t); nota(t); series(t); aSuperar(t); acciones(t, lector); BotonMandarTecnica(ejercicio: t.efectivo.ejercicio)
+                            encabezado(t, lector); metricas(t); nota(t); series(t); aSuperar(t); acciones(t, lector); EstadoMolestia(lugar: lugar) { doliendo = true }; BotonMandarTecnica(ejercicio: t.efectivo.ejercicio)
                             comoSeHace(t); comentarios(t); cierre(t)
                         }
                         .anchoLectura()
@@ -252,12 +254,29 @@ struct EjercicioView: View {
                 if let v = t.efectivo.ejercicio.videoURL, let url = URL(string: v) {
                     Button { video = url } label: { Label("Video", systemImage: "play.rectangle.fill") }
                 }
+                // «Me duele» (palanca `me_duele`): con una molestia ya avisada se corrige desde su tarjeta, acá abajo.
+                if let f = app.feedback, f.dueleHabilitado, f.molestia(ejercicio: lugar)?.abierta != true,
+                   t.efectivo.ejercicio.tipo != "calentamiento", t.efectivo.ejercicio.tipo != "cardio" {
+                    Button { doliendo = true } label: { Label(TextosFeedback.dueleBoton, systemImage: "bandage.fill") }
+                        .accessibilityIdentifier("duele-abrir")
+                }
             }
             .buttonStyle(AccionTarjeta())
+            .sheet(isPresented: $doliendo) {
+                if let f = app.feedback {
+                    MeDueleView(modelo: f, lugar: lugar, ejercicioNombre: Self.nombreParaAvisar(t.efectivo), diaId: motor.dia.dia.id) { doliendo = false }
+                }
+            }
             if !puede, t.efectivo.ejercicio.tipo != "calentamiento", t.efectivo.ejercicio.tipo != "cardio" {
                 Text(TextosEntreno.sinVariantes).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
             }
         }
+    }
+
+    /// El nombre que lee quien cambia el ejercicio: el que está haciendo y, si lo sustituyó, también el del plan.
+    static func nombreParaAvisar(_ e: EjercicioEfectivo) -> String {
+        guard e.sustituido, let original = e.nombreOriginal, !original.isEmpty, original != e.ejercicio.nombre else { return e.ejercicio.nombre }
+        return "\(e.ejercicio.nombre) (en lugar de \(original))"
     }
 
     /// Las fotos grandes del movimiento y la nota técnica de Mati, juntas.
