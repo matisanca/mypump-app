@@ -1431,6 +1431,22 @@
    "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_tecnica.sql"
   },
   {
+   "nombre": "mypump_devolucion_get",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "jsonb",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null,
+   "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_devolucion_semanal.sql"
+  },
+  {
    "nombre": "mypump_tecnica_nuevo",
    "parametros": [
     {
