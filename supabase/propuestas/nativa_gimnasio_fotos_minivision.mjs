@@ -71,14 +71,29 @@ function carpetaGimnasio(clienteId) {
   return hashGim('sha256').update(`gimnasio:${clienteId}`).digest('hex').slice(0, 32);
 }
 
+// Después de responder se lee lo que falte del cuerpo, con tope de bytes y de tiempo. Cortar la conexión con la subida a medio
+// camino hace que el navegador vea un corte de red y no el 4xx, y la foto se reintentaría sin fin.
+const DRENAR_GIMNASIO_MS = 15_000;
+function drenarOCortarGimnasio(req) {
+  if (req.complete || req.destroyed) return;
+  let leidos = 0;
+  const cortar = () => { clearTimeout(plazo); req.destroy(); };
+  const plazo = setTimeout(cortar, DRENAR_GIMNASIO_MS);
+  plazo.unref?.();
+  req.on('data', (c) => { leidos += c.length; if (leidos > MAX_GIMNASIO_B) cortar(); });
+  req.once('end', () => clearTimeout(plazo));
+  req.once('close', () => clearTimeout(plazo));
+  req.once('error', cortar);
+}
+
 function rechazarGimnasio(req, res, status, error, origin) {
-  res.once('finish', () => req.destroy());
+  res.once('finish', () => drenarOCortarGimnasio(req));
   send(res, status, { ok: false, error }, origin);
 }
 
 async function clienteGimnasio(token, req, res, origin) {
   const c = await clienteOResponder(token, res, origin);
-  if (c === undefined) res.once('finish', () => req.destroy());
+  if (c === undefined) res.once('finish', () => drenarOCortarGimnasio(req));
   return c;
 }
 
