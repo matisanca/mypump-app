@@ -1,9 +1,14 @@
 package com.pumpteam.mypump.ui
 
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.unit.toSize
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pumpteam.mypump.Entorno
 import com.pumpteam.mypump.datos.DobleFeedback
 import com.pumpteam.mypump.datos.Transporte
+import com.pumpteam.mypump.reglas.ReglasSupleEstado
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
@@ -28,7 +33,22 @@ class FeedbackUiTest : PruebaUi() {
         Telefono.modoNoche(false)
     }
 
-    private fun foto(nombre: String) = Telefono.captura("android-$tema-$nombre")
+    /** Deja [a] al medio de la pantalla: lo nuevo queda abajo de lo que entra de entrada, y la captura no lo mostraba. */
+    private fun aLaVista(a: String) {
+        val n = p.nodo(etiqueta(a))
+        p.enPrincipal {
+            var lista = n.parent
+            while (lista != null && lista.config.getOrNull(SemanticsActions.ScrollBy) == null) lista = lista.parent
+            val l = lista ?: return@enPrincipal
+            l.config[SemanticsActions.ScrollBy].action?.invoke(0f, Rect(n.positionInRoot, n.size.toSize()).center.y - l.boundsInRoot.center.y)
+        }
+        p.quieto(600)
+    }
+
+    private fun foto(nombre: String, a: String? = null) {
+        if (a != null) aLaVista(a)
+        Telefono.captura("android-$tema-$nombre")
+    }
 
     /** El feedback y la palanca los contesta el doble; lo demás, el servidor de prueba de siempre. */
     private fun lanzar(escenario: String): DobleFeedback {
@@ -83,7 +103,7 @@ class FeedbackUiTest : PruebaUi() {
 
     @Test fun avisarUnaMolestiaYCorregirla() {
         val d = enElEjercicio("vacio")
-        foto("duele-0-ejercicio")
+        foto("duele-0-ejercicio", "duele-abrir")
         p.tocar(etiqueta("duele-abrir"))
         completarYEnviar(capturas = true)
         p.nodo(texto("Ya me llegó"))
@@ -103,7 +123,7 @@ class FeedbackUiTest : PruebaUi() {
         // En la tarjeta queda avisada y el botón de la fila de acciones se va: se corrige desde ahí.
         p.nodo(etiqueta("duele-avisada"))
         assertFalse(p.existe(etiqueta("duele-abrir")))
-        foto("duele-5-tarjeta")
+        foto("duele-5-tarjeta", "duele-avisada")
         p.tocar(etiqueta("duele-cambiar"))
         p.esperar("Corregir abre con lo que ya avisó") { zona() == "Hombro derecho" }
         p.nodo(texto("Guardar cambios"))
@@ -183,36 +203,41 @@ class FeedbackUiTest : PruebaUi() {
         p.nodo(texto("Ya lo revisé"))
         assertTrue("Con la anterior cerrada puede avisar otra", p.existe(etiqueta("duele-abrir")))
         assertFalse(p.existe(etiqueta("duele-cambiar")))
-        foto("duele-6-resuelta")
+        foto("duele-6-resuelta", "duele-resuelta")
     }
 
     @Test fun oscuro() {
         tema = "oscuro"
         Telefono.modoNoche(true)
         enElEjercicio("vacio")
-        foto("duele-0-ejercicio")
+        foto("duele-0-ejercicio", "duele-abrir")
         p.tocar(etiqueta("duele-abrir"))
         completarYEnviar(nivel = 7, capturas = true)
         p.nodo(etiqueta("duele-listo-fuerte"))
         foto("duele-4-recibido")
         p.tocar(etiqueta("duele-listo"))
         p.nodo(etiqueta("duele-avisada"))
-        foto("duele-5-tarjeta")
+        foto("duele-5-tarjeta", "duele-avisada")
     }
 
     @Test fun letraGrande() {
         tema = "grande"
         Telefono.shell("settings put system font_scale 1.5")
         enElEjercicio("vacio")
-        foto("duele-0-ejercicio")
+        foto("duele-0-ejercicio", "duele-abrir")
         p.tocar(etiqueta("duele-abrir"))
         completarYEnviar(capturas = true)
         foto("duele-4-recibido")
     }
 
+    /** El menú tarda en irse: sin esperar, el toque siguiente cae en el menú de la fila anterior, que todavía se está cerrando. */
+    private fun menuCerrado() = p.esperar("el menú se cerró") { ReglasSupleEstado.Estado.entries.none { p.existe(etiqueta("supl-estado-opcion-${it.clave}")) } }
+
     private fun marcar(n: Int, estado: String) {
+        menuCerrado()
         p.tocar(etiqueta("supl-estado-$n"))
         p.tocar(etiqueta("supl-estado-opcion-$estado"))
+        menuCerrado()
     }
 
     @Test fun marcarSuplementos() {
@@ -221,7 +246,7 @@ class FeedbackUiTest : PruebaUi() {
         p.nodo(texto("¿Ya lo tenés?"))
         assertEquals(listOf("0 de 4 marcados"), p.textosBajo(etiqueta("supl-estado-resumen")))
         assertEquals("Creatina monohidrato, Marcar", p.descripcion(etiqueta("supl-estado-0")))
-        foto("suple-0-sin-marcar")
+        foto("suple-0-sin-marcar", "supl-estado")
         p.tocar(etiqueta("supl-estado-0"))
         p.nodo(etiqueta("supl-estado-opcion-comprado"))
         p.nodo(texto("Lo compré")); p.nodo(texto("Lo estoy tomando")); p.nodo(texto("No lo consigo")); p.nodo(texto("Lo dejé"))
@@ -234,7 +259,7 @@ class FeedbackUiTest : PruebaUi() {
         marcar(1, "no_lo_consigo")
         p.nodo(etiqueta("supl-estado-no-consigo"))
         p.esperar("llegó al servidor") { d.marcas.toMap() == mapOf("creatina monohidrato" to "tomando", "omega 3" to "no_lo_consigo") }
-        foto("suple-2-marcado")
+        foto("suple-2-marcado", "supl-estado")
         // El protector de la muestra (un fármaco) y lo que sale no se marcan: 4 filas, no 6.
         assertFalse(p.existe(etiqueta("supl-estado-4")))
         assertTrue((0..3).none { "Telmis" in p.descripcion(etiqueta("supl-estado-$it")) || "Multivit" in p.descripcion(etiqueta("supl-estado-$it")) })
@@ -259,11 +284,12 @@ class FeedbackUiTest : PruebaUi() {
         Telefono.modoNoche(true)
         enSuplementacion("marcado")
         p.esperar("2 de 4") { p.textosBajo(etiqueta("supl-estado-resumen")) == listOf("2 de 4 marcados") }
-        p.tocar(etiqueta("supl-estado-3"))   // lo trae a la vista
+        aLaVista("supl-estado")
+        p.tocar(etiqueta("supl-estado-3"))
         p.nodo(etiqueta("supl-estado-opcion-comprado"))
         foto("suple-1-menu")
         p.atras()
-        foto("suple-2-marcado")
+        foto("suple-2-marcado", "supl-estado")
     }
 
     @Test fun suplementosSinPalanca() {
