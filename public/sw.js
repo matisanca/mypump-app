@@ -102,7 +102,7 @@ self.addEventListener('fetch', (e) => {
     || url.pathname === '/'
     || url.pathname === '/cliente'
     || /\.(html|js|css)$/.test(url.pathname);
-  if (isCode) { e.respondWith(networkFirst(req)); return; }
+  if (isCode) { e.respondWith(networkFirst(req, e)); return; }
 
   // Estáticos del mismo origen (iconos, imágenes de ejercicios) → cache-first.
   e.respondWith(cacheFirst(req, RUNTIME_CACHE));
@@ -127,14 +127,25 @@ async function copiaDelCodigo(req) {
   return null;
 }
 
-async function networkFirst(req) {
+// Si la página salió de la copia por el tope, lo que pide enseguida (sus .js y .css) también sale de la copia: si no, una
+// página vieja podía cargar código nuevo de la red (revisión 10/11).
+let paginaDeLaCopiaHasta = 0;
+
+async function networkFirst(req, e) {
+  if (req.mode !== 'navigate' && Date.now() < paginaDeLaCopiaHasta) {
+    const cached = await copiaDelCodigo(req);
+    if (cached) return cached;
+  }
+  let guardado = Promise.resolve();
   const red = fetch(req).then((res) => {
     if (res && res.ok && !res.redirected) {
       const copy = res.clone();
-      caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
+      guardado = caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
     }
     return res;
   });
+  // La red sigue por detrás aunque se sirva la copia: que el navegador no corte el service worker antes de guardarla.
+  if (e && e.waitUntil) e.waitUntil(red.then(() => guardado).catch(() => {}));
   let reloj = null;
   const tope = new Promise((ok) => { reloj = setTimeout(() => ok(null), TOPE_RED_CODIGO_MS); });
   try {
@@ -142,7 +153,10 @@ async function networkFirst(req) {
     if (res) return res;
     // Tardó de más: con copia, la copia; sin copia no hay otra que esperar a la red.
     const cached = await copiaDelCodigo(req);
-    if (cached) { red.catch(() => {}); return cached; }
+    if (cached) {
+      if (req.mode === 'navigate') paginaDeLaCopiaHasta = Date.now() + 30000;
+      return cached;
+    }
     return await red;
   } catch (err) {
     const cached = await copiaDelCodigo(req);
