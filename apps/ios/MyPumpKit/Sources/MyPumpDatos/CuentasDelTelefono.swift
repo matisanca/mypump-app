@@ -131,4 +131,23 @@ enum CuentasDelTelefono {
         }
         return total
     }
+
+    /// Lo mismo con las fotos del gimnasio que no llegaron a subirse. Cada una lleva su carga: se suben a la misma.
+    @MainActor @discardableResult
+    static func adoptarGimnasio(clienteId: String, en disco: Disco, gimnasio: ModeloGimnasio) -> Int {
+        guard !clienteId.isEmpty else { return 0 }
+        let base = disco.carpeta.deletingLastPathComponent()
+        let propia = disco.carpeta.lastPathComponent
+        let nombres = ((try? FileManager.default.contentsOfDirectory(atPath: base.path)) ?? []).filter { $0.hasPrefix("cuenta-") && $0 != propia }.sorted()
+        var total = 0
+        for nombre in nombres {
+            let otra = Disco(carpeta: base.appendingPathComponent(nombre, isDirectory: true))
+            guard let viejas = otra.leer([PendienteGimnasio].self, PendienteGimnasio.archivo), !viejas.isEmpty,
+                  Self.clienteId(de: otra) == clienteId, gimnasio.adoptar(viejas, desde: otra) else { continue }
+            otra.borrar(PendienteGimnasio.archivo)
+            try? FileManager.default.removeItem(at: otra.url(PendienteGimnasio.carpeta))
+            total += viejas.count
+        }
+        return total
+    }
 }

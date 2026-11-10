@@ -94,6 +94,8 @@ public final class ModeloApp {
     public private(set) var revision: ModeloRevision?
     /// Fotos de progreso, con su cola propia en disco.
     public private(set) var fotos: ModeloFotos?
+    /// Gimnasio por fotos: existe con cuenta, pero solo llama al servidor con la palanca `gimnasio_fotos` prendida.
+    public private(set) var gimnasio: ModeloGimnasio?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
     /// El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada).
@@ -225,7 +227,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         esDemo = false
         sinRedEn = []
@@ -294,7 +296,7 @@ public final class ModeloApp {
         cacheCodigos = nil
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
     }
 
@@ -327,6 +329,7 @@ public final class ModeloApp {
         if enPrimerPlano { chat?.empezarSondeo() }
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola, disco: disco)
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
+        gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
@@ -423,6 +426,7 @@ public final class ModeloApp {
             // La carpeta, la cola y las fotos de ESTA cuenta, tomadas juntas antes de esperar: si en el medio entra el link
             // de otra persona, las fotos de una no van a la cola de la otra (lo encontró el agente de Android, 15-oct).
             let f = fotos
+            let g = gimnasio
             CuentasDelTelefono.anotar(clienteId: id, en: d)
             await CuentasDelTelefono.adoptar(clienteId: id, en: d, cola: cola)
             // Los reemplazos de comida que esa carpeta tenía sin decidir vienen con ellas: hasta decidir, la cola los retiene
@@ -430,6 +434,7 @@ public final class ModeloApp {
             if CuentasDelTelefono.adoptarSwaps(clienteId: id, en: d) { await cola.retenerSwapsHastaDecidir() }
             guard vigente() else { return }
             if let f { await CuentasDelTelefono.adoptarFotos(clienteId: id, en: d, fotos: f) }
+            if let g { CuentasDelTelefono.adoptarGimnasio(clienteId: id, en: d, gimnasio: g) }
             guard vigente() else { return }
         }
 
@@ -498,6 +503,7 @@ public final class ModeloApp {
         async let cargaRevision: Void = revision?.cargarRevision() ?? ()
         async let cargaFotos: Void = fotos?.cargar() ?? ()
         _ = await (cargaChat, cargaRevision, cargaFotos)
+        await sincronizarGimnasio()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -594,6 +600,18 @@ public final class ModeloApp {
         if desdeCache { await cargar(); return }
         await outbox?.drenar()
         await fotos?.drenar()
+        if palanca.gimnasioFotos { await gimnasio?.drenar() }
+    }
+
+    /// Con la palanca apagada no se llama a nada: la app es la de siempre.
+    private func sincronizarGimnasio() async {
+        guard let gimnasio else { return }
+        if palanca.gimnasioFotos {
+            await gimnasio.refrescar()
+            await gimnasio.drenar()
+        } else {
+            gimnasio.apagar()
+        }
     }
 
     /// El modelo se crea una sola vez y puede nacer con la app en segundo plano antes del primer desbloqueo (reinicio del
@@ -637,6 +655,7 @@ public final class ModeloApp {
         await refrescarDiaPasado()
         await chat?.sondear()
         await fotos?.drenar()
+        await sincronizarGimnasio()
         await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
         _ = await entreno?.alVolverAPrimerPlano()
     }
