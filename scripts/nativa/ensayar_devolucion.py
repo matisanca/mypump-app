@@ -117,6 +117,8 @@ def chequeos(cur, token, otro):
         "hormonal": BUENO.replace("los pasos", "lo hormonal"),
         "dosis": BUENO.replace("los pasos", "la dosis"),
         "análisis": BUENO.replace("los pasos", "los análisis"),
+        "ANÁLISIS en mayúsculas": BUENO.replace("los pasos", "los ANÁLISIS"),
+        "Análisis al principio": "Análisis " + BUENO,
         "hematocrito": BUENO.replace("los pasos", "el hematocrito"),
         "RIR": BUENO.replace("los pasos", "el RIR"),
         "reserva": BUENO.replace("los pasos", "dejar dos reps en reserva"),
@@ -144,6 +146,7 @@ def chequeos(cur, token, otro):
     ch("carga borrador", r.get("ok") is True and r.get("ya") is False and estado(i) == "borrador" and r["texto_hash"] == sha(BUENO), str(r))
     ch("cargar lo mismo: ya", cargar().get("ya") is True)
     ch("espacios de más dan el mismo hash", cargar(texto="  " + BUENO + "\n").get("ya") is True)
+    ch("NBSP y blancos Unicode como el strip() de Python", cargar(texto="\u00a0\u2009" + BUENO + "\u3000\n").get("ya") is True)
     r2 = cargar(cli=em.OTRA)
     j = r2.get("id")
     ch("otra cuenta, otra fila", r2.get("ok") is True and j != i)
@@ -154,10 +157,10 @@ def chequeos(cur, token, otro):
     da(cur, "emitir sin quién", "22023", "SELECT mypump_devolucion_emitir_codigo(%s,%s::uuid[],'  ')", LLAVE, [i])
     e = emitir([i, j])
     cod = e.get("codigo", "")
-    ch("emite código XXXX-XXXX", e.get("ok") is True and re.fullmatch(r"[0-9A-F]{4}-[0-9A-F]{4}", cod) is not None and e.get("n") == 2, str({k: v for k, v in e.items() if k != "codigo"}))
+    ch("emite código XXXX-XXXX-XXXX (60 bits)", e.get("ok") is True and re.fullmatch(r"[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}", cod) is not None and e.get("n") == 2, str({k: v for k, v in e.items() if k != "codigo"}))
     ch("el código no queda guardado en claro", uno(cur, "SELECT count(*) FROM mypump_devolucion_aprobaciones WHERE codigo_hash = %s", sha(cod.replace("-", ""))) == 1
        and uno(cur, "SELECT count(*) FROM mypump_devolucion_aprobaciones WHERE items::text LIKE %s", "%" + cod[:4] + "%") == 0)
-    ch("código errado", aprobar("ZZZZ-ZZZZ", [i]).get("error") == "codigo_invalido")
+    ch("código errado", aprobar("ZZZZ-ZZZZ-ZZZZ", [i]).get("error") == "codigo_invalido")
     ch("el errado suma intento", uno(cur, "SELECT intentos_fallidos FROM mypump_devolucion_aprobaciones WHERE codigo_hash=%s", sha(cod.replace("-", ""))) == 1)
     ch("id fuera del código", aprobar(cod, [i, str(uuid.uuid4())]).get("error") == "codigo_de_otro_texto" and estado(i) == "borrador")
     ch("el fallo por lista no gasta el código", uno(cur, "SELECT usado_en IS NULL FROM mypump_devolucion_aprobaciones WHERE codigo_hash=%s", sha(cod.replace("-", ""))) is True)
@@ -193,8 +196,8 @@ def chequeos(cur, token, otro):
     g = get()
     ch("habilitado y sin nada publicado: lista vacía", g == {"habilitado": True, "devoluciones": []}, str(g))
     cur.execute("SAVEPOINT v")
-    cur.execute("UPDATE mypump_devoluciones SET aprobado_en = now() - interval '37 hours' WHERE id=%s::uuid", (i,))
-    ch("aprobación de más de 36 h no sale", publicar(i, sha(OTRO)).get("error") == "aprobacion_vencida")
+    cur.execute("UPDATE mypump_devolucion_aprobaciones SET emitido_en = now() - interval '37 hours' WHERE id=(SELECT aprobacion_id FROM mypump_devoluciones WHERE id=%s::uuid)", (i,))
+    ch("código emitido hace más de 36 h: no sale aunque se haya usado recién", publicar(i, sha(OTRO)).get("error") == "aprobacion_vencida")
     cur.execute("ROLLBACK TO SAVEPOINT v")
     p = publicar(i, sha(OTRO))
     ch("publica", p.get("ok") is True and p.get("ya") is False and estado(i) == "publicado", str(p))
@@ -246,11 +249,15 @@ def chequeos(cur, token, otro):
 
     print("▸ Reverso (dentro de un savepoint)")
     cur.execute("SAVEPOINT rev")
+    # Un aviso ajeno que también empieza con «dev-» (otro circuito): el reverso no lo toca.
+    ajeno = uno(cur, "SELECT mypump_encolar_push(%s,'Prueba','ensayo','revision','dev-ajeno-ensayo')", C)
+    antes = uno(cur, "SELECT estado FROM mypump_push_cola WHERE dedupe_key='dev-ajeno-ensayo'")
     cur.execute(cuerpo(os.path.join(os.path.dirname(os.path.abspath(em.__file__)), "nativa_devolucion_semanal_revertir.sql")))
     ch("no quedan tablas", uno(cur, "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'mypump_devolucion%%'") == 0)
     ch("no quedan funciones", uno(cur, "SELECT count(*) FROM pg_proc WHERE proname LIKE 'mypump_devolucion%%'") == 0)
     cfg = uno(cur, "SELECT mypump_get_app_config()")
     ch("no quedan las claves", "devolucion_semanal" not in cfg and "devolucion_para_todos" not in cfg)
+    ch("el reverso no toca avisos ajenos con «dev-»", ajeno is not None and antes in ("pendiente", "sin_device") and uno(cur, "SELECT estado FROM mypump_push_cola WHERE dedupe_key='dev-ajeno-ensayo'") == antes, str(antes))
     cur.execute("ROLLBACK TO SAVEPOINT rev")
 
 

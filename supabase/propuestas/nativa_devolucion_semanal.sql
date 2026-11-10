@@ -36,7 +36,7 @@ CREATE OR REPLACE FUNCTION mypump_devolucion_sha(p TEXT)
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$ SELECT encode(sha256(convert_to(COALESCE(p, ''), 'UTF8')), 'hex'); $$;
 
 -- NULL si el texto pasa; si no, el primer motivo. Misma lista que revisar_texto() de la Mini (devolucion_comun.py, 10/11).
@@ -45,7 +45,7 @@ CREATE OR REPLACE FUNCTION mypump_devolucion_texto_motivo(p TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
 IMMUTABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_lineas TEXT[];
@@ -91,7 +91,7 @@ CREATE OR REPLACE FUNCTION mypump_devolucion_hora_de_publicar()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$ SELECT EXTRACT(HOUR FROM NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') BETWEEN 9 AND 20; $$;
 
 -- ── Tablas ──
@@ -164,7 +164,7 @@ RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT COALESCE((SELECT valor = 'true'::JSONB FROM mypump_app_config WHERE clave = 'devolucion_semanal'), FALSE)
      AND (COALESCE((SELECT valor = 'true'::JSONB FROM mypump_app_config WHERE clave = 'devolucion_para_todos'), FALSE)
@@ -177,7 +177,7 @@ RETURNS VOID
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF COALESCE(auth.role(), '') IN ('anon', 'authenticated') THEN RAISE EXCEPTION 'acceso denegado' USING ERRCODE = '42501'; END IF;
@@ -199,7 +199,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_cliente_id TEXT;
@@ -227,11 +227,12 @@ CREATE OR REPLACE FUNCTION mypump_devolucion_cargar(p_token TEXT, p_cliente_id T
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
-  -- Sin espacios ni saltos al principio y al final, como el strip() de la Mini (la huella se calcula sobre eso).
-  v_texto  TEXT := regexp_replace(COALESCE(p_texto, ''), '^\s+|\s+$', '', 'g');
+  -- Sin espacios ni saltos al principio y al final, con los mismos blancos Unicode que el strip() de Python de la Mini
+  -- (NBSP incluido): la huella se calcula sobre eso y tiene que dar igual en los dos lados.
+  v_texto  TEXT := regexp_replace(COALESCE(p_texto, ''), '^[\s\u001c-\u001f\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+|[\s\u001c-\u001f\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$', '', 'g');
   v_hash   TEXT;
   v_motivo TEXT;
   v_fila   mypump_devoluciones%ROWTYPE;
@@ -274,12 +275,14 @@ CREATE OR REPLACE FUNCTION mypump_devolucion_emitir_codigo(p_token TEXT, p_ids U
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_items JSONB;
   v_malos JSONB;
   v_crudo TEXT;
+  v_bytes BYTEA;
+  v_i     INTEGER;
   v_vence TIMESTAMPTZ;
   v_n     INTEGER;
 BEGIN
@@ -298,11 +301,17 @@ BEGIN
   SELECT jsonb_object_agg(d.id::TEXT, d.texto_hash) INTO v_items FROM mypump_devoluciones d WHERE d.id = ANY (p_ids);
   UPDATE mypump_devolucion_aprobaciones SET anulado_en = NOW()
    WHERE usado_en IS NULL AND anulado_en IS NULL AND items ?| (SELECT array_agg(x::TEXT) FROM unnest(p_ids) x);
-  v_crudo := upper(left(replace(gen_random_uuid()::TEXT, '-', ''), 8));
+  -- 12 caracteres de un alfabeto de 32 sin los que se confunden (0/O, 1/I): 60 bits. Con 8 hex (32 bits) la huella guardada
+  -- se revertía por fuerza bruta en segundos. Bytes al azar de un uuid v4, salteando los que llevan versión y variante.
+  v_bytes := uuid_send(gen_random_uuid());
+  v_crudo := '';
+  FOREACH v_i IN ARRAY ARRAY[0,1,2,3,4,5,7,9,10,11,12,13] LOOP
+    v_crudo := v_crudo || substr('23456789ABCDEFGHJKLMNPQRSTUVWXYZ', (get_byte(v_bytes, v_i) % 32) + 1, 1);
+  END LOOP;
   v_vence := NOW() + make_interval(hours => p_horas);
   INSERT INTO mypump_devolucion_aprobaciones (codigo_hash, items, tanda, por, vence_en)
   VALUES (mypump_devolucion_sha(v_crudo), v_items, p_tanda, btrim(p_por), v_vence);
-  RETURN jsonb_build_object('ok', TRUE, 'codigo', left(v_crudo, 4) || '-' || right(v_crudo, 4), 'vence_en', v_vence, 'n', v_n);
+  RETURN jsonb_build_object('ok', TRUE, 'codigo', substr(v_crudo, 1, 4) || '-' || substr(v_crudo, 5, 4) || '-' || substr(v_crudo, 9, 4), 'vence_en', v_vence, 'n', v_n);
 END;
 $$;
 
@@ -313,7 +322,7 @@ CREATE OR REPLACE FUNCTION mypump_devolucion_aprobar(p_token TEXT, p_codigo TEXT
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_ok    mypump_devolucion_aprobaciones%ROWTYPE;
@@ -355,7 +364,7 @@ CREATE OR REPLACE FUNCTION mypump_devolucion_publicar(p_token TEXT, p_id UUID, p
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_fila mypump_devoluciones%ROWTYPE;
@@ -369,7 +378,8 @@ BEGIN
   IF p_texto_hash IS DISTINCT FROM v_fila.texto_hash OR v_fila.aprobado_hash IS DISTINCT FROM v_fila.texto_hash THEN
     RETURN jsonb_build_object('ok', FALSE, 'error', 'texto_distinto');
   END IF;
-  IF NOW() - v_fila.aprobado_en > INTERVAL '36 hours' THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'aprobacion_vencida'); END IF;
+  -- Las 36 horas corren desde que se emitió el código, no desde que se usó: el plazo total no se suma.
+  IF NOW() - COALESCE((SELECT emitido_en FROM mypump_devolucion_aprobaciones WHERE id = v_fila.aprobacion_id), v_fila.aprobado_en) > INTERVAL '36 hours' THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'aprobacion_vencida'); END IF;
   IF mypump_devolucion_texto_motivo(v_fila.texto) IS NOT NULL THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'texto_prohibido'); END IF;
   IF NOT mypump_devolucion_hora_de_publicar() THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'fuera_de_horario'); END IF;
   IF NOT mypump_devolucion_habilitado(v_fila.cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_habilitado'); END IF;
@@ -390,7 +400,7 @@ CREATE OR REPLACE FUNCTION mypump_devolucion_descartar(p_token TEXT, p_id UUID, 
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_estado TEXT;
@@ -414,7 +424,7 @@ CREATE OR REPLACE FUNCTION mypump_devolucion_retirar(p_token TEXT, p_id UUID, p_
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_estado TEXT;
@@ -438,7 +448,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   PERFORM mypump_devolucion_guarda(p_token);

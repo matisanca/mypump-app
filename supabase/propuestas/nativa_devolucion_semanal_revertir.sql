@@ -24,7 +24,7 @@ DROP FUNCTION IF EXISTS mypump_devolucion_hora_de_publicar();
 DROP FUNCTION IF EXISTS mypump_devolucion_texto_motivo(TEXT);
 DROP FUNCTION IF EXISTS mypump_devolucion_sha(TEXT);
 -- Los avisos ya encolados que no salieron, no salen.
-UPDATE mypump_push_cola SET estado = 'descartado' WHERE dedupe_key LIKE 'dev-%' AND estado IN ('pendiente', 'sin_device');
+UPDATE mypump_push_cola SET estado = 'descartado' WHERE dedupe_key ~ '^dev-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' AND estado IN ('pendiente', 'sin_device');
 DELETE FROM mypump_app_config WHERE clave IN ('devolucion_semanal', 'devolucion_para_todos');
 NOTIFY pgrst, 'reload schema';
 COMMIT;
