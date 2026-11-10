@@ -108,26 +108,48 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(cacheFirst(req, RUNTIME_CACHE));
 });
 
+/* Auditoría 10/11, F2: con la señal «colgada» (ni responde ni corta) el fetch
+ * del código esperaba sin tope y la app no abría. Pasado este tope, si hay copia
+ * se sirve la copia; la red sigue por detrás y actualiza el caché para la próxima. */
+const TOPE_RED_CODIGO_MS = 6000;
+
+async function copiaDelCodigo(req) {
+  const cached = await caches.match(req, { ignoreSearch: true });
+  if (cached && !(req.mode === 'navigate' && cached.redirected)) return cached;
+  // Navegación offline sin match exacto (ej: /cliente?t=…) → servir el shell.
+  if (req.mode === 'navigate') {
+    const candidatos = ['/cliente', '/cliente.html'];
+    for (const u of candidatos) {
+      const shell = await caches.match(u);
+      if (shell && !shell.redirected) return shell;
+    }
+  }
+  return null;
+}
+
 async function networkFirst(req) {
-  try {
-    const res = await fetch(req);
+  const red = fetch(req).then((res) => {
     if (res && res.ok && !res.redirected) {
       const copy = res.clone();
       caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
     }
     return res;
+  });
+  let reloj = null;
+  const tope = new Promise((ok) => { reloj = setTimeout(() => ok(null), TOPE_RED_CODIGO_MS); });
+  try {
+    const res = await Promise.race([red, tope]);
+    if (res) return res;
+    // Tardó de más: con copia, la copia; sin copia no hay otra que esperar a la red.
+    const cached = await copiaDelCodigo(req);
+    if (cached) { red.catch(() => {}); return cached; }
+    return await red;
   } catch (err) {
-    const cached = await caches.match(req, { ignoreSearch: true });
-    if (cached && !(req.mode === 'navigate' && cached.redirected)) return cached;
-    // Navegación offline sin match exacto (ej: /cliente?t=…) → servir el shell.
-    if (req.mode === 'navigate') {
-      const candidatos = ['/cliente', '/cliente.html'];
-      for (const u of candidatos) {
-        const shell = await caches.match(u);
-        if (shell && !shell.redirected) return shell;
-      }
-    }
+    const cached = await copiaDelCodigo(req);
+    if (cached) return cached;
     throw err;
+  } finally {
+    clearTimeout(reloj);
   }
 }
 

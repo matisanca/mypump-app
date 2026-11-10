@@ -49,9 +49,26 @@ function clasificarError(error, status) {
 
 // Guarda el último error en window.mypumpDB._lastError para que el frontend
 // pueda distinguir "token inválido" (null sin error) de "servicio caído" (error existente).
-async function rpc(fn, params) {
+/* Auditoría 10/11, F2: ninguna lectura tenía tope. Con la señal «colgada» (el
+ * gimnasio) la web quedaba en «Cargando…» para siempre. Pasado el tope, la
+ * lectura se corta y cuenta como sin red: el arranque cae a la copia guardada. */
+const TOPE_LECTURA_MS = 15000;
+const SIN_RESPUESTA = { code: 'NETWORK', message: 'tiempo de espera agotado', status: 0, transitorio: true };
+
+async function rpc(fn, params, tope = TOPE_LECTURA_MS) {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  let reloj = null;
+  const vencido = new Promise((ok) => { reloj = setTimeout(() => { if (ctl) ctl.abort(); ok({ _vencido: true }); }, tope); });
   try {
-    const { data, error, status } = await getClient().rpc(fn, params);
+    let q = getClient().rpc(fn, params);
+    if (ctl && q && typeof q.abortSignal === 'function') q = q.abortSignal(ctl.signal);
+    const r = await Promise.race([q, vencido]);
+    if (r && r._vencido || (ctl && ctl.signal.aborted)) {
+      logDev(`RPC ${fn} sin respuesta en ${tope} ms`);
+      if (window.mypumpDB) window.mypumpDB._lastError = { ...SIN_RESPUESTA };
+      return null;
+    }
+    const { data, error, status } = r;
     if (error) {
       logDev(`RPC ${fn} error:`, error);
       if (window.mypumpDB) window.mypumpDB._lastError = clasificarError(error, status);
@@ -65,6 +82,8 @@ async function rpc(fn, params) {
       window.mypumpDB._lastError = { code: 'NETWORK', message: e.message || String(e), status: 0, transitorio: true };
     }
     return null;
+  } finally {
+    clearTimeout(reloj);
   }
 }
 

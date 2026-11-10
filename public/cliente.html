@@ -7224,8 +7224,24 @@ function calcularConsumido() {
   return { kcal: t.kcal, prot: t.prot, carb: t.carb, fat: t.fat, nComidas: t.comidas, nComidasMarcadas: t.hechas, nSalteadas: t.salteadas };
 }
 
+/* F3 (auditoría 10/11): una cuenta real nunca ve la dieta de ejemplo. */
+function _avisoDietaOculta(motivo) {
+  if (motivo === 'sin-red') {
+    return `<div class="dz-ejemplo">Sin conexión. Tu dieta se va a ver apenas vuelva la señal.</div>
+      <button class="dz-copiar-otro" data-recargar-datos>Actualizar</button>`;
+  }
+  if (motivo === 'incompleta') return '<div class="dz-ejemplo">Tu dieta está publicada pero incompleta. Avisale a Mati por el chat.</div>';
+  return '<div class="dz-ejemplo">Todavía no tenés dieta. Cuando Mati publique la tuya, la vas a ver acá.</div>';
+}
+
 function renderDiet() {
   const root = $('#scene-diet');
+  if (DATA && DATA._dietaOculta) {
+    root.innerHTML = _avisoDietaOculta(DATA._dietaOculta);
+    const b = root.querySelector('[data-recargar-datos]');
+    if (b) b.addEventListener('click', recargarDatos);
+    return;
+  }
   const plan = getActivePlan();
   const tg = plan.macros_target;
 
@@ -11539,6 +11555,8 @@ async function init() {
 
   let info, rutina, dieta;
   let _fromCache = false;
+  // F3 (auditoría 10/11): la dieta no llegó por red y no hay copia guardada.
+  let _dietaSinRed = false;
   if (DEMO) {
     // Sin red: rutina/dieta quedan sin definir y cae al SAMPLE de abajo
     // (_isDemo:true), que ademas apaga todas las escrituras a Supabase.
@@ -11550,6 +11568,13 @@ async function init() {
     rutina = await window.mypumpDB.getRutinaActiva(TOKEN);
     const errRutina = window.mypumpDB._lastError;
     dieta = await window.mypumpDB.getDietaActiva(TOKEN);
+    const errDieta = window.mypumpDB._lastError;
+    // F3 (auditoría 10/11): igual que la rutina. Un corte NO es «no tiene dieta»:
+    // antes mostraba la dieta de ejemplo de 3.200 kcal con «Todavía no tenés
+    // dieta publicada» y además guardaba la copia sin dieta, pisando la buena.
+    const _da = _dietaDelArranque(dieta, errDieta, errDieta ? loadOfflineSnapshot() : null);
+    dieta = _da.dieta; _dietaSinRed = _da.sinRed;
+    const _snapDieta = _da.deCopia;
     // Si la rutina NO llegó por un fallo de red/servicio (getClienteInfo
     // entró, el segundo request se cayó), antes se seguía como si el cliente
     // no tuviera rutina: entraba al modo DEMO con la rutina de ejemplo,
@@ -11568,9 +11593,12 @@ async function init() {
       }
     }
     // Guardar snapshot para modo offline (solo si trajo rutina real con estructura).
+    // La dieta que salió de la copia (o que no llegó) no cuenta como nueva: se
+    // guarda la que había, nunca un hueco.
     if (!_fromCache && rutina && rutina.estructura && rutina.estructura.dias) {
-      saveOfflineSnapshot(info, rutina, dieta);
+      saveOfflineSnapshot(info, rutina, _dietaSinRed ? _dietaDeLaCopia() : dieta);
     }
+    if (_snapDieta) _fromCache = true;
   } else {
     // Distinguir: token inválido (sin error) vs servicio caído / sin conexión.
     const lastErr = window.mypumpDB._lastError;
@@ -11654,9 +11682,12 @@ async function init() {
     DIET = SAMPLE_DIET;
     DIETA_ID = null;
     if (DATA) DATA._dietaEjemplo = true;
+    // F3: una cuenta real no ve el ejemplo (renderDiet muestra un aviso). Si la
+    // dieta no llegó por un corte, el aviso es de conexión y no de «sin dieta».
+    if (DATA && !DATA._isDemo) DATA._dietaOculta = _dietaSinRed ? 'sin-red' : (dieta ? 'incompleta' : 'sin-dieta');
     if (!(DATA && DATA._isDemo)) {
       _PLAN_PROBLEMAS = _PLAN_PROBLEMAS.concat(
-        dieta ? ['Tu dieta está publicada pero incompleta.'] : ['Todavía no tenés dieta publicada.']);
+        _dietaSinRed ? [] : dieta ? ['Tu dieta está publicada pero incompleta.'] : ['Todavía no tenés dieta publicada.']);
     }
   }
 
@@ -11790,6 +11821,18 @@ async function init() {
 // Guarda el último cliente/rutina/dieta que trajo el backend, para poder abrir
 // la app sin conexión (el gym con mala señal). Junto al service worker (sw.js)
 // que cachea el código, esto hace la app usable 100% offline.
+/* F3 (auditoría 10/11): la dieta del arranque. Si no llegó por un corte
+ * (`err`), sale de la copia; sin copia, queda marcada «sin red» (nunca «no tiene
+ * dieta»). Sin error y sin filas sí es «no tiene» (Mati no la publicó). */
+function _dietaDelArranque(dieta, err, snap) {
+  if (dieta || !err) return { dieta: dieta || null, sinRed: false, deCopia: false };
+  if (snap && snap.dieta) return { dieta: snap.dieta, sinRed: false, deCopia: true };
+  return { dieta: null, sinRed: true, deCopia: false };
+}
+function _dietaDeLaCopia() {
+  const snap = loadOfflineSnapshot();
+  return (snap && snap.dieta) || null;
+}
 function saveOfflineSnapshot(info, rutina, dieta) {
   try {
     localStorage.setItem(`mypump_offline_${TOKEN}`, JSON.stringify({ info, rutina, dieta, ts: Date.now() }));
@@ -11799,9 +11842,25 @@ function loadOfflineSnapshot() {
   try { return JSON.parse(localStorage.getItem(`mypump_offline_${TOKEN}`) || 'null'); }
   catch (_) { return null; }
 }
+/* F4 (auditoría 10/11): si la app abrió sin señal, cuando vuelve no se
+ * actualizaba sola y la web instalada no tiene botón de recarga. Recargar es lo
+ * que ya hace la web para traer el plan (la cola de envíos queda guardada). */
+function recargarDatos() { location.reload(); }
+
 function updateOfflineBanner() {
   const offline = !navigator.onLine || (DATA && DATA._offline);
   let el = document.getElementById('offline-banner');
+  // Volvió la señal y lo que se ve es la copia guardada (o faltó la dieta): se
+  // ofrece actualizar con un toque.
+  const vieja = navigator.onLine && DATA && (DATA._offline || DATA._dietaOculta === 'sin-red');
+  if (vieja) {
+    if (!el) { el = document.createElement('div'); el.id = 'offline-banner'; document.body.appendChild(el); }
+    el.textContent = 'Ves lo guardado en este teléfono. Tocá acá para actualizar.';
+    el.classList.add('show');
+    el.onclick = recargarDatos;
+    return;
+  }
+  if (el) el.onclick = null;
   if (offline) {
     if (!el) { el = document.createElement('div'); el.id = 'offline-banner'; document.body.appendChild(el); }
     el.textContent = (DATA && DATA._offline)
@@ -11810,12 +11869,11 @@ function updateOfflineBanner() {
     el.classList.add('show');
   } else if (el) {
     el.classList.remove('show');
-    // Volvió la conexión: si habíamos arrancado de cache, ya no lo estamos.
-    if (DATA) DATA._offline = false;
   }
 }
 window.addEventListener('online',  updateOfflineBanner);
 window.addEventListener('offline', updateOfflineBanner);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateOfflineBanner(); });
 
 /* ---- SWAP MODAL ---- */
 let _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null, query:'' };
