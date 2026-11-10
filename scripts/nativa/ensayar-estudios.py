@@ -154,7 +154,6 @@ def main():
         sha1, sha2 = "a" * 64, "b" * 64
         chequear("registra", uno(cur, reg, (CUENTA, envio, a1, f"e/{carpeta}/{envio}/{a1}.pdf", sha1)) == "ok")
         chequear("mismo id → ya", uno(cur, reg, (CUENTA, envio, a1, f"e/{carpeta}/{envio}/{a1}.pdf", sha1)) == "ya")
-        chequear("mismos bytes → repetido", uno(cur, reg, (CUENTA, envio, a2, f"e/{carpeta}/{envio}/{a2}.pdf", sha1)) == "repetido")
         chequear("path fuera de formato → error", falla_con(cur, reg, (CUENTA, envio, a2, "../otro/x.pdf", sha2)) is not None)
         chequear("faltan archivos → todavía no", uno(cur, "SELECT mypump_estudios_enviar(%s, %s, 2)", (tok, envio)).get("error") == "faltan_archivos")
         chequear("enviar", uno(cur, "SELECT mypump_estudios_enviar(%s, %s, 1)", (tok, envio)) == {"ok": True, "ya": False, "estado": "enviado"})

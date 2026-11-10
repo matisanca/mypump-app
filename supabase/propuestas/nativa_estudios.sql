@@ -229,9 +229,10 @@ CREATE TABLE IF NOT EXISTS mypump_estudios_archivos (
   bytes            INTEGER     NOT NULL CHECK (bytes > 0),
   sha256           TEXT        NOT NULL CHECK (sha256 ~ '^[0-9a-f]{64}$'),
   creado_en        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  borrado_en       TIMESTAMPTZ,                                            -- el objeto de entrada ya se sacó del bucket
-  UNIQUE (envio_id, sha256)
+  borrado_en       TIMESTAMPTZ                                             -- el objeto de entrada ya se sacó del bucket
 );
+-- Los mismos bytes pueden entrar dos veces en un envío (la misma hoja elegida dos veces): son dos filas y el bot lee una sola.
+-- Rechazar la segunda dejaba al teléfono contando un archivo más que el servidor, y el envío no cerraba nunca.
 CREATE INDEX IF NOT EXISTS idx_mypump_estudios_archivos_sha ON mypump_estudios_archivos (cliente_id, sha256);
 
 ALTER TABLE mypump_estudios_pedidos ADD COLUMN IF NOT EXISTS orden_app_id UUID REFERENCES mypump_ordenes_app (id) ON DELETE SET NULL;
@@ -475,7 +476,7 @@ BEGIN
 END;
 $$;
 
--- 'ok', 'ya', 'repetido' (los mismos bytes ya estaban en este envío: el objeto nuevo sobra) o una negativa de `puede`.
+-- 'ok', 'ya' o una negativa de `puede`.
 CREATE OR REPLACE FUNCTION mypump_estudios_archivo_registrar(
   p_cliente_id TEXT, p_envio_id UUID, p_archivo_id UUID, p_path TEXT, p_mime TEXT, p_bytes INTEGER, p_sha256 TEXT
 )
@@ -491,7 +492,6 @@ BEGIN
   IF NOT FOUND THEN RETURN 'no_encontrado'; END IF;
   v_puede := mypump_estudios_archivo_puede(p_cliente_id, p_envio_id, p_archivo_id);
   IF v_puede <> 'ok' THEN RETURN v_puede; END IF;
-  IF EXISTS (SELECT 1 FROM mypump_estudios_archivos WHERE envio_id = p_envio_id AND sha256 = p_sha256) THEN RETURN 'repetido'; END IF;
   INSERT INTO mypump_estudios_archivos (id, envio_id, cliente_id, path, mime, bytes, sha256)
   VALUES (p_archivo_id, p_envio_id, p_cliente_id, p_path, p_mime, p_bytes, p_sha256);
   UPDATE mypump_estudios_envios SET actualizado_en = NOW() WHERE id = p_envio_id;
