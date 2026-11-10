@@ -347,6 +347,9 @@ struct CelebracionPump: View {
         try? await Task.sleep(for: .milliseconds(180))
         withAnimation(.spring(duration: 0.5, bounce: 0.2)) { textos = true }
         AccessibilityNotification.Announcement(anuncio).post()
+        // Las chispas duran 1,8 s: después se saca el TimelineView, que si no seguiría redibujando hasta tocar «Seguir».
+        try? await Task.sleep(for: .milliseconds(1_500))
+        chispas = nil
     }
 }
 
@@ -443,7 +446,10 @@ struct CelebracionPumpRaiz: ViewModifier {
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(900))
                 esperando = false
-                guard mostrando == nil, fase == .active, navegacion?.saludAbierta != true, let e = metas.estado(app),
+                // `fase` es la del momento en que se armó la tarea: el estado real de la app se lee ahora. Si salió en
+                // estos 900 ms, no se marca nada y se celebra al volver.
+                guard mostrando == nil, UIApplication.shared.applicationState == .active, navegacion?.saludAbierta != true,
+                      let e = metas.estado(app),
                       FechaLocal.hoy() == hoy, metas.debeCelebrar(e.vista, app, hoy: hoy) else { return }
                 metas.marcar(app, hoy: hoy)
                 withAnimation(.easeOut(duration: 0.2)) { mostrando = e.vista }
