@@ -520,6 +520,13 @@ window.mypumpDB = {
     return await rpc('mypump_suplementacion', { p_token: token });
   },
 
+  // ─── DOCUMENTOS (contrato y consentimiento, firma propia) ───
+  // {documentos:[{id,tipo,titulo,estado,firmado_en,revocado_en}], pendientes}. null si falló
+  // (token inválido, sin red, o la función todavía no está en la base): para la app, «sin documentos».
+  async getContrato(token) {
+    return await rpc('mypump_contrato_get', { p_token: token });
+  },
+
   async getMostrarRecuperacion(token) {
     return await rpc('mypump_get_mostrar_recuperacion', { p_token: token });
   },

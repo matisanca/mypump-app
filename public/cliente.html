@@ -655,6 +655,16 @@ main{padding:var(--space-4)}
 .md-switch::after{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
 .md-toggle input:checked + .md-switch{background:var(--color-brand)}
 .md-toggle input:checked + .md-switch::after{transform:translateX(18px)}
+.md-det{margin-left:auto;font-size:14px;color:var(--color-warning,#b26a00)}
+.doc-fila{padding:var(--space-3) var(--space-4)}
+.doc-fila + .doc-fila{border-top:1px solid var(--color-border)}
+.doc-nombre{font-size:16px;font-weight:600;color:var(--color-text-primary)}
+.doc-estado{font-size:14px;color:var(--color-text-muted);margin-top:2px}
+.doc-estado.is-pendiente{color:var(--color-warning,#b26a00)}
+.doc-btn{display:block;width:100%;margin-top:var(--space-3);padding:10px 14px;border-radius:999px;border:1px solid var(--color-border);background:var(--color-bg-secondary);color:var(--color-brand-text,var(--color-text-primary));font-size:15px;font-weight:600;cursor:pointer}
+.doc-btn.is-pendiente{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand,#fff)}
+.doc-btn:disabled{opacity:.6;cursor:default}
+.doc-error{font-size:14px;line-height:1.4;padding:var(--space-3) var(--space-4);margin-bottom:var(--space-3);border-radius:var(--radius-lg);background:rgba(178,106,0,.12);color:var(--color-text-primary)}
 .dz-barras-fila{display:flex;align-items:center;gap:12px;width:100%;border:1px solid var(--color-border);background:var(--color-bg-primary);border-radius:12px;padding:12px 14px;margin:8px 0;text-align:left;cursor:pointer;color:var(--color-text-primary)}
 .dz-barras-fila b{display:block;font-size:15px}
 .dz-barras-fila small{display:block;font-size:12px;color:var(--color-text-muted);margin-top:2px}
@@ -711,14 +721,17 @@ main{padding:var(--space-4)}
 .seg-btn{all:unset;text-align:center;padding:6px 4px;font-size:13px;font-weight:600;border-radius:7px;color:var(--color-text-primary);cursor:pointer}
 .seg-btn.is-on{background:var(--color-bg-primary);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 #scene-salud #recVerTodo{display:none}
-.recordatorio-semanal{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2);margin-bottom:var(--space-3);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:14px;cursor:pointer}
-.recordatorio-semanal .rs-ico{flex:none;width:32px;height:32px;border-radius:50%;background:var(--color-brand);color:#fff;display:grid;place-items:center}
-[data-theme="dark"] .recordatorio-semanal .rs-ico{color:#040E04}
-.recordatorio-semanal .rs-ico svg{width:16px;height:16px}
-.recordatorio-semanal .rs-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.recordatorio-semanal .rs-tit{font-size:14px;font-weight:600;color:var(--color-text-primary)}
-.recordatorio-semanal .rs-sub{font-size:12px;color:var(--color-text-muted);line-height:1.35}
-.recordatorio-semanal .rs-chev{flex:none;color:var(--color-text-muted);opacity:.6;display:grid;place-items:center}
+.recordatorio-semanal,.aviso-contrato{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2);margin-bottom:var(--space-3);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:14px;cursor:pointer}
+.recordatorio-semanal .rs-ico,.aviso-contrato .rs-ico{flex:none;width:32px;height:32px;border-radius:50%;background:var(--color-brand);color:#fff;display:grid;place-items:center}
+[data-theme="dark"] .recordatorio-semanal .rs-ico,[data-theme="dark"] .aviso-contrato .rs-ico{color:#040E04}
+.recordatorio-semanal .rs-ico svg,.aviso-contrato .rs-ico svg{width:16px;height:16px}
+.recordatorio-semanal .rs-txt,.aviso-contrato .rs-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.recordatorio-semanal .rs-tit,.aviso-contrato .rs-tit{font-size:14px;font-weight:600;color:var(--color-text-primary)}
+.recordatorio-semanal .rs-sub,.aviso-contrato .rs-sub{font-size:12px;color:var(--color-text-muted);line-height:1.35}
+.recordatorio-semanal .rs-chev,.aviso-contrato .rs-chev{flex:none;color:var(--color-text-muted);opacity:.6;display:grid;place-items:center}
+/* Documentos: el aviso del contrato pendiente, con el ícono en ámbar y no en verde. */
+.aviso-contrato .rs-ico{background:rgba(178,106,0,.14);color:var(--color-warning,#b26a00)}
+[data-theme="dark"] .aviso-contrato .rs-ico{color:var(--color-warning,#e0a040)}
 .prog-banner{background:var(--color-brand-subtle);border:1px solid var(--color-brand);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);margin-bottom:var(--space-3);font-size:13px;line-height:1.4;color:var(--color-text-primary)}
 /* F3 — Start + cronómetro de sesión */
 .session-start{display:flex;align-items:center;gap:var(--space-3);width:100%;padding:var(--space-3) var(--space-4);margin-bottom:var(--space-3);background:var(--color-brand);color:var(--color-on-brand);border:0;border-radius:var(--radius-md);cursor:pointer;text-align:left}
@@ -1601,6 +1614,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/tecnica.js"></script>
 <script src="/js/tecnica-cola.js"></script>
 <script src="/js/tecnica-ui.js"></script>
+<script src="/js/documentos.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -10945,6 +10959,110 @@ function _bindSuplDetalle(root) {
   if (b) b.onclick = () => { STATE.suplAbierto = null; renderSupl(); };
 }
 
+/* ═══════ DOCUMENTOS (contrato y consentimiento, firma propia) ═══════
+   js/documentos.js tiene los textos y las reglas. La web no firma: muestra el
+   estado de `mypump_contrato_get` y abre la página del servicio de firma en una
+   pestaña nueva. Cualquier error al leer es «sin documentos», en silencio: ni la
+   fila de Mis datos ni el aviso de Entreno aparecen. */
+STATE.documentos = [];
+STATE.mdDocs = false;
+STATE.docError = false;
+STATE.docAbriendo = null;
+
+async function loadDocumentos() {
+  const D = window.MyPumpDocumentos;
+  if (!D || !TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getContrato) return;
+  const resp = await window.mypumpDB.getContrato(TOKEN).catch(() => null);
+  const docs = D.decodificar(resp);
+  if (JSON.stringify(docs) === JSON.stringify(STATE.documentos)) return;
+  STATE.documentos = docs;
+  if (STATE.scene === 'misdatos') renderMisDatos();
+  renderAvisoContrato();
+}
+// Quien firmó en otra pestaña vuelve y ve «Firmado» (y el aviso se va).
+document.addEventListener('visibilitychange', () => { if (!document.hidden) loadDocumentos().catch(() => {}); });
+
+function renderDocumentos(root) {
+  const D = window.MyPumpDocumentos, E = escapeHtml;
+  root.innerHTML = `<button class="sd-volver" id="docVolver">‹ Mis datos</button>
+    ${STATE.docError ? `<div class="doc-error" role="alert" id="docError">${E(D.T.errorAbrir)}</div>` : ''}
+    <div class="md-grupo">
+      ${STATE.documentos.map(d => {
+        const pend = d.estado === 'pendiente';
+        const abriendo = STATE.docAbriendo === d.id;
+        return `<div class="doc-fila">
+          <div class="doc-nombre">${E(D.nombre(d.tipo))}</div>
+          <div class="doc-estado${pend ? ' is-pendiente' : ''}">${E(D.estado(d))}</div>
+          <button class="doc-btn${pend ? ' is-pendiente' : ''}" data-doc="${E(d.id)}" ${STATE.docAbriendo ? 'disabled' : ''}>${abriendo ? D.T.abriendo : D.boton(d.estado)}</button>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="md-pie">${E(D.T.pie)}</div>`;
+  document.getElementById('docVolver').onclick = () => { STATE.mdDocs = false; STATE.docError = false; renderMisDatos(); };
+  root.querySelectorAll('[data-doc]').forEach(b => { b.onclick = () => abrirDocumento(b.getAttribute('data-doc')); });
+}
+
+/* Pide el enlace personal al servicio de firma y lo abre afuera de la app. En la
+   web, la pestaña se abre ANTES del pedido (en el mismo toque): abrirla después de
+   un await la frena el bloqueador de ventanas de Safari. */
+async function abrirDocumento(id) {
+  const D = window.MyPumpDocumentos;
+  const doc = (STATE.documentos || []).find(d => d.id === id);
+  if (!D || !doc || STATE.docAbriendo || !TOKEN) return;
+  const B = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+  let pestana = null;
+  if (!(B && typeof B.open === 'function')) {
+    try { pestana = window.open('', '_blank'); if (pestana) pestana.opener = null; } catch (_) { pestana = null; }
+  }
+  STATE.docAbriendo = id;
+  STATE.docError = false;
+  if (STATE.scene === 'misdatos') renderMisDatos();
+  const servicio = ((window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.FIRMA_URL) || D.FIRMA_URL_PRODUCCION).replace(/\/+$/, '');
+  let url = null;
+  try {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const corte = ctl ? setTimeout(() => ctl.abort(), 20000) : null;
+    const r = await fetch(`${servicio}/api/app/documentos`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN }), signal: ctl ? ctl.signal : undefined,
+    });
+    if (corte) clearTimeout(corte);
+    if (r.ok) url = D.enlaceDe(await r.json().catch(() => null), id, servicio);
+  } catch (_) { url = null; }
+  let abierto = false;
+  if (url) {
+    try {
+      if (B && typeof B.open === 'function') { await B.open({ url }); abierto = true; }
+      else if (pestana && !pestana.closed) { pestana.location.replace(url); abierto = true; }
+      else { window.open(url, '_blank', 'noopener,noreferrer'); abierto = true; }
+    } catch (_) { abierto = false; }
+  }
+  if (!abierto && pestana) { try { pestana.close(); } catch (_) {} }
+  STATE.docAbriendo = null;
+  STATE.docError = !abierto;
+  if (STATE.scene === 'misdatos') renderMisDatos();
+}
+
+/* «Tenés el contrato pendiente de firma», arriba de Entreno: un renglón que
+   lleva a Documentos. No bloquea nada. */
+function renderAvisoContrato() {
+  document.querySelectorAll('.aviso-contrato').forEach(el => el.remove());
+  const D = window.MyPumpDocumentos;
+  if (!D || (DATA && DATA._isDemo) || STATE.scene !== 'train' || !D.hayContratoPendiente(STATE.documentos)) return;
+  const host = document.getElementById('scene-train');
+  if (!host) return;
+  const div = document.createElement('div');
+  div.className = 'aviso-contrato';
+  div.setAttribute('role', 'button');
+  div.tabIndex = 0;
+  div.innerHTML = `<span class="rs-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg></span><span class="rs-txt"><span class="rs-tit">${escapeHtml(D.T.avisoContrato)}</span><span class="rs-sub">${escapeHtml(D.T.avisoContratoDetalle)}</span></span><span class="rs-chev">${_CHEV_DER}</span>`;
+  const ir = () => { STATE.mdDocs = true; STATE.docError = false; setScene('misdatos'); };
+  div.addEventListener('click', ir);
+  div.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
+  const ancla = host.querySelector(':scope > .recordatorio-semanal') || host.querySelector(':scope > #guiaHost');
+  host.insertBefore(div, ancla ? ancla.nextSibling : host.firstChild);
+}
+
 /* ═══════ MIS DATOS (app 2.1.0, MisDatosView) ═══════
    Un lugar fijo para recuperación, apariencia, la guía, privacidad y borrado.
    Se entra desde el ícono de persona de Revisión. Lo del Apple Watch y el
@@ -10952,6 +11070,11 @@ function _bindSuplDetalle(root) {
 function renderMisDatos() {
   const root = document.getElementById('scene-misdatos');
   if (!root) return;
+  const D = window.MyPumpDocumentos;
+  const docs = (D && STATE.documentos) || [];
+  // Documentos, dentro de Mis datos (como la app): con «‹ Mis datos» para volver.
+  if (STATE.mdDocs && docs.length) { renderDocumentos(root); return; }
+  STATE.mdDocs = false;
   const oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
   // Resumen de recuperación de la fila de arriba (ResumenRecuperacion).
   const serie = STATE.recup || [];
@@ -10986,6 +11109,7 @@ function renderMisDatos() {
       ${guia ? fila('mdGuia', 'Ver mi guía') : ''}
       ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
       ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? fila('mdTecnica', window.Tecnica.T.titulo) : ''}
+      ${docs.length ? fila('mdDocumentos', D.T.entradaMisDatos, D.hayContratoPendiente(docs) ? `<span class="md-det">${D.T.pendiente}</span>` : '') : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
@@ -10996,6 +11120,8 @@ function renderMisDatos() {
   if (gim) gim.onclick = () => window.GimnasioUI.abrir('misdatos');
   const tec = document.getElementById('mdTecnica');
   if (tec) tec.onclick = () => window.TecnicaUI.abrir('misdatos');
+  const md = document.getElementById('mdDocumentos');
+  if (md) md.onclick = () => { STATE.mdDocs = true; STATE.docError = false; renderMisDatos(); window.scrollTo(0, 0); };
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
   const sw = document.getElementById('mdOscuro');
@@ -11341,6 +11467,7 @@ function setScene(scene) {
   if (scene === 'salud') renderSalud();
   if (scene === 'progress') renderProgress();
   if (scene === 'cuerpo') renderCuerpo();
+  if (scene !== 'misdatos') STATE.mdDocs = false;
   if (scene === 'misdatos') renderMisDatos();
   if (scene === 'gimnasio') window.GimnasioUI.renderEscena();
   if (scene === 'tecnica') window.TecnicaUI.renderEscena();
@@ -11395,6 +11522,7 @@ function _bienvenidaGuia() {
     const r = document.getElementById('scene-train');
     if (r && window.MyPumpGuia && _guiaHost.dataset.montado) { r.insertBefore(_guiaHost, r.firstChild); _bienvenidaGuia(); }
     if (r && window.GimnasioUI) window.GimnasioUI.montarTarjeta(r, _guiaHost);
+    try { renderAvisoContrato(); } catch (_) {}
   };
   renderProgress = function () {
     _rp.apply(this, arguments);
@@ -11760,6 +11888,7 @@ async function init() {
   loadRecuperacion();  // score de recuperación (Mi Día) — motor SQL, mig 043
   loadConexiones();    // wearables conectados por OAuth (Revisión)
   loadSuplementacion(); // pestaña Suplementación (app 2.1.0), solo si hay ítems
+  loadDocumentos().catch(() => {}); // Documentos (contrato y consentimiento): fila de Mis datos y aviso de Entreno
   try { arrancarGuia(); } catch (_) {}   // «Tu guía»: tarjeta en Entreno y bienvenida
   loadRevision(); // check + fotos → Revisión
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'

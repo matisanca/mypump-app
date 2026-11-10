@@ -18,6 +18,9 @@ window.MYPUMP_CONFIG = {
   // abrir Safari — el cliente veía "no se puede conectar con el servidor".
   // Tiene que coincidir con OAUTH_REDIRECT_BASE de Cloudflare Pages.
   APP_URL:           'https://app.mypumpteam.com',
+  // Servicio de firma propia (contrato y consentimiento). La app abre acá el
+  // enlace personal de cada documento; el token va en el cuerpo, sin secretos.
+  FIRMA_URL:         'https://firma.mypumpteam.com',
 
   // Clave PÚBLICA de VAPID para Web Push. Es pública de verdad: viaja al
   // navegador en cada suscripción y no sirve para mandar nada por sí sola —
