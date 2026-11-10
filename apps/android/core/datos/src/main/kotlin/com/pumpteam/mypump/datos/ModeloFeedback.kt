@@ -39,8 +39,14 @@ class ModeloFeedback(
 
     // ── Servidor ──
 
+    /** Cuenta las escrituras: una lectura que salió antes de una escritura no pisa lo que esa escritura dejó. */
+    private val escrituras = java.util.concurrent.atomic.AtomicInteger(0)
+
     suspend fun refrescar() {
-        when (val r = cliente.llamar("mypump_feedback_get", mapOf("p_token" to ValorJson.Texto(token)))) {
+        val antes = escrituras.get()
+        val r = cliente.llamar("mypump_feedback_get", mapOf("p_token" to ValorJson.Texto(token)))
+        if (escrituras.get() != antes || _marcando.value.isNotEmpty()) return   // la próxima lectura trae lo nuevo
+        when (r) {
             is Resultado.Ok -> {
                 if (r.valor == ValorJson.Nulo) {
                     _estado.value = null
@@ -91,6 +97,7 @@ class ModeloFeedback(
         return when (r) {
             is Resultado.Ok -> {
                 if (r.valor["ok"] == ValorJson.Booleano(true)) {
+                    escrituras.incrementAndGet()
                     Molestia.desde(r.valor["molestia"])?.let { m ->
                         _estado.update { e -> (e ?: EstadoFeedback()).let { it.copy(molestias = listOf(m) + it.molestias.filter { x -> x.id != m.id }) } }
                     }
@@ -114,6 +121,7 @@ class ModeloFeedback(
             if (antes == nuevo) return true
             _estado.value = e.copy(marcas = e.marcas + (k to nuevo))
             _marcando.update { it + k }
+            escrituras.incrementAndGet()
         }
         val r = try {
             cliente.llamar(
