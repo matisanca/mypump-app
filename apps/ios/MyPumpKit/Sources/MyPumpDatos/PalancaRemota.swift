@@ -36,17 +36,21 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveGimnasioFotos = "mypump-palanca-gimnasio-fotos"
     /// El último valor leído de `tecnica_video`: prendida, un video en la cola sigue subiendo aunque se arranque sin red.
     static let claveTecnicaVideo = "mypump-palanca-tecnica-video"
+    /// El último valor leído de `elegir_horario`: apagada, un cambio que quedó en la cola no sale.
+    static let claveElegirHorario = "mypump-palanca-elegir-horario"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
         if defaults.bool(forKey: claveGimnasioFotos) { p.gimnasioFotos = true }
         if defaults.bool(forKey: claveTecnicaVideo) { p.tecnicaVideo = true }
+        if defaults.bool(forKey: claveElegirHorario) { p.elegirHorario = true }
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
         defaults.set(contadorRepsReloj, forKey: Self.claveContadorReps)
         defaults.set(gimnasioFotos, forKey: Self.claveGimnasioFotos)
         defaults.set(tecnicaVideo, forKey: Self.claveTecnicaVideo)
+        defaults.set(elegirHorario, forKey: Self.claveElegirHorario)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.

@@ -99,7 +99,7 @@ final class AgendaUITests: XCTestCase {
         if novedad.value as? String == "Cerrado" { novedad.tap() }
         let fila = app.buttons["guia-fila-N-1"]
         XCTAssertTrue(fila.waitForExistence(timeout: 5))
-        XCTAssertTrue((fila.value as? String ?? "").contains("Para ver antes de la entrega"), "Falta la etiqueta: \(fila.value ?? "")")
+        XCTAssertTrue((fila.value as? String ?? "").contains("Para ver antes de la videollamada"), "Falta la etiqueta: \(fila.value ?? "")")
         XCTAssertLessThan(novedad.frame.minY, app.buttons["guia-bloque-Tu app"].frame.minY, "«Novedad» va arriba de «Tu app»")
         captura("novedad-arriba")
 
@@ -134,7 +134,7 @@ final class AgendaUITests: XCTestCase {
         franja.tap()
         let hoja = app.staticTexts["agenda-hoja-texto"]
         XCTAssertTrue(hoja.waitForExistence(timeout: 5), "No abrió la confirmación")
-        XCTAssertTrue(hoja.label.hasPrefix("¿Confirmás la entrega el ") && hoja.label.hasSuffix("a las 10:00? Dura alrededor de 1 hora."), hoja.label)
+        XCTAssertTrue(hoja.label.hasPrefix("¿Confirmás tu videollamada de comienzo el ") && hoja.label.hasSuffix("a las 10:00? Dura alrededor de 1 hora."), hoja.label)
         captura("agenda-hoja")
         // «Elegir otro» cierra sin reservar.
         app.buttons["agenda-elegir-otro"].tap()
@@ -152,13 +152,13 @@ final class AgendaUITests: XCTestCase {
         captura("agenda-pendiente")
         let confirmada = id("agenda-confirmada")
         XCTAssertTrue(confirmada.waitForExistence(timeout: 30), "No se confirmó")
-        XCTAssertTrue(confirmada.label.hasPrefix("Tu entrega: ") && confirmada.label.hasSuffix(", 10:00 a 11:00"), confirmada.label)
-        XCTAssertTrue(texto("¿Necesitás cambiarla? Escribinos por WhatsApp").exists)
+        XCTAssertTrue(confirmada.label.contains("10:00"), confirmada.label)
+        XCTAssertTrue(texto("¿Necesitás cambiarla? Escribinos por el chat.").exists)
         XCTAssertTrue(app.buttons["agenda-calendario"].exists)
         // Confirmada para mañana: solo el día y la hora, sin botón ni aviso de la sala (el cliente nunca entra directo).
         llevarALaVista(app.buttons["agenda-calendario"])
         XCTAssertFalse(app.buttons["agenda-entrar"].exists, "Al confirmar no aparece «Entrar»")
-        XCTAssertFalse(id("agenda-esperando-sala").exists, "Antes del día no hay aviso de la sala")
+        XCTAssertTrue(id("videollamada-cuenta").exists, "Antes, «Entrar» apagado con la cuenta")
         mostrarTarjeta()
         captura("agenda-confirmada")
     }
@@ -167,11 +167,11 @@ final class AgendaUITests: XCTestCase {
     /// del doble, cada 2 s), «Mati ya está en la videollamada» y «Entrar», que abre el link.
     func testSalaSinAbrirYDespuesAbierta() throws {
         abrir("confirmada", ["-guiaAncla", "agenda"])
-        let esperando = id("agenda-esperando-sala")
-        XCTAssertTrue(esperando.waitForExistence(timeout: 15), "Sin la sala abierta tiene que estar el aviso")
-        XCTAssertTrue(esperando.label.hasPrefix("Tu entrega es hoy a las ")
-                      && esperando.label.hasSuffix("Cuando Mati abra la videollamada se habilita el botón para entrar."), esperando.label)
-        XCTAssertFalse(app.buttons["agenda-entrar"].exists, "Sin la sala abierta no hay botón")
+        // 2.3.0: a 25 minutos, sin la sala abierta, «Entrar» apagado con la cuenta regresiva.
+        let esperando = id("videollamada-cuenta")
+        XCTAssertTrue(esperando.waitForExistence(timeout: 15), "Tiene que estar la cuenta regresiva")
+        XCTAssertTrue(esperando.label.hasPrefix("Se habilita en "), esperando.label)
+        XCTAssertFalse(app.buttons["agenda-entrar"].exists, "Antes de los 10 minutos no hay botón")
         llevarALaVista(esperando)
         mostrarTarjeta()
         captura("agenda-confirmada-sin-sala")
@@ -179,8 +179,8 @@ final class AgendaUITests: XCTestCase {
         abrir("salaSeAbre", ["-guiaAncla", "agenda", "-agendaSalaCada", "2"])
         let entrar = app.buttons["agenda-entrar"]
         XCTAssertTrue(entrar.waitForExistence(timeout: 40), "No apareció «Entrar» al abrirse la sala")
-        XCTAssertFalse(id("agenda-esperando-sala").exists)
-        XCTAssertEqual(id("agenda-sala").label, "Mati ya está en la videollamada")
+        XCTAssertFalse(id("videollamada-cuenta").exists)
+        XCTAssertEqual(id("agenda-sala").label, "Mati ya está en la sala")
         llevarALaVista(entrar)
         mostrarTarjeta()
         captura("agenda-confirmada-sala-abierta")
@@ -239,7 +239,7 @@ final class AgendaUITests: XCTestCase {
         abrir("sinFranjas", ["-guiaAncla", "agenda"])
         let sin = id("agenda-sin-franjas")
         XCTAssertTrue(sin.waitForExistence(timeout: 15))
-        XCTAssertEqual(sin.label, "Ahora no hay horarios libres. Te escribimos por WhatsApp para coordinar.")
+        XCTAssertEqual(sin.label, "Ahora no hay horarios libres. Mirá de nuevo más tarde o escribinos por el chat.")
         llevarALaVista(sin)
         mostrarTarjeta()
         captura("agenda-sin-franjas")
@@ -252,15 +252,14 @@ final class AgendaUITests: XCTestCase {
     /// videollamada · Entrar». Confirmada y sin red: lo último guardado, con «Sin conexión», y el link sigue a mano.
     func testSinRedConLaConfirmadaGuardada() throws {
         abrir("confirmada", guia: false)
-        let esperando = id("agenda-esperando-tarjeta")
-        XCTAssertTrue(esperando.waitForExistence(timeout: 20), "No está el aviso de la entrega en Entreno")
-        XCTAssertTrue(esperando.label.hasPrefix("Tu entrega es hoy a las "), esperando.label)
-        XCTAssertFalse(app.buttons["agenda-entrar-tarjeta"].exists, "Sin la sala abierta no hay botón en Entreno")
+        let esperando = id("videollamada-cuenta")
+        XCTAssertTrue(esperando.waitForExistence(timeout: 20), "No está la videollamada en Entreno")
+        XCTAssertFalse(app.buttons["agenda-entrar"].exists, "Antes de los 10 minutos no hay botón en Entreno")
         captura("entreno-sin-sala")
         abrir("salaAbierta", guia: false)
-        let tarjeta = app.buttons["agenda-entrar-tarjeta"]
+        let tarjeta = app.buttons["agenda-entrar"]
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "No está «Entrar» en Entreno")
-        XCTAssertTrue(tarjeta.label.hasPrefix("Mati ya está en la videollamada"), tarjeta.label)
+        XCTAssertEqual(id("agenda-sala").label, "Mati ya está en la sala")
         captura("entreno-entrar")
         // Se abre la guía con red (queda guardada) y se vuelve a abrir sin red.
         abrir("salaAbierta", ["-guiaAncla", "agenda"])

@@ -51,14 +51,28 @@ struct TarjetaVideollamadaEntreno: View {
                 TarjetaElegirHorario(modelo: modelo) { elegir = true }
             }
         }
-        .task(id: claveAvisos(r)) { await AvisosVideollamada.programar(r, desdeMin: modelo.agenda.entrarDesdeMin) }
-        .task { if Videollamada.elegirHorario, r == nil { await modelo.agenda.consultar() } }
         .sheet(isPresented: $elegir) { PantallaHorario(modelo: modelo, cambiando: nil) }
+    }
+}
+
+/// Los avisos locales y la consulta de la agenda (palanca) de Entreno. Van en la pantalla y no en la tarjeta: sin
+/// videollamada la tarjeta es un `Group` vacío, que no corre sus `.task` (y un relleno ocuparía lugar arriba).
+struct TareasVideollamada: ViewModifier {
+    let modelo: ModeloGuia?
+
+    func body(content: Content) -> some View {
+        let r = modelo?.reservaTarjeta()
+        content
+            .task(id: claveAvisos(r)) {
+                // Sin guía (token revocado, baja): r es nil y se borran los que hubiera.
+                await AvisosVideollamada.programar(r, desdeMin: modelo?.agenda.entrarDesdeMin)
+            }
+            .task { if let modelo, Videollamada.elegirHorario, r == nil { await modelo.agenda.consultar() } }
     }
 
     private func claveAvisos(_ r: ReservaAgenda?) -> String {
         guard let r, r.estado == .confirmada else { return "" }
-        return "\(r.inicio)|\(r.tipo.rawValue)|\(modelo.agenda.entrarDesdeMin ?? 0)"
+        return "\(r.inicio)|\(r.tipo.rawValue)|\(modelo?.agenda.entrarDesdeMin ?? 0)"
     }
 }
 
@@ -255,12 +269,17 @@ struct TarjetaVideollamada: View {
                                                           : AnyLayout(HStackLayout(spacing: Espacio.xs))
         return VStack(alignment: .leading, spacing: Espacio.xs) {
             disposicion {
-                Button { paraCalendario = true } label: { Label("Al calendario", systemImage: "calendar.badge.plus") }
+                Button { paraCalendario = true } label: {
+                    Label("Al calendario", systemImage: "calendar.badge.plus").lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity)
+                }
                     .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
                     .accessibilityLabel("Agregar a mi calendario")
                     .accessibilityIdentifier("agenda-calendario")
                 if puedeCambiar {
-                    Button { cambiar = true } label: { Label("Cambiar horario", systemImage: "arrow.triangle.2.circlepath") }
+                    Button { cambiar = true } label: {
+                        Label("Cambiar horario", systemImage: "arrow.triangle.2.circlepath").lineLimit(1).minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity)
+                    }
                         .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
                         .accessibilityIdentifier("videollamada-cambiar")
                 }
@@ -375,7 +394,7 @@ struct PantallaHorario: View {
     /// Lo que ya quedó: la reserva confirmada que no es la que se cambia.
     private var lista: ReservaAgenda? {
         guard enviado, let r = modelo.agenda.reserva, r.estado == .confirmada else { return nil }
-        if let c = cambiando { return r.inicio != c.inicio ? r : nil }
+        if let c = cambiando { return ReglasGuia.instante(r.inicio) != ReglasGuia.instante(c.inicio) ? r : nil }
         return r
     }
 
@@ -620,7 +639,8 @@ enum AvisosVideollamada {
         if AgendaUI.modelo != nil || UserDefaults.standard.bool(forKey: "guiaMuestra") { return }   // pruebas: sin avisos
         #endif
         centro.removePendingNotificationRequests(withIdentifiers: ids)
-        guard await hayPermiso() else { return }
+        // La demo (también la de Apple): ningún aviso real.
+        guard !Proveedor.modelo.esDemo, await hayPermiso() else { return }
         for a in ReglasAgenda.avisosLocales(r, zona: AgendaUI.zona, desdeMin: desdeMin) {
             let c = UNMutableNotificationContent()
             c.title = a.titulo

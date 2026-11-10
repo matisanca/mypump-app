@@ -436,6 +436,8 @@ struct AgendaModeloTests {
         let conCambio = #"{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":\#(franjas),"cambio":{"permitido":true,"restantes":1,"hasta":"2099-11-11T10:00:00-03:00"},"reserva":{"id":"r1","inicio":"2099-11-12T10:00:00-03:00","fin":"2099-11-12T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x","tipo":"revision"}}"#
         let s = ServidorAgenda(["entregas_app_agenda": conCambio,
                                 "entregas_app_cambiar": #"{"ok":true,"reserva":{"id":"r1","inicio":"2099-11-13T10:00:00-03:00","fin":"2099-11-13T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x","tipo":"revision"}}"#])
+        UserDefaults.standard.set(true, forKey: "mypump-palanca-elegir-horario")
+        defer { UserDefaults.standard.removeObject(forKey: "mypump-palanca-elegir-horario") }
         let (m, cola, _) = armar(s)
         await m.agenda.consultar()
         #expect(m.agenda.puedeCambiar && m.agenda.agenda?.franjas.count == 2, "con cambio permitido vienen las franjas")
@@ -446,6 +448,7 @@ struct AgendaModeloTests {
         let ops = await cola.operaciones.filter { $0.kind == ModeloAgenda.kind }
         #expect(ops.count == 1 && ops[0].payload["cambia"] == .texto("r1"))
         await cola.drenarTodo()
+        await hasta({ s.llamadas(a: "entregas_app_cambiar").count == 1 }, 10)   // con la máquina cargada, el carril tarda
         let pedidos = s.llamadas(a: "entregas_app_cambiar")
         #expect(pedidos.count == 1 && pedidos[0]["p_reserva"] == .texto("r1") && pedidos[0]["p_franja"] == .texto("f2"))
         #expect(s.llamadas(a: "entregas_app_reservar").isEmpty, "cambiar no reserva otra")
@@ -458,12 +461,27 @@ struct AgendaModeloTests {
     @Test func elTopeOElPlazoDejanElAvisoDeEscribirPorElChat() async {
         let conCambio = #"{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":\#(franjas),"cambio":{"permitido":true},"reserva":{"id":"r1","inicio":"2099-11-12T10:00:00-03:00","fin":"2099-11-12T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x"}}"#
         let s = ServidorAgenda(["entregas_app_agenda": conCambio, "entregas_app_cambiar": #"{"ok":false,"motivo":"tope"}"#])
+        UserDefaults.standard.set(true, forKey: "mypump-palanca-elegir-horario")
+        defer { UserDefaults.standard.removeObject(forKey: "mypump-palanca-elegir-horario") }
         let (m, cola, _) = armar(s)
         await m.agenda.consultar()
         await m.agenda.cambiar(a: m.agenda.agenda!.franjas[1])
         await cola.drenarTodo()
         await hasta { m.agenda.aviso == .sinCambio }
         #expect(m.agenda.aviso == .sinCambio && m.agenda.reserva?.inicio == "2099-11-12T10:00:00-03:00", "la reserva queda como estaba")
+    }
+
+    @Test func conLaPalancaApagadaUnCambioEnLaColaNoLlamaAlServidor() async {
+        UserDefaults.standard.removeObject(forKey: "mypump-palanca-elegir-horario")
+        let conCambio = #"{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":\#(franjas),"cambio":{"permitido":true},"reserva":{"id":"r1","inicio":"2099-11-12T10:00:00-03:00","fin":"2099-11-12T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x"}}"#
+        let s = ServidorAgenda(["entregas_app_agenda": conCambio])
+        let (m, cola, _) = armar(s)
+        await m.agenda.consultar()
+        await m.agenda.cambiar(a: m.agenda.agenda!.franjas[1])
+        await cola.drenarTodo()
+        await hasta { m.agenda.aviso == .sinCambio }
+        #expect(s.llamadas(a: "entregas_app_cambiar").isEmpty && m.agenda.aviso == .sinCambio)
+        #expect(m.agenda.reserva?.inicio == "2099-11-12T10:00:00-03:00")
     }
 
     @Test func sinPermisoDeCambioNoSeEncolaNada() async {

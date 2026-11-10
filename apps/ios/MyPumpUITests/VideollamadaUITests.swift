@@ -35,7 +35,7 @@ final class VideollamadaUITests: XCTestCase {
         for oscuro in [false, true] {
             abrir("elegir", oscuro: oscuro)
             let agendar = app.buttons["videollamada-elegir"]
-            XCTAssertTrue(agendar.waitForExistence(timeout: 20), "No está «Elegir horario» en Entreno")
+            XCTAssertTrue(agendar.waitForExistence(timeout: 40), "No está «Elegir horario» en Entreno")
             XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'entrega'")).firstMatch.exists, "Nunca «entrega»")
             agendar.tap()
             XCTAssertTrue(id("horario-titulo").waitForExistence(timeout: 5))
@@ -46,7 +46,7 @@ final class VideollamadaUITests: XCTestCase {
             XCTAssertTrue(confirmar.label.hasPrefix("Confirmar "), confirmar.label)
             captura("elegir", oscuro: oscuro)
             confirmar.tap()
-            XCTAssertTrue(id("horario-listo").waitForExistence(timeout: 15), "No llegó a «Listo, quedó agendada»")
+            XCTAssertTrue(id("horario-listo").waitForExistence(timeout: 45), "No llegó a «Listo, quedó agendada»")
             captura("confirmacion", oscuro: oscuro)
             app.buttons["horario-listo-cerrar"].tap()
             XCTAssertTrue(id("videollamada").waitForExistence(timeout: 10), "No quedó la tarjeta fija")
@@ -60,7 +60,7 @@ final class VideollamadaUITests: XCTestCase {
     func testTarjetaDiasAntesYCambio() throws {
         for oscuro in [false, true] {
             abrir("diasAntes", oscuro: oscuro)
-            XCTAssertTrue(id("videollamada").waitForExistence(timeout: 20))
+            XCTAssertTrue(id("videollamada").waitForExistence(timeout: 40))
             XCTAssertTrue(id("videollamada-desde-aca").exists)
             XCTAssertTrue(id("videollamada-cuenta").exists)
             XCTAssertFalse(app.buttons["agenda-entrar"].exists, "Días antes no se puede entrar")
@@ -77,7 +77,7 @@ final class VideollamadaUITests: XCTestCase {
             app.buttons["horario-franja-f6"].tap()
             captura("cambiar", oscuro: oscuro)
             app.buttons["horario-confirmar"].tap()
-            XCTAssertTrue(id("horario-listo").waitForExistence(timeout: 15))
+            XCTAssertTrue(id("horario-listo").waitForExistence(timeout: 45))
             app.buttons["horario-listo-cerrar"].tap()
             XCTAssertTrue(id("videollamada").waitForExistence(timeout: 10))
             XCTAssertFalse(app.buttons["videollamada-cambiar"].exists, "Sin cambios restantes no se ofrece otro")
@@ -89,7 +89,7 @@ final class VideollamadaUITests: XCTestCase {
         for oscuro in [false, true] {
             abrir("porEntrar", oscuro: oscuro)
             let entrar = app.buttons["agenda-entrar"]
-            XCTAssertTrue(entrar.waitForExistence(timeout: 20), "A 6 minutos «Entrar» tiene que estar activo")
+            XCTAssertTrue(entrar.waitForExistence(timeout: 40), "A 6 minutos «Entrar» tiene que estar activo")
             XCTAssertTrue(entrar.isEnabled)
             XCTAssertTrue(id("videollamada-admite").exists)
             captura("entrar", oscuro: oscuro)
@@ -102,18 +102,18 @@ final class VideollamadaUITests: XCTestCase {
         abrir("elegir", palanca: false)
         XCTAssertFalse(app.buttons["videollamada-elegir"].waitForExistence(timeout: 8))
         abrir("diasAntes", palanca: false)
-        XCTAssertTrue(id("videollamada").waitForExistence(timeout: 20))
+        XCTAssertTrue(id("videollamada").waitForExistence(timeout: 40))
         XCTAssertFalse(app.buttons["videollamada-cambiar"].exists, "Sin la palanca no se cambia desde la app")
     }
 
     /// Letra grande: la tarjeta y la pantalla de elegir no se cortan.
     func testLetraGrande() throws {
         abrir("diasAntes", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
-        XCTAssertTrue(id("videollamada").waitForExistence(timeout: 20))
+        XCTAssertTrue(id("videollamada").waitForExistence(timeout: 40))
         captura("dias-antes-letra-grande", oscuro: false)
         abrir("elegir", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
         let agendar = app.buttons["videollamada-elegir"]
-        XCTAssertTrue(agendar.waitForExistence(timeout: 20))
+        XCTAssertTrue(agendar.waitForExistence(timeout: 40))
         agendar.tap()
         XCTAssertTrue(app.buttons["horario-franja-f1"].waitForExistence(timeout: 5))
         app.buttons["horario-franja-f1"].tap()

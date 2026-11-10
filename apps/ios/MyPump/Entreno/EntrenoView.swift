@@ -56,6 +56,7 @@ struct EntrenoView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.fondo)
+            .modifier(TareasVideollamada(modelo: GuiaUI.modelo))
             .overlay(alignment: .bottom) {
                 if avisoGuiaOculta {
                     AvisoGuiaOculta(deshacer: deshacerOcultarGuia)

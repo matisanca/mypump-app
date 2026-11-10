@@ -446,19 +446,19 @@ struct AgendaEditableTests {
     }
 
     @Test func losTextosDeLaSalaYDelFallo() {
+        // 2.3.0: las claves de la sala de la 2.2.0 dicen lo contrario de la regla de 10 minutos y no se usan; un texto del
+        // servidor con «entrega», WhatsApp o coach tampoco (va el propio).
         let t = ReglasAgenda.Textos(["hoy_sin_sala": "Hoy a las {hora}, esperá a Mati", "sala_abierta": "Mati te espera", "fallo": "Elegí otro",
-                                     "entreno_aviso": "Entrega {hora}"])
+                                     "entreno_aviso": "Entrega {hora}", "titulo": "Agendá tu entrega", "cambiar": "Escribinos por WhatsApp"])
         let r = ReservaAgenda(inicio: "2026-11-12T10:00:00-03:00", fin: "2026-11-12T11:00:00-03:00", estado: .confirmada,
                               meetUrl: URL(string: "https://meet.google.com/x"), salaAbiertaEn: "2026-11-12T09:58:00-03:00")
-        #expect(t.hoySinSala(r, zona: ba) == "Hoy a las 10:00, esperá a Mati")
-        #expect(t.entrenoAviso(r, zona: ba) == "Entrega 10:00")
-        #expect(t.entrar(r, zona: ba) == "Mati te espera")
-        var sinSala = r; sinSala.salaAbiertaEn = nil
-        // El respaldo de la hora de inicio no es la sala abierta: no se pisa.
-        #expect(t.entrar(sinSala, zona: ba) == ReglasAgenda.textoEntrar(sinSala, zona: ba))
+        #expect(t.hoySinSala(r, zona: ba) == ReglasAgenda.textoEsperandoSala(r, zona: ba))
+        #expect(t.entrenoAviso(r, zona: ba) == ReglasAgenda.textoEsperandoSala(r, zona: ba))
+        #expect(t.entrar(r, zona: ba) == "Mati ya está en la sala")
+        #expect(t.titulo == "Agendá tu videollamada de comienzo" && t.cambiar == ReglasAgenda.textoCambiar)
         #expect(t.fallo(.tomada) == "Elegí otro" && t.fallo(.error) == "Elegí otro" && t.fallo(.demo) == ReglasAgenda.Aviso.demo.texto)
-        // Sin `entreno_aviso`, el de la guía.
-        #expect(ReglasAgenda.Textos(["hoy_sin_sala": "Hoy {hora}"]).entrenoAviso(r, zona: ba) == "Hoy 10:00")
+        // El título de Mati no pisa el de la revisión.
+        #expect(ReglasAgenda.Textos(["titulo": "Tu llamada"]).titulo(.revision) == "Agendá tu videollamada de revisión")
     }
 
     @Test func avisoMin15() {

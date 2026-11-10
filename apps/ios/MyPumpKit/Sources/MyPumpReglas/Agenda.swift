@@ -83,7 +83,8 @@ public enum ReglasAgenda {
     /// `enCola`: hay una reserva saliendo. `aviso`: lo último que dijo `reservar` (tomada, vencida, error o la demo).
     public static func vista(_ a: AgendaGuia?, faltanLocal: Int?, enCola: Bool, aviso: Aviso? = nil) -> Vista {
         guard let a, a.ok else { return .nada }
-        if enCola { return .reservando }
+        // Un cambio saliendo no esconde la confirmada (sigue valiendo hasta que el servidor tome la nueva).
+        if enCola, a.reserva?.estado != .confirmada { return .reservando }
         if let r = a.reserva {
             switch r.estado {
             case .confirmada: return .confirmada(r, aviso: aviso == .demo ? .demo : nil)
@@ -419,9 +420,19 @@ public enum ReglasAgenda {
 
         public init(_ servidor: [String: String] = [:]) { self.servidor = servidor }
 
+        /// Las de la 2.2.0 que dicen lo contrario de la regla de 2.3.0 (esperar a que Mati abra la sala): no se usan.
+        static let ignoradas: Set<Clave> = [.hoySinSala, .salaAbierta, .entrenoAviso]
+
+        /// Un texto viejo del servidor no vuelve a meter lo que al alumno no se le dice.
+        static func prohibido(_ t: String) -> Bool {
+            let b = t.lowercased()
+            return ["entrega", "whatsapp", "coach", "entrenador"].contains { b.contains($0) }
+        }
+
         public func texto(_ clave: Clave, propio: String, hora: String? = nil, dia: String? = nil, duracion: String? = nil,
                           faltan: Int? = nil) -> String {
-            guard var t = servidor[clave.rawValue], !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return propio }
+            guard var t = servidor[clave.rawValue], !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !Self.ignoradas.contains(clave), !Self.prohibido(t) else { return propio }
             for (llave, valor) in [("{hora}", hora), ("{dia}", dia), ("{duracion}", duracion), ("{faltan}", faltan.map(String.init))]
             where t.contains(llave) {
                 guard let valor else { return propio }
@@ -431,7 +442,10 @@ public enum ReglasAgenda {
         }
 
         public var titulo: String { titulo(.comienzo) }
-        public func titulo(_ t: TipoVideollamada) -> String { texto(.titulo, propio: "Agendá tu \(ReglasAgenda.nombre(t))") }
+        public func titulo(_ t: TipoVideollamada) -> String {
+            let propio = "Agendá tu \(ReglasAgenda.nombre(t))"
+            return t == .revision ? propio : texto(.titulo, propio: propio)
+        }
         public var noAutorizada: String { texto(.noAutorizada, propio: ReglasAgenda.textoNoAutorizada) }
         public var sinFranjas: String { texto(.sinFranjas, propio: ReglasAgenda.textoSinFranjas) }
         public var pendiente: String { texto(.pendiente, propio: ReglasAgenda.textoReservando) }

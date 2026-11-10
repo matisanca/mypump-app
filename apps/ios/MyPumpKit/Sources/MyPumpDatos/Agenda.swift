@@ -222,7 +222,8 @@ public final class ModeloAgenda {
     /// Cambiar la reserva confirmada a otra franja (`entregas_app_cambiar`, palanca `elegir_horario`). Va por la misma cola
     /// y el mismo carril que reservar, con `p_id` fijo; el servidor libera la anterior solo si toma la nueva.
     public func cambiar(a f: FranjaAgenda) async {
-        guard enCola == nil, let r = agenda?.reserva, r.estado == .confirmada, ReglasAgenda.puedeCambiar(agenda, ahora: ahora) else { return }
+        guard enCola == nil, let r = agenda?.reserva, r.estado == .confirmada, let idVieja = r.id, !idVieja.isEmpty,
+              ReglasAgenda.puedeCambiar(agenda, ahora: ahora) else { return }
         aviso = nil
         if esMuestra {
             agenda?.reserva = ReservaAgenda(id: r.id, inicio: f.inicio, fin: f.fin, estado: .confirmada, meetUrl: r.meetUrl, tipo: r.tipo)
@@ -235,7 +236,7 @@ public final class ModeloAgenda {
         if await outbox.operaciones.contains(where: { $0.kind == Self.kind }) { return }
         await outbox.encolar(Self.kind, .objeto([
             "id": .texto(UUID().uuidString.lowercased()), "franja": .texto(f.id), "inicio": .texto(f.inicio), "fin": .texto(f.fin),
-            "cambia": .texto(r.id ?? ""),
+            "cambia": .texto(idVieja),
         ]), dedupeKey: Self.clave)
         sondear()
     }
@@ -310,6 +311,10 @@ extension Escrituras {
         // Un cambio (palanca `elegir_horario`): la misma op con la reserva que se deja (`cambia`).
         let r: Result<JSONValue, ErrorRPC>
         if let vieja = p["cambia"]?.comoTexto {
+            // Con la palanca `elegir_horario` apagada (o sin la reserva vieja) no se llama a nada: la reserva queda.
+            guard !vieja.isEmpty, PalancaRemota.arranque().elegirHorario else {
+                return .respuesta(.success(.objeto(["ok": .bool(false), "motivo": .texto("plazo")])))
+            }
             r = await cliente.llamar("entregas_app_cambiar", ["p_token": .texto(token), "p_reserva": .texto(vieja), "p_franja": .texto(franja),
                                                              "p_id": .texto(id)])
         } else {
