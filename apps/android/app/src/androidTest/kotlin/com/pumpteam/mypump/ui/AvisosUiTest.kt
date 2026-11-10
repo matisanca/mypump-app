@@ -203,7 +203,7 @@ class AvisosUiTest : PruebaUi() {
             assertTrue(registro, "\"p_token\":\"${ServidorDePrueba.TOKEN}\"" in registro)
             assertTrue(registro, "\"p_device\":\"${AvisosDePrueba.TOKEN_PUSH}\"" in registro)
             assertTrue(registro, "\"p_plataforma\":\"android\"" in registro)
-            assertTrue(registro, "\"p_app_version\":\"2.0.0 (100)\"" in registro)
+            assertTrue(registro, Regex("\"p_app_version\":\"\\d+\\.\\d+\\.\\d+ \\(\\d+\\)\"").containsMatchIn(registro))   // sin atarla a un número de versión
             // En el sistema: una sola alarma del domingo, RTC_WAKEUP con ventana (inexacta). La anota para la evidencia.
             val domingo = alarmasPendientes().filter { "AVISO_DOMINGO" in it }
             assertEquals(domingo.toString(), 1, domingo.size)

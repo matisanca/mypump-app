@@ -77,7 +77,7 @@ class CapturasUiTest : PruebaUi() {
             foto("17-entreno-sustituir")
             p.tocar(etiqueta("confirmar-sustitucion"))
             p.esperarQueNoEste(etiqueta("hoja-sustituir"))
-            p.tocar(etiqueta("descanso-saltar"))
+            p.tocar(etiqueta("saltar-descanso"))   // el del panel: la tarjeta del descanso puede quedar fuera de pantalla
             p.esperarQueNoEste(etiqueta("descanso"))
             // El ejercicio se abre en la lista (15-oct): lo sustituido y los comentarios, en su página («Técnica y notas»).
             abrirPaginaDelEjercicio("jalon-al-pecho-prono-dorsal-ancho-d1-0")
