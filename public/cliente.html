@@ -10215,7 +10215,10 @@ const _pumpClave = () => { let h = 5381; for (const c of String(TOKEN || '')) h 
 let _pumpMemoria = [];
 function _pumpCelebrados() {
   if (_metasMuestra) return _metasMuestra.celebrados;
-  try { const a = JSON.parse(localStorage.getItem(_pumpClave()) || '[]'); return Array.isArray(a) ? a : _pumpMemoria; } catch (_) { return _pumpMemoria; }
+  // Lo guardado más lo de esta visita: si setItem falla (cuota llena), la memoria evita celebrar en cada repintada.
+  let a = [];
+  try { a = JSON.parse(localStorage.getItem(_pumpClave()) || '[]'); } catch (_) {}
+  return Array.from(new Set((Array.isArray(a) ? a : []).concat(_pumpMemoria))).sort();
 }
 function _pumpMarcar(hoy) {
   const c = window.Metas.marcar(_pumpCelebrados(), hoy);
@@ -10271,7 +10274,7 @@ function _pumpTarjeta(e, enSalud) {
   return `<div class="pump-card${v.cumplido ? ' is-lleno' : ''}" id="pumpDelDia" data-test="pump-del-dia" role="group" aria-label="${T.accesible(v)}">
     <div class="pump-fila">${_torsoSVG(v.fraccion, 76, { vivo: true })}
       <div class="pump-txt" aria-hidden="true">
-        <div class="pump-eyebrow">${v.cumplido ? T.lleno : T.nombre}</div>
+        <div class="pump-eyebrow">${T.nombre}</div>
         <div class="pump-num"><strong>${window.Metas.miles(v.pasosHoy)}</strong> <span>${T.deMeta(v)}</span></div>
         <div class="pump-estado">${T.estado(v)}</div>
         ${racha ? `<div class="pump-racha" data-test="pump-racha">${_PUMP_LLAMA}${racha}</div>` : ''}
@@ -10288,9 +10291,17 @@ function _pumpEnganchar(host) {
   });
 }
 /* En Entreno, arriba de todo (abajo del recordatorio semanal). Se llama después de cada render de escena. */
+// A la medianoche, con la página abierta, la tarjeta pasa al día nuevo.
+let _pumpMedianoche = null;
+function _pumpAgendarMedianoche() {
+  if (_pumpMedianoche) return;
+  const a = new Date(), m = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 1, 0, 0, 5);
+  _pumpMedianoche = setTimeout(() => { _pumpMedianoche = null; _pumpRepintar(); }, m - a);
+}
 function _pumpPintar() {
   document.querySelectorAll('#scene-train > #pumpDelDia').forEach(el => el.remove());
   const e = _pumpEstado();
+  if (e) _pumpAgendarMedianoche();
   if (!e || STATE.scene !== 'train') return;
   const host = document.getElementById('scene-train');
   if (!host) return;
