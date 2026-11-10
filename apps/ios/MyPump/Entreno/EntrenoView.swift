@@ -333,6 +333,15 @@ private struct ListaEntreno: View {
     @ViewBuilder
     private var cuerpo: some View {
         let banner = motor.banner
+        // U3 (auditoría del 10/11): «Empezar entrenamiento» va antes de los carteles. Con la tarjeta de la guía y el de
+        // calibración, quedaba debajo de la barra de pestañas.
+        // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre): ni su lugar en la pila.
+        if !motor.todoHecho {
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                cronometro(motor.cronometro())
+            }
+        }
+
         if banner.cambian > 0 {
             AvisoProgresion(icono: "chart.line.uptrend.xyaxis",
                             texto: Text("Esta semana \(Text(banner.cambian == 1 ? "1 ejercicio cambia" : "\(banner.cambian) ejercicios cambian").bold()) carga o volumen. Mirá el detalle al abrir cada uno."))
@@ -345,13 +354,6 @@ private struct ListaEntreno: View {
         if motor.seriesSinConfirmar {
             AvisoProgresion(icono: "icloud.slash",
                             texto: Text("Sin conexión. Ves las series guardadas en este teléfono."))
-        }
-
-        // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre): ni su lugar en la pila.
-        if !motor.todoHecho {
-            TimelineView(.periodic(from: .now, by: 1)) { _ in
-                cronometro(motor.cronometro())
-            }
         }
 
         ForEach(motor.bloques, id: \.indice) { b in

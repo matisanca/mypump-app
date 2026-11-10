@@ -49,9 +49,16 @@ struct RevisionView: View {
                             .anchoLectura(Ancho.doble)
                         } else {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
-                                // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
-                                VStack(spacing: Espacio.m) { recuperacion; progreso }
-                                diaDeRevision; avisoPlan; notaSemanal; fotos; check
+                                if semanaPendiente {
+                                    // U1 (auditoría del 10/11): con la semana a medias, lo que vino a hacer va arriba. Antes las
+                                    // fotos y el check quedaban fuera de la primera pantalla de un iPhone común.
+                                    diaDeRevision; avisoPlan; fotos; check; notaSemanal
+                                    VStack(spacing: Espacio.m) { recuperacion; progreso }
+                                } else {
+                                    // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
+                                    VStack(spacing: Espacio.m) { recuperacion; progreso }
+                                    diaDeRevision; avisoPlan; notaSemanal; fotos; check
+                                }
                             }
                                 .anchoLectura()
                         }
@@ -157,6 +164,11 @@ struct RevisionView: View {
     private var lineaProgreso: ProgresoSemana.Linea? {
         guard let p = modelo.conMuestras ? nil : modelo.progreso else { return nil }
         return ProgresoSemana.linea(p.tarjetas.map { ProgresoSemana.ejercicio(nombre: $0.nombre, filas: $0.filas) }, hoy: FechaLocal.hoy())
+    }
+    /// Faltan fotos o el check de esta semana (con cuenta; la demo y las muestras siguen con el orden de siempre).
+    private var semanaPendiente: Bool {
+        guard let revision, let modeloFotos else { return false }
+        return FotosProgreso.pendientes(checkinEnviado: revision.checkinEnviado, posesDeLaSemana: modeloFotos.posesDeLaSemana).total > 0
     }
     private var fotos: some View {
         FotosSemana(modelo: modeloFotos, muestras: muestras.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(muestras.salud))

@@ -445,6 +445,11 @@ private fun CuerpoDia(
     val alcance = LocalAlcanceApp.current
     var trabajando by remember { mutableStateOf(false) }
     val banner = motor.banner
+    // U3 (auditoría del 10/11): «Empezar entrenamiento» va antes de los carteles. Con la tarjeta de la guía y el de
+    // calibración, quedaba debajo de la barra de pestañas. Con el día cerrado o todo hecho no hay cronómetro (está la
+    // tarjeta de cierre).
+    if (!motor.todoHecho) Cronometro(motor, v, alCerrarDia)
+
     if (banner.cambian > 0) {
         AvisoTenido(
             Iconos.Tendencia,
@@ -474,9 +479,6 @@ private fun CuerpoDia(
             modifier = Modifier.testTag("aviso-series-guardadas"),
         )
     }
-
-    // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre).
-    if (!motor.todoHecho) Cronometro(motor, v, alCerrarDia)
 
     var primero = 1
     for (b in motor.bloques) {

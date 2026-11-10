@@ -45,6 +45,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.datos.ModeloRevision
+import com.pumpteam.mypump.datos.ModeloSalud
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
@@ -58,6 +60,7 @@ import com.pumpteam.mypump.raiz.AnclaRevision
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.raiz.diaDeRevision
+import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.reglas.PesoCorporal
 import com.pumpteam.mypump.reglas.SemanaRevision
 import java.time.DayOfWeek
@@ -67,6 +70,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
@@ -88,6 +92,19 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
     val filasDePeso = revision?.salud?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pesoParaLasFotos = remember(filasDePeso) { PesoCorporal.serie(filasDePeso) }
+    // U1 (auditoría del 10/11): con la semana a medias, las fotos y el check van arriba (antes quedaban fuera de la primera
+    // pantalla). La demo sigue con el orden de siempre.
+    val checkin = revision?.checkin?.collectAsStateWithLifecycle()?.value
+    val fotosHechas = fotos?.fotos?.collectAsStateWithLifecycle()?.value ?: emptyList()
+    val fotosEnCola = fotos?.pendientes?.collectAsStateWithLifecycle()?.value ?: emptyMap()
+    val semanaPendiente = remember(revision, fotos, checkin, fotosHechas, fotosEnCola, esDemo) {
+        val f = fotos
+        val r = revision
+        !esDemo && f != null && r != null && FotosProgreso.pendientes(
+            r.checkinEnviado,
+            FotosProgreso.posesDeLaSemana(fotosHechas, fotosEnCola.values.map { it.pose to it.fecha }, f.semanaActual),
+        ).total > 0
+    }
     val alcance = LocalAlcanceApp.current
     val navegacion = LocalNavegacion.current
     val desplazamiento = rememberScrollState()
@@ -168,8 +185,13 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                                 modifier = Modifier.testTag("dia-de-revision"),
                             )
                         }
-                        // Lo primero de Revisión: la recuperación y el progreso (reemplazan al corazón que había arriba).
-                        // En el teléfono, juntas (Espacio.m); en tablet, lado a lado.
+                        if (semanaPendiente) {
+                            AvisoPlanIncompleto(modelo)
+                            FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
+                            Check(revision, salud, esDemo, alcance, secciones)
+                        }
+                        // Lo primero de Revisión (con la semana completa): la recuperación y el progreso (reemplazan al
+                        // corazón que había arriba). En el teléfono, juntas (Espacio.m); en tablet, lado a lado.
                         BoxWithConstraints {
                             if (maxWidth >= 600.dp) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m), modifier = Modifier.height(IntrinsicSize.Max)) {
@@ -183,7 +205,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                                 }
                             }
                         }
-                        AvisoPlanIncompleto(modelo)
+                        if (!semanaPendiente) AvisoPlanIncompleto(modelo)
                     }
                     Text(
                         SemanaRevision.EXPLICACION,
@@ -191,22 +213,28 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         color = MyPump.colores.textoSecundario,
                         modifier = Modifier.testTag("nota-revision-semanal"),
                     )
-                    FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
-                    CheckSemanal(
-                        revision,
-                        Modifier.seccion(AnclaRevision.CHECK, secciones),
-                        salud = filasSaludSemana(salud),
-                        alEnviar = {
-                            // Con cuenta y la salud del sistema conectada: los últimos días al servidor, sin esperar ni
-                            // frenar el envío del check.
-                            val s = salud
-                            if (!esDemo && s != null && s.conectado.value) alcance.launch { s.sincronizar() }
-                        },
-                    )
+                    if (!semanaPendiente) {
+                        FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
+                        Check(revision, salud, esDemo, alcance, secciones)
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun Check(revision: ModeloRevision?, salud: ModeloSalud?, esDemo: Boolean, alcance: CoroutineScope, secciones: HashMap<String, Float>) {
+    CheckSemanal(
+        revision,
+        Modifier.seccion(AnclaRevision.CHECK, secciones),
+        salud = filasSaludSemana(salud),
+        alEnviar = {
+            // Con cuenta y la salud del sistema conectada: los últimos días al servidor, sin esperar ni frenar el envío del
+            // check.
+            if (!esDemo && salud != null && salud.conectado.value) alcance.launch { salud.sincronizar() }
+        },
+    )
 }
 
 /** Anota dónde empieza la sección (dentro de lo que se desplaza) y la deja encontrar en las pruebas (`seccion-check`). */
