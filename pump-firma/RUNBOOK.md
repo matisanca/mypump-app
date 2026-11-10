@@ -7,9 +7,9 @@ todo es invisible (BoldSign sigue funcionando igual); el paso 8 es el único que
 
 | # | Qué | Para qué |
 |---|-----|----------|
-| A | Crear una **contraseña de aplicación** en Yandex 360 para info@mypumpteam.com (Seguridad → Contraseñas de aplicación → Correo) | El servicio manda el código, la invitación y la copia. La misma sirve para respaldar la casilla |
-| B | Crear una **casilla de custodia** en un proveedor ajeno (por ejemplo un Gmail nuevo que no se use para nada más) | Copia de cada firma fuera de nuestro control (condición de la segunda opinión) |
-| C | Decidir si la **firma del prestador** (contrato AR) y la **del médico** (consentimiento) se estampan en el PDF | Si sí: se asienta una autorización con fecha (paso 6). Si no: el PDF sale con la línea de firma en blanco, como el texto vigente. El del exterior ya la lleva impresa, como hoy |
+| A | Crear una **contraseña de aplicación** en Yandex 360 para info@mypumpteam.com (Seguridad → Contraseñas de aplicación → Correo) | El servicio manda el código, la invitación y la copia. La misma sirve para respaldar la casilla. **Hecho el 10/11:** está en `mini:~/pump-firma-datos/yandex.clave` (permisos 600); al instalar se pasa a `FIRMA_SMTP_CLAVE` del `firma.env` sin mostrarla en pantalla |
+| B | Crear una **casilla de custodia** en un proveedor ajeno (por ejemplo un Gmail nuevo que no se use para nada más) | Copia de cada firma fuera de nuestro control (condición de la segunda opinión). **Hecho el 10/11:** la casilla existe (un Gmail dedicado); la dirección está en el ESTADO privado y va en `FIRMA_CUSTODIA_EMAIL` al instalar (no se escribe en este repo, que es público) |
+| C | Decidir si la **firma del prestador** (contrato AR) y la **del médico** (consentimiento) se estampan en el PDF | Si sí: se asienta una autorización con fecha (paso 6). Si no: el PDF sale con la línea de firma en blanco, como el texto vigente. El del exterior ya la lleva impresa, como hoy. **Decidido el 10/11: SÍ, las dos** |
 | D | Dar el OK a los **textos nuevos** de `firma/textos.py` (casillas, avisos, correos, botones) | Son los únicos textos que no existían. El contrato no se tocó |
 | E | Publicar la **política de privacidad** actualizada (sección nueva en `PRIVACIDAD_PROPUESTA.md`) | La firma guarda DNI, domicilio, IP y el contrato |
 
@@ -20,15 +20,16 @@ todo es invisible (BoldSign sigue funcionando igual); el paso 8 es el único que
    Aplicar: con `~/_aplicar.py` en la Mini, como cualquier migración. Crea el esquema `contrato`, el rol `firma_srv`, dos funciones en `public` y el bucket privado `contratos`. No toca ninguna tabla existente.
 2. **Plantillas** — los tres textos vigentes, byte a byte (el md5 esperado evita cargar un archivo equivocado):
    ```
-   FIRMA_DB_ADMIN_URL=... python tools/cargar_plantillas.py servicio_ar v8 <A_v8.md> 61b65ac6…        (md5 completo en ESTADO.md)
-   FIRMA_DB_ADMIN_URL=... python tools/cargar_plantillas.py servicio_ext v3 <E_v3.md> 024a6fb1…
+   FIRMA_DB_ADMIN_URL=... python tools/cargar_plantillas.py servicio_ar v9 <A_v9.md> 3a9ac9c7…        (md5 completo en ESTADO.md)
+   FIRMA_DB_ADMIN_URL=... python tools/cargar_plantillas.py servicio_ext v4 <E_v4.md> 11a0255a…
    FIRMA_DB_ADMIN_URL=... python tools/cargar_plantillas.py consentimiento_ar v1 <B_consentimiento_medico.md> e3ca3de1…
    ```
+   Desde el 10/11 las vigentes son **v9 (Argentina) y v4 (exterior)**: iguales a v8 y v3 salvo la cláusula 1 c (y la 9.3 c del exterior), que ya no prometen más de una videollamada. El cargador se niega a cargar la redacción anterior. Los contratos ya firmados (BoldSign) no se tocan.
    Con `--ensayo` hace todo y termina en ROLLBACK. Después de cargar: generar un PDF de muestra de cada uno con `tests/demo.py` (`PUMP_FIRMA_FUENTES=<carpeta>`) y **compararlo a ojo con el PDF vigente de BoldSign**, hoja por hoja.
 3. **Servicio en la Mini** — copiar `pump-firma/` a `~/pump-firma`, `python3 -m venv venv && venv/bin/pip install -r requirements.txt` (WeasyPrint 69.0 y OpenSSL 3 ya están en la Mini). Crear `~/pump-firma-datos/firma.env` desde `env.ejemplo` (chmod 600) y copiar `firma_prestador.png` a `~/pump-firma-datos/privado/`. Probar a mano: `FIRMA_ENV=~/pump-firma-datos/firma.env venv/bin/python -m firma.tareas verificar`.
 4. **Arranque** — `com.pump.firma.plist.ejemplo` → `~/Library/LaunchAgents/com.pump.firma.plist`; `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.pump.firma.plist`. Control: `curl -s 127.0.0.1:8793/salud`. El servicio se niega a arrancar si falta algo de la configuración (dice qué).
 5. **Túnel** — en la configuración de cloudflared de la Mini, sumar el hostname `firma.mypumpteam.com → http://127.0.0.1:8793` (como los de bot, claude-proxy y vision) y su registro DNS. Control: `https://firma.mypumpteam.com/salud`.
-6. **Autorizaciones de firma** (solo si Mati dijo que sí en C) — una fila por rol, con el SHA-256 del PNG y el texto de la autorización:
+6. **Autorizaciones de firma** (Mati dijo que sí en C) — una fila por rol, con el SHA-256 del PNG y el texto de la autorización. La imagen es una sola para los dos roles (`firma_prestador.png`, la misma que ya lleva impresa el contrato del exterior; sha256 `5c5aa2ca…2fe618`, completo en ESTADO.md). Constancia: «Respuesta “si” de Mati del 10/11/2026 a la pregunta de si en el PDF van su firma como prestador y como médico»:
    `INSERT INTO contrato.autorizaciones (rol, tipo, quien, firma_sha256, constancia) VALUES ('prestador', 'servicio_ar', '<nombre>', '<sha256 del png>', '<texto y fecha del OK>');` (ídem `'medico', 'consentimiento_ar'`).
 7. **Bot** — `propuestas/bot/PARCHE_main.md` (probado primero en la copia del bot; reinicio). Y avisar a AUTOMATIZAR ENTREGAS: el estado se lee con `public.contrato_estado(lead_id, email, whatsapp)` → `bloquea_agenda`.
 8. **Prueba real de punta a punta, con una persona del equipo** — crear un documento a mano (`curl` a `/api/interno/crear`, con un **alias de correo** tipo `info+pruebafirma@…` y sin WhatsApp real, para que no le frene la agenda a nadie; lo firmado no se puede borrar y lo que sobre pendiente se anula con `/api/interno/anular`), firmarlo desde un teléfono, y controlar: correo de invitación, código, copia con PDF, mail en la casilla de custodia con sellos, aviso de WhatsApp a Mati, `/verificar` con el PDF. Recién entonces:

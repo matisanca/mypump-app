@@ -8,7 +8,7 @@ DNI: {{@cDni1}}
 Domicilio: {{@cDomic}}
 País de residencia: {{@cPais}}
 
-**1. Objeto.** Cláusula sintética número uno. Texto de relleno *con cursiva* y **con negrita** para probar el render sin usar ningún texto real.
+**1. Objeto.** El servicio sintético comprende: (a) cosa de prueba; (c) una videollamada individual de entrega y acompañamiento del proceso por mensajes. Cláusula sintética número uno. Texto de relleno *con cursiva* y **con negrita** para probar el render sin usar ningún texto real.
 
 **2. Precio.** Cláusula sintética número dos. Texto de relleno para ocupar renglones y probar los saltos de página del documento de prueba.
 

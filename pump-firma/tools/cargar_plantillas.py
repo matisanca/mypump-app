@@ -3,7 +3,7 @@
 desde el archivo aprobado, y el md5 esperado se pasa a mano para que un archivo equivocado no entre.
 
 Uso (con el rol dueño, no con firma_srv):
-  FIRMA_DB_ADMIN_URL=postgresql://... python tools/cargar_plantillas.py servicio_ar v8 /ruta/A_v8.md <md5 esperado> [--ensayo]
+  FIRMA_DB_ADMIN_URL=postgresql://... python tools/cargar_plantillas.py servicio_ar v9 /ruta/A_v9.md <md5 esperado> [--ensayo]
 
 `--ensayo` hace todo y termina en ROLLBACK. Una versión ya cargada con el mismo texto no se vuelve a cargar."""
 import hashlib
@@ -13,6 +13,24 @@ import sys
 import psycopg
 
 TIPOS = ("servicio_ar", "servicio_ext", "consentimiento_ar")
+
+# Decisión del 10/11: el contrato ya no promete más de una videollamada (cláusula 1 c en los dos; 9.3 c en el exterior).
+# Una plantilla de servicio con la redacción anterior NO se carga: las versiones v8 (Argentina) y v3 (exterior) quedaron
+# retiradas para contratos nuevos. Los ya firmados no se tocan.
+FRASES_RETIRADAS = ("sesiones de coaching individual",
+                    "la asistencia a la totalidad de las sesiones de coaching")
+FRASE_VIGENTE = "una videollamada individual de entrega y acompañamiento del proceso por mensajes"
+
+
+def texto_retirado(tipo: str, md: str) -> list:
+    """Qué tiene mal una plantilla de servicio respecto de la decisión de una sola videollamada ([] = está bien)."""
+    if tipo not in ("servicio_ar", "servicio_ext"):
+        return []
+    plano = " ".join(md.split()).lower()
+    mal = [f"vuelve el texto retirado: «{f}»" for f in FRASES_RETIRADAS if f in plano]
+    if FRASE_VIGENTE not in plano:
+        mal.append(f"falta la cláusula 1 c vigente: «{FRASE_VIGENTE}»")
+    return mal
 
 
 def titulo_de(md: str) -> str:
@@ -26,6 +44,9 @@ def cargar(conn, tipo: str, version: str, md: str, vigente: bool = True) -> dict
     """Devuelve {'id', 'sha256', 'md5', 'resultado'}; no hace commit."""
     if tipo not in TIPOS:
         raise SystemExit(f"tipo inválido: {tipo}")
+    mal = texto_retirado(tipo, md)
+    if mal:
+        raise SystemExit("la plantilla no se carga — " + "; ".join(mal))
     pid = f"{tipo}@{version}"
     sha, md5 = hashlib.sha256(md.encode("utf-8")).hexdigest(), hashlib.md5(md.encode("utf-8")).hexdigest()
     with conn.cursor() as cur:

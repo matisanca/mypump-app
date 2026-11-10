@@ -1,3 +1,7 @@
+import os
+
+import pytest
+
 from firma import reglas
 
 
@@ -89,3 +93,35 @@ def test_cadena_detecta_alteracion():
     assert reglas.verificar_cadena(evs) == {"ok": False, "n": 2, "cabeza": evs[0]["hash"], "error": "el evento 2 fue alterado"}
     del evs[1]
     assert not reglas.verificar_cadena(evs)["ok"]
+
+
+# ── Decisión del 10/11: el contrato no promete más de una videollamada ──
+def test_plantilla_con_el_texto_retirado_no_se_carga():
+    import cargar_plantillas as cp
+    bien = "# T\n\n**1.** (c) una videollamada individual de entrega y acompañamiento del proceso por mensajes; (d) otra cosa."
+    assert cp.texto_retirado("servicio_ar", bien) == [] and cp.texto_retirado("servicio_ext", bien) == []
+    viejo_1c = bien.replace("una videollamada individual de entrega y acompañamiento del proceso por mensajes",
+                            "sesiones de coaching individual y acompañamiento del proceso")
+    assert len(cp.texto_retirado("servicio_ar", viejo_1c)) == 2  # vuelve lo viejo y falta lo nuevo
+    viejo_93c = bien + " (c) la asistencia a la totalidad de las sesiones de\ncoaching y de los check-ins programados;"
+    assert cp.texto_retirado("servicio_ext", viejo_93c) != []  # aunque venga partido en dos renglones
+    assert cp.texto_retirado("consentimiento_ar", "cualquier texto") == []
+    with pytest.raises(SystemExit, match="no se carga"):
+        cp.cargar(None, "servicio_ar", "v8", viejo_1c)
+
+
+def test_las_plantillas_reales_vigentes_prometen_una_sola_videollamada():
+    """Corre donde están las fuentes privadas (PUMP_FIRMA_FUENTES); en el repo público se saltea."""
+    import hashlib
+    import cargar_plantillas as cp
+    carpeta = os.environ.get("PUMP_FIRMA_FUENTES", "")
+    vigentes = {"servicio_ar": ("A_v9.md", "3a9ac9c7ec3faf830fc8448f81ef598c"), "servicio_ext": ("E_v4.md", "11a0255aaffb07d98736b6b91099a6cf")}
+    if not all(os.path.exists(os.path.join(carpeta, a)) for a, _ in vigentes.values()):
+        pytest.skip("sin las fuentes privadas")
+    for tipo, (archivo, md5) in vigentes.items():
+        md = open(os.path.join(carpeta, archivo), "rb").read().decode("utf-8")
+        assert hashlib.md5(md.encode()).hexdigest() == md5, archivo
+        assert cp.texto_retirado(tipo, md) == [], archivo
+        assert "videollamadas" not in md.lower() and md.lower().count("videollamada") == (1 if tipo == "servicio_ar" else 2), archivo
+    ext = open(os.path.join(carpeta, "E_v4.md"), encoding="utf-8").read()
+    assert "(c) la asistencia a la videollamada de entrega y la realización de los check-ins programados;" in ext

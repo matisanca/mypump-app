@@ -9,7 +9,7 @@ Domicilio: {{@cDomic}}
 País de residencia: {{@cPais}}
 Fecha: {{@fCont}}
 
-**1. Objeto.** Cláusula sintética número uno del exterior.
+**1. Objeto.** El servicio sintético comprende: (a) cosa de prueba; (c) una videollamada individual de entrega y acompañamiento del proceso por mensajes. Cláusula sintética número uno del exterior.
 
 **10. Derecho de revocación o desistimiento.** Cláusula sintética: dentro del plazo previsto por la normativa del país de residencia.
 
