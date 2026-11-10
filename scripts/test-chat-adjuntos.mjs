@@ -326,4 +326,23 @@ await caso('después de recargar, lo que espera se ve del archivo guardado', asy
   assert.equal(d.firmas.length, 0);
 });
 
+await caso('dos pestañas: lo que mandó la otra no queda como no salió ni vuelve al recargar', async () => {
+  const d = doble({ sinRed: true });
+  const almacen = almacenMemoria();
+  const a = await prendido(d, { almacen });
+  const id = await a.encolar('foto', jpeg());
+  await quieto(a);
+  const b = await prendido(d, { almacen });
+  await b.cargar();
+  await quieto(b);
+  d.sinRed = false;
+  a.despertar();
+  await quieto(a);
+  b.despertar();
+  await quieto(b);
+  assert.equal(b.pendientes.size, 0);
+  assert.equal((await almacen.listar()).length, 0);
+  assert.equal(d.subidas.filter((s) => s.headers['x-chat-id'] === id && s.largo).length >= 1, true);
+});
+
 console.log(`chat-adjuntos: ${ok} casos OK${process.exitCode ? ' (con fallas)' : ''}`);

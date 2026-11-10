@@ -3240,9 +3240,10 @@ function chatAdjConectarMic(mic) {
   const CA = window.ChatAdjuntos;
   let x0 = 0, porPuntero = false;
   mic.addEventListener('pointerdown', async (e) => {
-    if (_chatGrab) return;
+    if (_chatGrab || _chatAdjEmpezando) return;
     e.preventDefault();
     porPuntero = true;
+    _chatAdjDedoAbajo = true;
     x0 = e.clientX;
     try { mic.setPointerCapture(e.pointerId); } catch (_) {}
     await chatAdjEmpezar(mic, false);
@@ -3253,6 +3254,7 @@ function chatAdjConectarMic(mic) {
     chatAdjPintarGrabacion();
   });
   const soltar = (cancelar) => {
+    _chatAdjDedoAbajo = false;
     if (!_chatGrab || _chatGrab.porToque) return;
     chatAdjTerminar(!(cancelar || _chatGrab.cancelando));
   };
@@ -3264,11 +3266,17 @@ function chatAdjConectarMic(mic) {
     if (porPuntero && e.detail !== 0) { porPuntero = false; return; }
     porPuntero = false;
     if (_chatGrab) { if (_chatGrab.porToque) chatAdjTerminar(true); return; }
-    chatAdjEmpezar(mic, true);
+    if (!_chatAdjEmpezando) chatAdjEmpezar(mic, true);
   });
 }
 
+let _chatAdjEmpezando = false, _chatAdjDedoAbajo = false;
 async function chatAdjEmpezar(mic, porToque) {
+  if (_chatAdjEmpezando || _chatGrab) return;
+  _chatAdjEmpezando = true;
+  try { await chatAdjEmpezarYa(mic, porToque); } finally { _chatAdjEmpezando = false; }
+}
+async function chatAdjEmpezarYa(mic, porToque) {
   const CA = window.ChatAdjuntos;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') { chatAdjAviso(CA.T.SIN_GRABADOR); return; }
   const mime = CA.mimeGrabacion((m) => MediaRecorder.isTypeSupported(m));
@@ -3279,7 +3287,8 @@ async function chatAdjEmpezar(mic, porToque) {
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
   catch (e) { chatAdjAviso(e && e.name === 'NotAllowedError' ? CA.T.SIN_MICROFONO : CA.T.SIN_GRABADOR); return; }
-  if (permiso === 'prompt' && !porToque) { stream.getTracks().forEach(t => t.stop()); chatAdjAviso(CA.T.AYUDA_GRABAR); return; }
+  // El dedo se levantó mientras el navegador abría el micrófono (o preguntaba): no se graba nada sin el dedo apoyado.
+  if (!porToque && (permiso === 'prompt' || !_chatAdjDedoAbajo)) { stream.getTracks().forEach(t => t.stop()); chatAdjAviso(CA.T.AYUDA_GRABAR); return; }
   let rec;
   try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 48000 } : undefined); }
   catch (_) { stream.getTracks().forEach(t => t.stop()); chatAdjAviso(CA.T.SIN_GRABADOR); return; }

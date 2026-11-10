@@ -117,10 +117,11 @@
       async leerKV(k) { return kv.has(k) ? JSON.parse(kv.get(k)) : undefined; },
       async guardarKV(k, v) { kv.set(k, JSON.stringify(v)); },
       async agregar(meta, bytes) { cola.set(meta.id, { ...meta }); archivos.set(meta.id, bytes); },
-      async actualizar(meta) { if (cola.has(meta.id)) cola.set(meta.id, { ...meta }); },
+      async actualizar(meta) { if (!cola.has(meta.id)) return false; cola.set(meta.id, { ...meta }); return true; },
       async leerBytes(id) { return archivos.get(id) || null; },
       async sacar(id) { cola.delete(id); archivos.delete(id); },
       async listar() { return [...cola.values()].map((m) => ({ ...m })); },
+      async esta(id) { return cola.has(id); },
     };
   }
 
@@ -164,7 +165,16 @@
         t.objectStore('cola').put(meta);
         await fin(t);
       }),
-      actualizar: (meta) => con(async (b) => { const t = b.transaction('cola', 'readwrite'); t.objectStore('cola').put(meta); await fin(t); }),
+      // Solo si sigue en la cola (otra pestaña pudo haberla mandado): nunca la vuelve a crear sin el archivo.
+      actualizar: (meta) => con(async (b) => {
+        const t = b.transaction('cola', 'readwrite');
+        const st = t.objectStore('cola');
+        let estaba = false;
+        const req = st.get(meta.id);
+        req.onsuccess = () => { if (req.result) { estaba = true; st.put(meta); } };
+        await fin(t);
+        return estaba;
+      }),
       leerBytes: (id) => con(async (b) => { const r = await promesa(b.transaction('archivos').objectStore('archivos').get(id)); return r ? r.bytes : null; }),
       sacar: (id) => con(async (b) => {
         const t = b.transaction(['cola', 'archivos'], 'readwrite');
@@ -173,6 +183,7 @@
         await fin(t);
       }),
       listar: () => con((b) => promesa(b.transaction('cola').objectStore('cola').getAll())),
+      esta: (id) => con(async (b) => !!(await promesa(b.transaction('cola').objectStore('cola').get(id)))),
     };
   }
   async function abrirAlmacen(idb) {
@@ -330,7 +341,12 @@
 
     async _subir(m) {
       const bytes = await this.almacen.leerBytes(m.id).catch(() => null);
-      if (!bytes) return this._fallar(m, R.CODIGO_SIN_ARCHIVO);
+      if (!bytes) {
+        // Ya no está en la cola: lo mandó otra pestaña. No es un «no salió».
+        const sigue = await (this.almacen.esta ? this.almacen.esta(m.id) : Promise.resolve(true)).catch(() => true);
+        if (!sigue) { this.pendientes.delete(m.id); this.alCambiar(); return 'ok'; }
+        return this._fallar(m, R.CODIGO_SIN_ARCHIVO);
+      }
       const headers = { 'Content-Type': m.mime.split(';')[0], 'x-chat-token': this.token, 'x-chat-id': m.id, 'x-chat-tipo': m.tipo };
       if (m.tipo === 'audio') headers['x-chat-duracion'] = String(m.segundos);
       let status = 0, cuerpo = null;
@@ -363,13 +379,13 @@
         }
         case 'idRepetido': {
           // El id es de otro mensaje (casi imposible): sale con uno nuevo.
-          const bytes2 = bytes;
+          // Primero se guarda con el id nuevo y recién después se saca el viejo: cerrar la pestaña en el medio no lo pierde.
+          const nuevo = { ...m, id: String(this.nuevoId()).toLowerCase() };
+          await this.almacen.agregar(nuevo, bytes);
           await this.almacen.sacar(m.id).catch(() => {});
           this.pendientes.delete(m.id);
           const blob = this.locales.get(m.id);
           this.locales.delete(m.id);
-          const nuevo = { ...m, id: String(this.nuevoId()).toLowerCase() };
-          await this.almacen.agregar(nuevo, bytes2);
           this.pendientes.set(nuevo.id, nuevo);
           if (blob) this.locales.set(nuevo.id, blob);
           this.alCambiar();
@@ -380,8 +396,9 @@
     }
     async _fallar(m, motivo) {
       const f = { ...m, fallo: true, motivo };
+      const sigue = await this.almacen.actualizar(f).catch(() => true);
+      if (sigue === false) { this.pendientes.delete(m.id); this.alCambiar(); return 'ok'; }
       this.pendientes.set(m.id, f);
-      await this.almacen.actualizar(f).catch(() => {});
       this.alCambiar();
       return 'fallo';
     }
