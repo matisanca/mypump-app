@@ -48,6 +48,14 @@ public enum FormatoToken {
         t.range(of: #"^[a-zA-Z0-9_-]{16,64}$"#, options: .regularExpression) != nil
     }
 
+    /// Un link de la app aunque no traiga un token que sirva (cortado, mal copiado): `?t=` o `/acceso/`. Para avisar al
+    /// abrirlo desde afuera (F10) sin confundirlo con los links de los avisos (`?scene=…`).
+    public static func pareceLink(_ texto: String) -> Bool {
+        let t = limpio(texto)
+        if t.range(of: #"[?&]\s*t\s*="#, options: .regularExpression) != nil { return true }
+        return t.contains("/acceso/")
+    }
+
     /// Lo que pega el cliente: el link entero, a medias o el token solo (index.html:376-423). Le saca lo que agrega el
     /// copiar y pegar, para que un token válido no salga con «No reconocí ese link»: caracteres invisibles (las marcas de
     /// dirección de WhatsApp) y la puntuación de la frase alrededor.

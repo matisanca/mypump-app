@@ -159,7 +159,7 @@ public final class ModeloApp {
         self.almacen = almacen
         self.raizDisco = raizDisco
         token = almacen.leer()
-        fase = token == nil ? .sinToken : .cargando
+        fase = token == nil ? Self.faseSinCuenta : .cargando
         tipoDia = UserDefaults.standard.string(forKey: "mypump_tipo_dia")
         if let token { prepararCuenta(token) }
     }
@@ -172,6 +172,14 @@ public final class ModeloApp {
         case vencido
         /// No se pudo revisar el link (sin red): no se cambia de cuenta sin saber si anda.
         case sinConexion
+        /// Un link de la app que llegó cortado o mal copiado (F10): antes la app se abría y no decía nada.
+        case malFormado
+    }
+
+    /// Sin cuenta guardada: si la última que hubo la dio de baja la base, se sigue explicando (F10, auditoría del 10/11).
+    /// Antes, al volver a abrir la app después de «Este link ya no sirve», se veía la bienvenida vacía sin decir qué pasó.
+    static var faseSinCuenta: Fase {
+        UserDefaults.standard.string(forKey: "mypump_token_invalido") == nil ? .sinToken : .tokenInvalido
     }
 
     /// Lo muestra la raíz y lo borra al cerrarlo.
@@ -182,7 +190,10 @@ public final class ModeloApp {
     /// cliente (el token que adoptó la migración): ahí no se le muestra nada.
     @discardableResult
     public func entrar(con texto: String, avisar: Bool = true) async -> Bool {
-        guard let t = FormatoToken.extraer(de: texto) else { return false }
+        guard let t = FormatoToken.extraer(de: texto) else {
+            if avisar, FormatoToken.pareceLink(texto) { avisoLink = .malFormado }
+            return false
+        }
         // El link puede llegar antes que la vuelta a primer plano: con una cuenta que no se pudo leer al nacer, no la pisa.
         _ = await retomarCuentaGuardada()
         entradas += 1
@@ -237,6 +248,7 @@ public final class ModeloApp {
 
     public func salir() {
         almacen.guardar(nil)
+        UserDefaults.standard.removeObject(forKey: "mypump_token_invalido")   // salió él: la próxima vez, la bienvenida
         borrarCodigosDelDisco()
         token = nil
         disco = nil
@@ -301,7 +313,7 @@ public final class ModeloApp {
             fase = .cargando
             await cargar()
         } else {
-            fase = .sinToken
+            fase = Self.faseSinCuenta
         }
     }
 
@@ -327,6 +339,27 @@ public final class ModeloApp {
         }
     }
 
+    /// La base dice que el link ya no sirve: se olvida (la cola y la carpeta quedan para el link nuevo de la misma persona).
+    private func marcarLinkCaido(_ t: String) {
+        if almacen.leer() == t { almacen.guardar(nil) }
+        UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
+        chat?.pararSondeo()
+        fase = .tokenInvalido
+    }
+
+    @ObservationIgnored private var revisandoCaida = false
+
+    /// F10: con la app abierta, la cola vio que el link dejó de andar. Antes se avisaba «sin conexión» para siempre; ahora se
+    /// confirma con la base (un `[]` sin error) y se muestra «Este link ya no está activo».
+    func alCaerElToken(_ t: String) async {
+        guard t == token, !esDemo, fase == .listo, !revisandoCaida else { return }
+        revisandoCaida = true
+        defer { revisandoCaida = false }
+        guard case .success(.lista(let filas)) = await cliente.llamar("mypump_get_cliente_info", ["p_token": .texto(t)]),
+              filas.isEmpty, t == token, !esDemo else { return }
+        marcarLinkCaido(t)
+    }
+
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
@@ -335,8 +368,10 @@ public final class ModeloApp {
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones, carpetaAudios: disco.url("audios"))
         let cola = Outbox(archivo: disco.url("outbox.json"), ventanaAbandono: Self.ventanaAbandono, retenerLegadas: true,
-                          retenerSwaps: Self.faltaDecidirSwaps(en: disco)) { op in
-            await escrituras.ejecutar(op)
+                          retenerSwaps: Self.faltaDecidirSwaps(en: disco)) { [weak self] op in
+            let r = await escrituras.ejecutar(op)
+            if case .tokenCaido = r { await self?.alCaerElToken(t) }
+            return r
         }
         UltimaCuenta.anotar(t)
         outbox = cola
@@ -455,10 +490,7 @@ public final class ModeloApp {
         ultimaFalla = nil
         // `[]` sin error = token inválido o revocado (la base no tira error: devuelve vacío).
         guard case .lista(let filas) = respuestaInfo, let primera = filas.first else {
-            if almacen.leer() == t { almacen.guardar(nil) }
-            UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
-            chat?.pararSondeo()
-            fase = .tokenInvalido
+            marcarLinkCaido(t)
             return
         }
         info = decodificar(ClienteInfo.self, primera)

@@ -44,10 +44,15 @@ struct RaizApp<Contenido: View>: View {
         }
         .animation(.snappy, value: modelo.fase)
         // Un link tocado con la cuenta andando que no se usó: se avisa y se sigue en la cuenta (hallazgo 11).
-        .alert("Este link ya no sirve", isPresented: avisoLink(.vencido)) {
+        .alert("Ese link ya no está activo", isPresented: avisoLink(.vencido)) {
             Button("Entendido", role: .cancel) {}
         } message: {
             Text("Seguís con tu cuenta.")
+        }
+        .alert("No pudimos abrir ese link", isPresented: avisoLink(.malFormado)) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text("Llegó cortado. Escribile a Mati y te manda uno nuevo.")
         }
         .alert("Sin conexión", isPresented: avisoLink(.sinConexion)) {
             Button("Entendido", role: .cancel) {}
