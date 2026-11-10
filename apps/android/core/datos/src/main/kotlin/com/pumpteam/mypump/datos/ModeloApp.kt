@@ -32,6 +32,9 @@ import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.reglas.SemanaRevision
 import com.pumpteam.mypump.reglas.MarcaComida
 import com.pumpteam.mypump.reglas.NormalizarDieta
+import com.pumpteam.mypump.reglas.MetasPlan
+import com.pumpteam.mypump.reglas.PumpDelDia
+import com.pumpteam.mypump.reglas.SaludVista
 import com.pumpteam.mypump.reglas.SwapLocal
 import com.pumpteam.mypump.reglas.SwapsDeComida
 import java.io.File
@@ -152,6 +155,44 @@ class ModeloApp(
     /** La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido). */
     private val _palanca = MutableStateFlow(PalancaRemota.deFabrica)
     val palanca: StateFlow<PalancaRemota> = _palanca.asStateFlow()
+
+    /** «Pump del día» (2.3.0): las fechas ya celebradas de esta cuenta (`metas.json` en su disco; en la demo, en memoria). */
+    private val _registroMetas = MutableStateFlow(PumpDelDia.Registro())
+    val registroMetas: StateFlow<PumpDelDia.Registro> = _registroMetas.asStateFlow()
+
+    /** Las metas del plan, o null con la palanca `metas_pasos` apagada o sin ninguna meta (planes viejos: no se inventa). */
+    fun metas(): MetasPlan? {
+        if (!_palanca.value.metasPasos) return null
+        val e = _dieta.value?.estructura ?: return null
+        return MetasPlan.desde(e).takeIf { !it.vacio }
+    }
+
+    /** El «Pump del día» de hoy con los pasos de Salud. null sin meta de pasos. `second`: hay de dónde sacar los pasos. */
+    fun pumpDelDia(hoy: String = FechaLocal.hoy()): Pair<PumpDelDia.Vista, Boolean>? {
+        val meta = metas()?.metaPasos ?: return null
+        val s = _salud.value
+        val filas = s?.salud?.value ?: emptyList()
+        val v = PumpDelDia.vista(PumpDelDia.pasosPorDia(filas), meta, hoy) ?: return null
+        val conectado = s?.conectado?.value == true || SaludVista.tieneReciente(filas, listOf("pasos"), 7, hoy)
+        return v to conectado
+    }
+
+    /** ¿Toca la celebración ahora? Una sola vez por día y por cuenta. */
+    fun debeCelebrarPump(v: PumpDelDia.Vista, hoy: String = FechaLocal.hoy()): Boolean =
+        PumpDelDia.debeCelebrar(_registroMetas.value, hoy, v.pasosHoy, v.meta)
+
+    /** Anota el día como celebrado (apenas empieza la animación, para que no se repita). */
+    fun marcarPumpCelebrado(hoy: String = FechaLocal.hoy()) {
+        val r = PumpDelDia.marcar(_registroMetas.value, hoy)
+        _registroMetas.value = r
+        disco?.guardar(ARCHIVO_METAS, ValorJson.objeto("celebrados" to ValorJson.Lista(r.celebrados.map { ValorJson.Texto(it) })))
+    }
+
+    private fun leerRegistroMetas(d: Disco): PumpDelDia.Registro {
+        val j = d.leer(ARCHIVO_METAS)?.let(ValorJson::desde) ?: return PumpDelDia.Registro()
+        val l = (j["celebrados"] as? ValorJson.Lista)?.elementos ?: return PumpDelDia.Registro()
+        return PumpDelDia.Registro(l.mapNotNull { (it as? ValorJson.Texto)?.valor })
+    }
 
     private val _swaps = MutableStateFlow<Map<String, SwapLocal>>(emptyMap())
 
@@ -476,6 +517,7 @@ class ModeloApp(
     private fun soltarCuentaEnMemoria() {
         token = null
         disco = null
+        _registroMetas.value = PumpDelDia.Registro()
         cacheCodigos = null
         outbox?.cerrar()
         outbox = null
@@ -516,6 +558,7 @@ class ModeloApp(
         val d = Disco(raizDisco, t)
         disco = d
         cacheCodigos = null
+        _registroMetas.value = leerRegistroMetas(d)
         val sesiones = SesionesDelDia(alcance)
         sesionesDelDia = sesiones
         val escrituras = Escrituras(cliente, t, sesiones)
@@ -1729,6 +1772,7 @@ class ModeloApp(
         const val CLAVE_TIPO_DIA = "mypump_tipo_dia"
         const val CLAVE_TOKEN_INVALIDO = "mypump_token_invalido"
         internal const val ARCHIVO_COPIA = "offline.json"
+        internal const val ARCHIVO_METAS = "metas.json"
         internal const val ARCHIVO_RECIENTES = "agregados_recientes.json"
         internal const val ARCHIVO_CODIGOS = "codigos_barras.json"
 
