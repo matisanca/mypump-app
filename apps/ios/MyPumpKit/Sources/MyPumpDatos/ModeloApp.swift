@@ -385,10 +385,30 @@ public final class ModeloApp {
         let chatAlEmpezar = chat
         let traidasAlEmpezar = chat?.ultimasTraidas
 
+        // F2 (auditoría 10/11): con el plan guardado en el teléfono, se muestra ya y se actualiza por detrás. Antes se
+        // miraba el logo hasta 20 a 40 segundos con mala señal, aunque el plan estuviera guardado.
+        var motorDeLaCopia: ModeloEntreno?
+        if fase == .cargando, let copia = disco?.leer(CopiaOffline.self, "offline.json") {
+            aplicar(copia, cargarMotor: false)
+            if let e = entreno {
+                motorDeLaCopia = e
+                cargaDelMotor = Task {
+                    await self.cargarCatalogo()
+                    await e.aplicarLegadoDelDisco()
+                    await e.cargar()
+                }
+            }
+            fase = .listo
+        }
+
         // Sin red o servicio caído: la copia offline, si hay. La cuenta sigue guardada.
         func sinRespuesta(_ clase: ErrorRPC.Clase) {
             ultimaFalla = clase
-            if let copia = disco?.leer(CopiaOffline.self, "offline.json") {
+            if motorDeLaCopia != nil || (fase == .listo && info != nil) {
+                // Ya se está mostrando la copia: solo se avisa que es la guardada.
+                desdeCache = true
+                fase = .listo
+            } else if let copia = disco?.leer(CopiaOffline.self, "offline.json") {
                 aplicar(copia)
                 desdeCache = true
                 fase = .listo
@@ -488,7 +508,8 @@ public final class ModeloApp {
         fase = .listo
         // Suplementación sin esperar a lo demás: decide si la pestaña está (con copia guardada ya se ve desde el arranque).
         if let suplementacion { Task { await suplementacion.cargar() } }
-        if let e = entreno {
+        // El motor que ya arrancó con la copia no se vuelve a cargar (si la rutina cambió, `prepararEntreno` la reemplazó).
+        if let e = entreno, e !== motorDeLaCopia {
             cargaDelMotor = Task {
                 await self.cargarCatalogo()
                 await e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
@@ -711,8 +732,8 @@ public final class ModeloApp {
         return revision.revisionDia
     }
 
-    private func aplicar(_ c: CopiaOffline) {
-        defer { prepararEntreno(); if let e = entreno { cargaDelMotor = Task { await e.cargar() } } }
+    private func aplicar(_ c: CopiaOffline, cargarMotor: Bool = true) {
+        defer { prepararEntreno(); if cargarMotor, let e = entreno { cargaDelMotor = Task { await e.cargar() } } }
         info = decodificar(ClienteInfo.self, c.info)
         rutina = c.rutina.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaNormalizada(c.dieta)
