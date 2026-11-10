@@ -36,6 +36,8 @@ enum Proveedor {
             // `-gimnasioDePrueba <escenario>`: el servidor del gimnasio de mentira y lo demás de las muestras (ver `GimnasioDePrueba`).
             else if let caso = d.string(forKey: "gimnasioDePrueba") { transporte = GimnasioDePrueba(doble: .escenario(caso), sinRutina: d.bool(forKey: "gimnasioSinRutina")) }
             else if let caso = d.string(forKey: "tecnicaDePrueba") { transporte = TecnicaDePrueba(doble: .escenario(caso)) }
+            // `-estudiosDePrueba <escenario>`: el servidor de estudios de mentira y lo demás de las muestras (ver `EstudiosDePrueba`).
+            else if let caso = d.string(forKey: "estudiosDePrueba") { transporte = EstudiosDePrueba(doble: .escenario(caso)) }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
             else if let caso = d.string(forKey: "recuperacionDePrueba") { transporte = RecuperacionDePrueba(caso: caso) }
             // `-semanaDePrueba completa|incompleta`: el check y las fotos de esta semana inventados (ver `SemanaDePrueba`).
@@ -73,6 +75,25 @@ private struct TecnicaDePrueba: Transporte {
         let ruta = pedido.url?.path ?? ""
         let f = ruta.components(separatedBy: "/").last ?? ""
         if ruta.contains("/tecnica/") || f.hasPrefix("mypump_tecnica") || f == "mypump_get_app_config" { return try await doble.enviar(pedido) }
+        var cuerpo = Data("[]".utf8)
+        if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
+           let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }
+        return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
+/// `-estudiosDePrueba`: lo de estudios lo contesta el doble (sin red), y la cuenta y el plan salen de las muestras.
+private struct EstudiosDePrueba: Transporte {
+    let doble: DobleEstudios
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = pedido.url?.path ?? ""
+        let f = ruta.components(separatedBy: "/").last ?? ""
+        if ruta.contains("/estudios/") || f.hasPrefix("mypump_estudios") || f == "mypump_get_app_config" || pedido.url?.host?.hasSuffix(".invalid") == true {
+            // `-estudiosLento YES`: cada subida tarda, para ver «Subiendo 1 de 3».
+            if ruta.hasSuffix("estudios/upload"), UserDefaults.standard.bool(forKey: "estudiosLento") { try? await Task.sleep(for: .seconds(4)) }
+            return try await doble.enviar(pedido)
+        }
         var cuerpo = Data("[]".utf8)
         if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
            let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }

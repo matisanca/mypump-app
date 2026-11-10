@@ -95,6 +95,9 @@ struct MisDatosView: View {
                     }
                     .accessibilityIdentifier("mis-datos-guia")
                 }
+                if let est = modelo.estudios, est.habilitado {
+                    FilaEstudiosMisDatos(modelo: est)
+                }
                 if let t = modelo.tecnica, t.habilitado || verTecnica {
                     Button { verTecnica = true } label: {
                         fila(TextosTecnica.entradaMisDatos, icono: "video.fill", color: .marcaTexto)
