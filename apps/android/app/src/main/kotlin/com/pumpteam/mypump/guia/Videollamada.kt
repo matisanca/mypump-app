@@ -363,12 +363,13 @@ fun TarjetaVideollamada(
                         .heightIn(min = 54.dp)
                         .clip(CircleShape)
                         .background(c.campo)
+                        // La etiqueta va antes: clearAndSetSemantics borra la de adentro.
+                        .testTag("videollamada-entrar-apagado")
                         // TalkBack: «Entrar, desactivado. Se habilita en 2 h 15 min».
                         .clearAndSetSemantics {
                             contentDescription = "Entrar, todavía no" + (cuenta?.let { ". $it" } ?: "")
                             stateDescription = "Desactivado"
-                        }
-                        .testTag("videollamada-entrar-apagado"),
+                        },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
@@ -383,7 +384,7 @@ fun TarjetaVideollamada(
                         fontWeight = FontWeight.SemiBold,
                         color = c.textoSecundario,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().clearAndSetSemantics {}.testTag("videollamada-cuenta"),
+                        modifier = Modifier.fillMaxWidth().testTag("videollamada-cuenta").clearAndSetSemantics {},
                     )
                 }
             }
@@ -474,6 +475,8 @@ private fun ColumnScope.ComoEntro(activa: Boolean) {
     var abierto by rememberSaveable { mutableStateOf(false) }
     val tono = if (activa) Color.White else c.marcaTexto
     val giro by animateFloatAsState(if (abierto) 180f else 0f, label = "giro-como-entro")
+    // Los signos dentro de un círculo fijo no crecen con la letra (con 2x se salían): son decorativos, TalkBack no los lee.
+    val (signo, numero) = with(LocalDensity.current) { 12.dp.toSp() to 13.dp.toSp() }
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
         Row(
             Modifier
@@ -486,7 +489,7 @@ private fun ColumnScope.ComoEntro(activa: Boolean) {
             horizontalArrangement = Arrangement.spacedBy(Espacio.xs),
         ) {
             Box(Modifier.size(20.dp).border(1.6.dp, tono, CircleShape), contentAlignment = Alignment.Center) {
-                Text("?", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = tono)
+                Text("?", fontSize = signo, lineHeight = signo, fontWeight = FontWeight.Bold, color = tono, modifier = Modifier.clearAndSetSemantics {})
             }
             Text("¿Cómo entro?", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = tono, modifier = Modifier.weight(1f))
             Icon(Iconos.Chevron, contentDescription = null, tint = tono, modifier = Modifier.size(18.dp).rotate(90f + giro))
@@ -499,7 +502,7 @@ private fun ColumnScope.ComoEntro(activa: Boolean) {
                             Modifier.size(24.dp).clip(CircleShape).background(if (activa) Color.White.copy(alpha = 0.22f) else c.marcaSuave),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("${i + 1}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = tono, modifier = Modifier.clearAndSetSemantics {})
+                            Text("${i + 1}", fontSize = numero, lineHeight = numero, fontWeight = FontWeight.Bold, color = tono, modifier = Modifier.clearAndSetSemantics {})
                         }
                         Text(t, style = MaterialTheme.typography.bodyMedium, color = if (activa) Color.White else c.texto, modifier = Modifier.weight(1f))
                     }
