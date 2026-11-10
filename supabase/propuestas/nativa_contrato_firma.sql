@@ -298,6 +298,26 @@ CREATE TABLE contrato.avisos (
 );
 CREATE INDEX avisos_pendientes ON contrato.avisos (creado_en) WHERE estado <> 'enviado';
 
+-- ── Altas frenadas: el formulario llegó sin un dato obligatorio (en Argentina: plan, objetivo o precio) y el contrato
+-- no se emitió. No se frena en silencio: queda acá, se avisa qué falta y se vuelve a avisar hasta que se resuelva. ──
+CREATE TABLE contrato.altas_frenadas (
+  alta_ref        TEXT PRIMARY KEY,
+  tipo            TEXT NOT NULL CHECK (tipo IN ('servicio_ar', 'servicio_ext', 'consentimiento_ar')),
+  nombre          TEXT,
+  email           TEXT NOT NULL,
+  whatsapp        TEXT,
+  faltan          TEXT[] NOT NULL CHECK (cardinality(faltan) > 0),
+  creado_en       TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  visto_en        TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),   -- última vez que el formulario llegó incompleto
+  avisos          INTEGER NOT NULL DEFAULT 0,
+  ultimo_aviso_en TIMESTAMPTZ,
+  tomado_en       TIMESTAMPTZ,
+  respuesta       TEXT,
+  resuelto_en     TIMESTAMPTZ,
+  resultado       TEXT            -- 'emitido' (llegó completo y nació el contrato) o el motivo del descarte a mano
+);
+CREATE INDEX altas_frenadas_abiertas ON contrato.altas_frenadas (visto_en) WHERE resuelto_en IS NULL;
+
 -- ── Autorización del prestador y del médico para estampar su firma: solo agrega ──
 -- Sin una fila vigente, el renglón de su firma queda en blanco, como hoy.
 CREATE TABLE contrato.autorizaciones (
@@ -378,6 +398,20 @@ BEGIN
   END IF;
 END $$;
 
+-- El contrato de esta alta (o de esta persona: mismo correo o mismo WhatsApp) existe: lo que estaba frenado por un
+-- dato faltante queda resuelto y se deja de avisar.
+CREATE FUNCTION contrato.altas_frenadas_resolver(p_ref TEXT, p_email TEXT, p_whatsapp TEXT, p_tipo TEXT)
+RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = contrato, pg_catalog AS $$
+DECLARE v_n INTEGER; v_wa TEXT := right(regexp_replace(coalesce(p_whatsapp, ''), '\D', '', 'g'), 10);
+BEGIN
+  UPDATE contrato.altas_frenadas SET resuelto_en = clock_timestamp(), resultado = 'emitido', tomado_en = NULL
+   WHERE resuelto_en IS NULL
+     AND (alta_ref = p_ref OR email = lower(btrim(coalesce(p_email, ''))) OR (length(v_wa) = 10 AND right(whatsapp, 10) = v_wa))
+     AND (tipo = p_tipo OR (tipo LIKE 'servicio%' AND p_tipo LIKE 'servicio%'));
+  GET DIAGNOSTICS v_n = ROW_COUNT;
+  RETURN v_n;
+END $$;
+
 -- Alta de un documento. Repetir el alta (misma `alta_ref` y tipo) devuelve el que ya existe: no hay dos links vivos.
 CREATE FUNCTION contrato.crear_documento(
   p_id UUID, p_tipo TEXT, p_plantilla_id TEXT, p_alta_ref TEXT, p_lead_id BIGINT, p_nombre TEXT, p_email TEXT, p_whatsapp TEXT,
@@ -413,6 +447,8 @@ BEGIN
           nullif(btrim(coalesce(p_pais, '')), ''), p_variante, p_campos, 1, p_token_sha256, p_pdf_base_path, p_pdf_base_sha256, p_reemplaza)
   RETURNING * INTO v_doc;
   PERFORM contrato.registrar_evento(p_id, 'creado', p_ip, p_ua, p_datos_evento);
+  -- si esta alta (o esta persona) estaba frenada por un dato faltante, quedó resuelta: se deja de avisar
+  PERFORM contrato.altas_frenadas_resolver(p_alta_ref, p_email, p_whatsapp, p_tipo);
   RETURN jsonb_build_object('resultado', 'creado', 'documento', contrato.doc_json(v_doc));
 END $$;
 
@@ -786,7 +822,102 @@ BEGIN
   RETURN v;
 END $$;
 
--- Lo que quedó a medias y hay que mirar: sin copia al firmante, sin sello o sin aviso, pasado un rato.
+-- Altas frenadas
+-- Huella corta de la referencia del alta: lo que sale del servicio (cadena, avisos) nunca lleva la referencia cruda.
+CREATE FUNCTION contrato.huella_alta(p_ref TEXT) RETURNS TEXT
+LANGUAGE sql IMMUTABLE SET search_path = contrato, pg_catalog AS $$
+  SELECT left(encode(sha256(convert_to(coalesce(p_ref, ''), 'UTF8')), 'hex'), 16);
+$$;
+
+-- Anota que el alta no se emitió y qué le falta. Repetir el mismo envío no vuelve a avisar antes de tiempo; si cambia
+-- lo que falta (o estaba cerrada y vuelve a llegar incompleta), se avisa de nuevo enseguida.
+CREATE FUNCTION contrato.alta_frenada(p_ref TEXT, p_tipo TEXT, p_nombre TEXT, p_email TEXT, p_whatsapp TEXT, p_faltan TEXT[],
+                                      p_ip TEXT, p_ua TEXT)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = contrato, pg_catalog AS $$
+DECLARE v contrato.altas_frenadas; v_otra contrato.altas_frenadas; v_nueva BOOLEAN := false; v_email TEXT := lower(btrim(p_email));
+BEGIN
+  PERFORM pg_advisory_xact_lock(74260013, hashtext(v_email));
+  SELECT * INTO v FROM contrato.altas_frenadas WHERE alta_ref = p_ref FOR UPDATE;
+  IF NOT FOUND THEN
+    -- El formulario reenviado otro día trae otra referencia: es la misma persona. La frenada anterior se cierra y
+    -- esta hereda su cuenta de avisos (si falta lo mismo no se avisa de nuevo antes de tiempo): nunca dos avisando.
+    SELECT * INTO v_otra FROM contrato.altas_frenadas
+     WHERE resuelto_en IS NULL AND email = v_email AND (tipo = p_tipo OR (tipo LIKE 'servicio%' AND p_tipo LIKE 'servicio%'))
+     ORDER BY visto_en DESC LIMIT 1;
+    v_nueva := v_otra.alta_ref IS NULL OR v_otra.faltan IS DISTINCT FROM p_faltan;
+    UPDATE contrato.altas_frenadas SET resuelto_en = clock_timestamp(), resultado = 'reemplazada', tomado_en = NULL
+     WHERE resuelto_en IS NULL AND email = v_email AND (tipo = p_tipo OR (tipo LIKE 'servicio%' AND p_tipo LIKE 'servicio%'));
+    INSERT INTO contrato.altas_frenadas (alta_ref, tipo, nombre, email, whatsapp, faltan, creado_en, avisos, ultimo_aviso_en)
+    VALUES (p_ref, p_tipo, nullif(btrim(coalesce(p_nombre, '')), ''), v_email,
+            nullif(regexp_replace(coalesce(p_whatsapp, ''), '\D', '', 'g'), ''), p_faltan,
+            coalesce(v_otra.creado_en, clock_timestamp()), coalesce(v_otra.avisos, 0),
+            CASE WHEN v_nueva THEN NULL ELSE v_otra.ultimo_aviso_en END)
+    RETURNING * INTO v;
+  ELSE
+    v_nueva := v.resuelto_en IS NOT NULL OR v.faltan IS DISTINCT FROM p_faltan OR v.tipo <> p_tipo;
+    UPDATE contrato.altas_frenadas
+       SET tipo = p_tipo, nombre = nullif(btrim(coalesce(p_nombre, '')), ''), email = v_email,
+           whatsapp = nullif(regexp_replace(coalesce(p_whatsapp, ''), '\D', '', 'g'), ''), faltan = p_faltan,
+           visto_en = clock_timestamp(), resuelto_en = NULL, resultado = NULL,
+           ultimo_aviso_en = CASE WHEN v_nueva THEN NULL ELSE ultimo_aviso_en END,
+           tomado_en = CASE WHEN v_nueva THEN NULL ELSE tomado_en END
+     WHERE alta_ref = p_ref RETURNING * INTO v;
+  END IF;
+  IF v_nueva THEN  -- sin datos de la persona (la referencia del alta puede traer el correo: va su huella) y qué faltó
+    PERFORM contrato.registrar_evento(NULL, 'alta_frenada', p_ip, p_ua,
+                                      jsonb_build_object('alta', contrato.huella_alta(p_ref), 'tipo', p_tipo, 'faltan', to_jsonb(p_faltan))::TEXT);
+  END IF;
+  RETURN to_jsonb(v);
+END $$;
+
+-- Las que toca avisar: abiertas, sin aviso todavía o con el último hace más de `p_horas`. Se avisa hasta `p_dias`
+-- después de la última vez que el formulario llegó incompleto; pasado eso sigue contando en /salud y en el parte diario.
+CREATE FUNCTION contrato.altas_frenadas_para_avisar(p_horas INTEGER, p_dias INTEGER, p_tope INTEGER) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = contrato, pg_catalog AS $$
+DECLARE v JSONB;
+BEGIN
+  WITH t AS (
+    SELECT alta_ref FROM contrato.altas_frenadas
+     WHERE resuelto_en IS NULL
+       AND (ultimo_aviso_en IS NULL OR ultimo_aviso_en <= clock_timestamp() - make_interval(hours => greatest(1, p_horas)))
+       AND visto_en > clock_timestamp() - make_interval(days => greatest(1, p_dias))
+       AND (tomado_en IS NULL OR tomado_en < clock_timestamp() - interval '5 minutes')
+     ORDER BY creado_en LIMIT greatest(1, least(p_tope, 200)) FOR UPDATE SKIP LOCKED),
+  u AS (UPDATE contrato.altas_frenadas a SET tomado_en = clock_timestamp() FROM t WHERE a.alta_ref = t.alta_ref RETURNING a.*)
+  SELECT coalesce(jsonb_agg(to_jsonb(u) || jsonb_build_object('huella', contrato.huella_alta(u.alta_ref)) ORDER BY u.creado_en), '[]'::jsonb) INTO v FROM u;
+  RETURN v;
+END $$;
+
+-- Resultado del aviso. Si salió, cuenta y arranca la espera hasta el próximo; si no, se reintenta a los 5 minutos.
+-- Si mientras el aviso viajaba el formulario llegó con otra cosa faltante (la toma se soltó), no se pisa: se avisa lo nuevo.
+CREATE FUNCTION contrato.alta_frenada_avisada(p_ref TEXT, p_ok BOOLEAN, p_respuesta TEXT)
+RETURNS VOID LANGUAGE sql SECURITY DEFINER SET search_path = contrato, pg_catalog AS $$
+  UPDATE contrato.altas_frenadas
+     SET avisos = avisos + CASE WHEN p_ok THEN 1 ELSE 0 END,
+         ultimo_aviso_en = CASE WHEN p_ok THEN clock_timestamp() ELSE ultimo_aviso_en END,
+         tomado_en = CASE WHEN p_ok THEN NULL ELSE tomado_en END,
+         respuesta = left(coalesce(p_respuesta, ''), 500)
+   WHERE alta_ref = p_ref AND resuelto_en IS NULL AND tomado_en IS NOT NULL;
+$$;
+
+-- Cierre a mano (la persona no va a seguir, o se resolvió por otro lado), por referencia o por su huella (la que
+-- trae el aviso). Deja de avisar. Queda en la cadena.
+CREATE FUNCTION contrato.alta_frenada_descartar(p_ref TEXT, p_motivo TEXT, p_ip TEXT, p_ua TEXT)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = contrato, pg_catalog AS $$
+DECLARE v_huella TEXT;
+BEGIN
+  UPDATE contrato.altas_frenadas
+     SET resuelto_en = clock_timestamp(), resultado = 'descartada: ' || left(coalesce(nullif(btrim(p_motivo), ''), 'sin motivo'), 200), tomado_en = NULL
+   WHERE (alta_ref = p_ref OR contrato.huella_alta(alta_ref) = p_ref) AND resuelto_en IS NULL
+  RETURNING contrato.huella_alta(alta_ref) INTO v_huella;
+  IF NOT FOUND THEN RETURN false; END IF;
+  -- el motivo (texto libre) queda en la tabla, no en la cadena
+  PERFORM contrato.registrar_evento(NULL, 'alta_descartada', p_ip, p_ua, jsonb_build_object('alta', v_huella)::TEXT);
+  RETURN true;
+END $$;
+
+-- Lo que quedó a medias y hay que mirar: sin copia al firmante, sin sello o sin aviso, pasado un rato; y las altas
+-- que siguen frenadas por un dato faltante.
 CREATE FUNCTION contrato.pendientes_de_atencion(p_minutos INTEGER) RETURNS JSONB
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = contrato, pg_catalog AS $$
   SELECT jsonb_build_object(
@@ -797,7 +928,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = contrato, pg_catalog AS $
                    WHERE d.estado IN ('firmado', 'revocado') AND d.firmado_en < clock_timestamp() - make_interval(mins => p_minutos)
                      AND NOT EXISTS (SELECT 1 FROM contrato.sellos s WHERE s.objeto = 'documento' AND s.sha256 = d.pdf_final_sha256)),
     'sin_aviso', (SELECT coalesce(jsonb_agg(a.id), '[]'::jsonb) FROM contrato.avisos a
-                   WHERE a.estado <> 'enviado' AND a.creado_en < clock_timestamp() - make_interval(mins => p_minutos)));
+                   WHERE a.estado <> 'enviado' AND a.creado_en < clock_timestamp() - make_interval(mins => p_minutos)),
+    'altas_frenadas', (SELECT coalesce(jsonb_agg(f.alta_ref), '[]'::jsonb) FROM contrato.altas_frenadas f
+                        WHERE f.resuelto_en IS NULL AND f.creado_en < clock_timestamp() - make_interval(mins => p_minutos)));
 $$;
 
 -- ═════════════ Puertas de lectura en public ═════════════
@@ -907,6 +1040,7 @@ ALTER TABLE contrato.sellos         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contrato.correos        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contrato.avisos         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contrato.autorizaciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contrato.altas_frenadas ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON ALL TABLES IN SCHEMA contrato FROM PUBLIC;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA contrato FROM PUBLIC;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA contrato TO firma_srv;

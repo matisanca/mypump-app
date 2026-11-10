@@ -13,7 +13,7 @@ def web(cfg, srv):
 
 
 def test_interno_exige_el_secreto(web, alta):
-    for ruta in ("crear", "reenviar", "anular", "estado", "despachar"):
+    for ruta in ("crear", "reenviar", "anular", "estado", "despachar", "descartar_alta"):
         assert web.post(f"/api/interno/{ruta}", json=alta()).status_code == 401
         assert web.post(f"/api/interno/{ruta}", json=alta(), headers={"X-Pump-Firma-Secreto": "x" * 40}).status_code == 401
 
@@ -89,3 +89,12 @@ def test_freno_por_ip(web):
     codigos = [web.post("/api/doc", json={"t": "0" * 48}, headers={"cf-connecting-ip": "9.9.9.9"}).status_code for _ in range(95)]
     assert codigos[0] == 404 and codigos[-1] == 429
     assert web.post("/api/doc", json={"t": "0" * 48}, headers={"cf-connecting-ip": "8.8.8.8"}).status_code == 404
+
+
+def test_alta_incompleta_por_http_avisa_enseguida(web, alta, bot):
+    a = alta(precio="")
+    r = web.post("/api/interno/crear", json=a, headers=INT).json()
+    assert r["ok"] is False and r["errores"][0]["campos"] == ["cPrecio"]
+    avisos = [x["cuerpo"] for x in bot if x["cuerpo"].get("evento") == "alta_frenada" and x["cuerpo"]["cliente"]["email"] == a["email"]]
+    assert len(avisos) == 1 and avisos[0]["alta"]["faltan"] == ["el precio"]
+    assert web.post("/api/interno/descartar_alta", json={"alta_ref": a["alta_ref"], "motivo": "prueba"}, headers=INT).json() == {"ok": True}

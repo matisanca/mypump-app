@@ -8,7 +8,7 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 
-EVENTOS = ("firmado", "revocado", "baja_pedida")
+EVENTOS = ("firmado", "revocado", "baja_pedida", "alta_frenada")
 TIPOS = {"servicio_ar": "el contrato de coaching", "servicio_ext": "el contrato de coaching",
          "consentimiento_ar": "el consentimiento de atención médica"}
 RUTA_LOG = os.path.expanduser("~/pump-bot-contrato-firma.jsonl")
@@ -22,7 +22,14 @@ def validar(payload: dict):
     if payload.get("evento") not in EVENTOS:
         return False, "evento"
     doc, cli = payload.get("documento"), payload.get("cliente")
-    if not isinstance(doc, dict) or doc.get("tipo") not in TIPOS or not doc.get("id"):
+    if payload["evento"] == "alta_frenada":
+        # el contrato NO se emitió (al formulario le falta un dato): no hay documento, hay un alta y lo que le falta
+        alta = payload.get("alta")
+        if not isinstance(alta, dict) or alta.get("tipo") not in TIPOS or not alta.get("ref"):
+            return False, "alta"
+        if not isinstance(alta.get("faltan"), list) or not alta["faltan"] or not all(isinstance(x, str) and x.strip() for x in alta["faltan"]):
+            return False, "faltan"
+    elif not isinstance(doc, dict) or doc.get("tipo") not in TIPOS or not doc.get("id"):
         return False, "documento"
     if not isinstance(cli, dict) or not str(cli.get("nombre") or "").strip():
         return False, "cliente"
@@ -41,8 +48,10 @@ def ya_visto(aviso_id: str, ruta: str = RUTA_LOG) -> bool:
 
 def anotar(payload: dict, ruta: str = RUTA_LOG) -> None:
     """Sin datos de contacto: id del aviso, evento, documento y lead."""
-    fila = {"aviso_id": payload["aviso_id"], "evento": payload["evento"], "documento": payload["documento"]["id"],
-            "tipo": payload["documento"]["tipo"], "lead_id": (payload.get("cliente") or {}).get("lead_id"),
+    doc = payload.get("documento") or {}
+    alta = payload.get("alta") or {}
+    fila = {"aviso_id": payload["aviso_id"], "evento": payload["evento"], "documento": doc.get("id") or alta.get("ref"),
+            "tipo": doc.get("tipo") or alta.get("tipo"), "lead_id": (payload.get("cliente") or {}).get("lead_id"),
             "recibido": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     with open(ruta, "a", encoding="utf-8") as f:
         f.write(json.dumps(fila, ensure_ascii=False) + "\n")
@@ -58,6 +67,8 @@ def _cuando(iso: str) -> str:
 
 def texto_para_mati(payload: dict) -> str:
     nombre = " ".join(str(payload["cliente"]["nombre"]).split())[:80]
+    if payload["evento"] == "alta_frenada":
+        return _texto_frenada(nombre, payload)
     que = TIPOS[payload["documento"]["tipo"]]
     estado = payload.get("estado") or {}
     cuando = _cuando(payload.get("cuando"))
@@ -82,6 +93,19 @@ def texto_para_mati(payload: dict) -> str:
             + (f", a {dias:.0f} días de la firma" if isinstance(dias, (int, float)) else "")
             + (f". Motivo: {motivo}" if motivo else ".")
             + " La agenda queda frenada hasta que lo resuelvas. Hay que contestarle dentro de las 24 h.")
+
+
+def _texto_frenada(nombre: str, payload: dict) -> str:
+    alta = payload["alta"]
+    faltan = [" ".join(x.split())[:40] for x in alta["faltan"]][:6]
+    lista = faltan[0] if len(faltan) == 1 else ", ".join(faltan[:-1]) + " y " + faltan[-1]
+    n = alta.get("aviso_n") if isinstance(alta.get("aviso_n"), int) else 1
+    cuando = _cuando(alta.get("desde") or payload.get("cuando"))
+    if n <= 1:
+        t = f"Ojo: el contrato de {nombre} NO salió. Al formulario del closer le falta {lista} (llegó {cuando})."
+    else:
+        t = f"Sigue sin salir el contrato de {nombre}: al formulario le falta {lista} (llegó {cuando}, aviso {n})."
+    return t + " Hay que completarlo y reenviar el formulario. Hasta entonces no recibe el contrato para firmar."
 
 
 def procesar(payload: dict, ruta: str = RUTA_LOG):

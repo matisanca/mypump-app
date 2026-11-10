@@ -143,13 +143,14 @@ def bot():
             estado = 500 if getattr(recibidos, "fallar", False) else 200
             self.send_response(estado)
             self.end_headers()
-            self.wfile.write(b"{}")
+            self.wfile.write(getattr(recibidos, "respuesta", b'{"status": "ok"}'))
 
         def log_message(self, *a):
             pass
 
     class Lista(list):
         fallar = False
+        respuesta = b'{"status": "ok"}'
     recibidos = Lista()
     srv = HTTPServer(("127.0.0.1", 0), H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -187,6 +188,7 @@ def cfg(db_url, smtp, bot, tmp_path):
 def srv(cfg, sellos_falsos, smtp, bot):
     smtp.rechazar = False
     bot.fallar = False
+    bot.respuesta = b'{"status": "ok"}'
     return Servicio(cfg, Base(cfg.db_url), Almacen(cfg.datos), Correo(cfg.smtp_host, cfg.smtp_puerto, "", "", cfg.remitente, cfg.smtp_seguro))
 
 

@@ -203,9 +203,16 @@ def crear_app(cfg: Config = None, servicio: Servicio = None, exigir_config: bool
         if not interno(req):
             return JSONResponse({"error": "no autorizado"}, status_code=401)
         r = await run_in_threadpool(servicio.crear, await cuerpo(req), *origen(req))
-        if r.get("documentos"):
-            despachar_luego(None)  # sale el correo con el enlace
+        if r.get("documentos") or r.get("errores"):
+            despachar_luego(None)  # sale el correo con el enlace, o el aviso de que el alta quedó frenada
         return r
+
+    @app.post("/api/interno/descartar_alta")
+    async def interno_descartar_alta(req: Request):
+        if not interno(req):
+            return JSONResponse({"error": "no autorizado"}, status_code=401)
+        d = await cuerpo(req)
+        return await run_in_threadpool(servicio.descartar_alta_frenada, str(d.get("alta_ref", "")), str(d.get("motivo", "")), *origen(req))
 
     @app.post("/api/interno/reenviar")
     async def interno_reenviar(req: Request):

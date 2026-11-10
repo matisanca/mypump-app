@@ -10,7 +10,7 @@ def _leer_env(ruta: str) -> dict:
             l = l.strip()
             if l and not l.startswith("#") and "=" in l:
                 k, v = l.split("=", 1)
-                datos[k.strip()] = v.strip().strip('"').strip("'")
+                datos[k.strip()] = v.split(" #", 1)[0].strip().strip('"').strip("'")  # admite comentario al final de la línea
     return datos
 
 
@@ -35,6 +35,9 @@ class Config:
         self.cco_copia = [x.strip() for x in g("FIRMA_CCO_COPIA").split(",") if x.strip()]
         self.custodia = g("FIRMA_CUSTODIA_EMAIL")
         self.aviso_interno = g("FIRMA_AVISO_INTERNO_EMAIL")
+        # altas frenadas por un dato faltante: cada cuánto se repite el aviso y hasta cuándo
+        self.frenada_repite_horas = int(g("FIRMA_FRENADA_REPITE_HORAS", "24"))
+        self.frenada_dias = int(g("FIRMA_FRENADA_DIAS", "14"))
         self.bot_url = g("FIRMA_BOT_URL")
         self.bot_secreto = g("FIRMA_BOT_SECRETO")
         self.bot_cabecera = g("FIRMA_BOT_CABECERA", "X-Pump-Onboarding-Secret")

@@ -44,6 +44,25 @@ ARCHIVO = {"servicio_ar": "Contrato Pump Team", "servicio_ext": "Contrato Pump T
 PROPOSITO = {"firma": "firmar tu {doc}", "revocacion": "revocar tu {doc}", "baja": "pedir la revocación o la baja de tu {doc}"}
 
 
+# Cómo se le dice a Mati lo que le falta al formulario (el contrato no se emite sin esto).
+DATO_QUE_FALTA = {"cPlan": "el plan", "cObjetivo": "el objetivo", "cPrecio": "el precio", "cNombre1": "el nombre", "mNombre": "el nombre"}
+
+
+def lista(cosas) -> str:
+    cosas = list(cosas)
+    return cosas[0] if len(cosas) == 1 else ", ".join(cosas[:-1]) + " y " + cosas[-1]
+
+
+def mail_alta_frenada(nombre: str, email: str, tipo: str, faltan: list, n: int, desde_ar: str, huella: str = "") -> tuple:
+    asunto = f"[pump-firma] contrato sin emitir: falta {lista(faltan)}"
+    texto = (f"El {NOMBRE_DOC[tipo]} de {nombre} ({email}) NO se emitió: al formulario del closer le falta {lista(faltan)}.\n"
+             f"Llegó incompleto el {desde_ar}. Aviso número {n}.\n\n"
+             "Qué hacer: completar ese dato en el formulario y volver a enviarlo. Cuando llega completo, el contrato sale solo "
+             "y este aviso deja de repetirse.\nMientras tanto la persona no recibe un contrato nuevo para firmar.\n"
+             f"Si no va a seguir, se cierra con /api/interno/descartar_alta (alta_ref: {huella}).\n")
+    return asunto, texto
+
+
 def mail_invitacion(nombre: str, tipo: str, url_doc: str) -> tuple:
     doc = NOMBRE_DOC[tipo]
     asunto = f"Tu {doc} de Pump Team para leer y firmar"

@@ -107,6 +107,8 @@ class Servicio:
             vivos = {d["tipo"]: d for d in s.f("docs_por_alta", ref)}
             for tipo in tipos:
                 reemplazar_id = reemplaza if (reemplaza and tipo == alta.get("_tipo_reemplazo")) else None
+                campos = reglas.campos_de_alta(tipo, alta)
+                falta = reglas.faltantes(tipo, campos)
                 if tipo in vivos and not reemplazar_id:
                     vivo = vivos[tipo]
                     igual = vivo["campos"] == reglas.campos_de_alta(tipo, alta) and vivo["firmante_email"].lower() == email
@@ -115,24 +117,32 @@ class Servicio:
                         salida.append(self._resumen(vivo, "ya_firmado"))
                         if not igual:
                             errores.append({"tipo": tipo, "error": "ya_firmado_con_otros_datos"})
+                        self._frenada_resuelta(s, ref, vivo, tipo)
                         continue
                     if igual:
                         if invitar:
                             s.f("invitar", vivo["id"])  # por si el primer intento se cortó antes de dejar la invitación
                         salida.append(self._resumen(vivo, "ya_existia"))
+                        self._frenada_resuelta(s, ref, vivo, tipo)
                         continue
-                    reemplazar_id = vivo["id"]  # el formulario se reenvió corregido: el pendiente viejo se anula y nace otro
-                elif not reemplazar_id:
+                    if not falta:  # incompleto no reemplaza nada: el enlace que ya tiene sigue sirviendo
+                        reemplazar_id = vivo["id"]  # el formulario se reenvió corregido: el pendiente viejo se anula y nace otro
+                elif not reemplazar_id and not falta:
                     for viejo in s.f("pendientes_de_email", email, tipo, ref):  # otro envío anterior, sin firmar
                         s.f("anular", viejo, "reemplazado por un alta nueva", ip, ua)
                 pl = s.f("plantilla_vigente", tipo)
                 if not pl:
                     errores.append({"tipo": tipo, "error": "sin_plantilla_vigente"})
                     break
-                campos = reglas.campos_de_alta(tipo, alta)
-                falta = reglas.faltantes(tipo, campos)
                 if falta:
                     errores.append({"tipo": tipo, "error": "faltan_datos", "campos": falta})
+                    # No se frena en silencio: queda anotada y se avisa qué falta, hasta que llegue completa.
+                    try:
+                        s.f("alta_frenada", ref, tipo, campos.get(_k_nombre(tipo)) or "", email,
+                            reglas.limpiar_texto(alta.get("whatsapp", ""), 40), list(falta), ip, ua)
+                    except Exception as e:  # la respuesta al formulario sale igual; esto tiene que verse en el log
+                        errores[-1]["sin_anotar"] = True
+                        print(f"[pump-firma] NO pude anotar el alta frenada: {type(e).__name__}: {e}", flush=True)
                     break  # sin contrato no sale el consentimiento, como hoy
                 doc_id = str(uuid.uuid4())
                 pdf = render.pdf_documento(pl["fuente_md"], self._valores_base(tipo, campos))
@@ -153,6 +163,13 @@ class Servicio:
                     s.f("invitar", r["documento"]["id"])
                 salida.append(self._resumen(r["documento"], r["resultado"]))
         return {"ok": not errores, "alta_ref": ref, "documentos": salida, "errores": errores}
+
+    def _frenada_resuelta(self, s, ref, doc, tipo):
+        """El documento de esta alta existe: si había quedado una frenada abierta (un reenvío incompleto), se cierra."""
+        try:
+            s.f("altas_frenadas_resolver", ref, doc["firmante_email"], doc.get("firmante_whatsapp") or "", tipo)
+        except Exception as e:
+            print(f"[pump-firma] no pude cerrar el alta frenada: {type(e).__name__}: {e}", flush=True)
 
     def _resumen(self, doc, resultado=None) -> dict:
         r = {"id": doc["id"], "tipo": doc["tipo"], "estado": doc["estado"], "url": self.url_doc(doc),
@@ -469,7 +486,67 @@ class Servicio:
                 ok, resp = self._avisar(s, a)
                 s.f("aviso_resultado", a["id"], ok, resp)
                 res["avisos" if ok else "avisos_fallan"] += 1
+            if doc_id is None:
+                res.update(self._avisar_frenadas(s))
         return res
+
+    # ── altas que no se emitieron porque al formulario le falta un dato ──
+    def _avisar_frenadas(self, s) -> dict:
+        """Avisa (bot → WhatsApp de Mati; si no sale, correo interno) cada alta frenada: enseguida la primera vez y
+        después cada `frenada_repite_horas` mientras siga sin resolverse."""
+        res = {"frenadas_avisadas": 0, "frenadas_fallan": 0}
+        try:  # nada de esto puede frenar el resto del despacho (correos, sellos, avisos de firma)
+            pendientes = s.f("altas_frenadas_para_avisar", self.cfg.frenada_repite_horas, self.cfg.frenada_dias, 50)
+        except Exception as e:
+            print(f"[pump-firma] no pude leer las altas frenadas: {type(e).__name__}: {e}", flush=True)
+            return {"frenadas_avisadas": 0, "frenadas_fallan": 1}
+        for a in pendientes:
+            try:
+                ok, resp = self._avisar_frenada(a)
+            except Exception as e:
+                ok, resp = False, f"{type(e).__name__}: {e}"[:300]
+            try:
+                s.f("alta_frenada_avisada", a["alta_ref"], ok, resp)
+            except Exception as e:
+                ok = False
+                print(f"[pump-firma] no pude anotar el aviso del alta frenada: {type(e).__name__}: {e}", flush=True)
+            res["frenadas_avisadas" if ok else "frenadas_fallan"] += 1
+        return res
+
+    def _avisar_frenada(self, a):
+        n = a["avisos"] + 1
+        faltan = [textos.DATO_QUE_FALTA.get(k, k) for k in a["faltan"]]
+        nombre = a.get("nombre") or a["email"]
+        # `huella` y no la referencia cruda: la del formulario trae el correo, y el bot anota el id del aviso
+        cuerpo = {"action": "contrato_firma", "evento": "alta_frenada", "aviso_id": f"frenada:{a['huella']}:{n}",
+                  "cliente": {"nombre": nombre, "email": a["email"], "whatsapp": a.get("whatsapp")},
+                  "alta": {"ref": a["huella"], "tipo": a["tipo"], "faltan": faltan, "aviso_n": n, "desde": a["visto_en"]},
+                  "cuando": a["visto_en"]}
+        resp = "bot sin configurar"
+        if self.cfg.bot_url:
+            req = urllib.request.Request(self.cfg.bot_url, data=json.dumps(cuerpo, ensure_ascii=False, default=str).encode(), method="POST",
+                                         headers={"Content-Type": "application/json", self.cfg.bot_cabecera: self.cfg.bot_secreto})
+            try:
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    # 200 solo no alcanza: un bot que no conoce este aviso podría contestar 200 y no avisarle a nadie
+                    try:
+                        estado = json.loads(r.read(2000) or b"{}").get("status")
+                    except Exception:
+                        estado = None
+                    if r.status == 200 and estado in ("ok", "repetido"):
+                        return True, f"bot: {estado}"
+                    resp = f"bot: HTTP {r.status}, status={estado!r}"
+            except Exception as e:
+                resp = f"bot: {type(e).__name__}: {e}"[:200]
+        if self.cfg.aviso_interno and self.correo.configurado():  # el bot no lo recibió: que igual alguien se entere
+            asunto, texto = textos.mail_alta_frenada(nombre, a["email"], a["tipo"], faltan, n, render.hora_ar(_ts(a["visto_en"])), a["huella"])
+            r = self.correo.enviar(self.correo.armar(self.cfg.aviso_interno, asunto, texto))
+            return bool(r["ok"]), f"{resp}; correo interno: {'enviado' if r['ok'] else r['respuesta']}"[:300]
+        return False, resp
+
+    def descartar_alta_frenada(self, alta_ref: str, motivo: str, ip: str, ua: str) -> dict:
+        with self.base.conexion() as s:
+            return {"ok": bool(s.f("alta_frenada_descartar", reglas.limpiar_texto(alta_ref, 200), reglas.limpiar_texto(motivo, 200), ip, ua))}
 
     def _armar_correo(self, s, c):
         doc = s.f("doc_por_id", c["documento_id"])

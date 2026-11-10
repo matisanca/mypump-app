@@ -1,9 +1,10 @@
+import hashlib
 import io
 
 import pytest
 from pypdf import PdfReader
 
-from firma import reglas
+from firma import reglas, tareas
 from firma.servicio import Rechazo
 from conftest import CASILLAS_OK, dibujo, token_de_url
 
@@ -526,3 +527,160 @@ def test_el_alta_se_vincula_sola_cuando_aparece_el_lead(srv, alta, admin):
     assert tareas.ciclo(srv)["altas_vinculadas"] == 1
     assert {d["tipo"] for d in srv.docs_de_app("tk-" + a["alta_ref"])} == {"servicio_ar", "consentimiento_ar"}
     assert tareas.ciclo(srv)["altas_vinculadas"] == 0
+
+
+def _huella(ref):
+    return hashlib.sha256(ref.encode()).hexdigest()[:16]
+
+
+def _frenadas_del_bot(bot, ref):
+    return [x["cuerpo"] for x in bot if x["cuerpo"].get("evento") == "alta_frenada" and x["cuerpo"]["alta"]["ref"] == _huella(ref)]
+
+
+def test_alta_frenada_avisa_que_falta_y_repite_hasta_resolverse(srv, alta, bot, smtp, admin):
+    a = alta(precio="", objetivo="  ")
+    a["alta_ref"] = ref = f"form-{a['email']}-5491100000000-2026-11-10"  # la forma real: trae el correo adentro
+    r = srv.crear(a, IP, UA)
+    assert not r["ok"] and r["errores"][0] == {"tipo": "servicio_ar", "error": "faltan_datos", "campos": ["cObjetivo", "cPrecio"]}
+    # no nace ningún documento, pero queda anotada (y en la cadena, sin datos de la persona)
+    assert admin("SELECT count(*) FROM contrato.documentos WHERE alta_ref = %s", (ref,), uno=True)[0] == 0
+    f = admin("SELECT tipo, faltan, avisos, resuelto_en FROM contrato.altas_frenadas WHERE alta_ref = %s", (ref,), uno=True)
+    assert f == ("servicio_ar", ["cObjetivo", "cPrecio"], 0, None)
+    ev = admin("SELECT datos FROM contrato.eventos WHERE tipo = 'alta_frenada' AND datos LIKE %s", (f"%{_huella(ref)}%",))
+    assert len(ev) == 1 and a["email"] not in ev[0][0] and "Ana" not in ev[0][0]
+    with srv.base.conexion() as s:
+        assert ref in s.f("pendientes_de_atencion", 0)["altas_frenadas"]
+
+    # el primer aviso sale enseguida y dice qué falta, con palabras
+    d = srv.despachar()
+    assert d["frenadas_avisadas"] >= 1
+    avisos = _frenadas_del_bot(bot, ref)
+    assert len(avisos) == 1 and avisos[0]["action"] == "contrato_firma"
+    assert avisos[0]["alta"]["faltan"] == ["el objetivo", "el precio"] and avisos[0]["alta"]["aviso_n"] == 1
+    assert avisos[0]["cliente"]["nombre"].startswith("Ana") and avisos[0]["aviso_id"] == f"frenada:{_huella(ref)}:1" and a["email"] not in avisos[0]["aviso_id"]
+
+    # no se repite antes de tiempo, ni porque el formulario vuelva a llegar igual de incompleto
+    srv.despachar()
+    assert not srv.crear(a, IP, UA)["ok"]
+    srv.despachar()
+    assert len(_frenadas_del_bot(bot, ref)) == 1
+    assert len(admin("SELECT 1 FROM contrato.eventos WHERE tipo = 'alta_frenada' AND datos LIKE %s", (f"%{_huella(ref)}%",))) == 1
+
+    # pasado un día sigue sin resolverse: avisa de nuevo
+    admin("UPDATE contrato.altas_frenadas SET ultimo_aviso_en = ultimo_aviso_en - interval '25 hours' WHERE alta_ref = %s", (ref,))
+    srv.despachar()
+    avisos = _frenadas_del_bot(bot, ref)
+    assert len(avisos) == 2 and avisos[1]["alta"]["aviso_n"] == 2 and avisos[1]["aviso_id"] != avisos[0]["aviso_id"]
+
+    # llega corregido a medias: lo que falta cambió, se avisa enseguida con lo que falta ahora
+    assert not srv.crear({**a, "objetivo": "Objetivo de prueba"}, IP, UA)["ok"]
+    srv.despachar()
+    avisos = _frenadas_del_bot(bot, ref)
+    assert len(avisos) == 3 and avisos[2]["alta"]["faltan"] == ["el precio"]
+
+    # llega completo: nace el contrato, queda resuelta y no se avisa más
+    r = srv.crear({**a, "objetivo": "Objetivo de prueba", "precio": "USD 100 en un pago"}, IP, UA)
+    assert r["ok"] and len(r["documentos"]) == 2
+    assert admin("SELECT resultado FROM contrato.altas_frenadas WHERE alta_ref = %s AND resuelto_en IS NOT NULL", (ref,), uno=True)[0] == "emitido"
+    admin("UPDATE contrato.altas_frenadas SET ultimo_aviso_en = ultimo_aviso_en - interval '25 hours' WHERE alta_ref = %s", (ref,))
+    srv.despachar()
+    assert len(_frenadas_del_bot(bot, ref)) == 3
+    with srv.base.conexion() as s:
+        assert ref not in s.f("pendientes_de_atencion", 0)["altas_frenadas"]
+    assert reglas.verificar_cadena(list(tareas.traer_cadena(srv)))["ok"]
+
+
+def test_alta_frenada_si_el_bot_no_responde_va_por_correo_y_se_reintenta(srv, alta, bot, smtp, admin, cfg):
+    a = alta(plan="")
+    ref = a["alta_ref"]
+    srv.crear(a, IP, UA)
+    bot.fallar = True
+    # sin bot y sin casilla interna: no se da por avisada, se reintenta
+    assert srv.despachar()["frenadas_fallan"] >= 1
+    assert admin("SELECT avisos, ultimo_aviso_en FROM contrato.altas_frenadas WHERE alta_ref = %s", (ref,), uno=True) == (0, None)
+    # con casilla interna, el aviso sale por correo y dice qué falta
+    cfg.aviso_interno = "interno@prueba.test"
+    admin("UPDATE contrato.altas_frenadas SET tomado_en = tomado_en - interval '6 minutes' WHERE alta_ref = %s", (ref,))
+    assert srv.despachar()["frenadas_avisadas"] >= 1
+    m = smtp.para("interno@prueba.test", "contrato sin emitir: falta el plan")
+    assert len(m) == 1 and a["email"] in m[0]["m"].get_body(("plain",)).get_content()
+    assert admin("SELECT avisos FROM contrato.altas_frenadas WHERE alta_ref = %s", (ref,), uno=True)[0] == 1
+    # una persona que resuelve con otro envío del formulario (otra referencia, mismo correo) también la cierra
+    bot.fallar = False
+    assert srv.crear({**alta(), "email": a["email"]}, IP, UA)["ok"]
+    assert admin("SELECT resultado FROM contrato.altas_frenadas WHERE alta_ref = %s", (ref,), uno=True)[0] == "emitido"
+
+
+def test_alta_frenada_se_descarta_a_mano(srv, alta, bot, admin):
+    a = alta(precio="")
+    srv.crear(a, IP, UA)
+    assert srv.descartar_alta_frenada(_huella(a["alta_ref"]), "no va a seguir", IP, UA) == {"ok": True}  # por la huella del aviso
+    ev = admin("SELECT datos FROM contrato.eventos WHERE tipo = 'alta_descartada' AND datos LIKE %s", (f"%{_huella(a['alta_ref'])}%",))
+    assert len(ev) == 1 and "no va a seguir" not in ev[0][0]
+    assert srv.descartar_alta_frenada(a["alta_ref"], "otra vez", IP, UA) == {"ok": False}
+    srv.despachar()
+    assert _frenadas_del_bot(bot, a["alta_ref"]) == []
+    assert admin("SELECT resultado FROM contrato.altas_frenadas WHERE alta_ref = %s", (a["alta_ref"],), uno=True)[0] == "descartada: no va a seguir"
+
+
+def test_alta_frenada_reenviada_otro_dia_no_duplica_avisos(srv, alta, bot, admin):
+    a = alta(precio="")
+    srv.crear(a, IP, UA)
+    srv.despachar()
+    # al día siguiente el formulario trae otra referencia, igual de incompleto: es la misma persona
+    b = {**a, "alta_ref": a["alta_ref"] + "-dia2"}
+    srv.crear(b, IP, UA)
+    filas = admin("SELECT alta_ref, resultado, avisos FROM contrato.altas_frenadas WHERE email = %s ORDER BY visto_en", (a["email"],))
+    assert filas == [(a["alta_ref"], "reemplazada", 1), (b["alta_ref"], None, 1)]
+    srv.despachar()
+    assert len(_frenadas_del_bot(bot, a["alta_ref"])) == 1 and _frenadas_del_bot(bot, b["alta_ref"]) == []
+    # pasadas las 24 h avisa una sola (la abierta), con el número que sigue
+    admin("UPDATE contrato.altas_frenadas SET ultimo_aviso_en = ultimo_aviso_en - interval '25 hours' WHERE email = %s", (a["email"],))
+    srv.despachar()
+    assert len(_frenadas_del_bot(bot, a["alta_ref"])) == 1
+    assert [x["alta"]["aviso_n"] for x in _frenadas_del_bot(bot, b["alta_ref"])] == [2]
+    # pasados los 14 días sin novedades deja de avisar, pero sigue contando como pendiente
+    admin("UPDATE contrato.altas_frenadas SET visto_en = visto_en - interval '15 days', ultimo_aviso_en = ultimo_aviso_en - interval '15 days' "
+          "WHERE alta_ref = %s", (b["alta_ref"],))
+    srv.despachar()
+    assert len(_frenadas_del_bot(bot, b["alta_ref"])) == 1
+    with srv.base.conexion() as s:
+        assert b["alta_ref"] in s.f("pendientes_de_atencion", 0)["altas_frenadas"]
+
+
+def test_envio_incompleto_no_rompe_el_enlace_vivo_y_se_cierra_al_volver_completo(srv, alta, bot, admin):
+    a = alta()
+    r = srv.crear(a, IP, UA)
+    url = r["documentos"][0]["url"]
+    # reenvío incompleto (misma alta, y otro día con otra referencia): no anula el pendiente bueno
+    assert not srv.crear({**a, "precio": ""}, IP, UA)["ok"]
+    assert not srv.crear({**a, "precio": "", "alta_ref": a["alta_ref"] + "-dia2"}, IP, UA)["ok"]
+    assert admin("SELECT count(*) FROM contrato.documentos WHERE firmante_email = %s AND estado = 'pendiente'", (a["email"],), uno=True)[0] == 2
+    srv.ver(token_de_url(url), IP, UA)  # el enlace sigue sirviendo (anulado daría Rechazo)
+    assert admin("SELECT count(*) FROM contrato.altas_frenadas WHERE email = %s AND resuelto_en IS NULL", (a["email"],), uno=True)[0] == 1
+    # vuelve a llegar igual al original: no nace nada nuevo, pero la frenada se cierra y no avisa de más
+    r = srv.crear(a, IP, UA)
+    assert r["ok"] and r["documentos"][0]["url"] == url
+    assert admin("SELECT count(*) FROM contrato.altas_frenadas WHERE email = %s AND resuelto_en IS NULL", (a["email"],), uno=True)[0] == 0
+
+
+def test_alta_frenada_un_200_sin_acuse_del_bot_no_cuenta_como_avisada(srv, alta, bot, admin):
+    a = alta(objetivo="")
+    srv.crear(a, IP, UA)
+    bot.respuesta = b'{"status": "ignored"}'  # un bot sin el parche, que contesta 200 a lo que no conoce
+    assert srv.despachar()["frenadas_fallan"] >= 1
+    assert admin("SELECT avisos, ultimo_aviso_en FROM contrato.altas_frenadas WHERE alta_ref = %s", (a["alta_ref"],), uno=True) == (0, None)
+
+
+def test_si_falla_la_base_de_frenadas_no_se_rompe_crear_ni_despachar(srv, alta, monkeypatch):
+    from firma import base as _base
+    real = _base.Sesion.f
+
+    def f(self, funcion, *args):
+        if "frenada" in funcion:
+            raise RuntimeError("base caída")
+        return real(self, funcion, *args)
+    monkeypatch.setattr(_base.Sesion, "f", f)
+    r = srv.crear(alta(plan=""), IP, UA)
+    assert not r["ok"] and r["errores"][0]["error"] == "faltan_datos" and r["errores"][0]["sin_anotar"] is True
+    assert srv.despachar()["frenadas_fallan"] == 1
