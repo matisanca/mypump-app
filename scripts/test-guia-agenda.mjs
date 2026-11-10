@@ -368,13 +368,20 @@ const AHORA = fecha('2026-11-06T12:00:00-03:00');
 {
   const t = RA.textos({ hoy_sin_sala: 'Hoy a las {hora}, esperá a Mati', sala_abierta: 'Mati te espera', fallo: 'Elegí otro', entreno_aviso: 'Entrega {hora}' });
   const r = { inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T11:00:00-03:00', estado: 'confirmada', meetUrl: 'https://meet.google.com/x', salaAbiertaEn: '2026-11-12T09:58:00-03:00' };
-  eq(t.hoySinSala(r, BA), 'Hoy a las 10:00, esperá a Mati', 'hoy sin sala');
-  eq(t.entrenoAviso(r, BA), 'Entrega 10:00', 'entreno aviso');
-  eq(t.entrar(r, BA), 'Mati te espera', 'sala abierta');
+  // 2.3.0: las claves de la sala con la semántica vieja se ignoran (va el texto de la app).
+  eq(t.hoySinSala(r, BA), RA.textoEsperandoSala(r, BA), 'hoy_sin_sala ignorada');
+  eq(t.entrenoAviso(r, BA), RA.textoEsperandoSala(r, BA), 'entreno_aviso ignorada');
+  eq(t.entrar(r, BA), 'Mati ya está en la sala', 'sala_abierta ignorada');
   const sinSala = { ...r, salaAbiertaEn: null };
-  eq(t.entrar(sinSala, BA), RA.textoEntrar(sinSala, BA), 'el respaldo no se pisa');
+  eq(t.entrar(sinSala, BA), RA.textoEntrar(sinSala, BA), 'sin sala, el de la app');
   ok(t.fallo('tomada') === 'Elegí otro' && t.fallo('error') === 'Elegí otro' && t.fallo('demo') === RA.TEXTO_AVISO.demo, 'fallo');
-  eq(RA.textos({ hoy_sin_sala: 'Hoy {hora}' }).entrenoAviso(r, BA), 'Hoy 10:00', 'sin entreno_aviso, el de la guía');
+  // Un texto del servidor con palabras prohibidas no se muestra.
+  const p = RA.textos({ titulo: 'Agendá tu Entrega', cambiar: 'Escribinos por WhatsApp', sin_franjas: 'Hablá con tu coach', pendiente: 'Tu entrenador te reserva' });
+  ok(p.titulo === 'Agendá tu videollamada de comienzo' && p.cambiar === RA.TEXTO_CAMBIAR && p.sinFranjas === RA.TEXTO_SIN_FRANJAS
+     && p.pendiente === RA.TEXTO_RESERVANDO, 'entrega, WhatsApp, coach y entrenador se descartan');
+  // El título de Mati no pisa el de la de revisión.
+  const tt = RA.textos({ titulo: 'Reservá tu llamada' });
+  ok(tt.tituloDe('comienzo') === 'Reservá tu llamada' && tt.tituloDe('revision') === 'Agendá tu videollamada de revisión', 'título y revisión');
 }
 {
   eq(agenda({ ok: true, autorizada: true, habilitada: true, aviso_min: 15 }).avisoMin, 15, 'aviso_min');

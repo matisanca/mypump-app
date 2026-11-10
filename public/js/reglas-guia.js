@@ -1129,9 +1129,13 @@
     // que acá no hay, va el de la app: nunca se muestra una llave.
     textos(servidor) {
       const sv = servidor || {};
+      // 2.3.0: las claves de la sala con la semántica vieja («cuando Mati abra la videollamada») no se usan, y un
+      // texto del servidor que diga «entrega», WhatsApp, coach o entrenador no se muestra: va el de la app.
+      const VIEJAS = ['hoy_sin_sala', 'sala_abierta', 'entreno_aviso'];
+      const PROHIBIDO = /entrega|whatsapp|coach|entrenador/i;
       const texto = (clave, propio, v) => {
-        const t0 = sv[clave];
-        if (typeof t0 !== 'string' || !t0.trim()) return propio;
+        const t0 = VIEJAS.includes(clave) ? null : sv[clave];
+        if (typeof t0 !== 'string' || !t0.trim() || PROHIBIDO.test(t0)) return propio;
         let t = t0;
         const vals = v || {};
         for (const [llave, valor] of [['{hora}', vals.hora], ['{dia}', vals.dia], ['{duracion}', vals.duracion],
@@ -1145,7 +1149,8 @@
       const horaInicio = (r, zona) => { const i = R.instante(r.inicio); return i ? RA.hora(i, zona) : null; };
       const T = {
         titulo: texto('titulo', `Agendá tu ${RA.nombre('comienzo')}`),
-        tituloDe: t => texto('titulo', `Agendá tu ${RA.nombre(t)}`),
+        // El título de Mati es el de la de comienzo: la de revisión lleva el suyo.
+        tituloDe: t => (t === 'revision' ? `Agendá tu ${RA.nombre(t)}` : texto('titulo', `Agendá tu ${RA.nombre(t)}`)),
         noAutorizada: texto('no_autorizada', RA.TEXTO_NO_AUTORIZADA),
         sinFranjas: texto('sin_franjas', RA.TEXTO_SIN_FRANJAS),
         pendiente: texto('pendiente', RA.TEXTO_RESERVANDO),
