@@ -154,6 +154,19 @@ final class TecnicaUITests: XCTestCase {
         XCTAssertFalse(e("mis-datos-tecnica").exists)
     }
 
+    func testSacarVideoEnRevision() {
+        abrirMiTecnica("enRevision")
+        esperar("tecnica-fila-enviado")
+        tocar("tecnica-sacar")
+        let botones = app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Sacar mi video", "tecnica-sacar"))
+        XCTAssertTrue(botones.firstMatch.waitForExistence(timeout: 5))
+        botones.firstMatch.tap()
+        let desaparecio = NSPredicate(format: "exists == false")
+        expectation(for: desaparecio, evaluatedWith: e("tecnica-sacar"), handler: nil)
+        waitForExpectations(timeout: 10)
+        XCTAssertTrue(e("tecnica-fila-enviado").exists)
+    }
+
     func testEnRevisionNoDejaMandarOtro() {
         abrirDesdeEjercicio("enRevision")
         esperar("tecnica-en-curso")

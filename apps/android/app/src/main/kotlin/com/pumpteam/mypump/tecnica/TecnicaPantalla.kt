@@ -247,7 +247,10 @@ private fun ListaTecnica(m: ModeloTecnica, v: Vista, relleno: PaddingValues, alE
                     alTocar = { alAbrir(e.id) },
                 )
                 EnvioTecnica.Estado.RECHAZADO -> FilaEnvio(e.nombre, e.rechazoTexto ?: T.rechazoIlegible, Modifier.testTag("tecnica-fila-rechazado"), alerta = true)
-                else -> FilaEnvio(e.nombre, T.recibido, Modifier.testTag("tecnica-fila-enviado"))
+                else -> {
+                    FilaEnvio(e.nombre, T.recibido, Modifier.testTag("tecnica-fila-enviado"))
+                    if (e.tieneVideo) SacarVideo(m, e.id)
+                }
             }
         }
         if (envios.isEmpty() && v.pendiente == null) Nota(T.sinEnvios, Modifier.testTag("tecnica-vacio"))
@@ -296,19 +299,26 @@ fun EnviarTecnicaPantalla(m: ModeloTecnica, slug: String, nombre: String, alVolv
     val v = observar(m)
     val contexto = LocalContext.current
     var mandado by rememberSaveable { mutableStateOf(false) }
+    // Al volver de una muerte del proceso se llega acá sin haber pasado por la entrada: la palanca se mira igual.
+    var preguntado by remember { mutableStateOf(false) }
     LaunchedEffect(m) {
-        m.refrescar()
-        m.drenarEnFondo()
+        if (m.palancaRecordada) {
+            m.refrescar()
+            m.drenarEnFondo()
+        }
+        preguntado = true
     }
+    LaunchedEffect(preguntado, v.estado == null, mandado) { if (preguntado && v.estado == null && !mandado) alVolver() }
     MarcoPantalla(NombreEjercicio(nombre).principal, alVolver = alVolver) { relleno ->
         val puede = v.estado != null && v.pendiente == null && v.estado.enRevision == null
         when {
             mandado && v.pendiente == null && v.aviso == null -> Recibido(relleno, alTerminar)
             v.pendiente != null -> Enviando(m, v.subiendo, relleno, alCancelar = { mandado = false }, alNoCancelar = { mandado = true })
+            v.estado == null && !mandado -> Unit   // se va en el LaunchedEffect de arriba
             !puede && !mandado -> Box(Modifier.padding(relleno).fillMaxSize().padding(Espacio.l), contentAlignment = Alignment.Center) {
                 Nota(T.enCurso, Modifier.testTag("tecnica-en-curso"))
             }
-            v.estado?.let { !it.consentimientoAceptado && m.cola.value.avisoVersion != it.consentimientoVersion } == true -> AvisoTerceros(m, relleno)
+            m.necesitaAviso -> AvisoTerceros(m, relleno)
             else -> Formulario(m, v, slug, nombre, relleno, alMandado = { mandado = true })
         }
     }
@@ -523,9 +533,6 @@ private fun Correccion(c: CorreccionTecnica, tieneVideo: Boolean, alVer: (Double
 @Composable
 private fun DevolucionPantalla(m: ModeloTecnica, envio: EnvioTecnica, d: DevolucionTecnica, alVolver: () -> Unit, alVerVideo: (Double) -> Unit) {
     val c = MyPump.colores
-    val alcance = rememberCoroutineScope()
-    var confirma by rememberSaveable { mutableStateOf(false) }
-    var nota by remember { mutableStateOf<String?>(null) }
     MarcoPantalla(T.tituloDevolucion(d.ejercicio ?: envio.nombre), alVolver = alVolver) { relleno ->
         Desplazable(relleno) {
             Text(
@@ -534,7 +541,8 @@ private fun DevolucionPantalla(m: ModeloTecnica, envio: EnvioTecnica, d: Devoluc
                 color = c.textoSecundario,
                 modifier = Modifier.testTag("tecnica-credito"),
             )
-            if (d.correcciones.isEmpty()) Text(T.sinCorrecciones, style = MaterialTheme.typography.titleMedium, color = c.texto, modifier = Modifier.testTag("tecnica-sin-correcciones"))
+            // Sin correcciones no quiere decir que esté bien si no se pudo ver o hace falta otro video.
+            if (d.correcciones.isEmpty() && d.noEvaluable.isEmpty() && d.otroVideo == null) Text(T.sinCorrecciones, style = MaterialTheme.typography.titleMedium, color = c.texto, modifier = Modifier.testTag("tecnica-sin-correcciones"))
             if (d.bien.isNotEmpty()) {
                 Seccion(T.loQueEstaBien, Modifier.testTag("tecnica-bien")) {
                     d.bien.forEach { b ->
@@ -558,11 +566,20 @@ private fun DevolucionPantalla(m: ModeloTecnica, envio: EnvioTecnica, d: Devoluc
                     }
                 }
             }
-            d.otroVideo?.let { como -> Seccion(T.mandameOtro, Modifier.testTag("tecnica-otro-video")) { Text(como, style = MaterialTheme.typography.bodyLarge, color = c.texto) } }
-            nota?.let { Nota(it, alerta = true) }
-            if (envio.tieneVideo) BotonSecundario(T.sacarVideo, alTocar = { confirma = true }, modifier = Modifier.fillMaxWidth().testTag("tecnica-sacar"), tono = c.alerta)
+            d.otroVideo?.takeIf { it.isNotEmpty() }?.let { como -> Seccion(T.mandameOtro, Modifier.testTag("tecnica-otro-video")) { Text(como, style = MaterialTheme.typography.bodyLarge, color = c.texto) } }
+            if (envio.tieneVideo) SacarVideo(m, envio.id)
         }
     }
+}
+
+/** «Sacar mi video»: el aviso promete que se puede cuando quiera, también mientras está en revisión. */
+@Composable
+private fun SacarVideo(m: ModeloTecnica, id: String) {
+    val alcance = rememberCoroutineScope()
+    var confirma by rememberSaveable { mutableStateOf(false) }
+    var nota by remember { mutableStateOf<String?>(null) }
+    nota?.let { Nota(it, alerta = true) }
+    BotonSecundario(T.sacarVideo, alTocar = { confirma = true }, modifier = Modifier.fillMaxWidth().testTag("tecnica-sacar"), tono = MyPump.colores.alerta)
     if (confirma) {
         com.pumpteam.mypump.diseno.Alerta(
             titulo = T.sacarConfirma,
@@ -572,7 +589,7 @@ private fun DevolucionPantalla(m: ModeloTecnica, envio: EnvioTecnica, d: Devoluc
                 com.pumpteam.mypump.diseno.BotonAlerta(T.sacarVideo, destructivo = true, etiqueta = "tecnica-sacar-si") {
                     confirma = false
                     alcance.launch {
-                        nota = when (m.sacarVideo(envio.id)) {
+                        nota = when (m.sacarVideo(id)) {
                             ModeloTecnica.Salida.OK -> null
                             ModeloTecnica.Salida.OCUPADO -> T.sacarOcupado
                             ModeloTecnica.Salida.SIN_SENAL -> T.sinSenal

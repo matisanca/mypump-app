@@ -25,7 +25,7 @@ import { join as joinTec } from 'node:path';
 const BUCKET_TECNICA = 'tecnica';
 const MAX_TECNICA_B = 60 * 1024 * 1024;           // la app comprime a 720p; un video de 75 s entra sobrado
 const DURACION_MIN_TECNICA = 4;
-const DURACION_MAX_TECNICA = 75;
+const DURACION_MAX_TECNICA = 75;                // +0,5 s de tolerancia como el teléfono: lo que sobra lo corta el `-t`
 const RATE_TECNICA = 8;                           // subidas por token por día, contando reintentos
 const MAX_TECNICA_EN_CURSO = 2;                   // a la vez en todo el servicio: cada una lanza ffmpeg
 const ESPERA_TECNICA_MS = 30_000;
@@ -146,7 +146,7 @@ async function handleTecnicaUpload(req, res, origin) {
       return send(res, 400, { ok: false, error: 'el video no se puede leer' }, origin);
     }
     if (!Number.isFinite(duracion) || duracion < DURACION_MIN_TECNICA) return send(res, 400, { ok: false, error: 'video muy corto' }, origin);
-    if (duracion > DURACION_MAX_TECNICA) return send(res, 400, { ok: false, error: 'video muy largo' }, origin);
+    if (duracion > DURACION_MAX_TECNICA + 0.5) return send(res, 400, { ok: false, error: 'video muy largo' }, origin);
 
     try {
       await correrTecnica(FFMPEG_TECNICA, ['-nostdin', '-v', 'error', '-y', '-protocol_whitelist', 'file', '-i', entrada, '-t', String(DURACION_MAX_TECNICA), '-map', '0:v:0', '-c', 'copy', '-an', '-sn', '-dn', '-map_metadata', '-1',
@@ -169,7 +169,7 @@ async function handleTecnicaUpload(req, res, origin) {
     }
     let reg;
     try {
-      reg = await rpcTecnica('mypump_tecnica_registrar', { p_cliente_id: clienteId, p_id: id, p_path: path, p_bytes: peso, p_duracion: duracion });
+      reg = await rpcTecnica('mypump_tecnica_registrar', { p_cliente_id: clienteId, p_id: id, p_path: path, p_bytes: peso, p_duracion: Math.min(duracion, DURACION_MAX_TECNICA) });
     } catch (e) {
       // Con la red cortada la fila pudo haber entrado: el reintento contesta `ya` y el objeto tiene que seguir estando.
       console.error('[tecnica] registrar', e.message || e);

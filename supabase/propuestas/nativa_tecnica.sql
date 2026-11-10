@@ -137,7 +137,11 @@ CREATE TABLE IF NOT EXISTS mypump_tecnica_habilitados (
 -- En este proyecto las tablas nuevas heredan permisos por defecto, incluido TRUNCATE, que RLS no frena. anon, nada.
 REVOKE ALL ON mypump_tecnica, mypump_tecnica_habilitados FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON mypump_tecnica_aprobaciones FROM PUBLIC, anon, authenticated, service_role;
-GRANT SELECT, INSERT, UPDATE, DELETE ON mypump_tecnica, mypump_tecnica_habilitados TO service_role;
+-- Sobre los envíos, service_role solo lee: todo lo que cambia un envío pasa por las funciones DEFINER, que exigen el código de Mati
+-- para aprobar. Con UPDATE directo se podía publicar «de costado» o cambiar el texto de una fila ya aprobada.
+REVOKE ALL ON mypump_tecnica FROM service_role;
+GRANT SELECT ON mypump_tecnica TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON mypump_tecnica_habilitados TO service_role;
 ALTER TABLE mypump_tecnica ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mypump_tecnica_habilitados ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mypump_tecnica_aprobaciones ENABLE ROW LEVEL SECURITY;
@@ -171,13 +175,16 @@ SET search_path = public
 AS $$
   SELECT jsonb_build_object(
     'id', r.id,
-    'estado', CASE WHEN r.estado IN ('procesando','a_revisar','aprobado','error') THEN 'enviado' ELSE r.estado END,
+    -- Un error que ya no se reintenta no puede quedar como «en revisión» para siempre: el alumno no podría mandar otro.
+    'estado', CASE WHEN r.estado = 'error' AND (r.reaperturas >= 3 OR COALESCE(r.error_detalle, '') ILIKE '%SalidaInvalida%') THEN 'rechazado'
+                   WHEN r.estado IN ('procesando','a_revisar','aprobado','error') THEN 'enviado' ELSE r.estado END,
     'ejercicio_slug', r.ejercicio_slug,
     'ejercicio_nombre', r.ejercicio_nombre,
     'nota_alumno', r.nota_alumno,
     'enviado_en', r.enviado_en,
     'tiene_video', r.path IS NOT NULL AND r.video_borrado_en IS NULL,
-    'rechazo_texto', CASE WHEN r.estado = 'rechazado' THEN r.rechazo_texto END,
+    'rechazo_texto', CASE WHEN r.estado = 'rechazado' THEN r.rechazo_texto
+                          WHEN r.estado = 'error' AND (r.reaperturas >= 3 OR COALESCE(r.error_detalle, '') ILIKE '%SalidaInvalida%') THEN 'No pudimos revisar este video. Mandame otro cuando puedas.' END,
     'publicado_en', CASE WHEN r.estado = 'publicado' THEN r.publicado_en END,
     'devolucion', CASE WHEN r.estado = 'publicado' THEN jsonb_build_object(
         'credito', 'Lo revisó Mati',
@@ -410,11 +417,16 @@ AS $$
 DECLARE
   n INTEGER;
 BEGIN
-  WITH x AS (
-    UPDATE mypump_tecnica SET estado = 'enviado', intentos = 0, reaperturas = reaperturas + 1, actualizado_en = NOW()
+  -- Una fila por alumno: dos errores del mismo alumno violarían el índice único y frenarían la vuelta del worker para todos.
+  WITH elegidas AS (
+    SELECT DISTINCT ON (cliente_id) id FROM mypump_tecnica
      WHERE estado = 'error' AND reaperturas < p_max AND actualizado_en < NOW() - make_interval(hours => p_horas) AND path IS NOT NULL AND video_borrado_en IS NULL
        AND COALESCE(error_detalle, '') NOT ILIKE '%SalidaInvalida%'      -- si el modelo no da una salida válida, reintentar solo gasta cuota
        AND NOT EXISTS (SELECT 1 FROM mypump_tecnica o WHERE o.cliente_id = mypump_tecnica.cliente_id AND o.estado IN ('borrador','enviado','procesando'))
+     ORDER BY cliente_id, actualizado_en
+  ), x AS (
+    UPDATE mypump_tecnica SET estado = 'enviado', intentos = 0, reaperturas = reaperturas + 1, actualizado_en = NOW()
+     WHERE id IN (SELECT id FROM elegidas)
      RETURNING 1)
   SELECT count(*) INTO n FROM x;
   RETURN n;

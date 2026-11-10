@@ -119,7 +119,7 @@ class ModeloTecnica(
     val topes: TopesTecnica get() = _estado.value?.topes ?: TopesTecnica()
 
     /** El aviso de terceros, una sola vez: si el servidor no lo tiene aceptado y en este teléfono no se aceptó esta versión. */
-    val necesitaAviso: Boolean get() = _estado.value?.let { !it.consentimientoAceptado && _cola.value.avisoVersion != it.consentimientoVersion } ?: false
+    val necesitaAviso: Boolean get() = _estado.value?.let { !(it.consentimientoAceptado && it.consentimientoVersion == Tecnica.CONSENTIMIENTO_VIGENTE) && _cola.value.avisoVersion != Tecnica.CONSENTIMIENTO_VIGENTE } ?: false
 
     /** Se puede mandar otro: nada en camino y nada esperando la devolución. */
     val puedeMandar: Boolean get() = _estado.value != null && pendiente == null && _estado.value?.enRevision == null
@@ -160,7 +160,7 @@ class ModeloTecnica(
 
     fun aceptarAviso() {
         val e = _estado.value ?: return
-        _cola.update { it.copy(avisoVersion = e.consentimientoVersion) }
+        _cola.update { it.copy(avisoVersion = Tecnica.CONSENTIMIENTO_VIGENTE) }
         guardar()
     }
 
@@ -187,7 +187,7 @@ class ModeloTecnica(
             destino.delete()
             return Encolar.NO_SE_GUARDO
         }
-        _cola.update { it.copy(pendiente = PendienteTecnica(id, null, slug.take(Tecnica.MAX_NOMBRE), nombre.take(Tecnica.MAX_NOMBRE), Tecnica.nota(nota), e.consentimientoVersion)) }
+        _cola.update { it.copy(pendiente = PendienteTecnica(id, null, slug.take(Tecnica.MAX_NOMBRE), nombre.take(Tecnica.MAX_NOMBRE), Tecnica.nota(nota), Tecnica.CONSENTIMIENTO_VIGENTE)) }
         if (!guardar()) {
             _cola.update { it.copy(pendiente = null) }
             destino.delete()

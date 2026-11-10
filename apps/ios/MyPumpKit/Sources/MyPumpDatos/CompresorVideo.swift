@@ -31,7 +31,12 @@ public enum CompresorVideo {
         if duracion < topes.duracionMinS { return .rechazado(.corto) }
         if duracion > topes.duracionMaxS + 0.5 { return .rechazado(.largo) }
         let salida = FileManager.default.temporaryDirectory.appendingPathComponent("\(prefijo)\(UUID().uuidString).mp4")
-        if await convertir(asset: asset, pista: pista, a: salida), let b = bytes(salida) {
+        if await convertir(asset: asset, pista: pista, a: salida), var b = bytes(salida) {
+            // El preset de 720p no deja fijar la tasa: si un video largo se pasa, una vuelta más a 540p antes de rechazarlo.
+            if b > topes.bytesMax {
+                try? FileManager.default.removeItem(at: salida)
+                if await convertir(asset: asset, pista: pista, a: salida, preset: AVAssetExportPreset960x540), let chico = bytes(salida) { b = chico }
+            }
             if let r = Tecnica.validar(duracion: duracion, bytes: b, topes: topes) {
                 try? FileManager.default.removeItem(at: salida)
                 return .rechazado(r)
@@ -49,18 +54,21 @@ public enum CompresorVideo {
         ((try? FileManager.default.attributesOfItem(atPath: u.path))?[.size] as? NSNumber)?.int64Value
     }
 
-    private static func convertir(asset: AVAsset, pista: AVAssetTrack, a salida: URL) async -> Bool {
+    private static func convertir(asset: AVAsset, pista: AVAssetTrack, a salida: URL, preset: String = AVAssetExportPreset1280x720) async -> Bool {
         let c = AVMutableComposition()
         guard let destino = c.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
               let rango = try? await pista.load(.timeRange),
               (try? destino.insertTimeRange(rango, of: pista, at: .zero)) != nil else { return false }
         destino.preferredTransform = (try? await pista.load(.preferredTransform)) ?? .identity
-        guard let e = AVAssetExportSession(asset: c, presetName: AVAssetExportPreset1280x720) else { return false }
+        guard let e = AVAssetExportSession(asset: c, presetName: preset) else { return false }
         e.outputURL = salida
         e.outputFileType = .mp4
         e.shouldOptimizeForNetworkUse = true
         e.metadata = []
+        nonisolated(unsafe) let sesion = e
+        let tope = Task { try? await Task.sleep(for: .seconds(300)); if !Task.isCancelled { sesion.cancelExport() } }
         await e.export()
+        tope.cancel()
         return e.status == .completed
     }
 }

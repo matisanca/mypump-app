@@ -81,7 +81,8 @@ public final class ModeloTecnica {
     /// El aviso de terceros, una sola vez: si el servidor no lo tiene aceptado y en este teléfono no se aceptó esta versión.
     public var necesitaAviso: Bool {
         guard let e = estado else { return false }
-        return !e.consentimientoAceptado && local.avisoVersion != e.consentimientoVersion
+        // El texto del aviso es el de esta versión de la app: lo que se registra es esa, no la que dicte el servidor.
+        return !(e.consentimientoAceptado && e.consentimientoVersion == Tecnica.consentimientoVigente) && local.avisoVersion != Tecnica.consentimientoVigente
     }
     /// Se puede mandar otro: nada en camino y nada esperando la devolución.
     public var puedeMandar: Bool { estado != nil && local.pendiente == nil && estado?.enRevision == nil }
@@ -109,7 +110,7 @@ public final class ModeloTecnica {
 
     public func aceptarAviso() {
         guard let e = estado else { return }
-        local.avisoVersion = e.consentimientoVersion
+        local.avisoVersion = Tecnica.consentimientoVigente
         guardar()
     }
 
@@ -131,7 +132,7 @@ public final class ModeloTecnica {
             try FileManager.default.moveItem(at: archivo, to: carpeta.appendingPathComponent("\(id).mp4"))
         } catch { return .noSeGuardo }
         local.pendiente = PendienteTecnica(id: id, envioId: nil, slug: String(slug.prefix(Tecnica.maxNombre)), nombre: String(nombre.prefix(Tecnica.maxNombre)),
-                                           nota: Tecnica.nota(nota), consentimiento: e.consentimientoVersion)
+                                           nota: Tecnica.nota(nota), consentimiento: Tecnica.consentimientoVigente)
         guard guardar() else {
             local.pendiente = nil
             disco.borrar("\(PendienteTecnica.carpeta)/\(id).mp4")
@@ -340,7 +341,15 @@ public final class ModeloTecnica {
 
     #if canImport(UIKit) && !os(watchOS)
     /// Lo que el sistema preste si el alumno guarda el teléfono justo después de mandar; si no alcanza, sigue la cola.
-    private func pedirTiempoDeFondo() -> UIBackgroundTaskIdentifier { UIApplication.shared.beginBackgroundTask(withName: "tecnica-subida", expirationHandler: nil) }
+    private func pedirTiempoDeFondo() -> UIBackgroundTaskIdentifier {
+        // Sin cerrar la tarea cuando vence, el sistema mata la app. La subida sigue sola o se reintenta al volver.
+        nonisolated(unsafe) var t = UIBackgroundTaskIdentifier.invalid
+        t = UIApplication.shared.beginBackgroundTask(withName: "tecnica-subida") {
+            UIApplication.shared.endBackgroundTask(t)
+            t = .invalid
+        }
+        return t
+    }
     private func soltarTiempoDeFondo(_ t: UIBackgroundTaskIdentifier) { if t != .invalid { UIApplication.shared.endBackgroundTask(t) } }
     #else
     private func pedirTiempoDeFondo() -> Int { 0 }

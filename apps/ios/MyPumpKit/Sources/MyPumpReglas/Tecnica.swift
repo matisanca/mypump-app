@@ -56,7 +56,8 @@ public enum Tecnica {
         String((e.catalogoSlug ?? e.matchedSlug ?? e.imagenes?.matchedSlug ?? "").prefix(maxNombre))
     }
 
-    public static func nota(_ s: String) -> String { String(s.prefix(maxNota)) }
+    /// Por puntos de código, como cuenta el SQL: `prefix` cuenta grafemas y una nota con emojis compuestos se pasaba del tope.
+    public static func nota(_ s: String) -> String { var v = String.UnicodeScalarView(); v.append(contentsOf: s.unicodeScalars.prefix(maxNota)); return String(v) }
 
     /// Los ejercicios de la rutina para elegir: una vez cada uno, en orden, sin calentamientos ni cardio.
     public static func ejerciciosParaElegir(_ dias: [Dia], efectivo: (Ejercicio) -> Ejercicio = { $0 }) -> [Ejercicio] {
@@ -84,7 +85,7 @@ public struct TopesTecnica: Equatable, Sendable {
         if case .numero(let n)? = j?["duracion_min_s"], n > 0 { duracionMinS = n }
         if case .numero(let n)? = j?["duracion_max_s"], n > 0 { duracionMaxS = n }
         if case .numero(let n)? = j?["bytes_max"], n > 0 { bytesMax = Int64(n) }
-        if case .numero(let n)? = j?["por_semana"], n > 0 { porSemana = Int(n) }
+        if case .numero(let n)? = j?["por_semana"], n > 0 { porSemana = Int(min(n, 1_000)) }
     }
 }
 
@@ -100,7 +101,7 @@ public struct CorreccionTecnica: Equatable, Sendable, Identifiable {
     init?(_ j: JSONValue) {
         guard let t = j["titulo"]?.comoTexto, !t.isEmpty else { return nil }
         titulo = t
-        if case .numero(let n)? = j["prioridad"] { prioridad = Int(n) } else { prioridad = 99 }
+        if case .numero(let n)? = j["prioridad"], n.isFinite { prioridad = Int(max(-1_000, min(n, 1_000))) } else { prioridad = 99 }
         queSeVe = j["que_se_ve"]?.comoTexto ?? ""
         porQue = j["por_que"]?.comoTexto ?? ""
         comoCorregir = j["como_corregir"]?.comoTexto ?? ""

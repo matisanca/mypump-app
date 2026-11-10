@@ -176,6 +176,15 @@ class TecnicaUiTest : PruebaUi() {
         noHayNada("sinServidor", d)
     }
 
+    @Test fun sacarVideoEnRevision() {
+        miTecnica("enRevision")
+        p.nodo(etiqueta("tecnica-fila-enviado"))
+        p.tocar(etiqueta("tecnica-sacar"))
+        p.tocar(etiqueta("tecnica-sacar-si"))
+        p.esperarQueNoEste(etiqueta("tecnica-sacar"))
+        p.nodo(etiqueta("tecnica-fila-enviado"))
+    }
+
     @Test fun enRevisionNoDejaMandarOtro() {
         desdeEjercicio("enRevision")
         p.nodo(etiqueta("tecnica-en-curso"))

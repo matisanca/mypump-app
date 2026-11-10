@@ -139,6 +139,7 @@ private struct ListaTecnica: View {
                         FilaEnvio(titulo: e.nombre, detalle: e.rechazoTexto ?? T.rechazoIlegible, alerta: true).accessibilityIdentifier("tecnica-fila-rechazado")
                     default:
                         FilaEnvio(titulo: e.nombre, detalle: T.recibido).accessibilityIdentifier("tecnica-fila-enviado")
+                        if e.tieneVideo { SacarVideoTecnica(modelo: modelo, envioId: e.id) }
                     }
                 }
                 if modelo.envios.isEmpty && modelo.pendiente == nil {
@@ -202,6 +203,7 @@ struct EnviarTecnica: View {
     @State private var error: String?
     @State private var nota = ""
     @State private var mandado = false
+    @State private var barrido = false
 
     var body: some View {
         Group {
@@ -209,6 +211,8 @@ struct EnviarTecnica: View {
                 recibido
             } else if modelo.pendiente != nil {
                 enviando
+            } else if !modelo.habilitado && !mandado {
+                VStack { NotaTecnica(texto: T.errorGenerico) }.padding(Espacio.l).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if !modelo.puedeMandar && !mandado {
                 VStack { NotaTecnica(texto: T.enCurso).accessibilityIdentifier("tecnica-en-curso") }.padding(Espacio.l).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if modelo.necesitaAviso {
@@ -220,8 +224,13 @@ struct EnviarTecnica: View {
         .background(Color.fondo)
         .navigationTitle(NombreEjercicio(nombre).principal)
         .navigationBarTitleDisplayMode(.inline)
-        .task { CompresorVideo.barrer(); await modelo.refrescar(); modelo.drenarEnFondo() }
-        .onDisappear { if let v = video { try? FileManager.default.removeItem(at: v.archivo) } }
+        // Una sola vez y sin borrar al desaparecer: abrir la cámara a pantalla completa dispara estos dos y se llevaría el video elegido.
+        // Lo que quede sin mandar lo barre la próxima entrada.
+        .task {
+            if !barrido { barrido = true; CompresorVideo.barrer() }
+            await modelo.refrescar()
+            modelo.drenarEnFondo()
+        }
     }
 
     private var aviso: some View {
@@ -459,8 +468,6 @@ private struct DevolucionTecnicaView: View {
     let envio: EnvioTecnica
     let devolucion: DevolucionTecnica
     @State private var enVideo: MomentoVideo?
-    @State private var confirmaSacar = false
-    @State private var nota: String?
 
     private struct MomentoVideo: Identifiable { let s: Double; var id: Double { s } }
 
@@ -471,7 +478,8 @@ private struct DevolucionTecnicaView: View {
                     Text(T.tituloDevolucion(devolucion.ejercicio ?? envio.nombre)).font(.title2.bold()).accessibilityAddTraits(.isHeader).fixedSize(horizontal: false, vertical: true)
                     Text(Gimnasio.fechaCorta(envio.publicadoEn).map(T.revisadoEl) ?? devolucion.credito).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("tecnica-credito")
                 }
-                if devolucion.correcciones.isEmpty {
+                // Sin correcciones no quiere decir que esté bien si no se pudo ver o hace falta otro video.
+                if devolucion.correcciones.isEmpty && devolucion.noEvaluable.isEmpty && devolucion.otroVideo == nil {
                     Text(T.sinCorrecciones).font(.headline).fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("tecnica-sin-correcciones")
                 }
                 if !devolucion.bien.isEmpty {
@@ -502,26 +510,17 @@ private struct DevolucionTecnicaView: View {
                         }
                     }
                 }
-                if let como = devolucion.otroVideo {
+                if let como = devolucion.otroVideo, !como.isEmpty {
                     seccion(T.mandameOtro) { Text(como).fixedSize(horizontal: false, vertical: true) }
                         .accessibilityIdentifier("tecnica-otro-video")
                 }
-                if let nota { NotaTecnica(texto: nota, alerta: true) }
-                if envio.tieneVideo {
-                    Button(T.sacarVideo, role: .destructive) { confirmaSacar = true }
-                        .buttonStyle(BotonSecundario(tono: .alerta))
-                        .accessibilityIdentifier("tecnica-sacar")
-                }
+                if envio.tieneVideo { SacarVideoTecnica(modelo: modelo, envioId: envio.id) }
             }
             .padding(Espacio.m)
             .anchoLectura()
         }
         .background(Color.fondo)
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog(T.sacarConfirma, isPresented: $confirmaSacar, titleVisibility: .visible) {
-            Button(T.sacarVideo, role: .destructive) { sacar() }
-            Button(T.cancelar, role: .cancel) {}
-        } message: { Text(T.sacarDetalle) }
         .sheet(item: $enVideo) { m in VideoTecnica(modelo: modelo, envioId: envio.id, desde: m.s) }
     }
 
@@ -558,9 +557,31 @@ private struct DevolucionTecnicaView: View {
         }
     }
 
+}
+
+/// «Sacar mi video»: el aviso promete que se puede cuando quiera, también mientras está en revisión.
+private struct SacarVideoTecnica: View {
+    let modelo: ModeloTecnica
+    let envioId: String
+    @State private var confirma = false
+    @State private var nota: String?
+
+    var body: some View {
+        VStack(spacing: Espacio.xs) {
+            if let nota { NotaTecnica(texto: nota, alerta: true) }
+            Button(T.sacarVideo, role: .destructive) { confirma = true }
+                .buttonStyle(BotonSecundario(tono: .alerta))
+                .accessibilityIdentifier("tecnica-sacar")
+        }
+        .confirmationDialog(T.sacarConfirma, isPresented: $confirma, titleVisibility: .visible) {
+            Button(T.sacarVideo, role: .destructive) { sacar() }
+            Button(T.cancelar, role: .cancel) {}
+        } message: { Text(T.sacarDetalle) }
+    }
+
     private func sacar() {
         Task {
-            switch await modelo.sacarVideo(id: envio.id) {
+            switch await modelo.sacarVideo(id: envioId) {
             case .ok: nota = nil
             case .ocupado: nota = T.sacarOcupado
             case .sinSenal: nota = T.sinSenal
@@ -596,8 +617,14 @@ private struct VideoTecnica: View {
         .task {
             guard let u = await modelo.urlVideo(id: envioId) else { fallo = true; return }
             let p = AVPlayer(url: u)
-            await p.seek(to: CMTime(seconds: desde, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
             player = p
+            // Un `seek` antes de estar listo se puede perder y arrancaría en cero. Si no llega a estar listo, igual queda el reproductor.
+            if let item = p.currentItem {
+                for await s in item.publisher(for: \.status).values where s != .unknown { _ = s; break }
+            }
+            guard !Task.isCancelled else { return }
+            await p.seek(to: CMTime(seconds: desde, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+            guard !Task.isCancelled else { return }
             p.play()
         }
         .onDisappear { player?.pause() }
