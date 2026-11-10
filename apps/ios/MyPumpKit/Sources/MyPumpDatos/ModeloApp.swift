@@ -327,8 +327,10 @@ public final class ModeloApp {
         UltimaCuenta.anotar(t)
         outbox = cola
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
-        chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
+        chat = ModeloChat(cliente: cliente, token: t, outbox: cola, carpetaAdjuntos: disco.url(ModeloChat.carpetaAdjuntosNombre))
         if enPrimerPlano { chat?.empezarSondeo() }
+        // Las fotos y audios del chat que quedaron en la cola (la app cerrada sin señal) vuelven a su burbuja.
+        if let chat { Task { await chat.cargarAdjuntosDeLaCola() } }
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola, disco: disco)
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
@@ -352,6 +354,7 @@ public final class ModeloApp {
         for g in ops where g.op.kind == "chat" {
             if let texto = g.op.payload["contenido"]?.comoTexto, let id = g.respuesta.comoTexto { chat?.confirmar(contenido: texto, id: id) }
         }
+        chat?.alGuardarAdjuntos(ops)
     }
 
     /// Lo que la cola abandonó (va a fallidos, no se borra). Un mensaje del chat se marca en su burbuja para
@@ -362,6 +365,7 @@ public final class ModeloApp {
         for op in ops where op.kind == "chat" {
             if let texto = op.payload["contenido"]?.comoTexto { chat?.marcarFallido(contenido: texto) }
         }
+        if let chat { Task { await chat.alAbandonarAdjuntos(ops) } }
     }
 
     // MARK: - Carga
@@ -510,6 +514,7 @@ public final class ModeloApp {
         _ = await (cargaChat, cargaRevision, cargaFotos)
         await sincronizarGimnasio()
         await sincronizarTecnica()
+        await chat?.consultarAdjuntos(palanca: palanca.chatAdjuntos)
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -674,6 +679,7 @@ public final class ModeloApp {
         await fotos?.drenar()
         await sincronizarGimnasio()
         await sincronizarTecnica()
+        await chat?.consultarAdjuntos(palanca: palanca.chatAdjuntos)
         await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
         _ = await entreno?.alVolverAPrimerPlano()
     }

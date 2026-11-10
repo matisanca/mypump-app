@@ -15,16 +15,21 @@ public struct BurbujaChat: Identifiable, Equatable, Sendable {
     public var pendiente: Bool
     /// `_fallo`: la cola se rindió con este mensaje; se ofrece reintentar (el texto nunca se pierde).
     public var fallo: Bool
+    /// La foto o el audio (nil en un mensaje de texto). En una optimista, el id es el que va a tener en el servidor.
+    public var adjunto: AdjuntoChat?
+    /// Por qué no salió un adjunto (el código con que lo dejó la cola): cambia el texto y si se ofrece «Reintentar».
+    public var motivoFallo: String?
 
     public var esDelCoach: Bool { autor == "coach" }
 
-    public init(id: String, autor: String, contenido: String, leidoPorCliente: Bool?, createdAt: String, pendiente: Bool = false, fallo: Bool = false) {
+    public init(id: String, autor: String, contenido: String, leidoPorCliente: Bool?, createdAt: String, pendiente: Bool = false, fallo: Bool = false,
+                adjunto: AdjuntoChat? = nil, motivoFallo: String? = nil) {
         self.id = id; self.autor = autor; self.contenido = contenido; self.leidoPorCliente = leidoPorCliente
-        self.createdAt = createdAt; self.pendiente = pendiente; self.fallo = fallo
+        self.createdAt = createdAt; self.pendiente = pendiente; self.fallo = fallo; self.adjunto = adjunto; self.motivoFallo = motivoFallo
     }
 
     init(_ m: MensajeChat) {
-        self.init(id: m.id, autor: m.autor, contenido: m.contenido, leidoPorCliente: m.leidoPorCliente, createdAt: m.createdAt)
+        self.init(id: m.id, autor: m.autor, contenido: m.contenido, leidoPorCliente: m.leidoPorCliente, createdAt: m.createdAt, adjunto: m.adjunto)
     }
 }
 
@@ -48,11 +53,17 @@ public struct HiloChat: Equatable, Sendable {
         // Una fila que ya estaba puede venir con su "leído" (get_chat lo trae; chat_nuevos no): se actualiza, si no al
         // recargar el badge quedaba en 0 con el mensaje sin leer.
         for f in filas where vistos.contains(f.id) {
-            if let l = f.leidoPorCliente, let i = mensajes.firstIndex(where: { $0.id == f.id }) { mensajes[i].leidoPorCliente = l }
+            guard let i = mensajes.firstIndex(where: { $0.id == f.id }) else { continue }
+            if let l = f.leidoPorCliente { mensajes[i].leidoPorCliente = l }
+            // La retención borró el archivo después: la burbuja lo tiene que decir.
+            if let a = f.adjunto { mensajes[i].adjunto = a }
         }
         for f in filas where !vistos.contains(f.id) {
-            if f.autor == "cliente" {
-                mensajes.removeAll { $0.pendiente && $0.autor == "cliente" && $0.contenido == f.contenido }
+            if let a = f.adjunto {
+                // Una foto o un audio: su optimista es la del mismo id (dos «Foto» seguidas son dos mensajes distintos).
+                mensajes.removeAll { $0.pendiente && $0.adjunto?.id == a.id }
+            } else if f.autor == "cliente" {
+                mensajes.removeAll { $0.pendiente && $0.adjunto == nil && $0.autor == "cliente" && $0.contenido == f.contenido }
             }
             vistos.insert(f.id)
             mensajes.append(BurbujaChat(f))
@@ -74,14 +85,59 @@ public struct HiloChat: Equatable, Sendable {
     /// hasta reiniciar (revisión del 15-oct, hallazgo 7). Si la fila todavía no llegó, la saca `mezclar` cuando llegue.
     public mutating func confirmar(contenido: String, id: String) {
         guard mensajes.contains(where: { $0.id == id && !$0.pendiente }),
-              let i = mensajes.firstIndex(where: { $0.pendiente && !$0.fallo && $0.autor == "cliente" && $0.contenido == contenido })
+              let i = mensajes.firstIndex(where: { $0.pendiente && !$0.fallo && $0.adjunto == nil && $0.autor == "cliente" && $0.contenido == contenido })
         else { return }
         mensajes.remove(at: i)
     }
 
     public mutating func marcarFallido(contenido: String) {
-        if let i = mensajes.firstIndex(where: { $0.pendiente && !$0.fallo && $0.contenido == contenido }) { mensajes[i].fallo = true }
+        if let i = mensajes.firstIndex(where: { $0.pendiente && !$0.fallo && $0.adjunto == nil && $0.contenido == contenido }) { mensajes[i].fallo = true }
     }
+
+    // MARK: Fotos y audios (el id del adjunto los identifica, no el texto)
+
+    /// El servidor guardó el adjunto como la fila `comentarioId`: la optimista pasa a ser esa fila ya (sin esperar al
+    /// sondeo), con la hora del servidor. Si la fila ya había llegado por el sondeo, solo se saca la optimista.
+    public mutating func confirmarAdjunto(id: String, comentarioId: String, createdAt: String?) {
+        guard let i = mensajes.firstIndex(where: { $0.pendiente && $0.adjunto?.id == id }) else { return }
+        if comentarioId.isEmpty || mensajes.contains(where: { $0.id == comentarioId }) {
+            mensajes.remove(at: i)
+            return
+        }
+        let b = mensajes[i]
+        mensajes[i] = BurbujaChat(id: comentarioId, autor: b.autor, contenido: b.contenido, leidoPorCliente: b.leidoPorCliente,
+                                  createdAt: createdAt ?? b.createdAt, adjunto: b.adjunto)
+        ordenar()
+    }
+
+    public mutating func marcarAdjuntoFallido(id: String, motivo: String?) {
+        guard let i = mensajes.firstIndex(where: { $0.pendiente && $0.adjunto?.id == id }) else { return }
+        mensajes[i].fallo = true
+        mensajes[i].motivoFallo = motivo
+    }
+
+    /// «Reintentar»: vuelve a «Enviando…». `nuevoId`: sale con otro id (el anterior era de otro mensaje).
+    public mutating func desmarcarAdjunto(id: String, nuevoId: String? = nil) {
+        guard let i = mensajes.firstIndex(where: { $0.pendiente && $0.adjunto?.id == id }) else { return }
+        mensajes[i].fallo = false
+        mensajes[i].motivoFallo = nil
+        if let n = nuevoId, let a = mensajes[i].adjunto {
+            let b = mensajes[i]
+            mensajes[i] = BurbujaChat(id: "adj_\(n)", autor: b.autor, contenido: b.contenido, leidoPorCliente: nil, createdAt: b.createdAt,
+                                      pendiente: true, adjunto: AdjuntoChat(id: n, tipo: a.tipo, duracion: a.duracion))
+        }
+    }
+
+    /// «Borrar» en uno que no salió.
+    public mutating func quitarAdjuntoPendiente(id: String) {
+        mensajes.removeAll { $0.pendiente && $0.adjunto?.id == id }
+    }
+
+    /// ¿Ya hay una burbuja (optimista o real) de ese adjunto?
+    public func tieneAdjunto(_ id: String) -> Bool { mensajes.contains { $0.adjunto?.id == id } }
+
+    /// Los ids de los adjuntos reales del hilo que todavía se pueden ver (para pedir sus URLs firmadas).
+    public var adjuntosReales: [AdjuntoChat] { mensajes.compactMap { $0.pendiente ? nil : $0.adjunto }.filter { !$0.borrado } }
 
     public mutating func desmarcarFallido(id: String) -> BurbujaChat? {
         guard let i = mensajes.firstIndex(where: { $0.id == id }) else { return nil }
@@ -133,7 +189,7 @@ public enum FechaISO {
 public final class ModeloChat {
     public static let pagina = 30
 
-    public private(set) var hilo = HiloChat()
+    public internal(set) var hilo = HiloChat()
     /// Badge del tab: lo del coach que llegó con el chat cerrado.
     public private(set) var noLeidos = 0
     public private(set) var cargando = false
@@ -156,8 +212,26 @@ public final class ModeloChat {
     @ObservationIgnored let outbox: Outbox?
     @ObservationIgnored private var sondeo: Task<Void, Never>?
 
-    public init(cliente: ClienteRPC, token: String, outbox: Outbox?) {
-        self.cliente = cliente; self.token = token; self.outbox = outbox
+    // MARK: Fotos y audios (`ChatAdjuntos.swift`)
+
+    /// Se ven el clip y el micrófono: la palanca `chat_adjuntos` y el servidor (por cliente) dicen que sí.
+    public internal(set) var adjuntosActivos = false
+    /// El tope de un audio que dice el servidor (nunca más que `ReglasChatAdjuntos.audioMaximo`).
+    public internal(set) var audioMaximo = ReglasChatAdjuntos.audioMaximo
+    /// Los archivos que ya están en el teléfono (lo que se mandó desde acá y lo que se bajó), por id del adjunto.
+    public internal(set) var archivos: [String: URL] = [:]
+    /// Los que no se pudieron bajar (la burbuja ofrece probar de nuevo).
+    public internal(set) var sinBajar: Set<String> = []
+    /// Un aviso corto para VoiceOver y la pantalla («Por hoy llegaste al máximo…»). `anuncios` cambia con cada uno.
+    public internal(set) var anuncio: String?
+    public internal(set) var anuncios = 0
+    /// La carpeta `chat-adjuntos/` de la cuenta. nil (la demo, los tests viejos): sin fotos ni audios.
+    @ObservationIgnored let carpetaAdjuntos: URL?
+    @ObservationIgnored var firmas: [String: FirmaAdjunto] = [:]
+    @ObservationIgnored var bajando: [String: Task<URL?, Never>] = [:]
+
+    public init(cliente: ClienteRPC, token: String, outbox: Outbox?, carpetaAdjuntos: URL? = nil) {
+        self.cliente = cliente; self.token = token; self.outbox = outbox; self.carpetaAdjuntos = carpetaAdjuntos
     }
 
     /// Cuántas veces llegó la última página (las de «Ver mensajes anteriores» no cuentan). La carga de la cuenta lo mira

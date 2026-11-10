@@ -159,6 +159,9 @@ public struct Escrituras: Sendable {
         case ModeloAudioDuda.kind:
             // Una duda en audio (entregas_019): iniciar, subir y confirmar (`AudioDuda.swift`).
             return await ejecutarAudio(p, reintento: op.intentada == true)
+        case ModeloChat.kindAdjunto:
+            // Una foto o un audio del chat (nativa_chat_adjuntos): sube a mini-vision, idempotente por el id (`ChatAdjuntos.swift`).
+            return await ejecutarAdjuntoChat(p)
         case ModeloAgenda.kind:
             // La reserva de la entrega (entregas_021), idempotente por `p_id` (`Agenda.swift`).
             return await ejecutarReserva(p)
@@ -196,7 +199,8 @@ public struct Escrituras: Sendable {
         else { return nil }
         let limite = despuesDe.map(FechaISO.ms)
         return filas.first { f in
-            guard f.autor == "cliente", f.contenido == contenido else { return false }
+            // Una foto o un audio («Foto», «Audio de 0:42») no es el texto que se está reintentando.
+            guard f.autor == "cliente", f.adjunto == nil, f.contenido == contenido else { return false }
             if let limite { return FechaISO.ms(f.createdAt) > limite }
             return FechaISO.ms(f.createdAt) >= ts - 60_000
         }?.id
