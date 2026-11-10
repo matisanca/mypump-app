@@ -180,7 +180,9 @@ fun ListaEntreno(
                     }
                 }
             },
-            modifier = Modifier.padding(relleno).fillMaxSize(),
+            // Abajo no se recorta: la lista sigue por detrás del panel (sus esquinas y el Deshacer flotante dejan verla) y el
+            // lugar del panel va como relleno al final.
+            modifier = Modifier.padding(top = relleno.calculateTopPadding()).fillMaxSize(),
         ) {
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(desplazamiento).testTag("entreno-lista"),
@@ -193,7 +195,7 @@ fun ListaEntreno(
                         .padding(horizontal = Espacio.m)
                         // Al final, lo que tapa la barra de pestañas flotante: lo último queda arriba de ella.
                         // (con el panel de la carga, ese lugar ya lo descuenta el Scaffold).
-                        .padding(top = Espacio.xxs, bottom = Espacio.xl + if (relleno.calculateBottomPadding() > 0.dp) 0.dp else LocalRellenoInferior.current),
+                        .padding(top = Espacio.xxs, bottom = Espacio.xl + relleno.calculateBottomPadding().takeIf { it > 0.dp }.let { it ?: LocalRellenoInferior.current }),
                     verticalArrangement = Arrangement.spacedBy(Espacio.l),
                 ) {
                     // «Tu guía» mientras falta ver algo: verde y primera, arriba de todo, como iOS (revisión del 4-nov, hallazgo 5).

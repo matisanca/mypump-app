@@ -6,6 +6,20 @@ import android.os.Build
 import android.view.ViewTreeObserver
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.pumpteam.mypump.diseno.Numeros
+import com.pumpteam.mypump.diseno.vidrio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,22 +28,17 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -62,7 +71,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloEntreno
-import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
@@ -103,30 +111,36 @@ fun PanelCarga(motor: ModeloEntreno, lugar: String, preguntador: Preguntador) {
         paneles?.let { it.intValue += 1 }
         onDispose { paneles?.let { it.intValue -= 1 } }
     }
-    val c = MyPump.colores
-    // El fondo sigue por debajo de las pestañas flotantes; lo que se toca queda arriba de ellas.
-    Column(
-        Modifier.fillMaxWidth().background(c.fondo).then(if (corrigiendoEste) Modifier.imePadding() else Modifier).padding(bottom = rellenoInferior()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        HorizontalDivider(color = c.separador)
+    // El panel flota sobre la lista; el fondo sigue por debajo de las pestañas flotantes y lo que se toca queda arriba de ellas.
+    // Deshacer va encima, fuera de la superficie: aparece sin cambiar de lugar el dial (el panel crece hacia arriba).
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        FilaDeshacer(motor, deshacible)
         Column(
             Modifier
-                .widthIn(max = 560.dp)
                 .fillMaxWidth()
-                .padding(start = Espacio.m, end = Espacio.m, top = Espacio.s, bottom = Espacio.xs)
-                .testTag("panel-carga"),
-            verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+                .superficiePanelCarga()
+                .then(if (corrigiendoEste) Modifier.imePadding() else Modifier)
+                .padding(bottom = rellenoInferior()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            val cor = corrigiendo
-            val activa = s.activa
-            when {
-                cor != null && cor.lugar == lugar && cor.indice < s.series.size -> Correccion(motor, cor.indice, s, preguntador)
-                activa != null && !terminal -> Activa(motor, lugar, activa, s, preguntador)
-                else -> Terminado()
+            Column(
+                Modifier
+                    .widthIn(max = 560.dp)
+                    .fillMaxWidth()
+                    .padding(start = Espacio.m + 2.dp, end = Espacio.m + 2.dp, top = Espacio.s, bottom = Espacio.s)
+                    .animateContentSize(EstiloCarga.resorte())
+                    .testTag("panel-carga"),
+                verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                val cor = corrigiendo
+                val activa = s.activa
+                when {
+                    cor != null && cor.lugar == lugar && cor.indice < s.series.size -> Correccion(motor, cor.indice, s, preguntador)
+                    activa != null && !terminal -> Activa(motor, lugar, activa, s, preguntador)
+                    else -> Terminado()
+                }
             }
-            FilaDeshacer(motor, deshacible)
         }
     }
 }
@@ -160,6 +174,7 @@ private fun Activa(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimple, 
     val alcance = LocalAlcanceApp.current
     val haptico = LocalHapticFeedback.current
     val contexto = LocalContext.current
+    val reducir = reducirMovimiento()
     val guardia by motor.guardia.collectAsStateWithLifecycle()
     val d by motor.dia.collectAsStateWithLifecycle()
     var aviso by remember(i) { mutableStateOf<String?>(null) }
@@ -181,55 +196,79 @@ private fun Activa(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimple, 
         delay(3000)
         motor.descartarRecord(id)
     }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    ProgresoSeries(s.series.size, s.confirmadas, i)
+    // Con letra grande, el descanso va abajo del título: al lado partía las palabras.
+    val apilado = LocalDensity.current.fontScale >= 1.3f
+    val titulo: @Composable (Modifier) -> Unit = { m ->
         if (recordAca != null) {
             Text(
                 recordAca.texto,
                 style = Letras.subtitulo.copy(fontWeight = FontWeight.Bold),
                 color = MyPump.colores.marcaTexto,
-                modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }.testTag("aviso-record-panel"),
+                modifier = m.semantics { liveRegion = LiveRegionMode.Polite }.testTag("aviso-record-panel"),
             )
         } else {
             Text(
                 "Serie ${i + 1} de ${s.series.size}",
-                style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold),
-                modifier = Modifier.weight(1f).semantics { heading() },
+                style = Numeros.chico.copy(fontSize = 15.sp),
+                maxLines = 1,
+                modifier = m.semantics { heading() },
             )
         }
-        DescansoChip(motor)
     }
-    DialReps(reps, s.diferencia(i), textoReferencia(i, s)) { delta ->
+    if (apilado) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            titulo(Modifier)
+            DescansoChip(motor)
+        }
+    } else {
+        Row(Modifier.fillMaxWidth().heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
+            titulo(Modifier.weight(1f))
+            DescansoChip(motor)
+        }
+    }
+    DialReps(reps, s.diferencia(i), textoReferencia(i, s), clave = i) { delta ->
         aviso = null
         motor.cambiarCarga(lugar) { it.ajustarReps(i, delta) }
         motor.limpiarGuardia()
     }
     val puede = s.puedeConfirmar(i)
-    Button(
-        onClick = {
-            aviso = null
-            alcance.launch {
-                val manejaTalkBack = (contexto.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager)?.isTouchExplorationEnabled == true
-                val r = motor.okSerie(lugar, i, venceEn = if (manejaTalkBack) null else 6.0) { preguntador.preguntar(it) }
-                if (r == ModeloEntreno.ResultadoOK.REGISTRADA) haptico.performHapticFeedback(HapticFeedbackType.Confirm)
-                if (r == ModeloEntreno.ResultadoOK.FALTAN_DATOS) aviso = "Faltan datos para registrar esta serie."
+    var sello by remember { mutableIntStateOf(0) }
+    var selloVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(sello) {
+        if (sello == 0) return@LaunchedEffect
+        selloVisible = true
+        delay(620)
+        selloVisible = false
+    }
+    LaunchedEffect(enGuardia) { if (enGuardia) haptico.performHapticFeedback(HapticFeedbackType.Reject) }
+    Box(Modifier.fillMaxWidth()) {
+        BotonConfirmar(
+            alTocar = {
+                aviso = null
+                alcance.launch {
+                    val manejaTalkBack = (contexto.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager)?.isTouchExplorationEnabled == true
+                    val r = motor.okSerie(lugar, i, venceEn = if (manejaTalkBack) null else 6.0) { preguntador.preguntar(it) }
+                    if (r == ModeloEntreno.ResultadoOK.REGISTRADA) {
+                        haptico.performHapticFeedback(HapticFeedbackType.Confirm)
+                        if (!reducir) sello++
+                    }
+                    if (r == ModeloEntreno.ResultadoOK.FALTAN_DATOS) aviso = "Faltan datos para registrar esta serie."
+                }
+            },
+            habilitado = puede,
+            alerta = enGuardia,
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = etiquetaAccesibleOK(reps, kg, i, s, enGuardia) }
+                .testTag("ok-serie"),
+        ) { tinta -> EtiquetaOK(reps, kg, i, s, enGuardia, tinta) }
+        // Medio segundo de tilde sobre el botón: la serie quedó anotada, sin tapar nada ni frenar el próximo toque.
+        AnimatedVisibility(selloVisible, Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
+            Box(Modifier.fillMaxSize().clip(CircleShape).background(c.marca).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
+                Icon(Iconos.Tilde, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(28.dp))
             }
-        },
-        enabled = puede,
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 54.dp)
-            .semantics { contentDescription = etiquetaAccesibleOK(reps, kg, i, s, enGuardia) }
-            .testTag("ok-serie"),
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (enGuardia) c.alerta else c.marca,
-            contentColor = if (enGuardia) c.sobreMarca else c.sobreMarca,
-            disabledContainerColor = c.campo,
-            disabledContentColor = c.textoSecundario,
-        ),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        EtiquetaOK(reps, kg, i, s, enGuardia)
+        }
     }
     (aviso ?: d.ejercicios[lugar]?.series?.getOrNull(i)?.aviso)?.takeIf { it.isNotEmpty() }?.let {
         AvisoPanel(it, Modifier.testTag("aviso-serie-${i + 1}"))
@@ -256,8 +295,8 @@ private fun textoReferencia(i: Int, s: CargaSimple): String? {
 
 /** El texto del OK, que achica la letra antes de cortarse (`minimumScaleFactor` de iOS). */
 @Composable
-private fun EtiquetaOK(reps: Int?, kg: Double?, i: Int, s: CargaSimple, enGuardia: Boolean) {
-    val estilo = MaterialTheme.typography.titleMedium.merge(Letras.cifras)
+private fun EtiquetaOK(reps: Int?, kg: Double?, i: Int, s: CargaSimple, enGuardia: Boolean, tinta: Color) {
+    val estilo = Numeros.chico.copy(fontSize = 20.sp, color = tinta)
     val tam = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = estilo.fontSize, stepSize = 1.sp)
     val mensaje = when {
         enGuardia -> "¿Ya hiciste la serie? Tocá de nuevo"
@@ -266,14 +305,14 @@ private fun EtiquetaOK(reps: Int?, kg: Double?, i: Int, s: CargaSimple, enGuardi
         else -> null
     }
     if (mensaje != null) {
-        Text(mensaje, style = estilo, maxLines = 1, autoSize = tam, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text(mensaje, style = MaterialTheme.typography.titleMedium.copy(color = tinta, fontWeight = FontWeight.SemiBold), maxLines = 1, autoSize = tam, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         return
     }
     val detalle = if (s.sinKg) "${reps ?: 0} reps" else "${reps ?: 0} × ${KgTexto.de(kg)} kg"
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-        Text("OK", style = estilo.copy(fontWeight = FontWeight.ExtraBold), maxLines = 1)
-        Spacer(Modifier.width(8.dp))
-        Text(detalle, style = estilo.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, autoSize = tam)
+        Text("OK", style = estilo.copy(fontSize = 22.sp, fontWeight = FontWeight.Black), maxLines = 1)
+        Spacer(Modifier.width(10.dp))
+        Text(detalle, style = estilo, maxLines = 1, autoSize = tam)
     }
 }
 
@@ -284,13 +323,31 @@ private fun etiquetaAccesibleOK(reps: Int?, kg: Double?, i: Int, s: CargaSimple,
     else -> "OK, registrar ${reps ?: 0} repeticiones con ${KgTexto.de(kg)} kilos"
 }
 
-/** Reserva siempre su renglón: si apareciera y desapareciera, el panel saltaría y el dial se movería bajo el dedo. */
+/** Flota arriba del panel, en una cápsula: no le guarda un renglón vacío al panel ni mueve el dial. */
 @Composable
 private fun FilaDeshacer(motor: ModeloEntreno, d: ModeloEntreno.OKDeshacible?) {
-    Row(Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        if (d != null) {
-            Text("Serie ${d.indice + 1} anotada.", style = Letras.caption, color = MyPump.colores.textoSecundario)
-            EnlaceTexto("Deshacer", "deshacer-ok") { motor.deshacerOK() }
+    val c = MyPump.colores
+    // Mientras se va, sigue diciendo la serie que era (d ya es null) y el botón no responde.
+    var ultimo by remember { mutableStateOf(d) }
+    if (d != null) ultimo = d
+    AnimatedVisibility(
+        d != null,
+        enter = slideInVertically { it } + fadeIn(),
+        exit = slideOutVertically { it } + fadeOut(),
+    ) {
+        val indice = ultimo?.indice ?: 0
+        Row(
+            Modifier
+                .padding(bottom = Espacio.s)
+                .vidrio()
+                .heightIn(min = 44.dp)
+                .padding(start = Espacio.m, end = Espacio.xs),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(Iconos.TildeEnCirculo, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
+            Text("Serie ${indice + 1} anotada.", style = Letras.subtitulo.copy(fontWeight = FontWeight.Medium), color = c.texto)
+            EnlaceTexto("Deshacer", "deshacer-ok", Letras.subtitulo.copy(fontWeight = FontWeight.Bold)) { motor.deshacerOK() }
         }
     }
 }
@@ -308,48 +365,48 @@ private fun Correccion(motor: ModeloEntreno, i: Int, s: CargaSimple, preguntador
     BackHandler { motor.cancelarCorreccion() }
 
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("Corrigiendo la serie ${i + 1}", style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f).semantics { heading() })
+        Text("Corrigiendo la serie ${i + 1}", style = Numeros.chico.copy(fontSize = 15.sp), modifier = Modifier.weight(1f).semantics { heading() })
         EnlaceTexto("Cancelar", "correccion-cancelar", Letras.subtitulo) { motor.cancelarCorreccion() }
     }
-    DialReps(reps, null, "Solo cambia esta serie") { delta ->
+    DialReps(reps, null, "Solo cambia esta serie", clave = i) { delta ->
         reps = minOf(Verosimilitud.REPS_MAX.toInt(), maxOf(1, reps + delta))
     }
     if (!s.sinKg) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-            BotonRedondo(Iconos.Menos, "Bajar el peso", "correccion-kg-menos") { kg?.let { kg = AumentoCarga.mover(it, -1, s.equipo) } }
+            BotonCircularCarga(Iconos.Menos, "Bajar el peso", "correccion-kg-menos", lado = 44.dp, tamanoIcono = 18.dp) { kg?.let { kg = AumentoCarga.mover(it, -1, s.equipo) } }
             CampoKilos(
                 valor = KgTexto.de(kg),
                 etiqueta = "Peso de la serie en kilos",
                 alCambiar = { kg = KgTexto.numero(it) },
-                estilo = Letras.titulo3.copy(fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center).merge(Letras.cifras),
-                modifier = Modifier.width(90.dp).testTag("correccion-kg"),
-            ) { _, campo ->
-                Box(Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp)).background(c.campo).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) { campo() }
+                estilo = Numeros.mediano.copy(fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center).merge(Letras.cifras),
+                modifier = Modifier.width(96.dp).testTag("correccion-kg"),
+            ) { enfocado, campo ->
+                val forma = RoundedCornerShape(10.dp)
+                Box(Modifier.heightIn(min = 44.dp).clip(forma).then(if (enfocado) Modifier.background(c.campo).border(2.dp, c.marcaVivo, forma) else Modifier).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) { campo() }
             }
-            BotonRedondo(Iconos.Mas, "Subir el peso", "correccion-kg-mas") { kg?.let { kg = AumentoCarga.mover(it, 1, s.equipo) } }
+            BotonCircularCarga(Iconos.Mas, "Subir el peso", "correccion-kg-mas", lado = 44.dp, tamanoIcono = 18.dp) { kg?.let { kg = AumentoCarga.mover(it, 1, s.equipo) } }
         }
     }
     aviso?.let { AvisoPanel(it) }
-    BotonMarca(
-        "Guardar corrección",
+    BotonConfirmar(
         alTocar = {
             foco.clearFocus()
             alcance.launch {
                 aviso = (motor.guardarCorreccion(reps, kg) { preguntador.preguntar(it) } as? ModeloEntreno.ResultadoCorreccion.Rechazada)?.aviso
             }
         },
-        modifier = Modifier.testTag("correccion-guardar"),
-    )
+        modifier = Modifier.fillMaxWidth().testTag("correccion-guardar"),
+    ) { tinta -> Text("Guardar corrección", style = Numeros.chico.copy(fontSize = 19.sp, color = tinta, fontWeight = FontWeight.ExtraBold)) }
 }
 
 @Composable
 private fun Terminado() {
     val c = MyPump.colores
-    Column(Modifier.fillMaxWidth().padding(vertical = Espacio.s), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-        Row(Modifier.testTag("ejercicio-completo"), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            Icon(Iconos.TildeEnCirculo, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
-            Text("Ejercicio completo", style = MaterialTheme.typography.titleMedium, color = c.marcaTexto)
+    Column(Modifier.fillMaxWidth().padding(vertical = Espacio.xs), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+        Box(Modifier.size(44.dp).clip(CircleShape).background(c.marca), contentAlignment = Alignment.Center) {
+            Icon(Iconos.Tilde, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(24.dp))
         }
+        Text("Ejercicio completo", style = Numeros.chico.copy(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold), color = c.texto, modifier = Modifier.testTag("ejercicio-completo"))
         Text("Tocá una serie si querés corregirla.", style = Letras.caption, color = c.textoSecundario)
     }
 }
@@ -360,12 +417,17 @@ private fun DescansoChip(motor: ModeloEntreno) {
     val c = MyPump.colores
     val b by motor.descanso.collectAsStateWithLifecycle()
     if (!b.visible) return
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
         Text(
             if (b.listo) "A la serie" else "Descanso ${b.texto}",
-            style = Letras.caption.copy(fontWeight = FontWeight.SemiBold).merge(Letras.cifras),
-            color = if (b.listo) c.marcaTexto else c.textoSecundario,
-            modifier = Modifier.testTag("descanso-chip"),
+            style = Numeros.chico.copy(fontSize = 14.sp).merge(Letras.cifras),
+            color = if (b.listo) c.marcaTexto else c.texto,
+            maxLines = 1,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(if (b.listo) c.marcaSuave else c.campo)
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+                .testTag("descanso-chip"),
         )
         if (!b.listo) EnlaceTexto("Saltar", "saltar-descanso") { motor.saltarDescanso() }
     }

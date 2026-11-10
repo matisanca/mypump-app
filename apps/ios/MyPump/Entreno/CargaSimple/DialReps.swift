@@ -69,7 +69,8 @@ struct DialReps: View {
 
     /// El − y el + también giran el tambor: el número nuevo llega desde donde estaba.
     private func impulso(_ d: Int) {
-        guard !reducir else { return }
+        // En el tope (1 o 300) el número no cambia: girarlo mostraría un 2 o un 299 que no existe.
+        guard !reducir, let r = reps, (d < 0 && r > 1) || (d > 0 && r < Self.maximo) else { return }
         var sinAnimar = Transaction()
         sinAnimar.disablesAnimations = true
         withTransaction(sinAnimar) { desplazamiento = CGFloat(d) * Self.escalon }

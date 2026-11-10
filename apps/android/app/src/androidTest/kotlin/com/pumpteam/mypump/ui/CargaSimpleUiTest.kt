@@ -59,7 +59,7 @@ class CargaSimpleUiTest : PruebaUi() {
         Telefono.captura("carga-2-deshacer")
         p.tocar(etiqueta("deshacer-ok"))
         p.esperar("la serie pendiente") { fila(1).contains("pendiente").takeIf { it } }
-        assertFalse(p.existe(etiqueta("deshacer-ok")))
+        p.esperarQueNoEste(etiqueta("deshacer-ok"), ms = 2_000)   // la cápsula se va con una animación corta
         p.quieto(7_000)   // más que la ventana: no sale nada
         assertTrue("la deshecha llegó al servidor", servidor.a("mypump_registrar_carga").isEmpty())
     }
