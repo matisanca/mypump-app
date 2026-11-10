@@ -148,6 +148,7 @@ public enum EvaluacionReps {
             g.agregar(acelerometro: ac, giroscopio: gi)
             i = j
             let t = Double(i) / hz
+            if let fd = finDescanso, g.finDescanso == nil, t >= fd { g.marcarFinDescanso(en: base + fd) }
             if Int(t) > ultimoTick {
                 ultimoTick = Int(t)
                 let descansando = finDescanso.map { t < $0 } ?? false
@@ -159,6 +160,18 @@ public enum EvaluacionReps {
             }
         }
         return (prop, cuando, cambios)
+    }
+
+    /// El descanso de una serie grabada: hasta 10 s antes de `inicio` (s, marcado a mano), sin marca de fin de descanso. Sirve
+    /// de control negativo: ahí no hay serie. nil si no queda un descanso de al menos 30 s.
+    public static func descansoAntesDeLaSerie(_ r: ArchivoCalibracion.Registro, inicio: Double) -> ArchivoCalibracion.Registro? {
+        let hz = r.encabezado.hz
+        let fin = Int((inicio - 10) * hz)
+        guard fin >= Int(30 * hz), fin <= r.cuadros.count else { return nil }
+        var copia = r
+        copia.cuadros = Array(r.cuadros.prefix(fin))
+        copia.encabezado.finDescanso = nil
+        return copia
     }
 
     /// La tabla para la terminal.

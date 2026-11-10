@@ -54,6 +54,14 @@ public enum EscenarioGimnasio {
         case munecaInmovil
         /// No hizo ninguna serie: descanso, caminatas y celular, y confirma.
         case sinSerie
+        /// Sin serie: carga discos en la barra (levantadas con carga, sin ritmo parejo).
+        case cargaDiscos
+        /// Sin serie: estira los hombros en ciclos parejos y sin carga.
+        case estira
+        /// Sin serie: camina despacio, con los pasos más largos que el mínimo de una repetición.
+        case caminaLento
+        /// Hace una aproximación liviana en pleno descanso y después la serie de verdad.
+        case aproximacion
     }
 
     public struct Linea: Sendable {
@@ -71,11 +79,36 @@ public enum EscenarioGimnasio {
 
     // MARK: - El armado
 
-    public static func armar(_ familia: FamiliaMovimiento, caso: Caso = .normal, reps pedidas: Int = 10, semilla: UInt64) -> Linea {
-        var g = Azar(semilla &* 104_729 &+ UInt64(familia.rawValue.count))
-        let p = perfil(familia)
+    /// Las corridas sin serie: lo que se proponga en ellas es inventado.
+    public static let casosSinSerie: [Caso] = [.sinSerie, .cargaDiscos, .estira, .caminaLento]
+
+    /// Otra persona y otro reloj para los datos de validación: otra orientación de la muñeca, otro recorrido, otro tempo,
+    /// otra vibración y un poco de movimiento fino en el descanso. Con `otroCuerpo == nil` no cambia nada.
+    struct OtroCuerpo {
+        var base: (x: Double, y: Double, z: Double)
+        var recorrido: Double, tempo: Double, subida: Double, vibracion: Double, finoDescanso: Double
+        init(_ r: inout Azar) {
+            let (a, b) = (r.uniforme(-.pi, .pi), r.uniforme(-0.9, 0.9))
+            base = (cos(a) * cos(b), sin(a) * cos(b), sin(b))
+            recorrido = r.uniforme(0.7, 1.3); tempo = r.uniforme(0.75, 1.4); subida = r.uniforme(0.3, 0.6)
+            vibracion = r.uniforme(0.07, 0.20); finoDescanso = r.uniforme(0.015, 0.05)
+        }
+    }
+
+    /// `otroCuerpo`: los datos de validación, con un modelo que el contador no vio al ajustarse.
+    public static func armar(_ familia: FamiliaMovimiento, caso: Caso = .normal, reps pedidas: Int = 10, semilla: UInt64, otroCuerpo: Bool = false) -> Linea {
+        let indiceFamilia = UInt64(FamiliaMovimiento.allCases.firstIndex(of: familia) ?? 0)
+        var g = Azar(semilla &* 104_729 &+ (otroCuerpo ? 1_000 &+ indiceFamilia : UInt64(familia.rawValue.count)))
+        var azarCuerpo = Azar(semilla &* 7_919 &+ 13 &+ indiceFamilia)
+        let cuerpo = otroCuerpo ? OtroCuerpo(&azarCuerpo) : nil
+        var p = perfil(familia)
+        if let cuerpo {
+            p.angulo *= cuerpo.recorrido; p.desplazamiento *= cuerpo.recorrido; p.duracion *= cuerpo.tempo
+        }
+        let fraccionSubida = cuerpo?.subida ?? 0.4
+        let sinSerie = casosSinSerie.contains(caso)
         let descanso = g.uniforme(70, 130)
-        let total = descanso + 120
+        let total = descanso + (otroCuerpo ? 260 : 120)
         let n = Int(total * hz)
         var angulo = [Double](repeating: 0, count: n)      // alrededor de y
         var alabeo = [Double](repeating: 0, count: n)      // alrededor de x
@@ -85,6 +118,7 @@ public enum EscenarioGimnasio {
         // Un cambio de postura suave de `a` rad que queda (o vuelve, con `vuelve`).
         func gesto(_ x: inout [Double], en t: Double, dura: Double, a: Double, vuelve: Bool = false) {
             let i0 = max(0, Int(t * hz)), m = max(1, Int(dura * hz))
+            guard i0 < n else { return }
             for i in i0..<n {
                 let u = Double(i - i0) / Double(m)
                 if u >= 1 {
@@ -96,8 +130,8 @@ public enum EscenarioGimnasio {
         }
 
         // Caminar: el brazo pendula, una vuelta por paso doble, y cada pisada golpea.
-        func caminar(desde t: Double, dura: Double) {
-            let periodo = g.uniforme(1.0, 1.25), amp = g.uniforme(0.25, 0.45)
+        func caminar(desde t: Double, dura: Double, periodo fijo: Double? = nil) {
+            let periodo = fijo ?? g.uniforme(1.0, 1.25), amp = g.uniforme(0.25, 0.45)
             let i0 = Int(t * hz), i1 = min(n, Int((t + dura) * hz))
             guard i1 > i0 else { return }
             for i in i0..<i1 {
@@ -134,12 +168,41 @@ public enum EscenarioGimnasio {
             t += g.uniforme(2, 12)
         }
 
+        // Vibración extra: lo que levanta con carga fuera de la serie.
+        var cargas: [(rango: Range<Int>, g: Double)] = []
+        func marcarCarga(_ a: Double, _ b: Double, _ v: Double) {
+            let i0 = max(0, min(n, Int(a * hz))), i1 = max(i0, min(n, Int(b * hz)))
+            cargas.append((i0..<i1, v))
+        }
+        // Una serie de reps cosenoidales que se suma a la señal (la aproximación del descanso y los estiramientos).
+        func tanda(desde t0: Double, reps m: Int, duracion: Double, a: Double, d: Double) -> Double {
+            var u = t0
+            for _ in 0..<m {
+                let dur = duracion * g.uniforme(0.92, 1.08)
+                let i0 = Int(u * hz), i1 = Int((u + dur) * hz)
+                guard i1 < n else { break }
+                for i in i0..<i1 {
+                    let s = (1 - cos(2 * .pi * Double(i - i0) / Double(i1 - i0))) / 2
+                    angulo[i] += a * s; lineal[i] += d * s
+                }
+                u += dur + g.uniforme(0, 0.3)
+            }
+            return u
+        }
+
+        if caso == .aproximacion {
+            // A mitad del descanso: pocas reps, con poco peso, y sigue descansando.
+            let d0 = max(8, descanso * g.uniforme(0.25, 0.45))
+            let fin = tanda(desde: d0, reps: Int(g.uniforme(6, 9)), duracion: p.duracion * 0.85, a: p.angulo * 0.9, d: p.desplazamiento * 0.9)
+            marcarCarga(d0, fin, g.uniforme(0.08, 0.13))
+        }
+
         // La serie.
         var inicio = descanso + g.uniforme(4, 12)
         if caso == .arrancaEnDescanso { inicio = descanso - 25 }
         var cuantas = pedidas
         var finSerie = inicio
-        if caso != .sinSerie {
+        if !sinSerie {
             // Agarrar el peso, acomodarse.
             gesto(&angulo, en: max(0, inicio - 4), dura: 1.3, a: g.uniforme(-0.9, 0.9))
             gesto(&alabeo, en: max(0, inicio - 2.5), dura: 0.9, a: g.uniforme(-0.5, 0.5))
@@ -157,7 +220,7 @@ public enum EscenarioGimnasio {
             let escala = caso == .munecaInmovil ? 0.08 : 1.0
             var u = inicio
             for f in filas {
-                let up = f.dur * 0.4, down = f.dur * 0.6
+                let up = f.dur * fraccionSubida, down = f.dur * (1 - fraccionSubida)
                 let i0 = Int(u * hz), i1 = Int((u + up) * hz), i2 = Int((u + up + down) * hz)
                 guard i2 < n else { break }
                 for i in i0..<i1 {
@@ -179,8 +242,28 @@ public enum EscenarioGimnasio {
             gesto(&alabeo, en: finSerie + g.uniforme(1.5, 3), dura: 0.9, a: g.uniforme(-0.6, 0.6))
         } else {
             cuantas = 0
-            caminar(desde: descanso + 5, dura: 20)
-            finSerie = descanso + 30
+            switch caso {
+            case .cargaDiscos:
+                // Levanta discos: gestos con carga, a destiempo.
+                var u = descanso + 3
+                for _ in 0..<Int(g.uniforme(4, 9)) {
+                    let d = g.uniforme(1.0, 2.2), a = g.uniforme(-1.1, 1.1)
+                    gesto(&angulo, en: u, dura: d, a: a, vuelve: true)
+                    gesto(&alabeo, en: u + 0.2, dura: d * 0.7, a: g.uniforme(-0.5, 0.5), vuelve: true)
+                    marcarCarga(u, u + d, g.uniforme(0.09, 0.17))
+                    u += d + g.uniforme(1.5, 7)
+                }
+                finSerie = u
+            case .estira:
+                let fin = tanda(desde: descanso + 4, reps: Int(g.uniforme(6, 13)), duracion: g.uniforme(2.0, 4.5), a: g.uniforme(0.8, 1.6), d: 0)
+                finSerie = fin
+            case .caminaLento:
+                caminar(desde: descanso + 5, dura: 25, periodo: g.uniforme(1.35, 1.7))
+                finSerie = descanso + 32
+            default:
+                caminar(desde: descanso + 5, dura: 20)
+                finSerie = descanso + 30
+            }
         }
         // Mira el reloj y confirma.
         let confirma = min(total - 1, finSerie + g.uniforme(10, 28))
@@ -190,7 +273,7 @@ public enum EscenarioGimnasio {
         // La física: gravedad rotada, aceleración lineal y ruido del sensor (y el temblor cuando hay carga).
         var ruido = Azar(semilla &+ 31)
         var deriva = 0.0
-        let base = (x: 0.25, y: -0.15, z: -0.95)
+        let base = cuerpo?.base ?? (x: 0.25, y: -0.15, z: -0.95)
         let norma = (base.x * base.x + base.y * base.y + base.z * base.z).squareRoot()
         let (b0, b1, b2) = (base.x / norma, base.y / norma, base.z / norma)
         func derivada(_ x: [Double]) -> [Double] {
@@ -201,7 +284,10 @@ public enum EscenarioGimnasio {
         var cuadros: [CuadroSensor] = []
         cuadros.reserveCapacity(n)
         let enSerie = Int(inicio * hz)..<max(Int(inicio * hz) + 1, Int(finSerie * hz))
-        let vibracion = 0.10 + 0.08 * Double(ruido.siguiente() >> 11) / Double(1 << 53)
+        let sorteo = Double(ruido.siguiente() >> 11) / Double(1 << 53)
+        let vibracion = cuerpo?.vibracion ?? (0.10 + 0.08 * sorteo)
+        var cargaPorCuadro = [Double](repeating: cuerpo?.finoDescanso ?? 0, count: n)
+        for c in cargas { for i in c.rango { cargaPorCuadro[i] = c.g } }
         for i in 0..<n {
             deriva = 0.9995 * deriva + ruido.normal() * 0.0012
             let (c, s) = (cos(angulo[i] + deriva), sin(angulo[i] + deriva))
@@ -210,8 +296,8 @@ public enum EscenarioGimnasio {
             let gy = ca * gy0 - sa * gz0, gz = sa * gy0 + ca * gz0
             let extra = acel[i] / 9.81
             // La vibración de hacer fuerza: en la grabación real, 0,10 a 0,18 g de desvío en la aceleración total.
-            let enCarga = enSerie.contains(i)
-            let (tx, ty, tz) = enCarga ? (ruido.normal() * vibracion, ruido.normal() * vibracion, ruido.normal() * vibracion) : (0, 0, 0)
+            let v = (!sinSerie || caso == .sinSerie) && enSerie.contains(i) ? vibracion : cargaPorCuadro[i]
+            let (tx, ty, tz) = v > 0 ? (ruido.normal() * v, ruido.normal() * v, ruido.normal() * v) : (0, 0, 0)
             let (lx, lz): (Double, Double) = p.alAntebrazo ? (extra, 0) : (-b0 * extra, -b2 * extra)
             cuadros.append(CuadroSensor(
                 ax: Float(gx + lx + tx + ruido.normal() * 0.004),
@@ -316,9 +402,10 @@ extension EscenarioGimnasio {
         public init() {}
         public mutating func sumar(reales: Int, _ v: Vivo) {
             corridas += 1
-            if v.propusoAntes { falsas += 1 }
+            // Una corrida con un número inventado cuenta una sola vez, aunque el número haya cambiado.
+            if v.propusoAntes || (reales == 0 && v.propuesta != nil) { falsas += 1 }
             guard let p = v.propuesta else { return }
-            guard reales > 0 else { falsas += 1; return }
+            guard reales > 0 else { return }
             propuestas += 1
             if p == reales { exactas += 1 }
             if abs(p - reales) <= 1 { dentroDeUno += 1 } else { conError += 1 }

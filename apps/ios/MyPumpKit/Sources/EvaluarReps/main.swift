@@ -76,6 +76,67 @@ if sacar("--gimnasio", conValor: false) != nil {
     }
     exit(0)
 }
+if let cual = sacar("--banco", conValor: true), let cual {
+    // Datos separados: `ajuste` son las semillas con las que se pueden elegir umbrales; `validacion` tiene otras semillas y
+    // otro modelo del cuerpo (ver `EscenarioGimnasio.OtroCuerpo`) y no se mira para ajustar.
+    let otro = cual == "validacion"
+    let semillas: [UInt64] = otro ? Array(101...124) : Array(1...12)
+    let repsPosibles = otro ? [6, 8, 10, 12, 15] : [10]
+    func correr(_ f: [FamiliaMovimiento], _ c: EscenarioGimnasio.Caso) -> EscenarioGimnasio.Marcador {
+        var m = EscenarioGimnasio.Marcador()
+        for fam in f { for x in semillas {
+            let l = EscenarioGimnasio.armar(fam, caso: c, reps: repsPosibles[Int(x) % repsPosibles.count], semilla: x, otroCuerpo: otro)
+            m.sumar(reales: l.reps, EscenarioGimnasio.enVivo(l, proponer: PasoApp.nuevo()))
+        } }
+        return m
+    }
+    print("Banco \(cual): \(semillas.count) semillas por combinación. SINTÉTICO.")
+    let todas = FamiliaMovimiento.allCases
+    let cinco: [FamiliaMovimiento] = [.curl, .empujeHorizontal, .sentadilla, .tironVertical, .elevacionLateral]
+    let normal = correr(todas, .normal)
+    print("  \("normal, 16 familias".padding(toLength: 26, withPad: " ", startingAt: 0)) \(normal.texto)")
+    for c in [EscenarioGimnasio.Caso.lentaAlFallo, .pausaMedia, .drop, .arrancaEnDescanso, .aproximacion, .munecaInmovil] {
+        print("  \(c.rawValue.padding(toLength: 26, withPad: " ", startingAt: 0)) \(correr(cinco, c).texto)")
+    }
+    var inventadas = 0, corridas = 0
+    for c in EscenarioGimnasio.casosSinSerie {
+        let m = correr(todas, c)
+        inventadas += m.falsas; corridas += m.corridas
+        print("  \(c.rawValue.padding(toLength: 26, withPad: " ", startingAt: 0)) \(m.corridas) corridas · inventó \(m.falsas)")
+    }
+    print("  SIN SERIE, total: inventó \(inventadas) de \(corridas)")
+    exit(0)
+}
+if let rutaNeg = sacar("--descansos", conValor: true), let rutaNeg {
+    // Lo real antes de la serie: lo que se proponga ahí es inventado. `--inicios 44,177,…` da, en orden, el segundo en que arranca
+    // la primera serie de cada ventana, marcado a mano mirando la señal (privado: no va al repo; 0 saltea esa ventana).
+    let inicios = (sacar("--inicios", conValor: true) ?? nil)?.split(separator: ",").compactMap { Double($0) } ?? []
+    let (registros, _) = EvaluacionReps.leer([URL(fileURLWithPath: rutaNeg)])
+    var falsos = 0, con = 0
+    for (k, (_, r)) in registros.enumerated() where k < inicios.count {
+        guard let c = EvaluacionReps.descansoAntesDeLaSerie(r, inicio: inicios[k]) else { continue }
+        con += 1
+        let v = EvaluacionReps.repetirEnVivo(c)
+        if v.propuesta != nil { falsos += 1 }
+        print("serie \(r.encabezado.orden): \(c.cuadros.count / 100) s de descanso · propone \(v.propuesta.map(String.init) ?? "nada")")
+    }
+    print("descansos reales: \(con) · propuestas inventadas: \(falsos)")
+    exit(0)
+}
+if let rutaCosto = sacar("--costo", conValor: true), let rutaCosto {
+    // Lo que tarda un conteo de 120 s (en la Mac): el reloj cuenta una vez por segundo.
+    let (registros, _) = EvaluacionReps.leer([URL(fileURLWithPath: rutaCosto)])
+    var tiempos: [Double] = [], total = 0
+    for _ in 0..<5 { for (_, r) in registros {
+        let cs = Array(r.cuadros.suffix(12_000))
+        let t0 = DispatchTime.now().uptimeNanoseconds
+        total += ContadorReps.contar(cs).reps
+        tiempos.append(Double(DispatchTime.now().uptimeNanoseconds - t0) / 1e6)
+    } }
+    tiempos.sort()
+    print(String(format: "conteo de hasta 120 s: mediana %.2f ms · peor %.2f ms (\(tiempos.count) corridas, suma \(total))", tiempos[tiempos.count / 2], tiempos.last ?? 0))
+    exit(0)
+}
 if let rutaVivo = sacar("--vivo", conValor: true), let r = rutaVivo {
     // Repite cada serie real segundo a segundo, como en el reloj: qué proponía y cuándo. Los nombres no salen.
     let (registros, fallas) = EvaluacionReps.leer([URL(fileURLWithPath: r)])
