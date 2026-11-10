@@ -550,6 +550,7 @@ public final class ModeloApp {
         await sincronizarTecnica()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
+        anotarCargaCompleta()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
         if let salud { Task { await salud.alAbrir() } }
         // La tarjeta de «Tu guía»: el resumen, que solo lee (no marca que abrió la guía).
@@ -700,20 +701,113 @@ public final class ModeloApp {
             // Cambió el día: se vuelve a hoy (el que se miraba pudo salir de la ventana del servidor).
             await irADia(nil)
         }
+        // F7 (auditoría 10/11): la rutina y la dieta se pedían solo al arrancar, y iOS deja la app viva días. Un plan
+        // publicado hoy no se veía hasta cerrarla del todo. Ahora se vuelven a pedir pasados unos minutos.
+        if toca(.plan) { await refrescarPlan() }
+        // F11: lo demás tampoco se relee en cada vuelta (el alumno entra y sale veinte veces en un entreno).
         // La tarjeta de «Tu guía», que solo lee (`entregas_app_resumen`), sin frenar lo demás.
-        if let guia { Task { await guia.actualizarResumen() } }
-        // Suplementación, cada vez (como las marcas de Dieta): Mati la pudo cambiar después de la llamada.
-        if let suplementacion { Task { await suplementacion.cargar() } }
+        if let guia, toca(.guia) { Task { await guia.actualizarResumen() } }
+        // Suplementación: Mati la pudo cambiar después de la llamada.
+        if let suplementacion, toca(.suplementacion) { Task { await suplementacion.cargar() } }
         await outbox?.drenar()
-        // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
-        await hidratarMarcas()
-        await refrescarDiaPasado()
+        // Las marcas de hoy: las pudo cambiar la web u otro teléfono (DIE-05, D25).
+        if toca(.marcas) {
+            await hidratarMarcas()
+            await refrescarDiaPasado()
+        }
         await chat?.sondear()
         await fotos?.drenar()
-        await sincronizarGimnasio()
-        await sincronizarTecnica()
-        await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
+        if toca(.gimnasio) {
+            await sincronizarGimnasio()
+            await sincronizarTecnica()
+        }
+        if toca(.salud) { await salud?.alVolver() }   // con Apple Health conectada: 7 días y retomar el historial
         _ = await entreno?.alVolverAPrimerPlano()
+    }
+
+    // MARK: - F7 y F11: cada cuánto se relee al volver a la app
+
+    /// Lo que se relee al volver a la app, con su tiempo mínimo entre una lectura y la siguiente.
+    public enum Relectura: CaseIterable, Sendable {
+        case plan, guia, suplementacion, marcas, gimnasio, salud
+
+        public var cada: TimeInterval {
+            switch self {
+            case .plan: 5 * 60
+            case .marcas: 2 * 60
+            case .guia, .suplementacion, .gimnasio: 10 * 60
+            case .salud: 60 * 60
+            }
+        }
+    }
+
+    /// El reloj de las relecturas (las pruebas lo mueven).
+    @ObservationIgnored public var relojRelecturas: () -> Date = { Date() }
+    @ObservationIgnored private var ultimaRelectura: [Relectura: Date] = [:]
+
+    /// Si ya pasó su tiempo mínimo desde la última vez (y la anota). Una carga completa cuenta como lectura de todo.
+    func toca(_ r: Relectura) -> Bool {
+        let ahora = relojRelecturas()
+        if let u = ultimaRelectura[r], ahora.timeIntervalSince(u) < r.cada { return false }
+        ultimaRelectura[r] = ahora
+        return true
+    }
+
+    func anotarCargaCompleta() {
+        let ahora = relojRelecturas()
+        for r in Relectura.allCases { ultimaRelectura[r] = ahora }
+    }
+
+    /// Hay un entrenamiento abierto ahora: arrancó hace menos de 4 horas y no se cerró. El plan no se cambia en el medio
+    /// (lo que se está cargando tiene que caer en la rutina que se ve); se aplica en la próxima vuelta.
+    var entrenoAbierto: Bool {
+        guard let e = entreno, e.sesionIniciada, !e.dia.diaFinalizado, let ini = e.inicioSesion else { return false }
+        return relojRelecturas().timeIntervalSince1970 * 1000 - ini < 4 * 3600 * 1000
+    }
+
+    /// F7: la rutina y la dieta de nuevo, sin el resto de la carga. Lo que no llega (red) no toca nada; la rutina no se
+    /// cambia con un entrenamiento abierto.
+    func refrescarPlan() async {
+        guard let t = token, !esDemo else { return }
+        let p: [String: JSONValue] = ["p_token": .texto(t)]
+        let conEntreno = entrenoAbierto
+        async let d = cliente.llamar("mypump_get_dieta_activa", p)
+        let rr: Result<JSONValue, ErrorRPC>? = conEntreno ? nil : await cliente.llamar("mypump_get_rutina_activa", p)
+        let dd = await d
+        guard token == t, !esDemo else { return }
+        var copia = disco?.leer(CopiaOffline.self, "offline.json")
+        if case .success(let j)? = rr {
+            let fila = j.primeraFila
+            let nueva = fila.flatMap { decodificar(RutinaActiva.self, $0) }
+            copia?.rutina = fila
+            if nueva != rutina {
+                rutina = nueva
+                let antes = entreno
+                prepararEntreno()
+                if let e = entreno, e !== antes {
+                    cargaDelMotor = Task {
+                        await self.cargarCatalogo()
+                        await e.cargar()
+                    }
+                }
+            }
+        }
+        if case .success(let j) = dd {
+            let fila = j.primeraFila
+            let nueva = dietaNormalizada(fila)
+            copia?.dieta = fila
+            if nueva != dieta {
+                dieta = nueva
+                if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] } else { swaps = [:] }
+                cargarAjustes()
+                cargarMarcas()
+                await hidratarDieta()
+            }
+        }
+        if var c = copia {
+            c.ts = Date().timeIntervalSince1970 * 1000
+            disco?.guardar(c, "offline.json")
+        }
     }
 
     /// GEN-05 (`avisarPlanIncompleto`): arriba de Revisión cuando al plan publicado le falta algo. No es para el
