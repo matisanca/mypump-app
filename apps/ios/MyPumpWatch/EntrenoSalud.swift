@@ -2,13 +2,13 @@ import Foundation
 @preconcurrency import HealthKit
 import MyPumpReloj
 
-/// La FC y las calorías en vivo con `HKWorkoutSession` + `HKLiveWorkoutBuilder`. El ENTRENO no se guarda en Salud
-/// (decisión de Mati): al terminar, el builder se descarta (`discardWorkout`) en vez de `finishWorkout`. Ojo: las
-/// muestras de frecuencia cardíaca y de calorías activas que mide el reloj sí quedan en Salud, como siempre que se
-/// usa el reloj; lo que no queda es el entreno. La sesión de entreno además deja la app viva con la muñeca baja (el
+/// La FC y las calorías en vivo con `HKWorkoutSession` + `HKLiveWorkoutBuilder`. Al cerrarse, el entreno se GUARDA en
+/// Salud/Fitness si `SesionReloj.cierreSalud` dice que fue un entreno de verdad; si no (sin series, la demo, sin permiso),
+/// se descarta. La duración y las calorías son las que midió el builder: no se inventa ninguna muestra. El iPhone no lo
+/// vuelve a ingerir (`PuenteSalud.bundleDelReloj`). La sesión de entreno además deja la app viva con la muñeca baja (el
 /// descanso sigue vibrando).
 ///
-/// Si no hay permiso o HealthKit no está, el entreno anda igual sin FC ni calorías.
+/// Si no hay permiso o HealthKit no está, el entreno anda igual sin FC ni calorías, y no se guarda nada.
 @MainActor
 final class EntrenoSalud: NSObject {
     var alMedir: ((SaludEntreno) -> Void)?
@@ -20,6 +20,11 @@ final class EntrenoSalud: NSObject {
     private var builder: HKLiveWorkoutBuilder?
     private var medida = SaludEntreno()
     private var sumaFC = 0.0, muestrasFC = 0.0
+    /// Las sesiones que se están cerrando, hasta que el sistema confirma que terminaron.
+    private struct Cierre { let sesion: HKWorkoutSession; let builder: HKLiveWorkoutBuilder; let cierre: CierreSalud }
+    private var cierres: [ObjectIdentifier: Cierre] = [:]
+    /// El permiso se contesta en diferido: si en el medio se terminó el día, la sesión ya no se abre.
+    private var quiereAbrir = false
 
     private static let fc = HKQuantityType(.heartRate)
     private static let energia = HKQuantityType(.activeEnergyBurned)
@@ -27,6 +32,7 @@ final class EntrenoSalud: NSObject {
     /// Arranca la sesión de entreno (una sola vez por entreno).
     func empezar() {
         guard sesion == nil, HKHealthStore.isHealthDataAvailable() else { return }
+        quiereAbrir = true
         let aCompartir: Set<HKSampleType> = [HKObjectType.workoutType()]
         let aLeer: Set<HKObjectType> = [Self.fc, Self.energia]
         // HealthKit llama a estas closures en su cola. El SDK ya las declara `@Sendable` (no heredan el MainActor); se
@@ -38,7 +44,7 @@ final class EntrenoSalud: NSObject {
     }
 
     private func abrir() {
-        guard sesion == nil else { return }
+        guard sesion == nil, quiereAbrir else { return }
         let config = HKWorkoutConfiguration()
         config.activityType = .traditionalStrengthTraining
         config.locationType = .indoor
@@ -56,28 +62,57 @@ final class EntrenoSalud: NSObject {
         alAbrir?()
     }
 
-    /// Termina la sesión y DESCARTA el entreno (no va a Salud).
-    func terminar() {
+    /// Termina la sesión y la cierra según `cierre` (una sola vez: las llamadas siguientes no hacen nada).
+    func terminar(_ cierre: CierreSalud) {
+        quiereAbrir = false
         guard let s = sesion, let b = builder else { return }
-        s.end()
-        b.endCollection(withEnd: Date()) { @Sendable _, _ in
-            b.discardWorkout()
-        }
         sesion = nil
         builder = nil
+        cerrar(s, b, cierre)
+    }
+
+    /// Apple pide esperar a que la sesión pase a `.ended` antes de cerrar el builder. Si el sistema no avisa (una sesión que
+    /// nunca llegó a correr), a los 5 s se cierra igual, para no dejar un entreno abierto.
+    private func cerrar(_ s: HKWorkoutSession, _ b: HKLiveWorkoutBuilder, _ cierre: CierreSalud) {
+        let id = ObjectIdentifier(s)
+        cierres[id] = Cierre(sesion: s, builder: b, cierre: cierre)
+        s.delegate = self
+        s.end()
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            self?.completar(id)
+        }
+    }
+
+    private func completar(_ id: ObjectIdentifier) {
+        guard let c = cierres.removeValue(forKey: id) else { return }
+        let b = c.builder
+        let fin: Date? = {
+            // `requestAuthorization` da ok aunque lo nieguen: lo que vale es el estado de escritura.
+            guard case .guardar(let ms) = c.cierre,
+                  tienda.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else { return nil }
+            let f = Date(timeIntervalSince1970: ms / 1000)
+            if let inicio = b.startDate, f <= inicio { return nil }
+            return f
+        }()
+        b.endCollection(withEnd: fin ?? Date()) { @Sendable ok, _ in
+            guard ok, fin != nil else { b.discardWorkout(); return }
+            // Si Salud no lo acepta el entreno sigue en MyPump: no se reintenta ni se le avisa al alumno.
+            b.finishWorkout { @Sendable w, _ in if w == nil { b.discardWorkout() } }
+        }
     }
 
     /// La sesión que el sistema guardó al cerrarse la app a mitad de un entreno. `seguir`: el día sigue en curso y se
-    /// retoma la medición; si no, se cierra y se descarta (no queda un entreno abierto ni va nada a Salud).
-    func recuperar(seguir: Bool) {
+    /// retoma la medición; si no, se cierra según `cierre` (no queda un entreno abierto).
+    func recuperar(seguir: Bool, cierre: CierreSalud) {
         guard HKHealthStore.isHealthDataAvailable() else { return }
         tienda.recoverActiveWorkoutSession { @Sendable [weak self] s, _ in
             guard let s else { return }
-            Task { @MainActor in self?.adoptar(s, seguir: seguir) }
+            Task { @MainActor in self?.adoptar(s, seguir: seguir, cierre: cierre) }
         }
     }
 
-    private func adoptar(_ s: HKWorkoutSession, seguir: Bool) {
+    private func adoptar(_ s: HKWorkoutSession, seguir: Bool, cierre: CierreSalud) {
         let b = s.associatedWorkoutBuilder()
         if seguir, sesion == nil {
             b.delegate = self
@@ -87,8 +122,8 @@ final class EntrenoSalud: NSObject {
             return
         }
         guard s !== sesion else { return }
-        s.end()
-        b.endCollection(withEnd: Date()) { @Sendable _, _ in b.discardWorkout() }
+        // Con el día en curso ya hay otra sesión midiendo: la recuperada se descarta para no dejar dos entrenos solapados.
+        cerrar(s, b, seguir ? .descartar : cierre)
     }
 
     fileprivate func actualizar(_ estadisticas: [HKQuantityType: HKStatistics]) {
@@ -102,6 +137,20 @@ final class EntrenoSalud: NSObject {
             medida.kcal = e.sumQuantity()?.doubleValue(for: .kilocalorie())
         }
         alMedir?(medida)
+    }
+}
+
+extension EntrenoSalud: HKWorkoutSessionDelegate {
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
+                                    from fromState: HKWorkoutSessionState, date: Date) {
+        guard toState == .ended else { return }
+        let id = ObjectIdentifier(workoutSession)
+        Task { @MainActor in self.completar(id) }
+    }
+
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        let id = ObjectIdentifier(workoutSession)
+        Task { @MainActor in self.completar(id) }
     }
 }
 

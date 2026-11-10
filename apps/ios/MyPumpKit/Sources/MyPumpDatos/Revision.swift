@@ -28,12 +28,19 @@ public final class ModeloRevision {
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
     @ObservationIgnored let outbox: Outbox?
+    @ObservationIgnored let disco: Disco?
+    /// El día de revisión del alumno (`mypump_get_revision_dia`, 1 = lunes … 7 = domingo): cuándo sale el aviso local. La
+    /// semana no cambia por esto: sigue siendo de lunes a domingo. Lo elige el equipo; la app solo lo lee.
+    public private(set) var revisionDia: Int
     /// El día de hoy (los tests lo fijan para simular la medianoche con la app abierta).
     @ObservationIgnored var diaDeHoy: @Sendable () -> String = { FechaLocal.hoy() }
 
-    public init(cliente: ClienteRPC, token: String, outbox: Outbox?) {
-        self.cliente = cliente; self.token = token; self.outbox = outbox
+    public init(cliente: ClienteRPC, token: String, outbox: Outbox?, disco: Disco? = nil) {
+        self.cliente = cliente; self.token = token; self.outbox = outbox; self.disco = disco
+        revisionDia = SemanaRevision.normalizado(disco?.leer(Int.self, Self.archivoDia))
     }
+
+    private static let archivoDia = "revision_dia.json"
 
     private var t: JSONValue { .texto(token) }
 
@@ -48,7 +55,9 @@ public final class ModeloRevision {
         async let c = cliente.filas("mypump_get_checkin_semana", ["p_token": t, "p_fecha": .texto(fecha)], como: CheckinSemana.self)
         let desde = DiaCalendario.numero(fecha).map { DiaCalendario.texto($0 - 59) } ?? fecha
         async let s = cliente.filas("mypump_get_salud", ["p_token": t, "p_desde": .texto(desde), "p_hasta": .texto(fecha)], como: FilaSalud.self)
-        let (rc, rs) = await (c, s)
+        async let d = cliente.llamar("mypump_get_revision_dia", ["p_token": t])
+        let (rc, rs, rd) = await (c, s, d)
+        aplicarDia(rd)
         if case .success(let filas) = rc {
             checkin = filas.first.map { f in
                 var v: [String: Int] = [:]
@@ -65,6 +74,20 @@ public final class ModeloRevision {
         }
         // Un check de esta semana que todavía no salió también (se mandó sin señal): si no, se vería sin enviar.
         await aplicarCheckPendiente()
+    }
+
+    /// Sin red o con un error pasajero queda el último que se supo (el aviso se arma también sin señal). Sin la función en
+    /// la base (PGRST202: nativa_008 todavía no aplicada, o revertida) es el domingo, lo de siempre.
+    private func aplicarDia(_ r: Result<JSONValue, ErrorRPC>) {
+        let nuevo: Int
+        switch r {
+        case .success(let j): nuevo = SemanaRevision.normalizado(j.comoNumero.map(\.enteroTruncado))
+        case .failure(let e) where e.funcionInexistente: nuevo = SemanaRevision.diaPorDefecto
+        case .failure: return
+        }
+        guard nuevo != revisionDia else { return }
+        revisionDia = nuevo
+        _ = disco?.guardar(nuevo, Self.archivoDia)
     }
 
     private func aplicarCheckPendiente() async {

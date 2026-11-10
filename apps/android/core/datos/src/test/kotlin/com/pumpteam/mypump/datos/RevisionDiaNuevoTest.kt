@@ -38,6 +38,52 @@ class RevisionDiaNuevoTest {
         return m to cola
     }
 
+    /** El día de revisión: lo que manda el servidor, y sin la función (nativa_008 sin aplicar) el domingo. */
+    private fun modeloDia(alcance: CoroutineScope, disco: Disco? = null, respuesta: () -> Pair<Int, String>): ModeloRevision {
+        val t = TransporteProgramado { fn, _ -> if (fn == "mypump_get_revision_dia") respuesta() else 200 to "[]" }
+        return ModeloRevision(ClienteRpc(transporte = t), "tok", null, alcance, disco)
+    }
+
+    private val sinFuncion = """{"code":"PGRST202","message":"Could not find the function"}"""
+
+    private fun discoNuevo() = Disco(java.nio.file.Files.createTempDirectory("revdia").toFile())
+
+    @Test
+    fun elDiaDeRevisionVieneDelServidor() = enUnHilo { alcance ->
+        val m = modeloDia(alcance) { 200 to "6" }
+        assertEquals(7, m.revisionDia.value)
+        m.cargarRevision()
+        assertEquals(6, m.revisionDia.value)
+    }
+
+    @Test
+    fun sinLaFuncionEnLaBaseEsElDomingo() = enUnHilo { alcance ->
+        val m = modeloDia(alcance) { 404 to sinFuncion }
+        m.cargarRevision()
+        assertEquals(7, m.revisionDia.value)
+    }
+
+    @Test
+    fun sinRedQuedaElUltimoDiaConocido() = enUnHilo { alcance ->
+        val d = discoNuevo()
+        modeloDia(alcance, d) { 200 to "6" }.cargarRevision()
+        val b = modeloDia(alcance, d) { throw IOException("sin conexión a internet") }
+        assertEquals(6, b.revisionDia.value)
+        b.cargarRevision()
+        assertEquals(6, b.revisionDia.value)
+    }
+
+    /** Si la función desaparece (se revirtió la 008), lo guardado no queda pisando el domingo. */
+    @Test
+    fun alRevertirseLaFuncionVuelveAlDomingo() = enUnHilo { alcance ->
+        val d = discoNuevo()
+        modeloDia(alcance, d) { 200 to "3" }.cargarRevision()
+        val b = modeloDia(alcance, d) { 404 to sinFuncion }
+        b.cargarRevision()
+        assertEquals(7, b.revisionDia.value)
+        assertEquals(7, modeloDia(alcance, d) { 200 to "7" }.revisionDia.value)
+    }
+
     @Test
     fun elCheckDeLaSemanaPasadaNoQuedaEnviado() = enUnHilo { alcance ->
         val s = Servidor()

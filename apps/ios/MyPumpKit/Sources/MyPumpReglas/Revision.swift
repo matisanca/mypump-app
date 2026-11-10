@@ -118,9 +118,9 @@ public enum DiaCalendario {
     }
 }
 
-/// La semana de revisión y el aviso local (R2 de la 2.0.3). La semana termina el día de revisión del alumno (1 = lunes …
-/// 7 = domingo; 7 es la semana ISO de siempre): su lunes es el lunes ISO de (fecha + (7 − día)), la misma cuenta que el
-/// servidor. Vectores: apps/shared/vectores/aviso_revision.json.
+/// La semana de revisión y el aviso local (R2 de la 2.0.3). La semana es SIEMPRE de lunes a domingo (`FotosProgreso.lunes`):
+/// el día de revisión del alumno (1 = lunes … 7 = domingo) solo mueve el aviso, no corre la semana. Vectores:
+/// apps/shared/vectores/aviso_revision.json.
 public enum SemanaRevision {
     /// Lo que dice la pantalla de Revisión: un alumno no sabía si era diaria o semanal. Sin nombrar un día: cada alumno tiene el suyo.
     public static let explicacion = "La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días."
@@ -134,10 +134,11 @@ public enum SemanaRevision {
         return dia
     }
 
-    /// El lunes de la semana de revisión de `fecha`.
-    public static func lunes(_ fecha: String, dia: Int = diaPorDefecto) -> String {
-        guard let n = DiaCalendario.numero(fecha) else { return fecha }
-        return FotosProgreso.lunes(DiaCalendario.texto(n + 7 - normalizado(dia)))
+    /// La línea de la pestaña Revisión para quien no revisa el domingo. Con el domingo (lo de siempre) no se dice nada.
+    public static func textoDia(_ dia: Int?) -> String? {
+        let d = normalizado(dia)
+        guard d != diaPorDefecto else { return nil }
+        return "Tu día de revisión es el \(["lunes", "martes", "miércoles", "jueves", "viernes", "sábado"][d - 1])"
     }
 
     /// Completa: lo mismo que deja el badge de Revisión en cero (el check guardado y las tres fotos de la semana).
@@ -155,7 +156,7 @@ public enum SemanaRevision {
         var delta = ((d - dow) % 7 + 7) % 7
         if delta == 0 && minutos >= minutosAviso { delta = 7 }
         var aviso = n + delta
-        if completa && lunes(DiaCalendario.texto(aviso), dia: d) == lunes(hoy, dia: d) { aviso += 7 }
+        if completa && FotosProgreso.lunes(DiaCalendario.texto(aviso)) == FotosProgreso.lunes(hoy) { aviso += 7 }
         return DiaCalendario.texto(aviso)
     }
 }

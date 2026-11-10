@@ -57,6 +57,7 @@ import com.pumpteam.mypump.diseno.vidrio
 import com.pumpteam.mypump.raiz.AnclaRevision
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.raiz.LocalNavegacion
+import com.pumpteam.mypump.raiz.diaDeRevision
 import com.pumpteam.mypump.reglas.PesoCorporal
 import com.pumpteam.mypump.reglas.SemanaRevision
 import java.time.DayOfWeek
@@ -158,6 +159,15 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     verticalArrangement = Arrangement.spacedBy(Espacio.xl),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                        // Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo).
+                        SemanaRevision.textoDia(diaDeRevision(modelo))?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MyPump.colores.textoSecundario,
+                                modifier = Modifier.testTag("dia-de-revision"),
+                            )
+                        }
                         // Lo primero de Revisión: la recuperación y el progreso (reemplazan al corazón que había arriba).
                         // En el teléfono, juntas (Espacio.m); en tablet, lado a lado.
                         BoxWithConstraints {

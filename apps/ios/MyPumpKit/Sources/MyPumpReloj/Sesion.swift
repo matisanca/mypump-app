@@ -25,6 +25,9 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     private var descansoSono = false
     /// ms: cuándo se empezó en el reloj (o en el teléfono, si vino con la rutina).
     public private(set) var inicio: Double?
+    /// ms: la última serie confirmada EN EL RELOJ (para que un entreno olvidado no dure horas en Salud). Opcional: una
+    /// sesión guardada por una versión anterior se sigue leyendo.
+    public private(set) var ultimaSerie: Double?
     public private(set) var terminada = false
     /// Los récords de hoy, en orden («Press banca · Récord: +2,5 kg»).
     public private(set) var records: [String] = []
@@ -65,11 +68,17 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         let mismoDia = rutina.map { $0.diaId == nueva.diaId && $0.semana == nueva.semana && $0.fecha == nueva.fecha } ?? false
         var r = nueva
         aplicarPendientes(&r)
+        // Una serie que llegó del iPhone también es actividad: el entreno no se recorta a la última hecha en el reloj.
+        if mismoDia, Self.confirmadas(r) > (rutina.map(Self.confirmadas) ?? 0) { ultimaSerie = max(ultimaSerie ?? 0, r.generada) }
+        let anterior = rutina
         rutina = r
         if !mismoDia {
             terminada = r.diaFinalizado
             records = []
+            // Pasar la medianoche con la misma sesión (cambia solo la fecha) no la borra.
+            let mismaSesion = anterior?.diaId == r.diaId && anterior?.semana == r.semana && inicio != nil && inicio == r.inicioSesion
             inicio = r.inicioSesion
+            if !mismaSesion { ultimaSerie = nil }
         } else {
             if inicio == nil { inicio = r.inicioSesion }
             // Cerrado en el iPhone: se termina también acá (la app del reloj cierra su sesión de entreno).
@@ -321,6 +330,7 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         cola.encolar(EventoEnCola(.serie(diaId: r.diaId, semana: r.semana, lugar: l, indice: si, reps: reps, kg: kgSerie), creado: ahora, cuenta: r.cuenta, rutinaId: r.rutinaId))
         if let record { records.append("\(e.nombre) · \(record)") }
         actualizada = ahora
+        ultimaSerie = ahora
         let completo = todoHecho
         var siguiente: String?
         // Como el teléfono (`DiaEnCurso.confirmarSerie`): una serie de calentamiento no arranca descanso.
@@ -444,6 +454,37 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// El alumno ya leyó los rechazos.
     public mutating func leerRechazos() { rechazos = [] }
 
+    // MARK: - Salud
+
+    /// Pasado este tiempo sin series (ms), se considera que se olvidó de tocar Terminar.
+    public static let olvidoTrasUltimaSerie = 30 * 60_000.0
+    /// Con el entreno olvidado, el fin es la última serie más este margen (ms): el descanso y el cierre.
+    public static let margenTrasUltimaSerie = 3 * 60_000.0
+
+    private static func confirmadas(_ r: RutinaReloj) -> Int { r.ejercicios.reduce(0) { $0 + $1.confirmadas } }
+
+    /// Si tras este cambio de estado hay que cerrar el entreno de HealthKit, cómo; nil si sigue abierto. Si llegó otro día
+    /// con una sesión en curso, lo que se cierra es el entreno de ANTES: la rutina nueva ya no tiene sus series.
+    public func cierreSalud(tras previa: SesionReloj, ahora: Double) -> CierreSalud? {
+        // Pasar la medianoche con la misma sesión (igual día del plan e igual inicio) no es otro día: el entreno sigue.
+        let otroDia = previa.rutina.map { p in
+            rutina.map { $0.diaId != p.diaId || $0.semana != p.semana || inicio != previa.inicio } ?? true
+        } ?? false
+        if otroDia, previa.iniciada, !previa.terminada { return previa.cierreSalud(ahora: ahora) }
+        return terminada || !iniciada ? cierreSalud(ahora: ahora) : nil
+    }
+
+    /// Qué hacer con el entreno de HealthKit al cerrarse. Va a Salud solo si es un entreno de verdad: con cuenta (la demo
+    /// no), con al menos una serie confirmada y con una duración creíble (hasta 6 h, el tope de `minutosSesion`).
+    public func cierreSalud(ahora: Double) -> CierreSalud {
+        guard let r = rutina, r.cuenta != "demo", let inicio,
+              r.ejercicios.contains(where: { $0.series.contains(where: \.confirmada) }) else { return .descartar }
+        var fin = ahora
+        if let ultimaSerie, ahora - ultimaSerie > Self.olvidoTrasUltimaSerie { fin = ultimaSerie + Self.margenTrasUltimaSerie }
+        guard fin > inicio, fin - inicio <= TiempoEntreno.sesionMaxH * 3_600_000 else { return .descartar }
+        return .guardar(fin: fin)
+    }
+
     // MARK: - Resumen
 
     public func resumen(ahora: Double, salud: SaludEntreno = SaludEntreno()) -> ResumenReloj {
@@ -457,7 +498,13 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     }
 }
 
-/// Lo que mide la sesión de entreno del reloj (HealthKit, en vivo; no se guarda en Salud).
+/// Qué pasa con el entreno de HealthKit al cerrarse (`SesionReloj.cierreSalud`). `fin` en ms.
+public enum CierreSalud: Equatable, Sendable {
+    case guardar(fin: Double)
+    case descartar
+}
+
+/// Lo que mide la sesión de entreno del reloj (HealthKit, en vivo).
 public struct SaludEntreno: Codable, Equatable, Sendable {
     public var fcActual: Double?
     public var fcMedia: Double?

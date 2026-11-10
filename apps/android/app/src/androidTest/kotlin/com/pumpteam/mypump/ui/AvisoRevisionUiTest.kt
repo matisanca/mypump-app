@@ -9,6 +9,7 @@ import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
 import java.time.Instant
 import java.time.ZoneId
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -71,6 +72,21 @@ class AvisoRevisionUiTest : PruebaUi() {
             p.tocar(etiqueta("enviar-check"))
             p.nodo(etiqueta("check-enviado"))
             esperarDomingo(completa = true)
+        }.close()
+    }
+
+    /** Un alumno que revisa los sábados: el aviso se agenda su sábado y la pestaña lo dice. La semana no se corre. */
+    @Test
+    fun conDiaSabadoElAvisoSaleElSabado() {
+        PermisoDePrueba.estado = PermisoAvisos.CONCEDIDO
+        servidor.respuestas["mypump_get_revision_dia"] = "6"
+        guardarCuenta()
+        val quiero = AvisoDomingo.anotar(AvisoDomingo.proximo(Instant.now(), zona, false, 6), zona)
+        abrir().also {
+            p.tocar(etiqueta("pestana-revision"))
+            p.nodo(etiqueta("dia-de-revision"))
+            val agendado = p.esperar("el aviso agendado para $quiero") { CentroAvisos.domingoPendiente(app)?.takeIf { it == quiero } }
+            assertEquals(quiero, agendado)
         }.close()
     }
 }

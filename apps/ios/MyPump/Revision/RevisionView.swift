@@ -31,6 +31,7 @@ struct RevisionView: View {
                                     progreso.frame(maxWidth: .infinity, alignment: .top)
                                 }
                                 .fixedSize(horizontal: false, vertical: true)
+                                diaDeRevision
                                 avisoPlan
                                 notaSemanal
                                 // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
@@ -50,7 +51,7 @@ struct RevisionView: View {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
                                 // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
                                 VStack(spacing: Espacio.m) { recuperacion; progreso }
-                                avisoPlan; notaSemanal; fotos; check
+                                diaDeRevision; avisoPlan; notaSemanal; fotos; check
                             }
                                 .anchoLectura()
                         }
@@ -102,6 +103,17 @@ struct RevisionView: View {
             guard abrir else { return }
             misDatos = true
             navegacion?.misDatos = false
+        }
+    }
+
+    /// Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo). El domingo no agrega nada.
+    @ViewBuilder private var diaDeRevision: some View {
+        if let texto = SemanaRevision.textoDia(modelo.diaDeRevision) {
+            Text(texto)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("dia-de-revision")
         }
     }
 

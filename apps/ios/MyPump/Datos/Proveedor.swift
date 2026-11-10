@@ -105,6 +105,10 @@ private struct SemanaDePrueba: Transporte {
             return Self.respuesta(pedido, "[" + f.joined(separator: ",") + "]")
         }
         if ruta.hasSuffix("progreso/urls") { return Self.respuesta(pedido, #"{"ok":true,"fotos":[]}"#) }
+        // `-revisionDiaDePrueba 6`: el día de revisión que todavía no puede venir de la base (nativa_008 sin aplicar).
+        if ruta.hasSuffix("mypump_get_revision_dia"), let dia = UserDefaults.standard.string(forKey: "revisionDiaDePrueba") {
+            return Self.respuesta(pedido, dia)
+        }
         return try await URLSession.shared.data(for: pedido)
     }
 

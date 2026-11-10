@@ -233,7 +233,8 @@ final class EstadoReloj {
         propuestaSerie.reiniciar()
         // La primera serie confirmada sin «Empezar» arranca la sesión (y los sensores): esa serie no tiene ventana.
         if estabaGrabando, let etiqueta { calibracion.confirmar(etiqueta, guardar: calibrando && sesion.rutina?.cuenta != "demo") } else { calibracion.abrirVentana() }
-        if conSalud { entreno.empezar() }
+        // Con el día ya terminado no se abre otro entreno de HealthKit: quedaría uno de segundos en Fitness.
+        if conSalud, !sesion.terminada { entreno.empezar() }
         WKInterfaceDevice.current().play(c.record != nil ? .success : .click)
         avisoRecord = c.record
         if c.descanso { correrDescanso() }
@@ -243,7 +244,6 @@ final class EstadoReloj {
         let s = salud
         var r: ResumenReloj?
         cambiar { r = $0.terminar(ahora: Self.ahoraMs, salud: s) }
-        entreno.terminar()
         resumen = r
         WKInterfaceDevice.current().play(.stop)
     }
@@ -252,9 +252,9 @@ final class EstadoReloj {
     func leerRechazos() { cambiar(enviar: false) { $0.leerRechazos() } }
 
     /// El sistema relanzó la app con un entreno de HealthKit abierto (se cerró o se colgó a mitad): si el día sigue en
-    /// curso se retoma la medición; si ya terminó (o no empezó), se cierra y se descarta.
+    /// curso se retoma la medición; si ya terminó (o no empezó), se cierra: va a Salud si hubo series.
     func recuperarEntreno() {
-        entreno.recuperar(seguir: conSalud && sesion.iniciada && !sesion.terminada)
+        entreno.recuperar(seguir: conSalud && sesion.iniciada && !sesion.terminada, cierre: sesion.cierreSalud(ahora: Self.ahoraMs))
     }
 
     func ajustarDescanso(_ s: Double) { cambiar(enviar: false) { $0.ajustarDescanso(s, ahora: Self.ahoraMs) } }
@@ -295,11 +295,12 @@ final class EstadoReloj {
     // MARK: - Interno
 
     private func cambiar(enviar: Bool = true, _ f: (inout SesionReloj) -> Void) {
+        let previa = sesion
         var s = sesion
         f(&s)
         sesion = s
         // El día se cerró (en el reloj o en el iPhone) o no hay nada empezado: el entreno de HealthKit no queda abierto.
-        if s.terminada || !s.iniciada { entreno.terminar() }
+        if let cierre = s.cierreSalud(tras: previa, ahora: Self.ahoraMs) { entreno.terminar(cierre) }
         ajustarSensores()
         guardar()
         actualizarComplicacion()

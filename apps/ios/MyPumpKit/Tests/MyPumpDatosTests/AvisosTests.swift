@@ -137,6 +137,15 @@ struct ProximoDomingoTests {
     }
 
     /// Sin la semana completa, la cuenta nueva da lo mismo que la de siempre (`nextDate`), en cualquier hora de dos semanas.
+    @Test func elAvisoSaleElDiaDelAlumno() {
+        // 2026-11-04 fue miércoles. Sábado del alumno 6: el 7, a las 11.
+        let (miercoles, cal) = fecha("2026-11-04 09:00", "America/Argentina/Buenos_Aires")
+        let c = AvisoDomingo.proximo(desde: miercoles, semanaCompleta: false, dia: 6, calendario: cal)
+        #expect(c?.month == 11 && c?.day == 7 && c?.hour == 11)
+        // Con la semana ya completa, el del sábado de la que viene.
+        #expect(AvisoDomingo.proximo(desde: miercoles, semanaCompleta: true, dia: 6, calendario: cal)?.day == 14)
+    }
+
     @Test func incompletaEsIgualALaDeSiempre() {
         for zona in ["America/Argentina/Buenos_Aires", "America/New_York", "Europe/Madrid"] {
             var (d, cal) = fecha("2026-10-24 00:00", zona)

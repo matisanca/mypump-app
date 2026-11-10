@@ -242,7 +242,8 @@ final class FuenteHealthKit: NSObject, FuenteSalud, @unchecked Sendable {
                 c.resume(returning: ws.map { w in
                     EntrenoCrudo(tipo: Self.tipoEntreno(w.workoutActivityType), duracion: Double(Int(w.duration)),
                                  inicio: Self.ms(w.startDate, f), fin: Self.ms(w.endDate, f),
-                                 kcal: Self.energia(w), distancia: Self.distancia(w))
+                                 kcal: Self.energia(w), distancia: Self.distancia(w),
+                                 fuenteId: w.sourceRevision.source.bundleIdentifier)
                 })
             }
             store.execute(q)

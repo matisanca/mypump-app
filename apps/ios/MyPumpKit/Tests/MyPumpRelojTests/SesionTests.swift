@@ -12,6 +12,139 @@ func sesionDemo() -> SesionReloj {
     return s
 }
 
+/// Qué pasa con el entreno de HealthKit al cerrarse: se guarda en Salud solo si hubo series, con una duración creíble.
+@Suite struct CierreSaludTests {
+    private func sesionConCuenta() -> SesionReloj {
+        var s = SesionReloj()
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0)
+        r.cuenta = "tok"
+        s.recibir(r)
+        return s
+    }
+
+    @Test func sinSeriesNoSeGuarda() {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0 + 1_000)
+        _ = s.terminar(ahora: T0 + 600_000)
+        #expect(s.cierreSalud(ahora: T0 + 600_000) == .descartar)
+    }
+
+    @Test func sinEmpezarNoSeGuarda() {
+        #expect(sesionConCuenta().cierreSalud(ahora: T0) == .descartar)
+    }
+
+    @Test func conUnaSerieSeGuardaHastaAhora() {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        _ = s.terminar(ahora: T0 + 3_000_000)
+        #expect(s.cierreSalud(ahora: T0 + 1_500_000) == .guardar(fin: T0 + 1_500_000))
+    }
+
+    /// Se olvidó de terminar: el entreno no dura hasta que tocó el botón horas después.
+    @Test func siSeOlvidoDeTerminarCortaDespuesDeLaUltimaSerie() {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 1_800_000)
+        let tarde = T0 + 1_800_000 + 3 * 3_600_000.0
+        #expect(s.cierreSalud(ahora: tarde) == .guardar(fin: T0 + 1_800_000 + SesionReloj.margenTrasUltimaSerie))
+    }
+
+    @Test func treintaMinutosDespuesTodaviaEsElEntreno() {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        let justo = T0 + 60_000 + SesionReloj.olvidoTrasUltimaSerie
+        #expect(s.cierreSalud(ahora: justo) == .guardar(fin: justo))
+    }
+
+    /// Más de 6 h no es creíble (el mismo tope que la duración de la sesión).
+    @Test func masDeSeisHorasNoSeGuarda() {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 7 * 3_600_000.0)
+        #expect(s.cierreSalud(ahora: T0 + 7 * 3_600_000.0 + 1_000) == .descartar)
+    }
+
+    @Test func laDemoNoVaASalud() {
+        var s = sesionDemo()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        #expect(s.cierreSalud(ahora: T0 + 120_000) == .descartar)
+    }
+
+    /// Llega otro día con el entreno abierto: se cierra el de antes, con sus series, y no se pierde.
+    @Test func alLlegarOtroDiaSeCierraElEntrenoDeAntes() throws {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        let previa = s
+        var r = try #require(s.rutina)
+        r.diaId = "otro"
+        r.generada = T0 + 120_000
+        for i in r.ejercicios.indices { for j in r.ejercicios[i].series.indices { r.ejercicios[i].series[j].confirmada = false } }
+        s.recibir(r)
+        #expect(s.cierreSalud(ahora: T0 + 200_000) == .descartar)
+        #expect(s.cierreSalud(tras: previa, ahora: T0 + 200_000) == .guardar(fin: T0 + 200_000))
+    }
+
+    /// Un entreno que cruza la medianoche: cambia la fecha de la rutina y sigue siendo el mismo, con su última serie.
+    @Test func cruzarLaMedianocheNoCierraElEntreno() throws {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        let previa = s
+        var r = try #require(s.rutina)
+        r.fecha = "2026-11-04"
+        r.generada = T0 + 120_000
+        r.inicioSesion = T0
+        s.recibir(r)
+        #expect(s.cierreSalud(tras: previa, ahora: T0 + 200_000) == nil)
+        #expect(s.ultimaSerie == T0 + 60_000)
+    }
+
+    @Test func enElMismoDiaEnCursoNoSeCierra() {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        #expect(s.cierreSalud(tras: s, ahora: T0 + 120_000) == nil)
+    }
+
+    @Test func alTerminarSeCierraConLasSeriesDeHoy() {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        let previa = s
+        _ = s.terminar(ahora: T0 + 120_000)
+        #expect(s.cierreSalud(tras: previa, ahora: T0 + 120_000) == .guardar(fin: T0 + 120_000))
+    }
+
+    /// Reloj e iPhone alternados: una serie hecha en el iPhone también es actividad, el entreno no se recorta a la del reloj.
+    @Test func lasSeriesDelIPhoneCuentanComoActividad() throws {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        var r = try #require(s.rutina)
+        r.generada = T0 + 4_000_000
+        r.ejercicios[1].series[0].confirmada = true
+        r.ejercicios[1].series[0].reps = 10
+        s.recibir(r)
+        #expect(s.cierreSalud(ahora: T0 + 4_200_000) == .guardar(fin: T0 + 4_200_000))
+    }
+
+    /// Una sesión guardada por una versión anterior (sin la hora de la última serie) se sigue leyendo.
+    @Test func laUltimaSerieNoEsObligatoriaAlLeer() throws {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        var j = try JSONSerialization.jsonObject(with: JSONEncoder().encode(s)) as! [String: Any]
+        #expect(j["ultimaSerie"] != nil)
+        j.removeValue(forKey: "ultimaSerie")
+        let vieja = try JSONDecoder().decode(SesionReloj.self, from: JSONSerialization.data(withJSONObject: j))
+        #expect(vieja.cierreSalud(ahora: T0 + 120_000) == .guardar(fin: T0 + 120_000))
+    }
+}
+
 @Suite struct SesionTests {
     @Test func arrancaEnElPrimerEjercicioConLoSugerido() {
         let s = sesionDemo()
