@@ -470,7 +470,7 @@
     },
     async borrar(b) {
       const r = await ui.modelo.borrarFoto(b.dataset.id);
-      ui.error = r === 'ok' ? (m.pantalla === 'inicio' ? T.sinSenal : null) : r === 'sinSenal' ? T.sinSenal : T.errorGenerico;
+      ui.error = r === 'ok' ? null : r === 'sinSenal' ? T.sinSenal : T.errorGenerico;
       renderEscena();
     },
     nohay(b) { ui.modelo.marcarNoHay(b.dataset.z, !ui.modelo.noHay.has(b.dataset.z)); },

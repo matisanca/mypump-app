@@ -52,11 +52,11 @@ firmas.set('mypump_get_revision_dia', new Set(['p_token']));
 // Gimnasio por fotos: propuesta sin aplicar (supabase/propuestas/nativa_gimnasio_fotos.sql, rama nativa-gimnasio). Si no existe, la web no muestra nada.
 firmas.set('mypump_gimnasio_get', new Set(['p_token']));
 firmas.set('mypump_gimnasio_nuevo', new Set(['p_token', 'p_modo']));
-firmas.set('mypump_gimnasio_enviar', new Set(['p_token', 'p_id', 'p_no_hay', 'p_nota', 'p_consentimiento', 'p_quitar']));
+firmas.set('mypump_gimnasio_enviar', new Set(['p_token', 'p_id', 'p_no_hay', 'p_nota', 'p_quitar']));
 firmas.set('mypump_gimnasio_responder', new Set(['p_token', 'p_id', 'p_respuestas']));
 // Técnica por video: propuesta sin aplicar (supabase/propuestas/nativa_tecnica.sql, rama nativa-tecnica).
 firmas.set('mypump_tecnica_get', new Set(['p_token']));
-firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ejercicio_nombre', 'p_nota', 'p_consentimiento']));
+firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ejercicio_nombre', 'p_nota']));
 firmas.set('mypump_tecnica_cancelar', new Set(['p_token', 'p_id']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
