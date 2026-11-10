@@ -166,7 +166,7 @@ public final class ModeloEntreno {
         let enDisco = disco?.leer(Descanso.Guardado.self, Archivo.descanso)
         descanso = BarraDescanso(guardado: enDisco)
         sesionesLocales = disco?.leer([String: SesionLocal].self, Archivo.sesiones) ?? [:]
-        anotadas = Self.podarAnotadas(disco?.leer([String: EscrituraAnotada].self, Archivo.anotadas(rutina.id)) ?? [:],
+        anotadas = Self.podarAnotadas(disco?.leer([String: EscrituraAnotada].self, Archivo.anotadas) ?? [:],
                                       ahora: reloj().timeIntervalSince1970 * 1000)
         let semana = rutina.semanaActual == 0 ? 1 : rutina.semanaActual
         let guardado = disco?.leer(String.self, Archivo.dia(rutina.id))
@@ -815,7 +815,7 @@ public final class ModeloEntreno {
         var ops: [(kind: String, payload: JSONValue, ts: Double)] = []
         if conAnotadas {
             let propias = anotadas.values.filter { a in
-                a.payload["diaId"]?.comoTexto == diaId && a.payload["semana"]?.comoNumero == Double(semana)
+                a.rutinaId == rutina.id && a.payload["diaId"]?.comoTexto == diaId && a.payload["semana"]?.comoNumero == Double(semana)
             }
             if !propias.isEmpty { seriesSinConfirmar = true }
             ops += propias.sorted { $0.ts < $1.ts }.map { ($0.kind, $0.payload, $0.ts) }
@@ -1393,8 +1393,8 @@ public final class ModeloEntreno {
         static let preparacion = "entreno-preparacion.json"
         /// 2.3.0: lo escrito por un OK dentro de su ventana de Deshacer (si la app muere ahí, va a la cola al abrir).
         static let okDemorado = "entreno-ok-demorado.json"
-        /// F1: lo que este teléfono mandó del día (`anotadas`), por rutina.
-        static func anotadas(_ rutinaId: String) -> String { "entreno-anotadas_\(rutinaId).json" }
+        /// F1: lo que este teléfono mandó del día (`anotadas`), con su rutina.
+        static let anotadas = "entreno-anotadas.json"
         /// 2.3.0: la carga simple de la semana.
         static func cargas(_ rutinaId: String) -> String { "entreno-cargas_\(rutinaId).json" }
         static let preparacionOculta = "entreno-preparacion-oculta.json"
@@ -1448,6 +1448,8 @@ public final class ModeloEntreno {
         var kind: String
         var payload: JSONValue
         var ts: Double
+        /// La rutina en la que se escribió: un bloque nuevo repite días y semanas, y lo del viejo no se pinta ahí.
+        var rutinaId: String?
     }
 
     /// Cuánto se guarda lo mandado: una semana alcanza para el día que se mira (una sesión que cruza la medianoche, o
@@ -1462,8 +1464,8 @@ public final class ModeloEntreno {
     func encolarYAnotar(_ kind: String, _ payload: JSONValue, clave: String?) async {
         await outbox?.encolar(kind, payload, dedupeKey: clave)
         guard kind == "carga" || kind == "estado", let clave, !demo else { return }
-        anotadas[clave] = EscrituraAnotada(kind: kind, payload: payload, ts: ahoraMs)
-        disco?.guardar(anotadas, Archivo.anotadas(rutina.id))
+        anotadas[clave] = EscrituraAnotada(kind: kind, payload: payload, ts: ahoraMs, rutinaId: rutina.id)
+        disco?.guardar(anotadas, Archivo.anotadas)
     }
 
     func guardarInicio() {

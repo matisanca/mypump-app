@@ -465,6 +465,16 @@ private fun CuerpoDia(
         )
     }
 
+    // F1 (auditoría 10/11): sin respuesta del servidor, las series se pintan con lo guardado en el teléfono.
+    val sinConfirmar by motor.seriesSinConfirmar.collectAsStateWithLifecycle()
+    if (sinConfirmar) {
+        AvisoTenido(
+            Iconos.SinNube,
+            AnnotatedString("Sin conexión. Ves las series guardadas en este teléfono."),
+            modifier = Modifier.testTag("aviso-series-guardadas"),
+        )
+    }
+
     // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre).
     if (!motor.todoHecho) Cronometro(motor, v, alCerrarDia)
 
