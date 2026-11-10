@@ -170,7 +170,7 @@ private fun Principal(
     val aviso by m.aviso.collectAsStateWithLifecycle()
     val errorCarga by m.errorCarga.collectAsStateWithLifecycle()
     var recargando by remember { mutableStateOf(false) }
-    val hoy = e.hoy ?: LocalDate.now()
+    val hoy = e.hoy
     val bloques = Estudios.bloques(e)
 
     MarcoPantalla(T.titulo, alVolver = alVolver) { relleno ->
@@ -280,12 +280,13 @@ private fun EstadoDeLaSubida(cola: List<EnvioEstudios>, progreso: ModeloEstudios
         if (cola.isNotEmpty()) {
             val primero = cola.first()
             val total = (progreso?.total ?: primero.archivos.size).coerceAtLeast(1)
-            val va = (progreso?.va ?: (primero.archivos.count { it.subido } + 1)).coerceIn(1, total)
+            val subidos = progreso?.let { it.va - 1 } ?: primero.archivos.count { it.subido }
+            val va = (subidos + 1).coerceIn(1, total)
             if (sinSenal && progreso == null) {
                 Renglon(Iconos.SinWifi, T.sinSenal, c.textoSecundario, Modifier.testTag("estudios-sin-senal"), vivo = true, fuerte = true)
             } else {
                 Text(
-                    T.subiendo(va, total),
+                    Estudios.progreso(subidos, total),
                     style = MaterialTheme.typography.titleMedium,
                     color = c.texto,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }.testTag("estudios-subiendo"),
@@ -337,7 +338,7 @@ private fun ProximoControl(p: ControlEstudios) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TarjetaPendiente(m: ModeloEstudios, p: PendienteEstudios, hoy: LocalDate, alSubir: () -> Unit, alPedirFecha: () -> Unit, alAbrirOrden: (String) -> Unit) {
+private fun TarjetaPendiente(m: ModeloEstudios, p: PendienteEstudios, hoy: LocalDate?, alSubir: () -> Unit, alPedirFecha: () -> Unit, alAbrirOrden: (String) -> Unit) {
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
     val cuando = Estudios.cuandoPendiente(p.desde, p.hasta, hoy)

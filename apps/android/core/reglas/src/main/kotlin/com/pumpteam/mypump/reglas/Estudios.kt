@@ -163,10 +163,11 @@ object Estudios {
     data class Cuando(val texto: String, val pasada: Boolean)
 
     /** «Antes del jueves 19/11», «Entre el lunes 16/11 y el jueves 19/11» o, ya pasada, «Era para el jueves 19/11». */
-    fun cuandoPendiente(desde: LocalDate?, hasta: LocalDate?, hoy: LocalDate): Cuando? {
+    fun cuandoPendiente(desde: LocalDate?, hasta: LocalDate?, hoy: LocalDate?): Cuando? {
         hasta ?: return null
         return when {
-            hasta.isBefore(hoy) -> Cuando(TextosEstudios.eraParaEl(diaLargo(hasta)), true)
+            // Sin el día del servidor no se da nada por pasado.
+            hoy != null && hasta.isBefore(hoy) -> Cuando(TextosEstudios.eraParaEl(diaLargo(hasta)), true)
             desde != null && desde.isBefore(hasta) -> Cuando(TextosEstudios.entreElYEl(diaLargo(desde), diaLargo(hasta)), false)
             else -> Cuando(TextosEstudios.antesDel(diaLargo(hasta)), false)
         }
@@ -197,6 +198,12 @@ object Estudios {
     fun fechaHechoValida(f: LocalDate, hoy: LocalDate): Boolean = !f.isAfter(hoy) && !f.isBefore(hoy.minusDays(DIAS_ATRAS_HECHO))
 
     // ── La hoja de subida ──
+
+    /** «Subiendo 2 de 5»: el que está saliendo, nunca más que el total. */
+    fun progreso(subidos: Int, total: Int): String {
+        val t = maxOf(1, total)
+        return TextosEstudios.subiendo((subidos + 1).coerceIn(1, t), t)
+    }
 
     fun restan(enLaHoja: Int, tope: Int = TOPE_ARCHIVOS): Int = maxOf(0, tope - enLaHoja)
     fun pesaDeMas(bytes: Long, topeMb: Int = TOPE_MB): Boolean = bytes > topeMb.toLong() * 1024 * 1024
