@@ -531,3 +531,68 @@ Mini-vision (`vision.mypumpteam.com`), POST:
 
 En las dos subidas, 4xx es definitivo para la cola y 429/5xx se reintenta. El servidor contesta el 4xx y sigue leyendo lo que falte
 del cuerpo, con tope de 15 s y de bytes, para que el navegador lo vea como rechazo y no como corte.
+
+## 13. Fotos de inicio (propuesta sin aplicar)
+
+Las tres fotos del físico (frente, perfil y espalda) y «el físico que te motiva» salen del formulario de inscripción y pasan a la
+app, la web incluida. El revisor de físico de la entrega las baja desde la Mini. Propuesta en
+`supabase/propuestas/nativa_fotos_inicio*`; hasta aplicarla, la RPC contesta PGRST202 y no se muestra nada. Palanca
+`fotos_inicio` en `mypump_app_config`, apagada. Con la palanca prendida la sección le aparece solo a quien la Mini se la pidió
+(`mypump_fotos_inicio_pedir`) y hasta que se cierra (`mypump_fotos_inicio_cerrar`). Las reglas, los textos y las siluetas son
+comunes a iOS, Android y la web: `apps/shared/vectores/fotos_inicio.json`.
+
+### Servidor
+
+| RPC por token | Parámetros | Devuelve |
+|---|---|---|
+| `mypump_fotos_inicio_get` | `p_token` | `null` token caído; `{habilitado:false}` no mostrar; si no `{habilitado:true, completo, completado_en, nota, max_motivacion, fotos:[{id, pose, tomada_en, ancho, alto}]}` (las vigentes, sin paths) |
+| `mypump_fotos_inicio_nota` | `p_token`, `p_nota` | `null` token caído; `{ok:true, nota}` o `{ok:false, error:'no_habilitado'}` |
+
+Mini-vision (`vision.mypumpteam.com`), POST:
+
+- `/inicio/upload`: el JPEG crudo. Encabezados `x-inicio-token`, `x-inicio-foto` (UUID que arma el teléfono: la subida es
+  idempotente), `x-inicio-pose` (`frente`, `perfil`, `espalda` o `motivacion`) y `Content-Length`. Opcionales: `x-inicio-tomada`
+  (ISO 8601 con zona, cuándo se sacó), `x-inicio-brillo` y `x-inicio-nitidez` (lo que midió el control). Contesta
+  `{ok:true}` o `{ok:true, ya:true}`. Saca EXIF, GPS, XMP y comentarios aunque el teléfono ya los haya sacado, y mide el
+  ancho y el alto. Rechazos: 400 no es un JPEG entero o vino sin enderezar, 403 token o sección cerrada, 409 id repetido,
+  413 tope de motivación o muy pesada (4 MB), 422 poca resolución. 429 y 5xx se reintentan; todo otro 4xx es definitivo.
+- `/inicio/urls`: `{token}` → `{ok, fotos:[{id, pose, url}]}`, URLs firmadas por 1 h de las vigentes.
+- `/inicio/borrar`: `{token, foto_id}`. Solo las de motivación; las del cuerpo se reemplazan subiendo otra de la misma pose.
+
+Para la Mini (service_role): `mypump_fotos_inicio_pedir`, `_cerrar`, `_servicio` (el set con paths), `_pendientes` (sets completos sin
+leer, quietos hace N minutos) y `_leido`; la vista `mypump_fotos_inicio_vista`; y `nativa_fotos_inicio_firmar.py`, que devuelve el
+set con URLs firmadas de 10 minutos.
+
+### La foto
+
+- Se reduce a lado mayor ≤ 1600 px sin agrandar, JPEG a 0,85, con la orientación aplicada y sin metadatos.
+- `tomada_en`: la fecha de captura del EXIF de la original si se eligió de la galería; si no, ahora.
+- Control de calidad en el teléfono, sobre los píxeles de la foto ya reducida: `FotosInicio.medir` (luz media y nitidez por
+  dirección sobre la luma promediada en bloques) y `FotosInicio.problemas`:
+  - `chica`: lado mayor < 1080 px (320 en motivación). No se puede usar; el servidor tampoco la recibe.
+  - `apaisada` (más ancha que alta), `oscura` (luz < 45), `movida` (nitidez < 25; no se avisa si ya es oscura) y `vieja` (más
+    de 7 días). Se avisan, y el alumno elige entre «Sacar otra» y «Usar igual».
+  - En motivación solo se mira `chica`.
+
+### La cola
+
+Como la de Gimnasio: el JPEG en `fotos-inicio/<id>.jpg` y el índice en `fotos-inicio-cola.json` (`id`, `pose`, `tomadaEn`,
+`brillo`, `nitidez`), por cuenta, en disco. Se sube de a una, en el orden en que se encolaron. Una pose del cuerpo nueva saca de
+la cola a la anterior de esa pose que todavía no empezó a subir. `FotosInicio.clasificarSubida` decide: `ok`, `descartar` (con
+aviso `rechazada` o `tope`, o `refrescar` el estado) o `reintentar`. Sin red se corta la pasada; tres errores seguidos del
+servidor también, y se reintenta al minuto y al volver la red o la app al frente. La nota que no se pudo mandar queda guardada
+y sale con la cola.
+
+### Pantallas
+
+1. Tarjeta arriba de Revisión, y fila «Mis fotos de inicio» en Mis datos, solo con `habilitado:true`: título, bajada, «n de 3»
+   y «Empezar» o «Seguir»; con las tres, «Listas. Mati ya las tiene».
+2. Resumen: privacidad, «Antes de sacarlas» (los 8 consejos), las tres poses con su silueta o su miniatura y el estado
+   (Falta, Subiendo…, Esperando señal, Lista), y «El físico que te motiva» (opcional): hasta 4 fotos que se pueden borrar y una
+   nota de hasta 300 caracteres.
+3. Pose: la silueta grande, la instrucción y «Sacar o elegir foto» (cámara o galería).
+4. Revisar: la foto, y «Se ve bien» o los problemas. Sin problemas, «Usar esta foto» y «Sacar otra»; con avisos, «Sacar otra»
+   y «Usar igual»; con `chica`, solo «Sacar otra».
+5. Al usarla se encola y se pasa a la pose que falte (`FotosInicio.siguiente`), o al resumen si ya están las tres.
+
+Ningún texto nombra a otra cosa que a Mati.
