@@ -105,40 +105,21 @@ public enum FamiliaMovimiento: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// La propuesta de reps (tanda 4): al terminar la serie, el reloj pone la corona en lo que contó y pregunta «¿10 reps?».
-/// - Fuera del modo calibración, solo en las familias de `habilitadas` (VACÍA: el flujo final está apagado hasta que la
-///   evaluación diga en cuáles el contador acierta ±1 rep en el 90 % de las series).
-/// - En el modo calibración, en TODAS las familias (`proponeEn`), con las mismas condiciones de serie clara. El alumno
-///   confirma o corrige con la corona; la etiqueta guarda lo propuesto y si lo tocó (`PropuestaSerie`), para que la
-///   evaluación no mida al contador contra su propia propuesta.
+/// La propuesta de reps: al terminar la serie, el reloj pone la corona en lo que contó y pregunta «¿10 reps?». Prendida
+/// para todos y en todas las familias; es solo una propuesta: nunca registra la serie, y si no es clara no propone.
 public enum ConfirmacionReps {
-    /// Las familias donde el reloj propone fuera del modo calibración. VACÍA hasta que se decida con los datos.
-    public static let habilitadas: Set<FamiliaMovimiento> = []
-    /// La autocorrelación mínima para proponer.
-    public static let calidadMinima: Double = 0.6
+    /// La regularidad mínima para proponer.
+    public static let calidadMinima: Double = 0.5
 
-    /// Corre el contador en esta familia fuera del modo calibración (para el flujo final).
-    public static func cuenta(_ familia: FamiliaMovimiento, habilitadas: Set<FamiliaMovimiento> = habilitadas) -> Bool {
-        habilitadas.contains(familia)
-    }
-
-    /// Propone en esta familia: en calibración, todas; si no, solo las habilitadas.
-    public static func proponeEn(_ familia: FamiliaMovimiento, calibrando: Bool,
-                                 habilitadas: Set<FamiliaMovimiento> = habilitadas) -> Bool {
-        calibrando || habilitadas.contains(familia)
-    }
-
-    /// Una serie terminada (quieto después del tramo activo), clara (calidad ≥ `calidadMinima`) y con reps en rango.
+    /// Una serie terminada, pareja, en rango y hecha con carga (ver `ContadorReps.esfuerzoMinimo`).
     public static func serieClara(_ conteo: ContadorReps.Resultado) -> Bool {
-        conteo.quieto && conteo.calidad >= calidadMinima && conteo.reps >= SesionReloj.repsMin && conteo.reps <= SesionReloj.repsMax
+        conteo.quieto && conteo.calidad >= calidadMinima && conteo.reps >= ContadorReps.repsMinimas && conteo.reps <= SesionReloj.repsMax
+            && (conteo.esfuerzo ?? 0) >= ContadorReps.esfuerzoMinimo
+            && (conteo.amplitud ?? 0) >= ContadorReps.relacionMinima * (conteo.esfuerzo ?? 0)
     }
 
-    /// Las reps a proponer con la corona, o nil (ver `proponeEn` y `serieClara`).
-    public static func propuesta(_ familia: FamiliaMovimiento, conteo: ContadorReps.Resultado, calibrando: Bool,
-                                 habilitadas: Set<FamiliaMovimiento> = habilitadas) -> Int? {
-        guard proponeEn(familia, calibrando: calibrando, habilitadas: habilitadas), serieClara(conteo) else { return nil }
-        return conteo.reps
-    }
+    /// Las reps a proponer con la corona, o nil.
+    public static func propuesta(_ conteo: ContadorReps.Resultado) -> Int? { serieClara(conteo) ? conteo.reps : nil }
 
     /// «¿10 reps?»
     public static func texto(_ reps: Int) -> String { "¿\(reps) \(reps == 1 ? "rep" : "reps")?" }
@@ -148,32 +129,26 @@ public enum ConfirmacionReps {
     }
 }
 
-/// La propuesta de una serie y si el alumno tocó las reps (la integridad de la etiqueta de calibración). Se reinicia al
-/// confirmar o al cambiar de ejercicio.
-/// - Una sola propuesta por serie.
-/// - Si el alumno ya giró las reps con la serie en marcha (el contador vio movimiento), no se le pisa lo que puso: no
-///   hay propuesta. Lo que gire en el descanso, antes de arrancar, no cuenta.
-/// - `corregida` compara lo que se confirma con lo propuesto: si confirma lo mismo (sin tocar, o girando y volviendo),
-///   `corregida == false` y la etiqueta puede venir del reloj (la evaluación la separa, del lado seguro). Si las reps
-///   cambiaron (las giró el alumno, o la rutina que llegó del iPhone recargó la corona), `corregida == true`.
-public struct PropuestaSerie: Equatable, Sendable {
+/// La propuesta de una serie y si el alumno tocó las reps. Se reinicia al confirmar o al cambiar de ejercicio.
+/// - Si el alumno giró las reps, no se le pisa nunca lo que puso (antes o después de la propuesta).
+/// - Mientras no las toque, la propuesta sigue a la última serie clara. En la grabación real el descanso generaba rachas
+///   que parecían series: si la propuesta fuera de una sola vez, una de esas se gastaba la de la serie de verdad.
+/// - `corregida` compara lo que se confirma con lo propuesto; girar y volver al mismo número cuenta como aceptada.
+public struct PropuestaSerie: Codable, Equatable, Sendable {
     /// Lo que propuso el reloj en esta serie (nil = no propuso).
     public private(set) var reps: Int?
-    /// El alumno giró las reps con la serie en marcha o después de la propuesta (bloquea una propuesta posterior).
+    /// El alumno giró las reps: no se le propone más nada en esta serie.
     public private(set) var tocada = false
 
     public init() {}
 
-    /// El alumno giró las reps. `contadas`: lo que va contando el reloj en esta serie.
-    public mutating func girar(contadas: Int?) {
-        if reps != nil || (contadas ?? 0) > 0 { tocada = true }
-    }
+    /// El alumno giró las reps.
+    public mutating func girar() { tocada = true }
 
-    /// Las reps a poner en la corona, o nil (ya propuso, el alumno ya tocó o la serie no da).
-    public mutating func proponer(_ familia: FamiliaMovimiento, conteo: ContadorReps.Resultado, calibrando: Bool,
-                                  habilitadas: Set<FamiliaMovimiento> = ConfirmacionReps.habilitadas) -> Int? {
-        guard reps == nil, !tocada,
-              let n = ConfirmacionReps.propuesta(familia, conteo: conteo, calibrando: calibrando, habilitadas: habilitadas) else { return nil }
+    /// Las reps a poner en la corona si cambiaron, o nil. Una vez a la vista el número solo puede subir (la serie siguió):
+    /// una racha posterior más corta no le cambia el número a alguien que ya lo está mirando para confirmar.
+    public mutating func proponer(_ conteo: ContadorReps.Resultado) -> Int? {
+        guard !tocada, let n = ConfirmacionReps.propuesta(conteo), reps.map({ n > $0 }) ?? true else { return nil }
         reps = n
         return n
     }
@@ -184,4 +159,43 @@ public struct PropuestaSerie: Equatable, Sendable {
     public func enLaCorona(_ enCorona: Int) -> Bool { reps == enCorona }
 
     public mutating func reiniciar() { self = PropuestaSerie() }
+}
+
+/// Lo que dice la pantalla del ejercicio sobre el conteo. Nunca queda muda: si no pudo contar, lo dice.
+public enum AvisoConteo: Equatable, Sendable {
+    /// No hay nada que decir (apagado por el servidor, o en el descanso, o con la propuesta a la vista).
+    case ninguno
+    /// Sin el entreno empezado, los sensores no corren.
+    case falta_empezar
+    /// Los sensores no entregan nada.
+    case sinSensores
+    /// La sesión de entreno se cortó (con la muñeca baja deja de ver).
+    case sinSesion
+    /// Va contando la serie.
+    case contando(Int)
+    /// No hay propuesta: si ya terminó, se carga a mano.
+    case noPude(munecaQuieta: Bool)
+
+    public var texto: String? {
+        switch self {
+        case .ninguno: nil
+        case .falta_empezar: "Tocá Empezar para que el reloj cuente."
+        case .sinSensores: "No pude leer el movimiento. Cargá las reps con la corona."
+        case .sinSesion: "Se cortó el entreno: puede que no cuente. Cargá las reps con la corona."
+        case .contando(let n): "Contando… \(n)"
+        case .noPude(true): "Con la muñeca quieta casi no puedo contar. Usá la corona."
+        case .noPude(false): "Si terminaste y no propuse nada, no la pude contar. Usá la corona."
+        }
+    }
+
+    /// `sensores`: si entregan muestras (nil = no corren).
+    public static func de(prendido: Bool, iniciada: Bool, enDescanso: Bool, conPropuesta: Bool, muestras: Bool, sesionViva: Bool,
+                          conteo: ContadorReps.Resultado?, familia: FamiliaMovimiento) -> AvisoConteo {
+        guard prendido, !enDescanso, !conPropuesta else { return .ninguno }
+        guard iniciada else { return .falta_empezar }
+        guard muestras else { return .sinSensores }
+        guard sesionViva else { return .sinSesion }
+        if let c = conteo, c.reps > 0, !c.quieto { return .contando(c.reps) }
+        return .noPude(munecaQuieta: familia == .maquinaMunecaQuieta)
+    }
 }

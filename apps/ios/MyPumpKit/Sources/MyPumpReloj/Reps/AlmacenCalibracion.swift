@@ -76,32 +76,32 @@ public struct AlmacenCalibracion: Sendable {
     private func crear() throws { try FileManager.default.createDirectory(at: carpeta, withIntermediateDirectories: true) }
 }
 
-/// El modo calibración (tanda 4), por cuenta y sin pasar por el servidor: viene prendido y se apaga en el iPhone (Mis
-/// datos → Conteo de reps, ver `MisDatosView`). Viaja al reloj con la rutina (`RutinaReloj.calibracion`). Apagado, el
-/// reloj no toca los sensores. En la demo el reloj cuenta pero no se guarda nada.
+/// El modo calibración: grabar las series a archivo (acelerómetro y giroscopio) para evaluar el contador. Apagado por
+/// defecto y por cuenta: es aparte del contador, que va para todos. Viaja al reloj con la rutina (`RutinaReloj.calibracion`).
 public struct ModoCalibracion: @unchecked Sendable {
-    /// 4-nov (Mati): viene prendido para todas las cuentas; se guardan solo las que lo apagaron (hashes, nunca tokens).
-    static let claveApagadas = "mypump-calibracion-apagadas"
+    /// Las cuentas que lo prendieron (hashes, nunca tokens).
+    static let clavePrendidas = "mypump-calibracion-prendidas"
 
     public static let textoPrivacidad = """
-        Viene prendido. Durante cada serie, el Apple Watch graba el acelerómetro y el giroscopio, con el ejercicio, \
-        las reps que cargás y las que contó el reloj, para contar tus repeticiones y mejorar el conteo. Se guarda \
-        solo en el reloj y en este iPhone: no sale del teléfono salvo que vos lo exportes. Al terminar la serie, el reloj pone en las reps lo que contó: \
-        confirmalo o corregilo con la corona.
+        Apagado por defecto. Prendido, durante cada serie el Apple Watch graba el movimiento del reloj, con el ejercicio, \
+        las reps que cargás y las que contó el reloj, para evaluar y mejorar el conteo. Se guarda en el reloj y en este iPhone.
         """
 
     private let defaults: UserDefaults
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
+    /// Las cuentas que grabaron en este iPhone (hashes).
+    public var cuentas: [String] { defaults.stringArray(forKey: Self.clavePrendidas) ?? [] }
+
     public func prendido(cuenta: String) -> Bool {
         guard cuenta != "demo", !cuenta.isEmpty else { return false }
-        return !(defaults.stringArray(forKey: Self.claveApagadas) ?? []).contains(cuenta)
+        return (defaults.stringArray(forKey: Self.clavePrendidas) ?? []).contains(cuenta)
     }
 
     public func poner(_ prender: Bool, cuenta: String) {
         guard cuenta != "demo", !cuenta.isEmpty else { return }
-        var c = Set(defaults.stringArray(forKey: Self.claveApagadas) ?? [])
-        if prender { c.remove(cuenta) } else { c.insert(cuenta) }
-        defaults.set(c.sorted(), forKey: Self.claveApagadas)
+        var c = Set(defaults.stringArray(forKey: Self.clavePrendidas) ?? [])
+        if prender { c.insert(cuenta) } else { c.remove(cuenta) }
+        defaults.set(c.sorted(), forKey: Self.clavePrendidas)
     }
 }

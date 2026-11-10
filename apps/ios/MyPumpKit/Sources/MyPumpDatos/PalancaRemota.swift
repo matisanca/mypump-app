@@ -12,6 +12,8 @@ public struct PalancaRemota: Equatable, Sendable {
     public var escrituraVuelta = true
     /// false: un swap de comida anclado que ya no coincide con la dieta se oculta, pero no se borra del servidor.
     public var anclajeBorraSwaps = true
+    /// false: el reloj no propone las reps (`reloj_contador_reps`). La ausencia de la clave = prendido.
+    public var contadorRepsReloj = true
     public var versionMinimaIOS: String?
     public var versionMinimaAndroid: String?
     /// Cuántos días atrás acepta «Comí» / «Salté» el servidor (`dieta_dias_marcar`). Sin la clave, lo de fábrica.
@@ -21,11 +23,21 @@ public struct PalancaRemota: Equatable, Sendable {
 
     public static let deFabrica = PalancaRemota()
 
+    /// El último valor leído de `reloj_contador_reps`: apagado, sigue apagado aunque el iPhone arranque sin red.
+    static let claveContadorReps = "mypump-palanca-contador-reps"
+    public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
+        var p = deFabrica
+        if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
+        return p
+    }
+    public func recordar(defaults: UserDefaults = .standard) { defaults.set(contadorRepsReloj, forKey: Self.claveContadorReps) }
+
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
     public init(_ j: JSONValue) {
         if case .bool(let b)? = j["migracion_ops_legadas"] { opsLegadas = b }
         if case .bool(let b)? = j["migracion_escritura_vuelta"] { escrituraVuelta = b }
         if case .bool(let b)? = j["anclaje_borra_swaps"] { anclajeBorraSwaps = b }
+        if case .bool(let b)? = j["reloj_contador_reps"] { contadorRepsReloj = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

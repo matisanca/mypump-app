@@ -27,9 +27,12 @@ public struct RutinaReloj: Codable, Equatable, Sendable {
     /// El descanso que corre en el teléfono (para seguirlo en el reloj).
     public var descanso: Descanso.Guardado?
     public var demo: Bool
-    /// Tanda 4: el modo calibración está prendido para esta cuenta en el iPhone (`ModoCalibracion`). nil o false = el
-    /// reloj no toca los sensores. Opcional: no sube la versión del protocolo.
+    /// El modo calibración (grabar las series a archivo) está prendido para esta cuenta en el iPhone (`ModoCalibracion`).
+    /// nil o false = no se graba. Opcional: no sube la versión del protocolo.
     public var calibracion: Bool?
+    /// El contador de reps del reloj (la propuesta en la corona). nil = prendido (la ausencia prende: un iPhone viejo no
+    /// lo manda); false = apagado desde el servidor (`mypump_app_config.reloj_contador_reps`). Opcional.
+    public var contadorReps: Bool?
     /// Los días de la semana del plan, en el orden del selector del iPhone (para elegir el día en el reloj). Opcional:
     /// un iPhone viejo no lo manda y el reloj muestra solo el día que tiene. Solo el día de `diaId` trae rutina.
     public var dias: [DiaReloj]?

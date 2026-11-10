@@ -12,8 +12,8 @@ import MyPumpReloj
 @MainActor
 final class EntrenoSalud: NSObject {
     var alMedir: ((SaludEntreno) -> Void)?
-    /// Tanda 4: la sesión de entreno ya corre (el modo calibración pasa a `CMBatchedSensorManager`, que la necesita).
-    var alAbrir: (() -> Void)?
+    /// La sesión de entreno corre o se cortó: sin ella, con la muñeca baja el sistema suspende la app y los sensores.
+    var alCambiarViva: ((Bool) -> Void)?
 
     private let tienda = HKHealthStore()
     private var sesion: HKWorkoutSession?
@@ -52,6 +52,7 @@ final class EntrenoSalud: NSObject {
         let b = s.associatedWorkoutBuilder()
         b.dataSource = HKLiveWorkoutDataSource(healthStore: tienda, workoutConfiguration: config)
         b.delegate = self
+        s.delegate = self
         sesion = s
         builder = b
         medida = SaludEntreno()
@@ -59,7 +60,6 @@ final class EntrenoSalud: NSObject {
         let inicio = Date()
         s.startActivity(with: inicio)
         b.beginCollection(withStart: inicio) { @Sendable _, _ in }
-        alAbrir?()
     }
 
     /// Termina la sesión y la cierra según `cierre` (una sola vez: las llamadas siguientes no hacen nada).
@@ -69,6 +69,7 @@ final class EntrenoSalud: NSObject {
         sesion = nil
         builder = nil
         cerrar(s, b, cierre)
+        alCambiarViva?(false)
     }
 
     /// Apple pide esperar a que la sesión pase a `.ended` antes de cerrar el builder. Si el sistema no avisa (una sesión que
@@ -116,9 +117,10 @@ final class EntrenoSalud: NSObject {
         let b = s.associatedWorkoutBuilder()
         if seguir, sesion == nil {
             b.delegate = self
+            s.delegate = self
             sesion = s
             builder = b
-            alAbrir?()
+            alCambiarViva?(s.state == .running)
             return
         }
         guard s !== sesion else { return }
@@ -143,14 +145,36 @@ final class EntrenoSalud: NSObject {
 extension EntrenoSalud: HKWorkoutSessionDelegate {
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
                                     from fromState: HKWorkoutSessionState, date: Date) {
-        guard toState == .ended else { return }
+        let corre = toState == .running
+        let cerro = toState == .ended || toState == .stopped
+        let termino = toState == .ended
         let id = ObjectIdentifier(workoutSession)
-        Task { @MainActor in self.completar(id) }
+        Task { @MainActor in
+            self.cambioSesion(workoutSession, corre: corre, cerro: cerro)
+            if termino { self.completar(id) }
+        }
     }
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
         let id = ObjectIdentifier(workoutSession)
-        Task { @MainActor in self.completar(id) }
+        Task { @MainActor in
+            self.cambioSesion(workoutSession, corre: false, cerro: true)
+            self.completar(id)
+        }
+    }
+
+    /// Solo la sesión vigente: la que cerró `terminar` ya no está (la guarda o la descarta `completar`). Si se cortó sola,
+    /// queda libre para volver a abrirse.
+    fileprivate func cambioSesion(_ s: HKWorkoutSession, corre: Bool, cerro: Bool) {
+        guard s === sesion else { return }
+        if cerro {
+            // Se cortó sola: se cierra de verdad para que `empezar` pueda abrir otra sin chocar con esta.
+            s.end()
+            builder?.discardWorkout()
+            sesion = nil
+            builder = nil
+        }
+        alCambiarViva?(corre)
     }
 }
 

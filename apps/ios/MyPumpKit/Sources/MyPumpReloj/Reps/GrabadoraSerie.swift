@@ -26,15 +26,15 @@ public struct MuestraEjes: Equatable, Sendable {
 ///
 /// La ventana de una serie va desde que se abre (`abrirVentana`: al empezar, al elegir otro ejercicio o al confirmar la
 /// serie anterior) hasta que se confirma (`cerrar`). Incluye el descanso a propósito: el reloj no sabe cuándo arranca
-/// la serie (no hay botón de «empiezo») y el contador tiene que encontrarla solo. El fin del descanso queda marcado
-/// (`marcarFinDescanso`) y el conteo mira desde `margenAntesDelFin` antes de ese fin (o desde que se abrió la ventana),
-/// como mucho los últimos `topeConteoSegundos`.
+/// la serie (no hay botón de «empiezo») y el contador tiene que encontrarla solo. El conteo mira los últimos
+/// `topeConteoSegundos` de la ventana, sin importar el descanso: en la grabación real una serie terminada antes de
+/// cerrar el descanso quedaba afuera. El fin del descanso se guarda con la ventana, como dato para la evaluación.
 public struct GrabadoraSerie: Sendable {
     public static let hz: Double = 100
     public static let topeSegundos: Double = 300
     public static let topeConteoSegundos: Double = 120
-    /// Se empieza a contar un poco antes de que termine el descanso: mucha gente arranca antes del aviso.
-    public static let margenAntesDelFin: Double = 20
+    /// Un tramo sin ninguna muestra de al menos esto (s) es un hueco: la app estuvo suspendida o se cortó la sesión.
+    public static let huecoMinimo: Double = 2
 
     /// La hora (s) del cuadro 0 de la grilla.
     public private(set) var t0: Double?
@@ -47,6 +47,9 @@ public struct GrabadoraSerie: Sendable {
     private var ultimoGiro: (Float, Float, Float) = (0, 0, 0)
     public private(set) var inicioVentana: Double?
     public private(set) var finDescanso: Double?
+    /// El último hueco (horas del sensor). La grilla lo rellena repitiendo el último valor, que parece quietud.
+    public private(set) var ultimoHueco: (desde: Double, hasta: Double)?
+    private var cuadrosSinMuestra = 0
 
     public init() {}
 
@@ -86,6 +89,14 @@ public struct GrabadoraSerie: Sendable {
             while ig < giro.count, cuadro(giro[ig].t, t0) == siguiente {
                 sg.0 += Double(giro[ig].x); sg.1 += Double(giro[ig].y); sg.2 += Double(giro[ig].z); ng += 1; ig += 1
             }
+            if na == 0 && ng == 0 {
+                cuadrosSinMuestra += 1
+            } else {
+                if Double(cuadrosSinMuestra) >= Self.huecoMinimo * Self.hz {
+                    ultimoHueco = (t0 + Double(siguiente - cuadrosSinMuestra) / Self.hz, t0 + Double(siguiente) / Self.hz)
+                }
+                cuadrosSinMuestra = 0
+            }
             if na > 0 { ultimoAcel = (Float(sa.0 / Double(na)), Float(sa.1 / Double(na)), Float(sa.2 / Double(na))) }
             if ng > 0 { ultimoGiro = (Float(sg.0 / Double(ng)), Float(sg.1 / Double(ng)), Float(sg.2 / Double(ng))) }
             cuadros.append(CuadroSensor(ax: ultimoAcel.0, ay: ultimoAcel.1, az: ultimoAcel.2,
@@ -121,11 +132,10 @@ public struct GrabadoraSerie: Sendable {
         finDescanso = t
     }
 
-    /// Lo que se mira para contar: desde `margenAntesDelFin` antes del fin del descanso (o desde la apertura), como
-    /// mucho los últimos `topeConteoSegundos`, hasta `t`. La misma regla que usa la evaluación sobre lo exportado.
-    public static func inicioConteo(inicioVentana: Double, finDescanso: Double?, hasta t: Double) -> Double {
-        let desde = finDescanso.map { max(inicioVentana, $0 - margenAntesDelFin) } ?? inicioVentana
-        return max(desde, t - topeConteoSegundos)
+    /// Lo que se mira para contar: desde la apertura, como mucho los últimos `topeConteoSegundos`, hasta `t`. La misma
+    /// regla que usa la evaluación sobre lo exportado.
+    public static func inicioConteo(inicioVentana: Double, hasta t: Double) -> Double {
+        max(inicioVentana, t - topeConteoSegundos)
     }
 
     /// Los cuadros entre dos horas (lo que quede en el anillo).
@@ -139,7 +149,22 @@ public struct GrabadoraSerie: Sendable {
     /// Lo que va de la serie, para el contador en vivo.
     public func paraContar(hasta t: Double) -> [CuadroSensor] {
         guard let iv = inicioVentana else { return [] }
-        return cuadros(desde: Self.inicioConteo(inicioVentana: iv, finDescanso: finDescanso, hasta: t), hasta: t).cuadros
+        return cuadros(desde: Self.inicioConteo(inicioVentana: iv, hasta: t), hasta: t).cuadros
+    }
+
+    /// El conteo en vivo. Si un hueco cae dentro de la serie o justo al
+    /// final, lo que parece «terminó» puede ser que el reloj dejó de ver: no se da por terminada.
+    public func contarEnVivo(hasta t: Double) -> ContadorReps.Resultado? {
+        guard let iv = inicioVentana else { return nil }
+        let (desde, cs) = cuadros(desde: Self.inicioConteo(inicioVentana: iv, hasta: t), hasta: t)
+        let cero = (t0 ?? 0) + Double(desde) / Self.hz
+        var r = ContadorReps.contar(cs, noAntesDe: finDescanso.map { $0 - cero })
+        let inicio = cero + r.desde
+        if let h = ultimoHueco, r.reps > 0,
+           h.hasta >= inicio - 1.5 * r.periodo, h.desde <= cero + r.hasta + ContadorReps.esperaFinal(periodo: r.periodo) {
+            r.quieto = false
+        }
+        return r
     }
 
     /// La ventana grabada de una serie.
@@ -159,7 +184,7 @@ public struct GrabadoraSerie: Sendable {
         defer { inicioVentana = nil; finDescanso = nil }
         let (inicio, cs) = cuadros(desde: iv, hasta: t)
         guard !cs.isEmpty, let i0 = indice(iv) else { return nil }
-        let ic = indice(Self.inicioConteo(inicioVentana: iv, finDescanso: finDescanso, hasta: t)) ?? inicio
+        let ic = indice(Self.inicioConteo(inicioVentana: iv, hasta: t)) ?? inicio
         let fd = finDescanso.flatMap(indice).map { $0 - inicio }
         return Ventana(cuadros: cs, inicioConteo: max(0, ic - inicio), finDescanso: fd.flatMap { $0 >= 0 && $0 <= cs.count ? $0 : nil },
                        recortado: Double(max(0, inicio - max(i0, 0))) / Self.hz)

@@ -11,7 +11,10 @@ enum Proveedor {
         let m = crear()
         // Al volver al frente con la cuenta: el domingo al día y el token de push (un permiso dado desde Ajustes se
         // registra ahí, no en el próximo arranque; hallazgo 9).
-        m.conAvisos = { await CentroAvisos.shared.alEntrar() }
+        m.conAvisos = { @MainActor in
+            await CentroAvisos.shared.alEntrar()
+            DatosCalibracion.subirSiCorresponde()   // lo grabado que falte, si el servidor lo habilita
+        }
         return m
     }()
 

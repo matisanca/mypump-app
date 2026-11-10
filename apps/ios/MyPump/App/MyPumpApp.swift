@@ -45,6 +45,10 @@ struct MyPumpApp: App {
                     entrarEnDemoSiSePide()
                     // El Apple Watch (2.2): la rutina al reloj y sus series a la cola. Callado sin reloj con la app.
                     PuenteReloj.compartido.activar()
+                    DatosCalibracion.revocarLinkCaido()   // sin cuenta activa la espera de abajo no lleva a nada
+                    // Primera subida del arranque en frío: volver al frente no corre todavía.
+                    for _ in 0..<30 where Proveedor.modelo.fase != .listo { try? await Task.sleep(for: .seconds(2)) }
+                    DatosCalibracion.subirSiCorresponde()
                 }
         }
     }

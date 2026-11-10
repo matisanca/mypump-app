@@ -45,6 +45,7 @@ final class PuenteReloj: NSObject {
         guard hayReloj, !observando else { return }
         observando = true
         withObservationTracking {
+            _ = Proveedor.modelo.palanca
             if let m = Proveedor.modelo.entreno {
                 _ = m.dia
                 _ = m.inicioSesion
@@ -75,14 +76,10 @@ final class PuenteReloj: NSObject {
     /// La rutina del día abierto para el reloj, con el modo calibración de la cuenta.
     private func armarRutina(_ m: ModeloEntreno) -> RutinaReloj {
         var r = m.rutinaReloj()
-        // Tanda 4: el modo calibración (local, por cuenta; viene prendido). Apagado no viaja el campo y el reloj no toca
-        // los sensores. El patrón (para la familia de movimiento) también viaja solo con el modo prendido. En la demo
-        // va prendido para que el revisor vea el conteo; el reloj no guarda las series (y si llegara una, `DatosCalibracion` la descarta).
-        if r.cuenta == "demo" || ModoCalibracion().prendido(cuenta: r.cuenta) {
-            r.calibracion = true
-        } else {
-            for i in r.ejercicios.indices { r.ejercicios[i].patron = nil }
-        }
+        // El contador va para todos, con el patrón para la familia, y solo lo apaga el servidor. Grabar a archivo es otra
+        // cosa: solo en el modo calibración (local, por cuenta). La demo cuenta y no guarda.
+        if r.cuenta == "demo" || ModoCalibracion().prendido(cuenta: r.cuenta) { r.calibracion = true }
+        if !Proveedor.modelo.palanca.contadorRepsReloj { r.contadorReps = false }
         return r
     }
 

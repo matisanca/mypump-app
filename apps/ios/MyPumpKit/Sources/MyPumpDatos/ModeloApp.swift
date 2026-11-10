@@ -81,7 +81,7 @@ public final class ModeloApp {
     /// Cuántas veces tocó algo del día pasado (la lectura no pisa lo que se tocó mientras viajaba).
     @ObservationIgnored var ordenDiaPasado = 0
     /// La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido).
-    public private(set) var palanca = PalancaRemota.deFabrica
+    public private(set) var palanca = PalancaRemota.arranque()
 
     /// Cuántas cargas terminaron con todo traído del servidor. `cargar()` sobre una cuenta ya cargada no pasa por
     /// `.cargando`: quien espera "la próxima carga con red" (la Fase R después de un corte) mira esto.
@@ -440,6 +440,7 @@ public final class ModeloApp {
         guard vigente() else { return }
         if let palancaLeida {
             palanca = palancaLeida
+            palancaLeida.recordar()
             await outbox?.usarPalanca(opsLegadas: palancaLeida.opsLegadas)
         }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).

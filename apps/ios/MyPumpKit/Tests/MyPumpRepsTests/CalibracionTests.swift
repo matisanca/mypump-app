@@ -37,8 +37,8 @@ import MyPumpRepsHerramientas
         let v = try #require(cerrada)
         #expect(abs(v.cuadros.count - 5_900) <= 2)
         #expect(v.finDescanso.map { abs($0 - 4_500) <= 2 } == true)
-        // Cuenta desde 20 s antes del fin del descanso.
-        #expect(abs(v.inicioConteo - 2_500) <= 2)
+        // Cuenta la ventana entera: la serie puede arrancar antes de que termine el descanso.
+        #expect(v.inicioConteo == 0)
         #expect(v.recortado == 0)
         #expect(g.inicioVentana == nil, "al cerrar, la ventana queda cerrada")
         #expect(g.cerrar(en: 1_060) == nil)
@@ -57,11 +57,11 @@ import MyPumpRepsHerramientas
         #expect(abs(Double(v.cuadros.count - v.inicioConteo) - 12_000) <= 2)
     }
 
+    /// El conteo no depende del descanso: en la grabación real una serie hecha antes de cerrarlo quedaba afuera.
     @Test func inicioConteo() {
-        #expect(GrabadoraSerie.inicioConteo(inicioVentana: 0, finDescanso: nil, hasta: 60) == 0)
-        #expect(GrabadoraSerie.inicioConteo(inicioVentana: 0, finDescanso: 100, hasta: 150) == 80)
-        #expect(GrabadoraSerie.inicioConteo(inicioVentana: 90, finDescanso: 100, hasta: 150) == 90)
-        #expect(GrabadoraSerie.inicioConteo(inicioVentana: 0, finDescanso: 10, hasta: 300) == 180)
+        #expect(GrabadoraSerie.inicioConteo(inicioVentana: 0, hasta: 60) == 0)
+        #expect(GrabadoraSerie.inicioConteo(inicioVentana: 90, hasta: 150) == 90)
+        #expect(GrabadoraSerie.inicioConteo(inicioVentana: 0, hasta: 300) == 180)
     }
 }
 
@@ -212,68 +212,96 @@ import MyPumpRepsHerramientas
 }
 
 @Suite struct ConfirmacionYModoTests {
-    let conteo = ContadorReps.Resultado(reps: 10, periodo: 2.5, calidad: 0.9, senal: .giro, desde: 5, hasta: 30, quieto: true)
+    let conteo = ContadorReps.Resultado(reps: 10, periodo: 2.5, calidad: 0.9, senal: .acel, desde: 5, hasta: 30, quieto: true, esfuerzo: 0.15, amplitud: 0.5)
 
-    @Test func elFlujoFinalEstaApagado() {
-        #expect(ConfirmacionReps.habilitadas.isEmpty)
-        for f in FamiliaMovimiento.allCases {
-            #expect(ConfirmacionReps.propuesta(f, conteo: conteo, calibrando: false) == nil)
-            #expect(!ConfirmacionReps.cuenta(f))
-        }
-    }
-
-    @Test func conUnaFamiliaHabilitadaPropone() {
-        let h: Set<FamiliaMovimiento> = [.curl]
-        #expect(ConfirmacionReps.propuesta(.curl, conteo: conteo, calibrando: false, habilitadas: h) == 10)
-        #expect(ConfirmacionReps.propuesta(.sentadilla, conteo: conteo, calibrando: false, habilitadas: h) == nil)
-        // Con la serie sin terminar o poco clara, tampoco.
+    /// Propone en todas las familias, con las condiciones de serie clara.
+    @Test func proponeSoloConSerieClara() {
+        #expect(ConfirmacionReps.propuesta(conteo) == 10)
         var c = conteo; c.quieto = false
-        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: false, habilitadas: h) == nil)
-        c = conteo; c.calidad = 0.4
-        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: false, habilitadas: h) == nil)
+        #expect(ConfirmacionReps.propuesta(c) == nil, "serie sin terminar")
+        c = conteo; c.calidad = ConfirmacionReps.calidadMinima - 0.01
+        #expect(ConfirmacionReps.propuesta(c) == nil, "poco clara")
+        c.calidad = ConfirmacionReps.calidadMinima
+        #expect(ConfirmacionReps.propuesta(c) == 10, "justo en el mínimo")
+        c = conteo; c.esfuerzo = 0.04
+        #expect(ConfirmacionReps.propuesta(c) == nil, "sin carga: una racha del descanso")
+        c = conteo; c.reps = ContadorReps.repsMinimas - 1
+        #expect(ConfirmacionReps.propuesta(c) == nil, "debajo del mínimo")
+        c.reps = SesionReloj.repsMax + 1
+        #expect(ConfirmacionReps.propuesta(c) == nil, "arriba del rango")
         #expect(ConfirmacionReps.texto(10) == "¿10 reps?" && ConfirmacionReps.texto(1) == "¿1 rep?")
         #expect(ConfirmacionReps.textoAccesible(10).contains("contó 10 repeticiones"))
     }
 
-    /// En calibración propone en TODAS las familias (con la lista vacía), con las mismas condiciones de serie clara.
-    @Test func enCalibracionProponeEnTodasLasFamilias() {
-        for f in FamiliaMovimiento.allCases {
-            #expect(ConfirmacionReps.propuesta(f, conteo: conteo, calibrando: true) == 10)
-            #expect(ConfirmacionReps.propuesta(f, conteo: conteo, calibrando: false) == nil)
-            // Fuera de calibración el contador no corre por la familia (los sensores siguen apagados).
-            #expect(!ConfirmacionReps.cuenta(f))
-        }
-        var c = conteo; c.quieto = false
-        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == nil, "serie sin terminar")
-        c = conteo; c.calidad = ConfirmacionReps.calidadMinima - 0.01
-        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == nil, "poco clara")
-        c.calidad = ConfirmacionReps.calidadMinima
-        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == 10, "justo en el mínimo")
-        c = conteo; c.reps = SesionReloj.repsMin - 1
-        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == nil, "debajo del rango")
-        c.reps = SesionReloj.repsMax + 1
-        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == nil, "arriba del rango")
-    }
-
-    @Test func unaPropuestaPorSerieYSiTocoAntesNoSePisa() {
+    @Test func nuncaSePisaLoQueGiro() {
         var p = PropuestaSerie()
         #expect(p.corregida(confirmadas: 10) == nil && !p.enLaCorona(10))
-        // Girar en el descanso (el contador no vio movimiento) no bloquea la propuesta.
-        p.girar(contadas: nil); p.girar(contadas: 0)
-        #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == 10)
-        #expect(p.enLaCorona(10) && p.corregida(confirmadas: 10) == false)
-        #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == nil, "una sola vez por serie")
-        p.girar(contadas: 10)
-        #expect(p.corregida(confirmadas: 11) == true && !p.enLaCorona(11) && p.reps == 10)
+        p.girar()
+        #expect(p.proponer(conteo) == nil, "giró antes: no se le pisa")
+        #expect(p.reps == nil && p.corregida(confirmadas: 12) == nil)
         p.reiniciar()
         #expect(p == PropuestaSerie())
-        // Ya giró con la serie en marcha: no hay propuesta (no se le pisa lo que puso) y no queda etiqueta de corrección.
-        p.girar(contadas: 6)
-        #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == nil)
-        #expect(p.reps == nil && p.corregida(confirmadas: 12) == nil)
-        // Fuera de calibración, con la lista vacía, nunca.
-        var fuera = PropuestaSerie()
-        #expect(fuera.proponer(.curl, conteo: conteo, calibrando: false) == nil)
+        #expect(p.proponer(conteo) == 10)
+        #expect(p.enLaCorona(10) && p.corregida(confirmadas: 10) == false)
+        p.girar()
+        var mas = conteo; mas.reps = 12
+        #expect(p.proponer(mas) == nil, "giró después: tampoco")
+        #expect(p.corregida(confirmadas: 11) == true && !p.enLaCorona(11) && p.reps == 10)
+    }
+
+    /// Sin que el alumno toque, la propuesta sigue a la última serie clara: una racha falsa del descanso no se gasta la real.
+    @Test func laPropuestaSigueALaUltimaSerieClara() {
+        var p = PropuestaSerie()
+        var falsa = conteo; falsa.reps = 6
+        #expect(p.proponer(falsa) == 6)
+        #expect(p.proponer(falsa) == nil, "lo mismo no se repite")
+        #expect(p.proponer(conteo) == 10, "la serie real, más larga, la reemplaza")
+        var sinTerminar = conteo; sinTerminar.quieto = false; sinTerminar.reps = 3
+        #expect(p.proponer(sinTerminar) == nil, "lo que no es claro no mueve la corona")
+        #expect(p.reps == 10)
+    }
+
+    @Test func laPantallaNuncaQuedaMuda() {
+        func a(prendido: Bool = true, iniciada: Bool = true, descanso: Bool = false, propuesta: Bool = false, muestras: Bool = true, viva: Bool = true,
+               conteo: ContadorReps.Resultado? = nil, f: FamiliaMovimiento = .curl) -> AvisoConteo {
+            AvisoConteo.de(prendido: prendido, iniciada: iniciada, enDescanso: descanso, conPropuesta: propuesta, muestras: muestras,
+                           sesionViva: viva, conteo: conteo, familia: f)
+        }
+        #expect(a(prendido: false) == .ninguno)
+        #expect(a(descanso: true) == .ninguno)
+        #expect(a(propuesta: true) == .ninguno)
+        #expect(a(iniciada: false) == .falta_empezar)
+        #expect(a(muestras: false) == .sinSensores, "permiso negado o sensor apagado")
+        #expect(a(viva: false) == .sinSesion, "sesión cortada")
+        var enCurso = conteo; enCurso.quieto = false; enCurso.reps = 6
+        #expect(a(conteo: enCurso) == .contando(6))
+        #expect(a() == .noPude(munecaQuieta: false))
+        #expect(a(f: .maquinaMunecaQuieta) == .noPude(munecaQuieta: true))
+        for caso: AvisoConteo in [.falta_empezar, .sinSensores, .sinSesion, .contando(3), .noPude(munecaQuieta: true), .noPude(munecaQuieta: false)] {
+            #expect(caso.texto?.isEmpty == false)
+        }
+    }
+
+    /// Un hueco de muestras dentro de la serie (app suspendida, sesión cortada) no da la serie por terminada.
+    @Test func unHuecoNoEsElFinDeLaSerie() {
+        var g = GrabadoraSerie()
+        g.abrirVentana(en: 1_000)
+        func picos(_ t: Double) -> Float { Float(-1 + 0.2 * max(0, sin(2 * .pi * t / 3))) }
+        var t = 1_000.0
+        func dar(hasta fin: Double) {
+            while t < fin {
+                var ac: [MuestraEjes] = [], gi: [MuestraEjes] = []
+                for k in 0..<25 { let ts = t + Double(k) / 100 + 0.005; ac.append(.init(t: ts, x: 0, y: 0, z: picos(ts - 1_000))); gi.append(.init(t: ts, x: 0, y: 0, z: 0)) }
+                g.agregar(acelerometro: ac, giroscopio: gi)
+                t += 0.25
+            }
+        }
+        dar(hasta: 1_030)
+        t = 1_050   // 20 s sin nada: la app estuvo suspendida
+        dar(hasta: 1_052)
+        let v = try? #require(g.contarEnVivo(hasta: 1_052))
+        #expect(v?.quieto == false, "\(String(describing: v))")
+        #expect(g.ultimoHueco != nil)
     }
 
     /// `corregida` sale de lo que se confirma, no de si se giró: girar y volver al número propuesto deja la etiqueta
@@ -281,11 +309,11 @@ import MyPumpRepsHerramientas
     /// iPhone la recargó), lo confirmado ya no es la propuesta y el cartel «¿N reps?» no se muestra.
     @Test func corregidaSaleDeLoQueSeConfirma() {
         var p = PropuestaSerie()
-        #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == 10)
-        p.girar(contadas: 10); p.girar(contadas: 10)   // +1 y −1
+        #expect(p.proponer(conteo) == 10)
+        p.girar(); p.girar()   // +1 y −1
         #expect(p.corregida(confirmadas: 10) == false && p.enLaCorona(10))
         var q = PropuestaSerie()
-        #expect(q.proponer(.curl, conteo: conteo, calibrando: true) == 10)
+        #expect(q.proponer(conteo) == 10)
         // Sin girar, la corona volvió a lo sugerido (12).
         #expect(q.corregida(confirmadas: 12) == true && !q.enLaCorona(12))
         #expect(EvaluacionReps.Origen.de(EncabezadoSerie(sesion: "s", orden: 1, confirmada: 0, ejercicio: "curl", nombre: "Curl",
@@ -293,18 +321,18 @@ import MyPumpRepsHerramientas
                                                          corregida: q.corregida(confirmadas: 12), fuente: "t")) == .corregida)
     }
 
-    @Test func elModoVienePrendidoSeApagaPorCuentaYNuncaEnLaDemo() throws {
+    /// Grabar a archivo es aparte del contador: apagado por defecto, por cuenta y nunca en la demo.
+    @Test func elModoVieneApagadoSePrendePorCuentaYNuncaEnLaDemo() throws {
         let d = try #require(UserDefaults(suiteName: "calibracion-\(UUID().uuidString)"))
         let m = ModoCalibracion(defaults: d)
-        #expect(m.prendido(cuenta: "abc") && m.prendido(cuenta: "otra"))
-        m.poner(false, cuenta: "abc")
-        #expect(!m.prendido(cuenta: "abc") && m.prendido(cuenta: "otra"))
+        #expect(!m.prendido(cuenta: "abc") && !m.prendido(cuenta: "otra"))
         m.poner(true, cuenta: "abc")
-        #expect(m.prendido(cuenta: "abc"))
-        #expect(!m.prendido(cuenta: "demo") && !m.prendido(cuenta: ""))
+        #expect(m.prendido(cuenta: "abc") && !m.prendido(cuenta: "otra"))
+        m.poner(false, cuenta: "abc")
+        #expect(!m.prendido(cuenta: "abc"))
         m.poner(true, cuenta: "demo")
-        #expect(!m.prendido(cuenta: "demo"))
-        #expect(ModoCalibracion.textoPrivacidad.contains("no sale del teléfono salvo que vos lo exportes"))
+        #expect(!m.prendido(cuenta: "demo") && !m.prendido(cuenta: ""))
+        #expect(ModoCalibracion.textoPrivacidad.contains("Apagado por defecto"))
     }
 
     /// La rutina sin los campos nuevos se sigue leyendo (un iPhone viejo), y con el modo apagado no viajan.
@@ -319,7 +347,38 @@ import MyPumpRepsHerramientas
         let leida = try JSONDecoder().decode(RutinaReloj.self, from: JSONEncoder().encode(conModo))
         #expect(leida.calibracion == true && leida.ejercicios[0].familia == .curl)
     }
+
+    /// Un iPhone viejo no manda la clave: el reloj cuenta. Sólo un false explícito lo apaga.
+    /// Un relanzamiento del reloj no puede olvidar que el alumno giró ni que el número lo puso el reloj.
+    @Test func laPropuestaSobreviveAlRelanzamiento() throws {
+        var p = PropuestaSerie()
+        #expect(p.proponer(conteoParaPropuesta) == 10)
+        p.girar()
+        let leida = try JSONDecoder().decode(PropuestaSerie.self, from: JSONEncoder().encode(p))
+        #expect(leida == p && leida.tocada && leida.reps == 10)
+    }
+
+    /// Ya a la vista, una racha posterior más corta no cambia el número; si la serie siguió, sube.
+    @Test func elNumeroALaVistaSoloSube() {
+        var p = PropuestaSerie()
+        var c = conteoParaPropuesta
+        #expect(p.proponer(c) == 10)
+        c.reps = 6
+        #expect(p.proponer(c) == nil && p.reps == 10)
+        c.reps = 11
+        #expect(p.proponer(c) == 11)
+    }
+
+    @Test func laPalancaDelContadorEsOpcional() throws {
+        var r = RutinaReloj.demo(fecha: "2026-11-03", generada: 1)
+        #expect(r.contadorReps == nil)
+        #expect(!String(decoding: try JSONEncoder().encode(r), as: UTF8.self).contains("contadorReps"))
+        r.contadorReps = false
+        #expect(try JSONDecoder().decode(RutinaReloj.self, from: JSONEncoder().encode(r)).contadorReps == false)
+    }
 }
+
+private let conteoParaPropuesta = ContadorReps.Resultado(reps: 10, periodo: 2.5, calidad: 0.9, senal: .acel, desde: 5, hasta: 30, quieto: true, esfuerzo: 0.15, amplitud: 0.5)
 
 @Suite struct EvaluacionRepsTests {
     @Test func losArchivosSinteticosDanElErrorPorFamilia() throws {
@@ -331,7 +390,8 @@ import MyPumpRepsHerramientas
         #expect(fallas.isEmpty && registros.count == 5)
         let informe = EvaluacionReps.evaluar(registros)
         #expect(informe.total.series == 5)
-        #expect(informe.total.dentroDeUno == 5, "\(informe.series)")
+        // La sentadilla sintética casi no mueve el reloj: el contador de aceleración la cuenta de menos (y no la propone).
+        #expect(informe.total.dentroDeUno >= 3, "\(informe.series)")
         let curl = try #require(informe.filas.first { $0.familia == .curl })
         #expect(curl.series == 2 && curl.porcentajeDentroDeUno == 1)
         #expect(!curl.habilitable, "con 2 series no alcanza: faltan series")

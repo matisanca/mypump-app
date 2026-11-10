@@ -115,7 +115,7 @@ struct MisDatosView: View {
                     }
                     .accessibilityIdentifier("mis-datos-calibracion")
                 } footer: {
-                    Text("El Apple Watch cuenta las repeticiones de cada serie y te las propone. Lo grabado queda en tu iPhone.")
+                    Text("Experimental. El Apple Watch cuenta las repeticiones de cada serie y te las propone.")
                 }
             }
 
