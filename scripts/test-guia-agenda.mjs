@@ -2,6 +2,7 @@
 // Vectores portados de la app (rama nativa-220): MyPumpKit/Tests/MyPumpReglasTests/AgendaTests.swift, GuiaTests.swift y
 // FormatoVideoTests.swift. Corre las reglas de public/js/reglas-guia.js, las mismas que usa public/js/guia.js.
 // Datos inventados (GuiaMuestra de la app): ningún cliente real.
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
 
@@ -463,6 +464,39 @@ function cuadroLuma(ancho, alto, x0, x1, y0 = 0, y1 = alto) {
   eq(RV.unir([]), null, 'unir nada');
   // La luma de un canvas RGBA, como Android.
   eq(Array.from(RV.luma(new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 255, 12, 12, 12, 255]), 3)), [255, 0, 12], 'luma');
+}
+
+// «Lo que más te importa» (2.3.0): los casos compartidos con iOS y Android.
+{
+  const { RD, normalizarGuia } = G;
+  const casos = JSON.parse(readFileSync(new URL('./vectores-app/dolor-casos.json', import.meta.url)));
+  ok(casos.length >= 15, 'casos');
+  for (const c of casos) {
+    const v = RD.vista({ titulo: c.titulo ?? null, texto: c.texto });
+    if (c.vacio) { eq(v, null, c.nombre); continue; }
+    eq(v.subtitulo, c.subtitulo ?? null, c.nombre);
+    eq(v.parrafos, c.parrafos, c.nombre);
+    eq(v.partes, c.partes || [], c.nombre);
+  }
+  eq(normalizarGuia({ ok: true, clips: [] }).dolor, null, 'sin el campo');
+  eq(normalizarGuia({ ok: true, clips: [], dolor: 3 }).dolor, null, 'otro tipo');
+  eq(normalizarGuia({ ok: true, clips: [], dolor: { titulo: 'x' } }).dolor, null, 'sin texto');
+  const clip = (id, bloque, extra) => normalizarGuiaClip({ id, titulo: id, url: 'https://x.test/a.mp4', minutos: 1, bloque, ...extra });
+  const normalizarGuiaClip = (o) => G.normalizarClip(o);
+  const dolor = { titulo: 'Bajar la panza', texto: 'Uno.\n\n## Tu plan\n\nDos.' };
+  const clips = [clip('a', 'Tu app'), clip('b', 'Lo que más te importa'), clip('c', 'Tu plan'), clip('n', 'Tu app', { nuevo: true })];
+  const v = RD.vista(dolor);
+  const b = R.bloques(R.ordenados(clips.filter(c => !c.nuevo)).concat(clips.filter(c => c.nuevo)));
+  const r = RD.reparto(b, v);
+  eq([r.principal && r.principal.id, r.partes[0] && r.partes[0].id, r.resto.map(x => x.id).includes('_novedad')], ['Lo que más te importa', 'Tu plan', true], 'reparto');
+  eq(RD.reparto(b, null).resto, b, 'sin dolor, todo sigue');
+  eq(RD.conDolorPrimero(clips.filter(c => !c.nuevo), dolor).map(c => c.id), ['b', 'c', 'a'], 'el dolor primero');
+  const g = { ok: true, clips: clips.map(c => ({ ...c, visto: true })), dudasLlamada: [], suplementacion: null, dolor, fechaEntrega: null };
+  const i = RD.introduccion(g, false, new Date('2026-11-10T12:00:00Z'));
+  eq(i.texto, 'Antes de nuestra videollamada, hacé estos dos pasos.', 'la línea sin fecha');
+  eq(i.pasos.map(p => p.estado), ['hecho', 'pendiente'], 'los pasos');
+  eq(RD.textoHablado(i.pasos[0], 2), 'Paso 1 de 2, Mirá tus videos, hecho', 'lo hablado');
+  eq(RD.introduccion({ ...g, dolor: null }, false), null, 'sin dolor, sin intro');
 }
 
 console.log(`test-guia-agenda: ${n} comprobaciones OK`);

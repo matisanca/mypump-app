@@ -1067,6 +1067,9 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .peso-objetivo strong{color:var(--color-text-secondary)}
 
 /* ── Fotos de progreso (P2/P3) ── */
+.fp-aviso{display:flex;flex-direction:column;gap:4px;padding:12px;margin:0 0 var(--space-3);border-radius:12px;background:var(--color-brand-subtle);font-size:14px;line-height:1.4}
+.fp-aviso b{font-size:16px}
+.rv-nota{font-size:14px;line-height:1.4;color:var(--color-text-muted);margin:0 0 var(--space-3)}
 .fp-intro{font-size:12px;color:var(--color-text-muted);margin:0 0 var(--space-3);line-height:1.45}
 .fp-intro b{color:var(--color-text-secondary)}
 .fp-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -3897,6 +3900,7 @@ function showError(type, detail) {
     if (inp && btn) {
       const TOKEN_RE = /^[a-zA-Z0-9_-]{16,64}$/;
       function tryExtract(raw) {
+        if (window.MyPumpLink) return window.MyPumpLink.extraerToken(raw);
         if (!raw) return null;
         raw = raw.trim();
         // Si pegan el link completo, extraer ?t=
@@ -9983,6 +9987,7 @@ async function loadFotos() {
   try {
     const res = await window.mypumpDB.getFotosProgreso(TOKEN, null);
     STATE.fotos = Array.isArray(res) ? res : [];
+    if (Array.isArray(res)) STATE.fotosCargadas = true;
   } catch (_) { STATE.fotos = STATE.fotos || []; }
 }
 
@@ -10125,6 +10130,7 @@ function renderMydayFotos() {
         ${deEstaSemana.size === 3 ? '<span class="ck-saved">✓ completas</span>' : ''}
       </div>
       <div class="myday-section-body">
+        ${web230() && STATE.fotosCargadas && deEstaSemana.size < 3 ? `<div class="fp-aviso" role="note"><b>Tus fotos de la semana</b><span>Esta semana todavía no subiste tus fotos. Sacalas en el mismo lugar y con la misma luz que siempre, con la misma ropa, el celu vertical a la altura del ombligo y a 2 o 3 metros. Frente, perfil y espalda. Así vemos bien cómo venís</span></div>` : ''}
         <p class="fp-intro">Mismo lugar, misma luz, en ayunas. Las ve <b>solo Mati</b>: no se publican ni salen de la app.</p>
         <div class="fp-slots">${slots}</div>
         ${serie >= 2 ? `<div class="fp-serie">${serie} semanas seguidas registradas</div>` : ''}
@@ -10474,12 +10480,16 @@ function renderRevision() {
   // (se entra por la tarjeta Recuperación); el peso de la semana va en el check.
   root.innerHTML = `
     <div id="rv-tarjetas" class="rv-tarjetas"></div>
+    <div id="rv-dia" class="rv-nota" hidden></div>
     ${_avisoPlanHtml()}
+    ${web230() ? '<p class="rv-nota" id="rv-semanal">La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días.</p>' : ''}
     <div id="myday-fotos"></div>
     <div id="fpGaleria" class="fp-galeria"></div>
     <div id="myday-checkin"></div>`;
 
   _renderRevTarjetas();
+  _pintarDiaRevision();
+  _leerDiaRevision();
   renderMydayFotos();
   renderMydayCheckin();
   // La línea de «Tu progreso» sale del historial de cargas: si todavía no se
@@ -10489,6 +10499,32 @@ function renderRevision() {
     STATE._cargandoProgreso = true;
     Promise.resolve(loadProgressAndRender()).catch(() => {}).finally(() => { STATE._cargandoProgreso = false; });
   }
+}
+
+/* El día de revisión del alumno (mypump_get_revision_dia, 1 = lunes … 7 = domingo): quien revisa otro día que el domingo
+   lo ve acá. Sin red queda el último que se supo. Como SemanaRevision.textoDia de la app. */
+const _DIA_REV_KEY = () => `mypump_revision_dia_${TOKEN}`;
+let _diaRevLeido = false;
+function _textoDiaRevision(dia) {
+  const d = Number.isInteger(dia) && dia >= 1 && dia <= 7 ? dia : 7;
+  return d === 7 ? null : `Tu día de revisión es el ${['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][d - 1]}`;
+}
+function _pintarDiaRevision() {
+  const el = document.getElementById('rv-dia');
+  if (!el) return;
+  let dia = null;
+  try { dia = parseInt(localStorage.getItem(_DIA_REV_KEY()), 10); } catch (_) {}
+  const t = web230() && !(DATA && DATA._isDemo) ? _textoDiaRevision(dia) : null;
+  el.textContent = t || '';
+  el.hidden = !t;
+}
+async function _leerDiaRevision() {
+  if (_diaRevLeido || !web230() || !TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getRevisionDia) return;
+  _diaRevLeido = true;
+  const v = await window.mypumpDB.getRevisionDia(TOKEN);
+  if (v === null || v === undefined) { _diaRevLeido = false; return; }
+  try { localStorage.setItem(_DIA_REV_KEY(), String(Math.trunc(Number(v)))); } catch (_) {}
+  _pintarDiaRevision();
 }
 
 /* GEN-05: al plan publicado le falta algo. Es para la captura que el cliente le

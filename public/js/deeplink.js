@@ -15,6 +15,32 @@
   var TOKEN_KEY = 'mypump_token';
   var TOKEN_RE  = /^[a-zA-Z0-9_-]{16,64}$/;
 
+  // Lo que pega el cliente: el link entero, a medias, adentro del mensaje o el token solo. Le saca lo que agrega el copiar y
+  // pegar (marcas invisibles de WhatsApp, puntuación de la frase), como FormatoToken.extraer de las apps.
+  var INVISIBLES = (function () {
+    try { return new RegExp('\\p{Cf}', 'gu'); } catch (e) { return /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/g; }
+  })();
+  var BORDES = /^[\s\u0085.,;:!()\[\]{}<>"'«»“”‘’]+|[\s\u0085.,;:!()\[\]{}<>"'«»“”‘’]+$/g;
+  function extraerToken(texto) {
+    var t = String(texto == null ? '' : texto).replace(INVISIBLES, '').replace(BORDES, '');
+    if (!t) return null;
+    if (TOKEN_RE.test(t)) return t;
+    try {
+      var q = new URL(/^http/.test(t) ? t : 'https://' + t).searchParams.get('t');
+      if (q && TOKEN_RE.test(q)) return q;
+    } catch (e) {}
+    // Sin omitir el tramo vacío: «…/?TOKEN» no es un link.
+    var ultimo = t.split('/').filter(Boolean).pop();
+    ultimo = ultimo ? ultimo.split('?')[0] : '';
+    if (TOKEN_RE.test(ultimo)) return ultimo;
+    // El mensaje entero de WhatsApp, con un espacio o un salto alrededor del t= (nunca adentro del token).
+    var m = t.match(/[?&]\s*t\s*=\s*([a-zA-Z0-9_-]{16,64})/);
+    if (m) return m[1];
+    m = t.match(/\/acceso\/([a-zA-Z0-9_-]{16,64})/);
+    return m ? m[1] : null;
+  }
+  window.MyPumpLink = { extraerToken: extraerToken };
+
   function tokenDe(url) {
     if (!url) return null;
     try {

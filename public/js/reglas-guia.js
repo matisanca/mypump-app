@@ -128,6 +128,132 @@
 
   // Lo que devuelve entregas_app_get. Todo lo que no sea un objeto con
   // ok:true es «no hay guía».
+  // ─── «Lo que más te importa» (MyPumpReglas/GuiaDolor.swift, casos: apps/shared/fixtures/guia/dolor-casos.json) ───
+  function leerDolor(v) {
+    if (!esObjeto(v)) return null;
+    const t = texto(v.texto) || '';
+    return t ? { titulo: texto(v.titulo), texto: t } : null;
+  }
+  const ESP = '[\\s\\x0B\\p{Z}\\uFEFF]';
+  const recortarD = s => s.replace(/^[\s\u0085\uFEFF]+|[\s\u0085\uFEFF]+$/g, '');
+  const _reCache = new Map();
+  function re(p, f) {
+    const k = f + p;
+    if (!_reCache.has(k)) {
+      // Por constructor: un navegador sin lookbehind (Safari < 16.4) no puede tirar abajo el archivo entero.
+      let r = null;
+      try { r = new RegExp(p, f); } catch (_) { r = null; }
+      _reCache.set(k, r);
+    }
+    return _reCache.get(k);
+  }
+  const quitarD = (p, s) => { const r = re(p, 'u'); return r ? s.replace(r, '') : s; };
+  const INLINES = [
+    '!?\\[([^\\]]+)\\]\\([^)\\s]+\\)',
+    '\\*\\*(?=\\S)(.+?)(?<=\\S)\\*\\*',
+    '(?<![\\p{L}\\p{N}_])__(?=\\S)(.+?)(?<=\\S)__(?![\\p{L}\\p{N}_])',
+    '~~(?=\\S)(.+?)(?<=\\S)~~',
+    '(?<![\\p{L}\\p{N}_*])\\*(?=[^\\s*])(.+?)(?<=[^\\s*])\\*(?![\\p{L}\\p{N}_*])',
+    '(?<![\\p{L}\\p{N}_])_(?=[^\\s_])(.+?)(?<=[^\\s_])_(?![\\p{L}\\p{N}_])',
+    '`([^`\\n]+)`',
+  ];
+  function limpiarInlineD(s) {
+    let t = s;
+    for (const p of INLINES) { const r = re(p, 'gu'); if (r) t = t.replace(r, '$1'); }
+    return recortarD(t);
+  }
+  const CITA = `^>(?!${ESP}*[0-9])${ESP}*`;
+  const ENCAB = `^#{1,6}(?:${ESP}+|$)`;
+  function tituloDeParte(t) {
+    if (!t.startsWith('##') || /[\n\v\f\r\u0085\u2028\u2029]/.test(t) || !/^[\s\u0085\uFEFF]/.test(t.slice(2))) return null;
+    return limpiarInlineD(recortarD(t.slice(2))) || null;
+  }
+  function limpiarParrafo(t) {
+    let hayLista = false;
+    const lineas = [];
+    for (const cruda of t.split(/[\n\v\f\r\u0085\u2028\u2029]/)) {
+      const s = quitarD(ENCAB, quitarD(CITA, recortarD(cruda)));
+      const sep = re(`^([-*_])(?:${ESP}*\\1){2,}${ESP}*$`, 'u');
+      if (sep && sep.test(s)) continue;
+      const li = re(`^[-*+•]${ESP}+`, 'u');
+      const m = li && s.match(li);
+      if (m) {
+        hayLista = true;
+        const resto = s.slice(m[0].length);
+        if (recortarD(resto)) lineas.push('• ' + resto);
+      } else if (recortarD(s)) lineas.push(s);
+    }
+    if (!lineas.length) return null;
+    // Sin lista, el párrafo entero: una marca puede abrir en una línea y cerrar en la otra.
+    const limpio = hayLista ? lineas.map(limpiarInlineD).filter(Boolean).join('\n') : limpiarInlineD(lineas.join(' '));
+    return limpio || null;
+  }
+  const RD = {
+    TITULO_BLOQUE: 'Lo que más te importa',
+    TITULO_VIDEOS: 'Tus videos sobre esto',
+    esBloqueDolor: t => recortarD(t || '').toLowerCase().replace(/á/g, 'a') === 'lo que mas te importa',
+    vista(dolor) {
+      if (!dolor || !recortarD(dolor.texto || '')) return null;
+      const principal = [], partes = [];
+      const corte = re(`\\r?\\n${ESP}*?\\n`, 'u');
+      for (const crudo of dolor.texto.split(corte)) {
+        const t = recortarD(crudo);
+        const titulo = tituloDeParte(t);
+        if (titulo) { partes.push({ titulo, parrafos: [] }); continue; }
+        const p = limpiarParrafo(t);
+        if (p) (partes.length ? partes[partes.length - 1].parrafos : principal).push(p);
+      }
+      // Lo que había era solo markup: es lo mismo que vacío.
+      if (!principal.length && !partes.length) return null;
+      const st = dolor.titulo != null ? limpiarInlineD(quitarD(ENCAB, recortarD(dolor.titulo))) : '';
+      return { subtitulo: !st || RD.esBloqueDolor(st) ? null : st, parrafos: principal, partes };
+    },
+    // Qué capítulo va en cada recuadro y cuáles siguen en la lista de siempre.
+    reparto(bloques, v) {
+      if (!v) return { principal: null, partes: [], resto: bloques };
+      const usados = new Set();
+      const tomar = cumple => {
+        const b = bloques.find(x => !x.novedad && !usados.has(x.id) && cumple(x));
+        if (!b) return null;
+        usados.add(b.id);
+        return b;
+      };
+      const principal = tomar(b => RD.esBloqueDolor(b.titulo));
+      const partes = v.partes.map(p => tomar(b => b.titulo === p.titulo));
+      return { principal, partes, resto: bloques.filter(b => !usados.has(b.id)) };
+    },
+    // Los videos del recuadro van primero también en el reproductor. Los `nuevo` no pasan por acá.
+    conDolorPrimero(clips, dolor) {
+      const v = RD.vista(dolor);
+      if (!v) return clips;
+      const rango = c => {
+        const t = R.claveBloque(c);
+        if (RD.esBloqueDolor(t)) return 0;
+        const i = v.partes.findIndex(p => p.titulo === t);
+        return i >= 0 ? i + 1 : Infinity;
+      };
+      return clips.map((c, i) => [c, i, rango(c)])
+        .sort((a, b) => (a[2] !== b[2] ? (a[2] < b[2] ? -1 : 1) : a[1] - b[1])).map(x => x[0]);
+    },
+    // La línea y los pasos de arriba: solo con `dolor` y antes de la videollamada.
+    introduccion(g, hayDudas, ahora) {
+      if (!g || !RD.vista(g.dolor) || R.yaPaso(g.fechaEntrega, ahora)) return null;
+      const f = R.fechaLlamada(g.fechaEntrega);
+      const l = R.deLaLista(g);
+      const vistos = l.length > 0 && l.every(c => c.visto);
+      return {
+        texto: `Antes de nuestra videollamada${f ? ` del ${f}` : ''}, hacé estos dos pasos.`,
+        pasos: [
+          { id: 'videos', numero: 1, titulo: 'Mirá tus videos', estado: vistos ? 'hecho' : 'ahora' },
+          { id: 'dudas', numero: 2, titulo: 'Dejá tus dudas', estado: hayDudas ? 'hecho' : 'pendiente' },
+        ],
+      };
+    },
+    textoHablado(p, total) {
+      return `Paso ${p.numero} de ${total}, ${p.titulo}${p.estado === 'hecho' ? ', hecho' : p.estado === 'ahora' ? ', es el que sigue' : ''}`;
+    },
+  };
+
   function normalizarGuia(j) {
     if (!esObjeto(j)) {
       return { ok: false, nombrePila: null, fechaEntrega: null, clips: [], dudasLlamada: [], suplementacion: null, fase: 1, novedadEn: null };
@@ -142,6 +268,8 @@
       // Lo de la 2.2.0, todo opcional: sin los campos (servidor viejo), la guía es la de la 2.1.0.
       fase: entero(j.fase) === 2 ? 2 : 1,
       novedadEn: textoRecortado(j.novedad_en),
+      // Lo de la 2.3.0: apagado por la palanca web_230 hasta que se abra; sin el campo, la guía de siempre.
+      dolor: typeof raiz.web230 === 'function' && !raiz.web230() ? null : leerDolor(j.dolor),
     };
   }
 
@@ -299,7 +427,7 @@
       if (!g) return [];
       const nombrados = R.nombradosPorSuplementos(g.suplementacion);
       const l = g.clips.filter(c => !(R.esBloqueSuplementacion(c.bloque) && nombrados.has(c.id)));
-      return l.filter(c => c.nuevo).concat(R.ordenados(l.filter(c => !c.nuevo)));
+      return l.filter(c => c.nuevo).concat(RD.conDolorPrimero(R.ordenados(l.filter(c => !c.nuevo)), g.dolor));
     },
 
     clipDeSuplemento(g, videoId) {
@@ -1033,7 +1161,7 @@
     MAX_TEXTO, MAX_SEGUNDOS, HORAS_TARJETA, ZONA_BA, largo,
     texto, booleano, decimal, entero, lista, esObjeto, noVacio, textos, trimServidor,
     normalizarClip, normalizarGuia, normalizarResumen, normalizarAgenda, normalizarReserva, normalizarFranja,
-    R, RA, RV, AvanceVideo, vistaSuplementacion, diaBA, desfase, esUuid,
+    R, RD, RA, RV, AvanceVideo, vistaSuplementacion, diaBA, desfase, esUuid,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.ReglasGuia = API;

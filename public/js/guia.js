@@ -91,7 +91,7 @@
   // Sin ese archivo (un caché viejo a medio actualizar) la guía no arranca.
   const RG = window.ReglasGuia;
   if (!RG) return;
-  const { MAX_TEXTO, MAX_SEGUNDOS, texto, esObjeto, lista, largo, R, RA, RV, AvanceVideo, vistaSuplementacion,
+  const { MAX_TEXTO, MAX_SEGUNDOS, texto, esObjeto, lista, largo, R, RD, RA, RV, AvanceVideo, vistaSuplementacion,
           normalizarGuia, normalizarResumen, normalizarAgenda, normalizarReserva } = RG;
 
   // ─── Textos del audio (ReglasAudioDuda) ─────────────────────────
@@ -1326,6 +1326,20 @@
 .gu-icono svg{width:12px;height:12px}
 .gu-icono.gu-visto{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
 .gu-icono.gu-sonando,.gu-icono.gu-es-actual{border-color:var(--color-brand)}
+.gu-dolor-zona{display:flex;flex-direction:column;gap:var(--space-3,12px)}
+.gu-dolor-zona:empty{display:none}
+.gu-dolor{border:1px solid var(--color-brand)}
+.gu-dolor-texto{padding:20px;display:flex;flex-direction:column;gap:10px}
+.gu-dolor-texto h3{margin:0;font-family:var(--font-display);font-size:20px;font-weight:700;line-height:1.2}
+.gu-dolor-sub{font-size:15px;font-weight:600;color:var(--color-brand-text);margin-top:-6px}
+.gu-dolor-texto p{margin:0;font-size:16px;line-height:1.45;white-space:pre-line}
+.gu-dolor-videos{border-top:1px solid var(--color-border)}
+.gu-pasos{display:flex;gap:8px;margin-top:10px}
+.gu-paso{flex:1;min-height:44px;border:0;background:none;color:inherit;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;padding:0}
+.gu-paso-n{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;border:2px solid var(--color-border);color:var(--color-text-muted)}
+.gu-paso-ahora .gu-paso-n{border-color:var(--color-brand);color:var(--color-brand-text)}
+.gu-paso-hecho .gu-paso-n{border-color:var(--color-brand);background:var(--color-brand);color:var(--color-on-brand)}
+.gu-paso-t{font-size:15px;font-weight:600;text-align:center}
 .gu-llamada{position:relative;padding:20px 20px 20px 24px;display:flex;flex-direction:column;gap:10px}
 .gu-llamada::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--color-brand)}
 .gu-llamada h3{margin:0;font-family:var(--font-display);font-size:20px;font-weight:700;line-height:1.2}
@@ -1623,6 +1637,7 @@
         <div class="gu-scroll" data-gu-zona="scroll"><div class="gu-contenido">
           <div data-gu-zona="estado"></div>
           <div class="gu-card" data-gu-zona="cabecera"></div>
+          <div class="gu-dolor-zona" data-gu-zona="dolor"></div>
           <section class="gu-card" data-gu-zona="reproductor" aria-label="Reproductor">
             <div class="gu-cuadro"><video playsinline webkit-playsinline controls preload="metadata" controlslist="nodownload"></video><div class="gu-capa" data-gu-zona="capa"></div></div>
             <div class="gu-banda" data-gu-zona="banda"></div>
@@ -1964,6 +1979,11 @@
           this.programar();
           break;
         }
+        case 'paso': {
+          const destino = b.dataset.paso === 'videos' ? this.z.reproductor : this.root.querySelector('.gu-llamada');
+          if (destino) destino.scrollIntoView({ behavior: reducirMovimiento() ? 'auto' : 'smooth', block: 'start' });
+          break;
+        }
         case 'bloque': {
           const t = b.dataset.b;
           if (this.abiertos.has(t)) this.abiertos.delete(t); else this.abiertos.add(t);
@@ -2113,7 +2133,7 @@
       if (m.estado === 'oculta') { cerrarGuia(); return; }
       const lista = m.estado === 'lista' && m.guia;
       this.z.banner.hidden = !(lista && m.desdeCache);
-      ['cabecera', 'reproductor', 'resto'].forEach(n => { this.z[n].hidden = !lista; });
+      ['cabecera', 'dolor', 'reproductor', 'resto'].forEach(n => { this.z[n].hidden = !lista; });
       if (!lista) {
         this.zona('estado', m.estado === 'sinRed'
           ? `<div class="gu-estado">${I.sinRed}<h3>No pudimos traer tu guía</h3><p class="gu-sub">Se cortó la conexión. Probá de nuevo cuando tengas señal.</p><button type="button" class="gu-boton-sec" data-gu="reintentar-get">Reintentar</button></div>`
@@ -2125,6 +2145,7 @@
       if (this.actual == null) this.prepararInicial();
       const despues = this.despues;
       this.zona('cabecera', this.htmlCabecera(clips, despues));
+      this.zona('dolor', this.htmlDolor(clips));
       this.zona('capa', this.htmlCapa(clips));
       this.zona('banda', this.htmlBanda(clips));
       const c = this.clipActual;
@@ -2174,12 +2195,33 @@
       const a = R.avance(clips);
       const cuando = R.fechaLlamada(g.fechaEntrega);
       const hola = g.nombrePila ? `Hola ${g.nombrePila}` : 'Hola';
+      const m = this.m;
+      const hayDudas = g.dudasLlamada.length > 0 || g.clips.some(c => c.duda) || m.pendientesSinLlegar.length > 0
+        || m.audios.locales.length > 0 || m.audios.servidor.length > 0;
+      const intro = RD.introduccion(g, hayDudas);
+      const avance = `<div style="margin-top:12px"><div class="gu-sub">${esc(R.textoAvance(a))}</div>
+        <div class="gu-progreso" aria-hidden="true"><span style="width:${(R.fraccion(a) * 100).toFixed(1)}%"></span></div></div>`;
+      if (intro) {
+        const pasos = intro.pasos.map(p => `<button type="button" class="gu-paso gu-paso-${p.estado}" data-gu="paso" data-paso="${p.id}" aria-label="${esc(RD.textoHablado(p, intro.pasos.length))}">
+          <span class="gu-paso-n" aria-hidden="true">${p.estado === 'hecho' ? '✓' : p.numero}</span><span class="gu-paso-t">${esc(p.titulo)}</span></button>`).join('');
+        return `<div class="gu-cab"><h2>${esc(hola)}</h2><p>${esc(intro.texto)}</p><div class="gu-pasos">${pasos}</div>${avance}</div>`;
+      }
       const txt = despues
         ? 'Te dejo estos videos según lo que hablamos en la videollamada. Miralos con calma, te van a servir para arrancar bien.'
         : `Armé estos videos para vos${cuando ? `, antes de nuestra videollamada del ${cuando}` : ''}, según lo que me contaste. Si llegás a ver el primer bloque, en la llamada vamos directo a lo tuyo.`;
-      return `<div class="gu-cab"><h2>${esc(hola)}</h2><p>${esc(txt)}</p><div class="gu-firma">Mati</div>
-        <div style="margin-top:12px"><div class="gu-sub">${esc(R.textoAvance(a))}</div>
-        <div class="gu-progreso" aria-hidden="true"><span style="width:${(R.fraccion(a) * 100).toFixed(1)}%"></span></div></div></div>`;
+      return `<div class="gu-cab"><h2>${esc(hola)}</h2><p>${esc(txt)}</p><div class="gu-firma">Mati</div>${avance}</div>`;
+    }
+
+    // «Lo que más te importa» y sus partes, arriba del reproductor. Sin `dolor`, nada.
+    htmlDolor(clips) {
+      const v = RD.vista(this.m.guia.dolor);
+      if (!v) return '';
+      const r = RD.reparto(R.bloques(clips), v);
+      const tarjeta = (titulo, subtitulo, parrafos, bloque, aria) => `<section class="gu-card gu-dolor" aria-label="${esc(aria)}">
+        <div class="gu-dolor-texto"><h3>${esc(titulo)}</h3>${subtitulo ? `<div class="gu-dolor-sub">${esc(subtitulo)}</div>` : ''}
+        ${parrafos.map(p => `<p>${esc(p)}</p>`).join('')}</div>${bloque ? `<div class="gu-dolor-videos">${this.htmlBloque(bloque, clips, RD.TITULO_VIDEOS)}</div>` : ''}</section>`;
+      return tarjeta(RD.TITULO_BLOQUE, v.subtitulo, v.parrafos, r.principal, RD.TITULO_BLOQUE)
+        + v.partes.map((p, i) => tarjeta(p.titulo, null, p.parrafos, r.partes[i], p.titulo)).join('');
     }
 
     htmlCapa(clips) {
@@ -2221,13 +2263,13 @@
       return h + '</div>';
     }
 
-    htmlBloque(b, clips) {
+    htmlBloque(b, clips, tituloEmbebido) {
       const abierto = this.abiertos.has(b.id);
       const vistos = b.indices.filter(i => clips[i] && clips[i].visto).length;
       const sub = R.textoBloque(b) + (vistos > 0 ? `, ${vistos === b.indices.length ? 'todos vistos' : `${vistos} ${vistos === 1 ? 'visto' : 'vistos'}`}` : '');
       // 2.2.0: «Novedad», con el destello y el color de la marca.
-      const titulo = b.novedad ? `<span class="gu-bloque-titulo gu-novedad">${I.destello}${esc(b.titulo)}</span>` : `<span class="gu-bloque-titulo">${esc(b.titulo)}</span>`;
-      let h = `<div class="gu-card"><button type="button" class="gu-bloque-cab" data-gu="bloque" data-b="${esc(b.id)}" aria-expanded="${abierto}">
+      const titulo = b.novedad ? `<span class="gu-bloque-titulo gu-novedad">${I.destello}${esc(b.titulo)}</span>` : `<span class="gu-bloque-titulo">${esc(tituloEmbebido || b.titulo)}</span>`;
+      let h = `<div class="${tituloEmbebido ? 'gu-bloque-embebido' : 'gu-card'}"><button type="button" class="gu-bloque-cab" data-gu="bloque" data-b="${esc(b.id)}" aria-expanded="${abierto}">
         <span>${titulo}<span class="gu-sub">${esc(sub)}</span></span>${I.chevron.replace('<svg', '<svg class="gu-chev"')}</button>`;
       if (abierto) {
         h += '<div class="gu-filas">';
@@ -2451,7 +2493,8 @@
     }
 
     htmlResto(clips, despues) {
-      const bloques = R.bloques(clips);
+      // Sin `dolor`, `resto` son todos los capítulos, como siempre.
+      const bloques = RD.reparto(R.bloques(clips), RD.vista(this.m.guia.dolor)).resto;
       // 2.2.0: lo nuevo arriba de todo; debajo, lo de siempre.
       let h = bloques.filter(b => b.novedad).map(b => this.htmlBloque(b, clips)).join('');
       h += bloques.filter(b => b.esApp).map(b => this.htmlBloque(b, clips)).join('');

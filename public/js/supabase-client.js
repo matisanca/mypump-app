@@ -112,7 +112,14 @@ window.mypumpDB = {
   // Actualiza last_accessed_at en servidor.
   async getClienteInfo(token) {
     const rows = await rpc('mypump_get_cliente_info', { p_token: token });
-    if (!rows || rows.length === 0) return null;
+    // Un 200 que no es una lista no dice que el token no exista: es un fallo pasajero y no cierra la sesión (como las apps).
+    if (!Array.isArray(rows)) {
+      if (window.mypumpDB && !window.mypumpDB._lastError) {
+        window.mypumpDB._lastError = { code: 'RESPUESTA', message: 'respuesta inesperada', status: 200, transitorio: true };
+      }
+      return null;
+    }
+    if (rows.length === 0) return null;
     return rows[0];
   },
 
@@ -347,6 +354,11 @@ window.mypumpDB = {
   // Filas: {dia_id, iniciada_en, finalizada_en}. Para marcar días completados
   // en el day picker.
   // La palanca remota (mypump_get_app_config): null si no se pudo preguntar.
+  // El día de revisión del alumno (1 = lunes … 7 = domingo). null si no se pudo leer.
+  async getRevisionDia(token) {
+    return await rpc('mypump_get_revision_dia', { p_token: token });
+  },
+
   async getAppConfig() {
     return await rpc('mypump_get_app_config', {});
   },

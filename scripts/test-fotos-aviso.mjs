@@ -147,6 +147,7 @@ function montar({ guion = [], fotos = [], cuota, jpeg } = {}) {
     window: { MYPUMP_CONFIG: { VISION_URL: 'https://fotos.test' } },
     document: pag.document,
     hoyLocal: () => HOY,
+    web230: () => false,
     FOTOS_URLS_TTL: 50 * 60 * 1000,
     _subirFoto: (...a) => s.subir(...a),
     _fotoAJpeg: jpeg || (async (archivo) => archivo.dataUrl),   // el "archivo" ya trae su JPEG

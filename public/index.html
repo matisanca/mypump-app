@@ -393,6 +393,7 @@
       }
 
       function extraer(raw) {
+        if (window.MyPumpLink) return window.MyPumpLink.extraerToken(raw);
         var v = String(raw || '').trim();
         if (!v) return null;
         try {                                   // link completo: ?t=… o /TOKEN
