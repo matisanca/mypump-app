@@ -24,6 +24,18 @@ class ProveedorFotos : FileProvider(R.xml.rutas_fotos) {
         /** Donde la cámara deja la foto de [clave] ("frente"): una por lugar, así se encuentra aunque Android cierre la app. */
         fun archivo(contexto: Context, clave: String): File = File(carpeta(contexto), "foto-${clave.filter(Char::isLetterOrDigit)}.jpg")
 
+        /** Donde la cámara deja el video de técnica: uno solo, así se encuentra aunque Android cierre la app mientras se graba. */
+        fun archivoVideo(contexto: Context): File = File(carpeta(contexto), "video-tecnica.mp4")
+
+        /** El archivo vacío y su `content://`, para la app de cámara. */
+        fun paraElVideo(contexto: Context): Pair<File, Uri> {
+            val a = archivoVideo(contexto)
+            a.parentFile?.mkdirs()
+            a.delete()
+            a.createNewFile()
+            return a to uri(contexto, a)
+        }
+
         fun uri(contexto: Context, archivo: File): Uri = getUriForFile(contexto, autoridad(contexto), archivo)
 
         /** El archivo vacío y su `content://`, listos para pasárselos a la cámara. */

@@ -118,6 +118,19 @@ internal object CuentasDelTelefono {
         return total
     }
 
+    /** Lo mismo con el video de técnica que no llegó a subirse. El envío sigue siendo de esa persona: sube con el link nuevo. */
+    fun adoptarTecnica(clienteId: String, disco: Disco, tecnica: ModeloTecnica): Boolean {
+        if (clienteId.isEmpty()) return false
+        for (otra in otras(disco)) {
+            val cola = ColaTecnica.leer(otra)
+            val viejo = cola.pendiente ?: continue
+            if (clienteId(otra) != clienteId || !tecnica.adoptar(viejo, otra)) continue
+            otra.guardar(ColaTecnica.ARCHIVO, cola.copy(pendiente = null).aValor())
+            return true
+        }
+        return false
+    }
+
     /** Lo mismo con las fotos del gimnasio que no llegaron a subirse. Cada una lleva su carga: se suben a la misma. */
     fun adoptarGimnasio(clienteId: String, disco: Disco, gimnasio: ModeloGimnasio): Int {
         if (clienteId.isEmpty()) return 0

@@ -9,6 +9,7 @@ import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
@@ -20,9 +21,11 @@ data class Pedido(
     val cuerpo: ByteArray?,
     /** Tiempo máximo de la llamada entera (20 s las RPC, 150 s la visión, 90 s la subida de una foto). */
     val esperaMs: Long,
+    /** El cuerpo desde un archivo, sin cargarlo en memoria (un video de técnica). Si está, [cuerpo] se ignora. */
+    val archivo: java.io.File? = null,
 ) {
     override fun equals(other: Any?): Boolean = other is Pedido && url == other.url && metodo == other.metodo &&
-        cabeceras == other.cabeceras && (cuerpo?.contentEquals(other.cuerpo) ?: (other.cuerpo == null)) && esperaMs == other.esperaMs
+        cabeceras == other.cabeceras && (cuerpo?.contentEquals(other.cuerpo) ?: (other.cuerpo == null)) && esperaMs == other.esperaMs && archivo == other.archivo
 
     override fun hashCode(): Int = url.hashCode()
 
@@ -51,7 +54,7 @@ class TransporteOkHttp(private val cliente: OkHttpClient = compartido) : Transpo
         val request = Request.Builder()
             .url(pedido.url)
             .apply { pedido.cabeceras.forEach { (k, v) -> header(k, v) } }
-            .method(pedido.metodo, pedido.cuerpo?.toRequestBody(tipo))
+            .method(pedido.metodo, pedido.archivo?.asRequestBody(tipo) ?: pedido.cuerpo?.toRequestBody(tipo))
             .build()
         val call = cliente.newCall(request)
         call.timeout().timeout(pedido.esperaMs, TimeUnit.MILLISECONDS)

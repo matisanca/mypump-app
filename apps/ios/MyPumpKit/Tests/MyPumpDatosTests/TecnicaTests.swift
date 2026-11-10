@@ -267,7 +267,7 @@ struct TecnicaTests {
 
     private func fixture() -> URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .deletingLastPathComponent().appendingPathComponent("shared/vectores/video-prueba.mp4")
+            .deletingLastPathComponent().appendingPathComponent("shared/fixtures/video-prueba.mp4")
     }
 
     @Test func compresorSacaElAudioYDejaSoloVideo() async throws {

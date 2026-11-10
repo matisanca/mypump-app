@@ -11,7 +11,9 @@
 -- Invariantes:
 --   · El `cliente_id` sale siempre del token. El path lo arma el servidor y a la app no le llega nunca.
 --   · Lo que le llega al alumno es `devolucion` y nada de `resultado`: sin confianza, sin mediciones, sin rastro de cómo se hizo.
---   · Sin `aprobado_por` no hay publicación: la app dice «Lo revisó Mati», y eso solo es cierto con un OK humano.
+--   · Sin aprobación no hay publicación: la app dice «Lo revisó Mati», y eso solo es cierto con un OK humano. La aprobación exige un código
+--     de un solo uso, atado al envío y al texto exacto; quién y cuándo quedan en `mypump_tecnica_aprobaciones`. Un nombre escrito no alcanza.
+--   · Una ventana vencida nunca publica sola, ni siquiera algo ya aprobado: hace falta decidir otra vez, con `p_fuera_de_plazo`.
 --   · Con la palanca apagada no sale ningún video hacia el análisis, aunque haya filas en cola.
 BEGIN;
 
@@ -63,6 +65,23 @@ REVOKE ALL ON FUNCTION mypump_tecnica_consentimiento_vigente(), mypump_tecnica_t
 GRANT EXECUTE ON FUNCTION mypump_tecnica_consentimiento_vigente(), mypump_tecnica_texto_prohibido(JSONB), mypump_tecnica_devolucion_valida(JSONB) TO service_role;
 
 -- ── Tablas ──
+-- Una fila por código emitido: guarda el hash, nunca el código. service_role no la toca: solo por las funciones de abajo.
+-- Sin FK hacia `mypump_tecnica`: el registro sobrevive si se borra el envío, y no tiene datos del alumno.
+CREATE TABLE IF NOT EXISTS mypump_tecnica_aprobaciones (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  envio_id          UUID        NOT NULL,
+  codigo_hash       TEXT        NOT NULL,
+  devolucion_hash   TEXT        NOT NULL,
+  por               TEXT        NOT NULL CHECK (length(btrim(por)) > 0 AND char_length(por) <= 120),
+  emitido_en        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  vence_en          TIMESTAMPTZ NOT NULL,
+  usado_en          TIMESTAMPTZ,
+  anulado_en        TIMESTAMPTZ,
+  intentos_fallidos INTEGER     NOT NULL DEFAULT 0,
+  UNIQUE (id, envio_id)
+);
+CREATE INDEX IF NOT EXISTS idx_mypump_tecnica_aprobaciones_envio ON mypump_tecnica_aprobaciones (envio_id, emitido_en DESC);
+
 CREATE TABLE IF NOT EXISTS mypump_tecnica (
   id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   cliente_id        TEXT        NOT NULL,
@@ -88,6 +107,7 @@ CREATE TABLE IF NOT EXISTS mypump_tecnica (
   publicar_hasta    TIMESTAMPTZ,
   aprobado_en       TIMESTAMPTZ,
   aprobado_por      TEXT,
+  aprobacion_id     UUID,
   publicado_en      TIMESTAMPTZ,
   avisado_en        TIMESTAMPTZ,
   descartado_motivo TEXT,
@@ -98,7 +118,8 @@ CREATE TABLE IF NOT EXISTS mypump_tecnica (
   creado_en         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   actualizado_en    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT tecnica_aprobada_con_ok CHECK (estado NOT IN ('aprobado','publicado')
-    OR (length(btrim(COALESCE(aprobado_por, ''))) > 0 AND aprobado_en IS NOT NULL AND devolucion IS NOT NULL AND publicar_desde IS NOT NULL)),
+    OR (length(btrim(COALESCE(aprobado_por, ''))) > 0 AND aprobado_en IS NOT NULL AND aprobacion_id IS NOT NULL AND devolucion IS NOT NULL AND publicar_desde IS NOT NULL AND publicar_hasta IS NOT NULL)),
+  CONSTRAINT tecnica_aprobacion_del_envio FOREIGN KEY (aprobacion_id, id) REFERENCES mypump_tecnica_aprobaciones (id, envio_id),
   CONSTRAINT tecnica_enviada_con_video CHECK (estado IN ('borrador','descartado') OR video_borrado_en IS NOT NULL OR path IS NOT NULL OR estado = 'rechazado')
 );
 
@@ -115,9 +136,11 @@ CREATE TABLE IF NOT EXISTS mypump_tecnica_habilitados (
 
 -- En este proyecto las tablas nuevas heredan permisos por defecto, incluido TRUNCATE, que RLS no frena. anon, nada.
 REVOKE ALL ON mypump_tecnica, mypump_tecnica_habilitados FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON mypump_tecnica_aprobaciones FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON mypump_tecnica, mypump_tecnica_habilitados TO service_role;
 ALTER TABLE mypump_tecnica ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mypump_tecnica_habilitados ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mypump_tecnica_aprobaciones ENABLE ROW LEVEL SECURITY;
 
 -- ── Palanca: apagada ──
 INSERT INTO mypump_app_config (clave, valor, nota) VALUES
@@ -443,7 +466,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.escalar_a_mati DESC, t.publicar_desde), '[]'::JSONB)
-  FROM (SELECT * FROM mypump_tecnica WHERE estado = 'a_revisar' ORDER BY escalar_a_mati DESC, publicar_desde LIMIT p_limite) t;
+  FROM (SELECT * FROM mypump_tecnica WHERE estado = 'a_revisar' OR (estado = 'aprobado' AND NOW() > publicar_hasta)
+         ORDER BY escalar_a_mati DESC, publicar_desde LIMIT p_limite) t;
 $$;
 
 -- Siempre de día en Argentina, y con la palanca prendida.
@@ -467,32 +491,101 @@ AS $$
   SELECT COALESCE((SELECT valor = 'true'::JSONB FROM mypump_app_config WHERE clave = 'tecnica_video'), FALSE);
 $$;
 
-REVOKE ALL ON FUNCTION mypump_tecnica_hora_de_publicar(), mypump_tecnica_palanca() FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION mypump_tecnica_hora_de_publicar(), mypump_tecnica_palanca() TO service_role;
+-- Hasta cuándo puede salir algo ya aprobado: las 20 de Argentina del día siguiente. Así el OK dado de noche, o una ventana que abre a las 19:50,
+-- siempre tiene un tramo de día entero para salir.
+CREATE OR REPLACE FUNCTION mypump_tecnica_cierre_plazo(p_desde TIMESTAMPTZ)
+RETURNS TIMESTAMPTZ
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT (date_trunc('day', p_desde AT TIME ZONE 'America/Argentina/Buenos_Aires') + INTERVAL '1 day 20 hours') AT TIME ZONE 'America/Argentina/Buenos_Aires';
+$$;
 
--- El OK de Mati. `p_devolucion` es la versión final, editada o no. Antes de la ventana queda `aprobado` y sale sola cuando llega la hora.
-CREATE OR REPLACE FUNCTION mypump_tecnica_aprobar(p_id UUID, p_devolucion JSONB, p_aprobado_por TEXT)
+CREATE OR REPLACE FUNCTION mypump_tecnica_sha(p TEXT)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$ SELECT encode(sha256(convert_to(p, 'UTF8')), 'hex'); $$;
+
+REVOKE ALL ON FUNCTION mypump_tecnica_hora_de_publicar(), mypump_tecnica_palanca(), mypump_tecnica_cierre_plazo(TIMESTAMPTZ), mypump_tecnica_sha(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_tecnica_hora_de_publicar(), mypump_tecnica_palanca(), mypump_tecnica_cierre_plazo(TIMESTAMPTZ), mypump_tecnica_sha(TEXT) TO service_role;
+
+-- Emite el código que hace falta para aprobar: de un solo uso, atado a este envío y a este texto, 30 minutos. Devuelve el código UNA vez; acá queda solo el hash.
+-- Emitir no cambia nada del envío y anula el código anterior que hubiera.
+-- Quien tenga la service key puede emitir: lo que asegura es que no se apruebe de costado ni otro texto que el que Mati leyó. Para que un agente no pueda
+-- completar solo el paso, el código se le manda a Mati por WhatsApp (`--codigo-por-whatsapp`) y lo tiene que dictar él.
+CREATE OR REPLACE FUNCTION mypump_tecnica_emitir_codigo(p_id UUID, p_devolucion JSONB, p_por TEXT, p_minutos INTEGER DEFAULT 30)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_fila mypump_tecnica%ROWTYPE;
-  v_final JSONB;
+  v_fila   mypump_tecnica%ROWTYPE;
+  v_final  JSONB;
+  v_crudo  TEXT;
+  v_vence  TIMESTAMPTZ;
 BEGIN
-  IF length(btrim(COALESCE(p_aprobado_por, ''))) = 0 THEN RAISE EXCEPTION 'falta quién aprueba' USING ERRCODE = '22023'; END IF;
+  IF length(btrim(COALESCE(p_por, ''))) = 0 OR char_length(p_por) > 120 THEN RAISE EXCEPTION 'falta quién aprueba' USING ERRCODE = '22023'; END IF;
+  IF p_minutos NOT BETWEEN 1 AND 120 THEN RAISE EXCEPTION 'plazo del código inválido' USING ERRCODE = '22023'; END IF;
   SELECT * INTO v_fila FROM mypump_tecnica WHERE id = p_id FOR UPDATE;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_encontrado'); END IF;
-  IF v_fila.estado IN ('aprobado','publicado') THEN RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'estado', v_fila.estado); END IF;
-  IF v_fila.estado <> 'a_revisar' THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'estado_invalido'); END IF;
+  IF NOT (v_fila.estado = 'a_revisar' OR (v_fila.estado = 'aprobado' AND NOW() > v_fila.publicar_hasta)) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'estado_invalido', 'estado', v_fila.estado); END IF;
+  v_final := COALESCE(p_devolucion, v_fila.devolucion);
+  IF v_final IS NULL OR NOT mypump_tecnica_devolucion_valida(v_final) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'devolucion_invalida'); END IF;
+  UPDATE mypump_tecnica_aprobaciones SET anulado_en = NOW() WHERE envio_id = p_id AND usado_en IS NULL AND anulado_en IS NULL;
+  v_crudo := upper(left(replace(gen_random_uuid()::TEXT, '-', ''), 8));
+  v_vence := NOW() + make_interval(mins => p_minutos);
+  INSERT INTO mypump_tecnica_aprobaciones (envio_id, codigo_hash, devolucion_hash, por, vence_en)
+  VALUES (p_id, mypump_tecnica_sha(v_crudo), mypump_tecnica_sha(v_final::TEXT), btrim(p_por), v_vence);
+  RETURN jsonb_build_object('ok', TRUE, 'codigo', left(v_crudo, 4) || '-' || right(v_crudo, 4), 'vence_en', v_vence);
+END;
+$$;
+
+-- El OK de Mati. `p_devolucion` es la versión final, editada o no, y tiene que ser la misma por la que se emitió el código.
+-- Antes de la ventana queda `aprobado` y sale sola cuando llega la hora. Con la ventana vencida no hace nada, salvo decisión explícita (`p_fuera_de_plazo`).
+-- La firma cambió (antes `p_aprobado_por TEXT`): sin este DROP quedarían dos sobrecargas y PostgREST no sabría a cuál llamar.
+DROP FUNCTION IF EXISTS mypump_tecnica_aprobar(UUID, JSONB, TEXT);
+CREATE OR REPLACE FUNCTION mypump_tecnica_aprobar(p_id UUID, p_devolucion JSONB, p_codigo TEXT, p_fuera_de_plazo BOOLEAN DEFAULT FALSE)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_fila  mypump_tecnica%ROWTYPE;
+  v_ok    mypump_tecnica_aprobaciones%ROWTYPE;
+  v_final JSONB;
+  v_ahora BOOLEAN;
+BEGIN
+  SELECT * INTO v_fila FROM mypump_tecnica WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_encontrado'); END IF;
+  IF v_fila.estado = 'publicado' OR (v_fila.estado = 'aprobado' AND NOW() <= v_fila.publicar_hasta) THEN RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'estado', v_fila.estado); END IF;
+  IF v_fila.estado NOT IN ('a_revisar','aprobado') THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'estado_invalido'); END IF;
+  IF NOW() > v_fila.publicar_hasta AND NOT COALESCE(p_fuera_de_plazo, FALSE) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'ventana_vencida', 'publicar_hasta', v_fila.publicar_hasta); END IF;
   v_final := COALESCE(p_devolucion, v_fila.devolucion);
   IF NOT mypump_tecnica_devolucion_valida(v_final) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'devolucion_invalida'); END IF;
-  UPDATE mypump_tecnica SET devolucion = v_final, aprobado_por = btrim(p_aprobado_por), aprobado_en = NOW(),
-         estado = CASE WHEN NOW() >= publicar_desde AND mypump_tecnica_hora_de_publicar() AND mypump_tecnica_palanca() THEN 'publicado' ELSE 'aprobado' END,
-         publicado_en = CASE WHEN NOW() >= publicar_desde AND mypump_tecnica_hora_de_publicar() AND mypump_tecnica_palanca() THEN NOW() END, actualizado_en = NOW()
+
+  SELECT * INTO v_ok FROM mypump_tecnica_aprobaciones WHERE envio_id = p_id AND usado_en IS NULL AND anulado_en IS NULL ORDER BY emitido_en DESC LIMIT 1 FOR UPDATE;
+  IF NOT FOUND OR NOW() > v_ok.vence_en THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'codigo_invalido'); END IF;
+  IF v_ok.codigo_hash IS DISTINCT FROM mypump_tecnica_sha(upper(regexp_replace(COALESCE(p_codigo, ''), '[^0-9A-Za-z]', '', 'g'))) THEN
+    UPDATE mypump_tecnica_aprobaciones SET intentos_fallidos = intentos_fallidos + 1, anulado_en = CASE WHEN intentos_fallidos + 1 >= 5 THEN NOW() END WHERE id = v_ok.id;
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'codigo_invalido');
+  END IF;
+  IF v_ok.devolucion_hash IS DISTINCT FROM mypump_tecnica_sha(v_final::TEXT) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'codigo_de_otro_texto'); END IF;
+
+  UPDATE mypump_tecnica_aprobaciones SET usado_en = NOW() WHERE id = v_ok.id;
+  v_ahora := NOW() >= v_fila.publicar_desde AND mypump_tecnica_hora_de_publicar() AND mypump_tecnica_palanca();
+  UPDATE mypump_tecnica SET devolucion = v_final, aprobado_por = v_ok.por, aprobado_en = NOW(), aprobacion_id = v_ok.id,
+         publicar_hasta = GREATEST(publicar_hasta, mypump_tecnica_cierre_plazo(GREATEST(NOW(), publicar_desde))),
+         estado = CASE WHEN v_ahora THEN 'publicado' ELSE 'aprobado' END,
+         publicado_en = CASE WHEN v_ahora THEN NOW() END, actualizado_en = NOW()
    WHERE id = p_id RETURNING * INTO v_fila;
-  RETURN jsonb_build_object('ok', TRUE, 'ya', FALSE, 'estado', v_fila.estado, 'publicar_desde', v_fila.publicar_desde);
+  RETURN jsonb_build_object('ok', TRUE, 'ya', FALSE, 'estado', v_fila.estado, 'publicar_desde', v_fila.publicar_desde, 'publicar_hasta', v_fila.publicar_hasta);
 END;
 $$;
 
@@ -514,7 +607,7 @@ BEGIN
 END;
 $$;
 
--- Lo aprobado que ya llegó a su hora. Lo corre el worker.
+-- Lo aprobado que ya llegó a su hora y sigue dentro del plazo. Lo corre el worker. Lo vencido se queda: se avisa y lo decide Mati.
 CREATE OR REPLACE FUNCTION mypump_tecnica_publicar_vencidas()
 RETURNS INTEGER
 LANGUAGE plpgsql
@@ -524,7 +617,7 @@ AS $$
 DECLARE
   n INTEGER;
 BEGIN
-  WITH x AS (UPDATE mypump_tecnica SET estado = 'publicado', publicado_en = NOW(), actualizado_en = NOW() WHERE estado = 'aprobado' AND NOW() >= publicar_desde AND mypump_tecnica_hora_de_publicar() AND mypump_tecnica_palanca() RETURNING 1)
+  WITH x AS (UPDATE mypump_tecnica SET estado = 'publicado', publicado_en = NOW(), actualizado_en = NOW() WHERE estado = 'aprobado' AND aprobacion_id IS NOT NULL AND NOW() >= publicar_desde AND NOW() <= publicar_hasta AND mypump_tecnica_hora_de_publicar() AND mypump_tecnica_palanca() RETURNING 1)
   SELECT count(*) INTO n FROM x;
   RETURN n;
 END;
@@ -537,6 +630,24 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   UPDATE mypump_tecnica SET avisado_en = COALESCE(avisado_en, NOW()), actualizado_en = NOW() WHERE id = p_id AND estado = 'publicado' RETURNING TRUE;
+$$;
+
+-- Lo que merece un aviso a Mati. Solo ids y estado: nunca el alumno ni el texto.
+CREATE OR REPLACE FUNCTION mypump_tecnica_para_avisar(p_limite INTEGER DEFAULT 50, p_max_reaperturas INTEGER DEFAULT 3)
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(jsonb_agg(jsonb_build_object('id', t.id, 'estado', t.estado, 'escalar', t.escalar_a_mati, 'publicar_hasta', t.publicar_hasta, 'reaperturas', t.reaperturas, 'vencida', t.vencida, 'error_definitivo', t.definitivo)), '[]'::JSONB)
+  FROM (SELECT id, estado, escalar_a_mati, publicar_hasta, reaperturas,
+               estado IN ('a_revisar','aprobado') AND NOW() > publicar_hasta AS vencida,
+               estado = 'error' AND (reaperturas >= p_max_reaperturas OR path IS NULL OR video_borrado_en IS NOT NULL OR COALESCE(error_detalle, '') ILIKE '%SalidaInvalida%') AS definitivo
+          FROM mypump_tecnica
+         WHERE estado = 'a_revisar' OR (estado = 'aprobado' AND NOW() > publicar_hasta)
+            OR (estado = 'error' AND (reaperturas >= p_max_reaperturas OR path IS NULL OR video_borrado_en IS NOT NULL OR COALESCE(error_detalle, '') ILIKE '%SalidaInvalida%'))
+         ORDER BY actualizado_en DESC LIMIT p_limite) t;
 $$;
 
 -- Los videos se borran a los 90 días de mandados. La devolución queda.
@@ -566,14 +677,14 @@ REVOKE ALL ON FUNCTION
   mypump_tecnica_puede(TEXT, UUID), mypump_tecnica_registrar(TEXT, UUID, TEXT, INTEGER, REAL), mypump_tecnica_borrar_video(TEXT, UUID),
   mypump_tecnica_tomar(), mypump_tecnica_devolver(UUID, BOOLEAN, TEXT), mypump_tecnica_liberar_colgadas(INTEGER, INTEGER), mypump_tecnica_reabrir_errores(INTEGER, INTEGER),
   mypump_tecnica_guardar(UUID, TEXT, JSONB, JSONB, BOOLEAN, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT),
-  mypump_tecnica_a_revisar(INTEGER), mypump_tecnica_aprobar(UUID, JSONB, TEXT), mypump_tecnica_descartar(UUID, TEXT, TEXT), mypump_tecnica_publicar_vencidas(),
+  mypump_tecnica_a_revisar(INTEGER), mypump_tecnica_emitir_codigo(UUID, JSONB, TEXT, INTEGER), mypump_tecnica_aprobar(UUID, JSONB, TEXT, BOOLEAN), mypump_tecnica_descartar(UUID, TEXT, TEXT), mypump_tecnica_publicar_vencidas(), mypump_tecnica_para_avisar(INTEGER, INTEGER),
   mypump_tecnica_avisado(UUID), mypump_tecnica_para_limpiar(INTEGER, INTEGER), mypump_tecnica_limpieza_hecha(UUID)
 FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION
   mypump_tecnica_puede(TEXT, UUID), mypump_tecnica_registrar(TEXT, UUID, TEXT, INTEGER, REAL), mypump_tecnica_borrar_video(TEXT, UUID),
   mypump_tecnica_tomar(), mypump_tecnica_devolver(UUID, BOOLEAN, TEXT), mypump_tecnica_liberar_colgadas(INTEGER, INTEGER), mypump_tecnica_reabrir_errores(INTEGER, INTEGER),
   mypump_tecnica_guardar(UUID, TEXT, JSONB, JSONB, BOOLEAN, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT),
-  mypump_tecnica_a_revisar(INTEGER), mypump_tecnica_aprobar(UUID, JSONB, TEXT), mypump_tecnica_descartar(UUID, TEXT, TEXT), mypump_tecnica_publicar_vencidas(),
+  mypump_tecnica_a_revisar(INTEGER), mypump_tecnica_emitir_codigo(UUID, JSONB, TEXT, INTEGER), mypump_tecnica_aprobar(UUID, JSONB, TEXT, BOOLEAN), mypump_tecnica_descartar(UUID, TEXT, TEXT), mypump_tecnica_publicar_vencidas(), mypump_tecnica_para_avisar(INTEGER, INTEGER),
   mypump_tecnica_avisado(UUID), mypump_tecnica_para_limpiar(INTEGER, INTEGER), mypump_tecnica_limpieza_hecha(UUID)
 TO service_role;
 

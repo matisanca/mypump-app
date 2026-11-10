@@ -59,12 +59,12 @@ public enum Tecnica {
     public static func nota(_ s: String) -> String { String(s.prefix(maxNota)) }
 
     /// Los ejercicios de la rutina para elegir: una vez cada uno, en orden, sin calentamientos ni cardio.
-    public static func ejerciciosParaElegir(_ dias: [Dia]) -> [Ejercicio] {
+    public static func ejerciciosParaElegir(_ dias: [Dia], efectivo: (Ejercicio) -> Ejercicio = { $0 }) -> [Ejercicio] {
         var vistos = Set<String>()
         var salen: [Ejercicio] = []
         for d in dias {
             for b in d.bloques {
-                for e in b.ejercicios where e.tipo != "calentamiento" && e.tipo != "cardio" && !e.nombre.isEmpty {
+                for e in b.ejercicios.map(efectivo) where e.tipo != "calentamiento" && e.tipo != "cardio" && !e.nombre.isEmpty {
                     if vistos.insert(e.nombre.lowercased()).inserted { salen.append(e) }
                 }
             }

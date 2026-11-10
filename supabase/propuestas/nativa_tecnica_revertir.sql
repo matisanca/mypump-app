@@ -9,11 +9,16 @@
 --   7. Borrar el bucket:                  node nativa_tecnica_vaciar.mjs bucket --confirmar
 BEGIN;
 DROP FUNCTION IF EXISTS mypump_tecnica_limpieza_hecha(UUID);
+DROP FUNCTION IF EXISTS mypump_tecnica_para_avisar(INTEGER, INTEGER);
 DROP FUNCTION IF EXISTS mypump_tecnica_para_limpiar(INTEGER, INTEGER);
 DROP FUNCTION IF EXISTS mypump_tecnica_avisado(UUID);
 DROP FUNCTION IF EXISTS mypump_tecnica_publicar_vencidas();
 DROP FUNCTION IF EXISTS mypump_tecnica_descartar(UUID, TEXT, TEXT);
-DROP FUNCTION IF EXISTS mypump_tecnica_aprobar(UUID, JSONB, TEXT);
+DROP FUNCTION IF EXISTS mypump_tecnica_aprobar(UUID, JSONB, TEXT, BOOLEAN);
+DROP FUNCTION IF EXISTS mypump_tecnica_aprobar(UUID, JSONB, TEXT);        -- firma anterior, por si quedó de una versión vieja
+DROP FUNCTION IF EXISTS mypump_tecnica_emitir_codigo(UUID, JSONB, TEXT, INTEGER);
+DROP FUNCTION IF EXISTS mypump_tecnica_sha(TEXT);
+DROP FUNCTION IF EXISTS mypump_tecnica_cierre_plazo(TIMESTAMPTZ);
 DROP FUNCTION IF EXISTS mypump_tecnica_palanca();
 DROP FUNCTION IF EXISTS mypump_tecnica_hora_de_publicar();
 DROP FUNCTION IF EXISTS mypump_tecnica_a_revisar(INTEGER);
@@ -32,6 +37,7 @@ DROP FUNCTION IF EXISTS mypump_tecnica_vista_alumno(mypump_tecnica);
 DROP FUNCTION IF EXISTS mypump_tecnica_habilitado(TEXT);
 DROP TABLE IF EXISTS mypump_tecnica_habilitados;
 DROP TABLE IF EXISTS mypump_tecnica;
+DROP TABLE IF EXISTS mypump_tecnica_aprobaciones;
 DROP FUNCTION IF EXISTS mypump_tecnica_devolucion_valida(JSONB);
 DROP FUNCTION IF EXISTS mypump_tecnica_texto_prohibido(JSONB);
 DROP FUNCTION IF EXISTS mypump_tecnica_consentimiento_vigente();
