@@ -46,6 +46,17 @@ object Entorno {
      */
     @Volatile
     var codigoDePrueba: String? = null
+
+    /** Corre bajo una prueba instrumentada (el runner de androidx.test está cargado en el proceso). */
+    private val instrumentada: Boolean by lazy {
+        runCatching { Class.forName("androidx.test.platform.app.InstrumentationRegistry") }.isSuccess
+    }
+
+    /**
+     * Una prueba (con un doble de la red, o instrumentada): lo que deja rastro en el sistema, como las alarmas de los
+     * avisos de la videollamada, no se agenda.
+     */
+    val enPruebas: Boolean get() = transporte != null || instrumentada
 }
 
 /**

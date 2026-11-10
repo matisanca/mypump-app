@@ -70,6 +70,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.pumpteam.mypump.Entorno
 import com.pumpteam.mypump.avisos.CentroAvisos
 import com.pumpteam.mypump.datos.ModeloAgenda
 import com.pumpteam.mypump.datos.ModeloApp
@@ -110,8 +111,11 @@ object Videollamada {
      * Solo en las builds de prueba (la pone MainActivity con `--ez elegirHorario true|false`, o una prueba): pisa la
      * palanca `elegir_horario` para probar y sacar capturas. En la de la tienda queda en null y manda la palanca.
      */
-    @Volatile
-    var forzada: Boolean? = null
+    var forzada: Boolean?
+        get() = ModeloApp.elegirHorarioForzado
+        set(v) {
+            ModeloApp.elegirHorarioForzado = v
+        }
 
     /** La palanca `elegir_horario` (apagada de fábrica). */
     @Composable
@@ -155,8 +159,12 @@ fun TarjetaVideollamadaEntreno(modelo: ModeloApp, modifier: Modifier = Modifier)
     val desdeCache by g.agenda.desdeCache.collectAsStateWithLifecycle()
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
     val elegir = Videollamada.elegirHorario(modelo)
-    val ahora = ahoraCada15s(agenda?.reserva ?: resumen?.reserva)
-    val r = listOfNotNull(agenda?.reserva, resumen?.reserva).firstOrNull { ReglasAgenda.paraTarjeta(it, ahora) }
+    // La del resumen solo mientras la agenda no se trajo: si la agenda ya contestó sin reserva o con la reserva caída
+    // (cancelada, en fallo), la del resumen es vieja y no puede dejar «Entrar» ni los avisos.
+    val deLaAgenda = agenda
+    val fuente = if (deLaAgenda != null) deLaAgenda.reserva else resumen?.reserva
+    val ahora = ahoraCada15s(fuente)
+    val r = fuente?.takeIf { ReglasAgenda.paraTarjeta(it, ahora) }
     var pantalla by remember { mutableStateOf<ModoHorario?>(null) }
 
     val ciclo = LocalLifecycleOwner.current.lifecycle
@@ -164,15 +172,15 @@ fun TarjetaVideollamadaEntreno(modelo: ModeloApp, modifier: Modifier = Modifier)
         ciclo.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             // La reserva vino solo del resumen (la guía no se abrió), o la palanca pide saber si hay horarios: la agenda.
             if (g.agenda.agenda.value == null && (g.resumen.value?.reserva != null || elegir)) g.agenda.refrescar()
-            g.agenda.seguirSala { g.agenda.agenda.value?.reserva ?: g.resumen.value?.reserva }
+            g.agenda.seguirSala { g.agenda.agenda.value.let { a -> if (a != null) a.reserva else g.resumen.value?.reserva } }
         }
     }
-    // Los avisos: ids fijos (reprogramar pisa); sin reserva confirmada, se borran. Nunca en la demo.
+    // Los avisos: ids fijos (reprogramar pisa); sin reserva confirmada, se borran. Nunca en la demo ni en las pruebas.
     val contexto = LocalContext.current
     val confirmada = r?.takeIf { it.estado == ReservaEntrega.Estado.CONFIRMADA }
     val desdeMin = agenda?.entrarDesdeMin
     LaunchedEffect(confirmada?.inicio, confirmada?.tipo, desdeMin, esDemo) {
-        if (esDemo) return@LaunchedEffect
+        if (esDemo || Entorno.enPruebas) return@LaunchedEffect
         CentroAvisos.programarVideollamada(contexto, ReglasAgenda.avisosLocales(confirmada, Instant.now(), ZoneId.systemDefault(), desdeMin))
     }
 
