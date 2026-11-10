@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
 const require = createRequire(import.meta.url);
 const Tec = require('../public/js/tecnica.js');
-const { ModeloTecnica, almacenMemoria, MAX_FALLOS } = require('../public/js/tecnica-cola.js');
+const { ModeloTecnica, almacenMemoria, MAX_FALLOS, MAX_FALLOS_BARATOS } = require('../public/js/tecnica-cola.js');
 const T = Tec.T;
 
 const TOK = 'token-de-prueba-0123456789';
@@ -47,6 +47,7 @@ function doble(ini = {}) {
     const s = d.proximasSubida.length ? d.proximasSubida.shift() : 200;
     if (s === 'apagaRed') { d.sinRed = true; return null; }
     if (s === 0) return null;
+    if (s === 'caro') { q.alProgreso(q.cuerpo.size / 2, q.cuerpo.size); return null; }
     if (s === 'llegoYCorte') { d.envios[0].estado = 'enviado'; return null; }
     if (typeof s === 'object') return s;
     if (s === 200) { const e = d.envios.find((x) => x.id === q.id); if (e) e.estado = 'enviado'; q.alProgreso(q.cuerpo.size, q.cuerpo.size); return { status: 200, json: { ok: true } }; }
@@ -269,8 +270,8 @@ await caso('corte sin señal: no gasta intentos', async () => {
   await reintentarYa(m);
   assert.equal(m.cola.length, 0);
 });
-await caso('rechazo disfrazado de corte: con el servidor al alcance, a los 4 fallos queda en pausa y no sigue gastando', async () => {
-  const d = doble({ proximasSubida: Array(10).fill(0) });
+await caso('corte con datos mandados y el servidor al alcance: a los 4 queda en pausa y no sigue gastando', async () => {
+  const d = doble({ proximasSubida: Array(10).fill('caro') });
   const m = await modelo(d);
   await m.enviar(base());
   await hasta(() => m.cola[0] && m.cola[0].fallos === 1);
@@ -285,6 +286,69 @@ await caso('rechazo disfrazado de corte: con el servidor al alcance, a los 4 fal
   await hasta(() => !m.cola.length);
   assert.equal(d.subidas.length, MAX_FALLOS + 1);
 });
+await caso('rechazo apenas arranca (corte sin avance o 429): cupo largo, espera de un minuto, y al final pausa', async () => {
+  const d = doble({ proximasSubida: [...Array(6).fill(0), ...Array(20).fill(429)] });
+  const m = await modelo(d);
+  await m.enviar(base());
+  await hasta(() => m.cola[0] && m.cola[0].fallosBaratos === 1);
+  assert.equal(m.esperas[0], 60000);
+  for (let i = 1; i < 30; i++) await reintentarYa(m);
+  assert.equal(d.subidas.length, MAX_FALLOS_BARATOS);
+  assert.equal(m.cola[0].fallos, 0);
+  assert.equal(m.cola[0].pausado, true);
+});
+await caso('corte sin señal pero con datos mandados: cuenta, una señal intermitente tiene tope', async () => {
+  const d = doble({ proximasSubida: Array(10).fill('caro') });
+  const m = await modelo(d);
+  const rpcOriginal = d.rpc;
+  await m.enviar(base());
+  await hasta(() => m.cola[0] && m.cola[0].fallos === 1);
+  d.rpc = async () => ({ ok: false, status: 0, codigo: 'NETWORK', clase: 'red' });
+  m.rpc = d.rpc;
+  for (let i = 1; i < 8; i++) await reintentarYa(m);
+  assert.equal(d.subidas.length, MAX_FALLOS);
+  assert.equal(m.cola[0].pausado, true);
+  m.rpc = rpcOriginal;
+});
+await caso('envío que ya no existe en el servidor: se saca, no se reintenta', async () => {
+  const d = doble({ proximasSubida: [0] });
+  const m = await modelo(d);
+  await m.enviar(base());
+  await hasta(() => d.subidas.length === 1 && m.cola.length <= 1);
+  await hasta(() => m.cola[0] ? m.cola[0].fallosBaratos === 1 : true);
+  d.envios.length = 0;
+  d.proximasSubida = [0];
+  await reintentarYa(m);
+  assert.equal(m.cola.length, 0);
+  assert.equal(m.aviso, T.noSubio);
+  assert.equal(d.subidas.length, 2);
+});
+await caso('subió y el refresco falla: queda como recibido y sigue bloqueado', async () => {
+  const d = doble();
+  d.subir = async (q) => { d.sinRed = true; return { status: 200, json: { ok: true } }; };
+  const m = await modelo(d);
+  await m.enviar(base());
+  await hasta(() => !m.cola.length && m.envios.length === 1);
+  assert.equal(m.envios[0].estado, 'enviado');
+  assert.equal(m.bloqueo, 'enRevision');
+});
+await caso('cancelar mientras viaja `nuevo`: no resucita y el borrador se cierra', async () => {
+  const d = doble();
+  const alm = almacenMemoria();
+  const m = await modelo(d, { almacen: alm });
+  const orig = d.rpc;
+  let soltar;
+  m.rpc = async (fn, p) => { if (fn === 'mypump_tecnica_nuevo') { await new Promise((r) => { soltar = r; }); } return orig(fn, p); };
+  await m.enviar(base());
+  await hasta(() => !!soltar);
+  await m.cancelar(m.cola[0].id);
+  soltar();
+  await hasta(() => d.cancelados.length === 1);
+  assert.deepEqual(d.cancelados, [SID]);
+  assert.deepEqual(d.subidas, []);
+  assert.equal((await alm.listar()).length, 0);
+  assert.equal(m.cola.length, 0);
+});
 await caso('llegó y se cortó la respuesta: se da por enviado sin volver a subir', async () => {
   const d = doble({ proximasSubida: ['llegoYCorte'] });
   const m = await modelo(d);
@@ -293,8 +357,8 @@ await caso('llegó y se cortó la respuesta: se da por enviado sin volver a subi
   assert.equal(d.subidas.length, 1);
   assert.equal(m.envios[0].estado, 'enviado');
 });
-await caso('429 y 5xx: reintenta con espera; a los 4 queda en pausa', async () => {
-  const d = doble({ proximasSubida: [429, 503, 500, 502, 200] });
+await caso('5xx: reintenta con espera; a los 4 queda en pausa', async () => {
+  const d = doble({ proximasSubida: [503, 503, 500, 502, 200] });
   const m = await modelo(d);
   await m.enviar(base());
   await hasta(() => m.cola[0] && m.cola[0].fallos === 1);
@@ -303,7 +367,7 @@ await caso('429 y 5xx: reintenta con espera; a los 4 queda en pausa', async () =
   assert.equal(m.cola[0].pausado, true);
 });
 await caso('recargar a mitad: el mismo id, no un envío nuevo', async () => {
-  const d = doble({ proximasSubida: [0] });
+  const d = doble({ proximasSubida: ['caro'] });
   const alm = almacenMemoria();
   const m = await modelo(d, { almacen: alm });
   await m.enviar(base());
@@ -317,7 +381,7 @@ await caso('recargar a mitad: el mismo id, no un envío nuevo', async () => {
   assert.equal(d.llamadas.filter((x) => x === 'mypump_tecnica_nuevo').length, nuevos);
 });
 await caso('al recargar, lo que el servidor ya tomó sale de la cola sin subir', async () => {
-  const d = doble({ proximasSubida: [0] });
+  const d = doble({ proximasSubida: ['caro'] });
   const alm = almacenMemoria();
   const m = await modelo(d, { almacen: alm });
   await m.enviar(base());
@@ -328,7 +392,7 @@ await caso('al recargar, lo que el servidor ya tomó sale de la cola sin subir',
   assert.equal(d.subidas.length, 1);
 });
 await caso('cancelar: sale de la cola y del servidor', async () => {
-  const d = doble({ proximasSubida: [0] });
+  const d = doble({ proximasSubida: ['caro'] });
   const m = await modelo(d);
   await m.enviar(base());
   await hasta(() => m.cola[0] && m.cola[0].fallos === 1);
@@ -339,7 +403,7 @@ await caso('cancelar: sale de la cola y del servidor', async () => {
   assert.equal(d.subidas.length, 1);
 });
 await caso('otra cuenta en el mismo teléfono no ve la cola', async () => {
-  const d = doble({ proximasSubida: [0] });
+  const d = doble({ proximasSubida: ['caro'] });
   const alm = almacenMemoria();
   const m = await modelo(d, { almacen: alm });
   await m.enviar(base());
@@ -349,7 +413,7 @@ await caso('otra cuenta en el mismo teléfono no ve la cola', async () => {
   assert.equal(otro.cola.length, 0);
 });
 await caso('vencidos: a los 7 días se limpian', async () => {
-  const d = doble({ proximasSubida: [0] });
+  const d = doble({ proximasSubida: ['caro'] });
   const alm = almacenMemoria();
   let t = Date.parse('2026-11-01T12:00:00Z');
   const m = await modelo(d, { almacen: alm, ahora: () => t });

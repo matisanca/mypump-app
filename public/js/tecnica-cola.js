@@ -6,7 +6,8 @@
      nunca hay un ArrayBuffer con el video entero. Con la pestaña abierta se sube el
      File original; después de recargar, un Blob armado con los trozos.
    - Reintentar cuesta hasta 60 MB de datos del alumno, así que los fallos tienen tope
-     (MAX_FALLOS): después queda en pausa con «Probar de nuevo».
+     (MAX_FALLOS): después queda en pausa con «Probar de nuevo». Un intento que casi no
+     mandó datos (un 429, un rechazo apenas arranca) gasta de otro cupo, más largo.
 
    Un rechazo del servidor puede llegar como corte: mini-vision cierra la conexión
    apenas contesta, con el cuerpo sin leer, y el navegador solo ve un error de red.
@@ -29,6 +30,8 @@
   const VENCE_MS = 7 * 24 * 3600 * 1000;
   const VENCE_INCOMPLETO_MS = 3600 * 1000;
   const MAX_FALLOS = 4;
+  const MAX_FALLOS_BARATOS = 12;       // a 1 por minuto cubre los 4 minutos que el servidor puede tardar en soltar una subida cortada
+  const AVANCE_BARATO = 0.05;
   const MAX_REINTENTOS_FONDO = 5;
   const ESPERA_SIN_SENAL_MS = 60000;
   const ESPERA_LARGA_MS = 180000;
@@ -134,7 +137,13 @@
         const blob = new Blob(partes, { type: meta.tipo || 'video/mp4' });
         return blob.size === meta.bytes ? blob : null;
       },
-      actualizar: (m) => ponerMeta({ ...m, completo: true }),
+      /* Solo si la fila sigue: una cancelación no puede revivir con una escritura que venía en camino. */
+      actualizar: (m) => con(async (b) => {
+        const t = b.transaction('cola', 'readwrite'), s = t.objectStore('cola');
+        const r = s.get(m.id);
+        r.onsuccess = () => { if (r.result) s.put({ ...m, completo: true }); };
+        await fin(t);
+      }),
       sacarVideo: sacar,
       listar: () => con((b) => promesa(b.transaction('cola').objectStore('cola').getAll())),
     };
@@ -307,7 +316,7 @@
         id: String(this.nuevoId()).toLowerCase(), cuenta: this.cuenta, servidorId: null,
         slug: ejercicio.slug, nombre: ejercicio.nombre, nota: Tec.notaRecortada(nota).trim() || null,
         consentimiento: e.consentimientoVersion, bytes: archivo.size, tipo: archivo.type || 'video/mp4',
-        duracion: typeof duracion === 'number' && isFinite(duracion) ? duracion : null, creado: this.ahora(), fallos: 0, pausado: false, soloMemoria: false,
+        duracion: typeof duracion === 'number' && isFinite(duracion) ? duracion : null, creado: this.ahora(), fallos: 0, fallosBaratos: 0, pausado: false, soloMemoria: false,
       };
       try {
         await this.almacen.agregarVideo(meta, archivo);
@@ -330,6 +339,7 @@
       const c = this.cola.find((x) => x.id === id);
       if (!c) return;
       c.fallos = 0;
+      c.fallosBaratos = 0;
       c.pausado = false;
       this.aviso = null;
       await this._persistir(c);
@@ -344,7 +354,7 @@
       this._cancelados.add(id);
       if (this.subiendoId === id && this._abortar) this._abortar();
       await this._sacar(id);
-      if (c.servidorId) await this._cancelarEnServidor(c.servidorId);
+      if (c.servidorId) { await this._cancelarEnServidor(c.servidorId); await this.refrescar(); }   // pudo haber llegado justo antes
       this._avisar();
     }
 
@@ -354,7 +364,7 @@
     }
 
     async _persistir(c) {
-      if (c.soloMemoria) return;
+      if (c.soloMemoria || this._cancelados.has(c.id)) return;
       try { await this.almacen.actualizar(c); } catch (_) {}
     }
 
@@ -411,6 +421,10 @@
       }
       if (r.data === null || r.data === undefined) return 'corta';      // token caído: queda guardado por si vuelve
       const j = r.data;
+      if (this._cancelados.has(item.id)) {        // canceló mientras viajaba el pedido
+        if (j.ok === true && typeof j.id === 'string') await this._cancelarEnServidor(j.id.toLowerCase());
+        return 'descartado';
+      }
       if (j.ok === true && typeof j.id === 'string') {
         item.servidorId = j.id.toLowerCase();
         await this._persistir(item);
@@ -445,6 +459,7 @@
       let cuerpo = this._vivos.get(item.id) || null;
       if (!cuerpo) {
         try { cuerpo = await this.almacen.leerVideo(item); } catch (_) { this._programarReintento(ESPERA_SIN_SENAL_MS); return false; }
+        if (this._cancelados.has(item.id)) return true;
         if (!cuerpo) {      // faltan trozos: no hay manera de reconstruirlo
           await this._cancelarEnServidor(item.servidorId);
           await this._descartarLocal(item, T.noSubio);
@@ -471,6 +486,7 @@
         if (s.accion === 'ok') {
           await this._sacar(item.id);
           this.aviso = null;
+          this._marcarEnviado(item);
           await this.refrescar();
           return true;
         }
@@ -479,17 +495,28 @@
           await this._descartarLocal(item, s.aviso, !!s.refrescar);
           return true;
         }
-        return this._contarFallo(item);
+        return this._contarFallo(item, res.status === 429);
       }
-      return this._despuesDeUnCorte(item);
+      return this._despuesDeUnCorte(item, this.progreso < AVANCE_BARATO);
+    }
+
+    /* Si el `get` de después falla, el alumno igual ve «Recibido» y no vuelve a tener el botón habilitado. */
+    _marcarEnviado(item) {
+      if (!this.estado) return;
+      const e = this.estado.envios.find((x) => x.id === item.servidorId);
+      const hoy = new Date(this.ahora()).toISOString();
+      if (e) Object.assign(e, { estado: 'enviado', tieneVideo: true, enviadoEn: e.enviadoEn || hoy });
+      else this.estado.envios.unshift({ id: item.servidorId, estado: 'enviado', ejercicioSlug: item.slug, ejercicioNombre: item.nombre, nota: item.nota, enviadoEn: hoy, tieneVideo: true, rechazoTexto: null, publicadoEn: null, devolucion: null });
     }
 
     /* El corte puede ser señal, una subida que sí llegó, o un rechazo disfrazado. Lo aclara el `get`. */
-    async _despuesDeUnCorte(item) {
+    async _despuesDeUnCorte(item, barato) {
       let r;
       try { r = await this.rpc('mypump_tecnica_get', { p_token: this.token }); } catch (_) { r = { ok: false, clase: 'red' }; }
       if (!r.ok) {
         if (r.status === 404 || r.codigo === 'PGRST202' || r.clase === 'permanente') { await this.refrescar(r); return false; }
+        // Sin señal real el corte es instantáneo y no gasta. Si alcanzó a mandar datos, sí cuenta: si no, una señal intermitente no tendría tope.
+        if (!barato) return this._contarFallo(item, false);
         this._soltarVivo(item);
         this._programarReintento(ESPERA_SIN_SENAL_MS);
         this._avisar();
@@ -503,14 +530,17 @@
         this._avisar();
         return true;
       }
-      return this._contarFallo(item);
+      // Ya no existe del lado del servidor: ningún reintento puede funcionar.
+      if (!envio) { await this._descartarLocal(item, T.noSubio); return true; }
+      return this._contarFallo(item, barato);
     }
 
     /* Falló con el servidor al alcance. Pasado el tope queda en pausa: reintentar solo no puede comerse los datos del alumno. */
-    async _contarFallo(item) {
+    async _contarFallo(item, barato) {
       this._soltarVivo(item);
-      item.fallos = (item.fallos || 0) + 1;
-      if (item.fallos >= MAX_FALLOS) {
+      if (barato) item.fallosBaratos = (item.fallosBaratos || 0) + 1;
+      else item.fallos = (item.fallos || 0) + 1;
+      if (item.fallos >= MAX_FALLOS || item.fallosBaratos >= MAX_FALLOS_BARATOS) {
         item.pausado = true;
         await this._persistir(item);
         this._avisar();
@@ -518,7 +548,7 @@
       }
       await this._persistir(item);
       this._avisar();
-      this._programarReintento(ESPERA_CORTE_MS * Math.pow(3, item.fallos - 1));
+      this._programarReintento(barato ? ESPERA_SIN_SENAL_MS : ESPERA_CORTE_MS * Math.pow(3, item.fallos - 1));
       return false;
     }
 
@@ -575,7 +605,7 @@
     }
   }
 
-  const API = { ModeloTecnica, abrirAlmacen, almacenMemoria, subirConXHR, TROZO_BYTES, MAX_FALLOS };
+  const API = { ModeloTecnica, abrirAlmacen, almacenMemoria, subirConXHR, TROZO_BYTES, MAX_FALLOS, MAX_FALLOS_BARATOS };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.TecnicaCola = API;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -162,7 +162,7 @@
     const b = m.bloqueo;
     const enCola = m.cola.map((c) => filaCola(m, c)).join('');
     const hay = m.envios.length || m.cola.length || m.guardando;
-    return `${avisoHtml(m)}${errorHtml()}
+    return `${ui.avisoDetalle ? nota(ui.avisoDetalle, false, 'tecAvisoDetalle') : ''}${avisoHtml(m)}${errorHtml()}
       ${m.guardando ? `<div class="tec-envio" id="tecGuardando"><div class="spinner" aria-hidden="true"></div>${nota(T.subiendo)}</div>` : ''}
       ${enCola}
       ${b && !m.cola.length && !m.guardando ? nota(textoBloqueo(m, b), false, 'tecBloqueo') : ''}
@@ -180,7 +180,6 @@
 
   function pGrabar(m) {
     const s = ui.sel;
-    const n = Array.from(s.nota).length;
     return `<h2 class="gim-h gim-h-chico" id="tecEjercicio">${e(s.ejercicio.nombre)}</h2>
       ${m.necesitaAviso ? `<div class="gim-aviso" id="tecAvisoTerceros">${e(T.avisoTerceros)}</div>` : ''}
       <p class="gim-sub" id="tecConsejo">${e(T.consejo)}</p>
@@ -188,8 +187,8 @@
       ${s.validando ? `<div class="tec-envio" id="tecValidando"><div class="spinner" aria-hidden="true"></div>${nota(T.preparandoVideo)}</div>` : ''}
       ${errorHtml()}${avisoHtml(m)}
       <button type="button" class="${s.archivo ? 'btn-secondary' : 'btn-primary'}" data-tec="elegirVideo" id="tecElegirVideo"${s.validando ? ' disabled' : ''}>${s.archivo ? '' : IC.camara}<span>${e(s.archivo ? T.cambiarVideo : T.grabarOElegir)}</span></button>
-      ${s.archivo ? `<textarea class="gim-area" id="tecNota" rows="3" maxlength="${Tec.MAX_NOTA}" placeholder="${e(T.notaPlaceholder)}" aria-label="${e(T.notaPlaceholder)}">${e(s.nota)}</textarea>
-      <div class="gim-cuenta" id="tecNotaCuenta">${n}/${Tec.MAX_NOTA}</div>
+      ${s.archivo ? `<textarea class="gim-area" id="tecNota" rows="3" maxlength="${Tec.MAX_NOTA}" placeholder="${e(T.notaPlaceholder)}" aria-label="${e(T.notaPlaceholder)}"></textarea>
+      <div class="gim-cuenta" id="tecNotaCuenta"></div>
       <button type="button" class="btn-primary" data-tec="enviar" id="tecEnviar"${ui.ocupado || m.guardando ? ' disabled' : ''}>${e(T.enviar)}</button>` : ''}`;
   }
 
@@ -222,7 +221,7 @@
       ${d.correcciones.length ? seccion(T.corregir, d.correcciones.map((c, i) => `<div class="tec-correccion"><h3>${e(c.titulo)}</h3>
         ${parte(T.queSeVe, c.queSeVe)}${parte(T.porQue, c.porQue)}${parte(T.como, c.como)}
         ${puedeVer && c.momento != null ? verBtn(c.momento, `tecVer${i}`) : ''}</div>`).join(''), 'tecCorregir') : ''}
-      ${d.noEvaluable.length ? seccion(T.noSePudoVer, `<ul class="tec-lista">${d.noEvaluable.map((n) => `<li>${e(n.que)}${n.motivo ? `. ${e(n.motivo)}` : ''}</li>`).join('')}</ul>`, 'tecNoVer') : ''}
+      ${d.noEvaluable.length ? seccion(T.noSePudoVer, `<ul class="tec-lista">${d.noEvaluable.map((n) => `<li>${e(n.que)}${n.motivo ? `, ${e(n.motivo)}` : ''}</li>`).join('')}</ul>`, 'tecNoVer') : ''}
       ${d.pedirOtro ? seccion(T.otroVideo, `${d.pedirOtro.como ? `<p class="gim-sub" id="tecComoOtro">${e(d.pedirOtro.como)}</p>` : ''}<button type="button" class="btn-primary" data-tec="otra" data-id="${e(id)}" id="tecOtra"${m.bloqueo ? ' disabled' : ''}>${e(T.mandar)}</button>`, 'tecOtroVideo') : ''}
       ${sacarBtn}`;
   }
@@ -254,9 +253,20 @@
     ui.pendiente = false;
     const volver = ui.pila.length > (ui.directo ? 1 : 0) ? T.titulo : T.cerrar;
     const h = `<div class="gim tec"><button type="button" class="sd-volver" data-tec="volver" id="tecVolver">‹ ${e(volver)}</button>${cuerpo(m)}</div>`;
-    if (h !== ui.ultimoHtml) { r.innerHTML = h; ui.ultimoHtml = h; }
+    if (h !== ui.ultimoHtml) {
+      r.innerHTML = h;
+      ui.ultimoHtml = h;
+      // La nota no va en el HTML: si no, escribir cambiaría la comparación y un repintado le reiniciaría el video a la vista previa.
+      const n = document.getElementById('tecNota');
+      if (n && ui.sel) { n.value = ui.sel.nota; contarNota(); }
+    }
     const t = document.getElementById('hdrTitle');
     if (t) t.textContent = T.titulo;
+  }
+
+  function contarNota() {
+    const c = document.getElementById('tecNotaCuenta');
+    if (c && ui.sel) c.textContent = `${Array.from(ui.sel.nota).length}/${Tec.MAX_NOTA}`;
   }
 
   function pintar() {
@@ -404,8 +414,7 @@
       r.addEventListener('input', (ev) => {
         if (ev.target.id !== 'tecNota' || !ui.sel) return;
         ui.sel.nota = Tec.notaRecortada(ev.target.value);
-        const c = document.getElementById('tecNotaCuenta');
-        if (c) c.textContent = `${Array.from(ui.sel.nota).length}/${Tec.MAX_NOTA}`;
+        contarNota();
       });
       const repintarPendiente = () => setTimeout(() => { if (ui.pendiente && ui.modelo && escenaActiva()) renderEscena(); }, 60);
       r.addEventListener('pointerdown', () => { ui.presionando = true; }, true);
