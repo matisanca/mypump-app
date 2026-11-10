@@ -231,7 +231,7 @@ fun OnboardingPermisos(modelo: ModeloApp, version: String, alTerminar: () -> Uni
                         if (esSalud) {
                             "Pump Team puede leer lo que ya mide ${salud?.textos?.telefono ?: "tu teléfono"} o tu reloj: pasos, sueño, pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando de verdad y te ajusta el plan con datos, no a ojo."
                         } else {
-                            "Para que te lleguen los mensajes de Mati y su aviso de los domingos para la revisión. Nada más: no te vamos a llenar el teléfono de notificaciones."
+                            "Para que te lleguen los mensajes de Mati y el aviso semanal de tu revisión. Nada más, no te vamos a llenar el teléfono de notificaciones."
                         },
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,

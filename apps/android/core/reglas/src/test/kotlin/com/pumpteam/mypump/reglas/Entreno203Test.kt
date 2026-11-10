@@ -185,6 +185,6 @@ class Entreno203Test {
     fun laNotaDeLaSemanaNoNombraElRir() {
         val json = """{"id":"e","nombre":"Press","progresion":[{"semana":1,"series":3,"reps":"10","rir":"2"},{"semana":2,"series":3,"reps":"10","rir":"1"}]}"""
         val e = com.pumpteam.mypump.modelos.Ejercicio.desde(kotlinx.serialization.json.Json.parseToJsonElement(json))
-        assertEquals("Acercate más al fallo en cada serie.", Progresiones.nota(e, 2)?.texto)
+        assertEquals("Llevá cada serie al fallo.", Progresiones.nota(e, 2)?.texto)
     }
 }

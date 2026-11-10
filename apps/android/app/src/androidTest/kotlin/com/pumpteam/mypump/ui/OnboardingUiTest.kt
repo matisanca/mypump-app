@@ -96,7 +96,7 @@ class OnboardingUiTest : PruebaUi() {
             p.nodo(texto("Que no se te pase nada"))
             p.nodo(
                 texto(
-                    "Para que te lleguen los mensajes de Mati y su aviso de los domingos para la revisión. Nada más: no te vamos a llenar el teléfono de notificaciones.",
+                    "Para que te lleguen los mensajes de Mati y el aviso semanal de tu revisión. Nada más, no te vamos a llenar el teléfono de notificaciones.",
                 ),
             )
             p.nodo(texto("Activar notificaciones"))

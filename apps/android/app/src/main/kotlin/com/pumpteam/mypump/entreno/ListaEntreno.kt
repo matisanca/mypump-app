@@ -460,7 +460,7 @@ private fun CuerpoDia(
     } else if (banner.calibracion) {
         AvisoTenido(
             Iconos.Mira,
-            AnnotatedString("Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3): no te guardes reps."),
+            AnnotatedString("Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto."),
             modifier = Modifier.testTag("banner-calibracion"),
         )
     }
@@ -860,7 +860,7 @@ private fun TarjetaCierre(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: ()
                 Text("Tu sesión de hoy quedó guardada.", style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold))
             }
         } else {
-            BotonConIcono("Cerrar sesión de hoy", Iconos.Bandera, alTocar = alCerrarDia, modifier = Modifier.testTag("cerrar-sesion"))
+            BotonConIcono("Terminar el entrenamiento de hoy", Iconos.Bandera, alTocar = alCerrarDia, modifier = Modifier.testTag("cerrar-sesion"))
         }
     }
 }
@@ -886,7 +886,7 @@ private fun ResumenSesion(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: ()
             CeldaResumen("Restan", "$restan ej", Modifier.weight(1f))
         }
         BotonConIcono(
-            "Cerrar sesión de hoy",
+            "Terminar el entrenamiento de hoy",
             Iconos.Bandera,
             alTocar = alCerrarDia,
             principal = false,

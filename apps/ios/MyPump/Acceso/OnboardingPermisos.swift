@@ -45,13 +45,13 @@ struct OnboardingPermisos: View {
                     .multilineTextAlignment(.center)
                 Text(paso == .salud
                      ? "Pump Team puede leer lo que ya mide tu iPhone o tu reloj: pasos, sueño, pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando de verdad y te ajusta el plan con datos, no a ojo."
-                     : "Para que te lleguen los mensajes de Mati y su aviso de los domingos para la revisión. Nada más: no te vamos a llenar el teléfono de notificaciones.")
+                     : "Para que te lleguen los mensajes de Mati y el aviso semanal de tu revisión. Nada más, no te vamos a llenar el teléfono de notificaciones.")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 // El aviso del domingo no se configura (pedido de Mati, 14-oct): no se promete apagarlo ni cambiar la hora.
                 if paso == .salud {
-                    Text("Se lee solo. Nunca escribimos nada en tu app de Salud.")
+                    Text("Leemos tus datos de Salud. Lo único que guardamos ahí es tu entreno de fuerza cuando usás el reloj.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

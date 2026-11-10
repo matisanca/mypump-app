@@ -521,7 +521,7 @@ public enum EstadosEjercicio {
     }
 }
 
-/// Series, reps y volumen del día (la card de cierre y los modales de "Cerrar sesión de hoy").
+/// Series, reps y volumen del día (la card de cierre y los modales de "Terminar el entrenamiento de hoy").
 public struct ResumenDia: Equatable, Sendable {
     public let series: Int
     public let reps: Double

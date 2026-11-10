@@ -136,9 +136,9 @@ final class SaludUITests: XCTestCase {
         XCTAssertTrue(atras.waitForExistence(timeout: 30), "No abrió el ejercicio")
         sleep(2)
         atras.tap()
-        let cerrar = app.buttons.matching(NSPredicate(format: "label == 'Cerrar sesión de hoy'")).firstMatch
+        let cerrar = app.buttons.matching(NSPredicate(format: "label == 'Terminar el entrenamiento de hoy'")).firstMatch
         for _ in 0..<12 where !(cerrar.exists && cerrar.isHittable) { app.swipeUp() }
-        XCTAssertTrue(cerrar.isHittable, "No está «Cerrar sesión de hoy»")
+        XCTAssertTrue(cerrar.isHittable, "No está «Terminar el entrenamiento de hoy»")
         cerrar.tap()
         let hoy = app.otherElements["volumen-hoy"].firstMatch
         XCTAssertTrue(hoy.waitForExistence(timeout: 10), "El cierre no trae las series por músculo")

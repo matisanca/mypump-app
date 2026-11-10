@@ -151,7 +151,7 @@ class SaludVistaTest {
         assertEquals("Este iPhone ya está mandando pasos y actividad. 👌", SaludVista.SinScore.SoloPasos.frase(ios))
         assertEquals("Conectado. Esperando los primeros datos de tu iPhone…", SaludVista.SinScore.Esperando.frase(ios))
         assertEquals("Fijate que el reloj esté sincronizando con la app Salud del iPhone.", SaludVista.SinScore.FaltanDatosDeLaNoche.nota(ios))
-        assertEquals("Fijate que esté todo activado en Ajustes → Privacidad y seguridad → Salud → MyPump.", SaludVista.SinScore.NoLlegaNada.nota(ios))
+        assertEquals("Fijate que esté todo activado en Ajustes → Privacidad y seguridad → Salud → Pump Team.", SaludVista.SinScore.NoLlegaNada.nota(ios))
         assertEquals(
             "Para el score de recuperación hace falta lo que se mide durmiendo — pulso en reposo, sueño y variabilidad — y eso lo da un reloj o " +
                 "un anillo (Apple Watch, Oura, Garmin…). En cuanto uses uno, esto se arma solo.",
@@ -162,7 +162,7 @@ class SaludVistaTest {
         assertEquals("Este teléfono ya está mandando pasos y actividad. 👌", SaludVista.SinScore.SoloPasos.frase())
         assertEquals("Conectado. Esperando los primeros datos de tu teléfono…", SaludVista.SinScore.Esperando.frase())
         assertEquals("Fijate que el reloj esté sincronizando con Health Connect.", SaludVista.SinScore.FaltanDatosDeLaNoche.nota())
-        assertEquals("Fijate que esté todo activado en Ajustes → Salud y bienestar → Health Connect → MyPump.", SaludVista.SinScore.NoLlegaNada.nota())
+        assertEquals("Fijate que esté todo activado en Ajustes → Salud y bienestar → Health Connect → Pump Team.", SaludVista.SinScore.NoLlegaNada.nota())
         assertTrue(SaludVista.SinScore.SoloPasos.nota().contains("(Galaxy Watch, Mi Band, Garmin, Fitbit…)"))
         for (s in listOf(SaludVista.SinScore.TrayendoHistorial(1, 2), SaludVista.SinScore.FaltanDatosDeLaNoche, SaludVista.SinScore.SoloPasos,
             SaludVista.SinScore.NoLlegaNada, SaludVista.SinScore.Esperando)) {
@@ -211,9 +211,9 @@ class SaludVistaTest {
         assertEquals(SaludVista.CardRecuperacion.Oculto, card(serie, mostrar = false))
         // Sin motivos, la frase sale de la banda; discordancia y estado autonómico ganan.
         val b = (card(listOf(RecuperacionDia(hoy, score = 30, estado = "ok", banda = "baja"))) as SaludVista.CardRecuperacion.ConScore).score
-        assertTrue(b.frase == "Hoy tu cuerpo pide más descanso." && b.notaVieja == null && b.grafico.isEmpty())
+        assertTrue(b.frase == "Recuperación baja hoy. Seguí tu plan y si se repite varios días, contámelo por el chat." && b.notaVieja == null && b.grafico.isEmpty())
         val fat = listOf(RecuperacionDia(hoy, score = 40, estado = "ok", banda = "baja", estadoAutonomico = "fatiga_acumulada", discordancia = true))
-        assertEquals("Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís.", (card(fat) as SaludVista.CardRecuperacion.ConScore).score.frase)
+        assertEquals("Tus números de hoy no coinciden con cómo te sentís. Seguí tu plan.", (card(fat) as SaludVista.CardRecuperacion.ConScore).score.frase)
     }
 
     /** Lo que la web hace con valores raros de un motivo (la aritmética de JS), leído con node sobre `_recDrivers`. */

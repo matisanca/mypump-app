@@ -254,5 +254,5 @@ struct PreparacionTests {
 @Test func laNotaDeLaSemanaNoNombraElRIR() throws {
     let json = #"{"id":"e","nombre":"Press","progresion":[{"semana":1,"series":3,"reps":"10","rir":"2"},{"semana":2,"series":3,"reps":"10","rir":"1"}]}"#
     let e = try JSONDecoder().decode(Ejercicio.self, from: Data(json.utf8))
-    #expect(Progresiones.nota(e, semanaActual: 2)?.texto == "Acercate más al fallo en cada serie.")
+    #expect(Progresiones.nota(e, semanaActual: 2)?.texto == "Llevá cada serie al fallo.")
 }

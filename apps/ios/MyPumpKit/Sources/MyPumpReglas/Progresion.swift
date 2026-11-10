@@ -37,7 +37,7 @@ public enum Progresiones {
         return Pauta(series: e.series, reps: e.reps, rir: e.rirObjetivo ?? e.rirSuelto)
     }
 
-    static let textoCalibracion = "Semana de calibración: buscá el fallo muscular, no te guardes reps. Las reps son una guía (±2-3): si apuntás a 12 y te salen 9 o 14, perfecto. La idea es encontrar tu peso real llegando cerca del fallo."
+    static let textoCalibracion = "Semana de calibración. Llevá cada serie al fallo, sin guardarte reps. Las reps son una guía, si apuntás a 12 y te salen 9 o 14 está perfecto. La idea es encontrar tu peso real."
 
     /// Port de `computeProgresionNota` (cliente.html:1701): explica el cambio de esta semana contra la anterior.
     /// Devuelve nil si el ejercicio no tiene progresión.
@@ -72,16 +72,16 @@ public enum Progresiones {
         } else if seriesSube && repsIgual {
             partes.append("Sumamos una serie: mismo peso, más volumen total esta semana.")
         } else if repsSube && seriesIgual {
-            partes.append("Suben las reps con el mismo peso. Si las completás sobrado, subí la carga la próxima.")
+            partes.append("Suben las reps con el mismo peso. Si te salen más reps que las de la pauta, hacelas y subí la carga la próxima.")
         }
-        if rirBaja { partes.append("Acercate más al fallo en cada serie.") }
+        if rirBaja { partes.append("Llevá cada serie al fallo.") }
 
         let cambia = !partes.isEmpty
         if !cambia {
             if repsIgual && seriesIgual {
-                partes.append("Mantené el peso de la semana pasada e intentá superar tus reps, siempre cerca del fallo. Si te sobra, subí la carga.")
+                partes.append("Mantené el peso de la semana pasada e intentá superar tus reps, siempre al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.")
             } else {
-                partes.append("Seguí la pauta de esta semana (\(cur.series.map(String.init) ?? "—")×\(cur.reps ?? "—")) y trabajá cerca del fallo; si te sobra, subí la carga.")
+                partes.append("Seguí la pauta de esta semana (\(cur.series.map(String.init) ?? "—")×\(cur.reps ?? "—")) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.")
             }
         }
         return NotaProgresion(texto: partes.joined(separator: " "), cambia: cambia, calibracion: false)

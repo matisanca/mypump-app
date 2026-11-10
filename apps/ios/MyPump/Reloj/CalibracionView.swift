@@ -150,7 +150,7 @@ struct CalibracionView: View {
 
     /// Texto del consentimiento, aprobado el 9/11/2026.
     private static let textoConsentimiento = """
-        Si lo prendés, MyPump recibe las series que grabaste y las que grabes con el Apple Watch: el movimiento del reloj, \
+        Si lo prendés, Pump Team recibe las series que grabaste y las que grabes con el Apple Watch: el movimiento del reloj, \
         el ejercicio, las reps, los kilos, la fecha y en qué muñeca llevás el reloj. No incluye tu nombre; queda asociado a tu \
         cuenta para poder borrarlo. Se usa solo para mejorar el conteo de reps. Lo podés apagar cuando quieras: se dejan de \
         mandar y se borra lo que ya recibimos. Si ya no tenés acceso a la app, escribinos y lo borramos.
@@ -161,7 +161,7 @@ struct CalibracionView: View {
 
     /// Lo que pasa con el archivo, verdadero según la cuenta. Sin estado, si esta cuenta alguna vez mandó no se afirma nada.
     private var textoArchivo: String {
-        if seManda { return "Un archivo por sesión de entreno. Se manda a MyPump para mejorar el conteo; si lo exportás, elegís vos a dónde más va." }
+        if seManda { return "Un archivo por sesión de entreno. Se manda a Pump Team para mejorar el conteo. Si lo exportás, elegís vos a dónde más va." }
         if subidaEstado == nil, UserDefaults.standard.bool(forKey: DatosCalibracion.claveSeManda(cuenta)) {
             return "Un archivo por sesión de entreno. Al exportarlo elegís a dónde va."
         }
@@ -232,14 +232,14 @@ struct CalibracionView: View {
                          ? "El conteo de reps del Apple Watch es experimental: propone las reps al terminar la serie y vos las confirmás o corregís con la corona. Nunca registra una serie solo."
                          : "El conteo de reps del Apple Watch es experimental y por ahora no propone las reps. Las cargás con la corona.")
                     Text(ModoCalibracion.textoPrivacidad)
-                    if seManda { Text("Además se manda a MyPump para mejorar el conteo.") }
+                    if seManda { Text("Además se manda a Pump Team para mejorar el conteo.") }
                 }
             }
 
             if let estado = subidaEstado {
                 Section {
                     if estado.automatica {
-                        Label("Se manda a MyPump", systemImage: "icloud.and.arrow.up")
+                        Label("Se manda a Pump Team", systemImage: "icloud.and.arrow.up")
                     } else {
                         Toggle(isOn: Binding(get: { estado.acepta == true }, set: { nuevo in
                             if nuevo { pedirConsentimiento = true } else { consentir(false) }
@@ -252,7 +252,7 @@ struct CalibracionView: View {
                     }
                 } footer: {
                     Text(estado.automatica
-                         ? "En esta cuenta las series grabadas se mandan solas a MyPump, sin tu nombre: el movimiento del reloj, el ejercicio, las reps y los kilos."
+                         ? "En esta cuenta las series grabadas se mandan solas a Pump Team, sin tu nombre. Van el movimiento del reloj, el ejercicio, las reps y los kilos."
                          : Self.textoConsentimiento)
                 }
             }
@@ -285,7 +285,7 @@ struct CalibracionView: View {
                 sesiones = []
             }
         }
-        .alert("¿Mandar tus series a MyPump?", isPresented: $pedirConsentimiento) {
+        .alert("¿Mandar tus series a Pump Team?", isPresented: $pedirConsentimiento) {
             Button("Aceptar") { consentir(true) }
             Button("Ahora no", role: .cancel) {}
         } message: {

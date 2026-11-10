@@ -29,8 +29,8 @@ object Progresiones {
         return Pauta(e.series, e.reps, e.rirObjetivo ?: e.rirSuelto)
     }
 
-    const val TEXTO_CALIBRACION = "Semana de calibración: buscá el fallo muscular, no te guardes reps. Las reps son una guía " +
-        "(±2-3): si apuntás a 12 y te salen 9 o 14, perfecto. La idea es encontrar tu peso real llegando cerca del fallo."
+    const val TEXTO_CALIBRACION = "Semana de calibración. Llevá cada serie al fallo, sin guardarte reps. Las reps son una guía, " +
+        "si apuntás a 12 y te salen 9 o 14 está perfecto. La idea es encontrar tu peso real."
 
     /**
      * Port de `computeProgresionNota` (cliente.html:1701): explica el cambio de esta semana contra la anterior.
@@ -66,17 +66,17 @@ object Progresiones {
                 "carga: apuntá a más kilos que la semana pasada, manteniendo buena técnica."
             repsBaja && seriesSube -> partes += "Más series y menos reps: subí un poco la carga y sumá volumen."
             seriesSube && repsIgual -> partes += "Sumamos una serie: mismo peso, más volumen total esta semana."
-            repsSube && seriesIgual -> partes += "Suben las reps con el mismo peso. Si las completás sobrado, subí la carga la próxima."
+            repsSube && seriesIgual -> partes += "Suben las reps con el mismo peso. Si te salen más reps que las de la pauta, hacelas y subí la carga la próxima."
         }
-        if (rirBaja) partes += "Acercate más al fallo en cada serie."
+        if (rirBaja) partes += "Llevá cada serie al fallo."
 
         val cambia = partes.isNotEmpty()
         if (!cambia) {
             partes += if (repsIgual && seriesIgual) {
-                "Mantené el peso de la semana pasada e intentá superar tus reps, siempre cerca del fallo. Si te sobra, subí la carga."
+                "Mantené el peso de la semana pasada e intentá superar tus reps, siempre al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima."
             } else {
-                "Seguí la pauta de esta semana (${cur.series?.toString() ?: "—"}×${cur.reps ?: "—"}) y trabajá cerca del " +
-                    "fallo; si te sobra, subí la carga."
+                "Seguí la pauta de esta semana (${cur.series?.toString() ?: "—"}×${cur.reps ?: "—"}) y llevá cada serie al " +
+                    "fallo. Si te salen más reps que las de la pauta, subí la carga la próxima."
             }
         }
         return NotaProgresion(partes.joinToString(" "), cambia, calibracion = false)

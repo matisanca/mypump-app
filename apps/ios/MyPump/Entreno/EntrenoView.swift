@@ -338,7 +338,7 @@ private struct ListaEntreno: View {
                             texto: Text("Esta semana \(Text(banner.cambian == 1 ? "1 ejercicio cambia" : "\(banner.cambian) ejercicios cambian").bold()) carga o volumen. Mirá el detalle al abrir cada uno."))
         } else if banner.calibracion {
             AvisoProgresion(icono: "scope",
-                            texto: Text("Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3): no te guardes reps."))
+                            texto: Text("Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto."))
         }
 
         // F1 (auditoría 10/11): sin respuesta del servidor, las series se pintan con lo guardado en el teléfono.
@@ -448,7 +448,7 @@ private struct ListaEntreno: View {
                     .labelStyle(IconoTeñido(color: .marcaTexto))
                     .font(.subheadline.weight(.semibold))
             } else {
-                Button { cerrando = true } label: { Label("Cerrar sesión de hoy", systemImage: "flag.checkered") }
+                Button { cerrando = true } label: { Label("Terminar el entrenamiento de hoy", systemImage: "flag.checkered") }
                     .buttonStyle(BotonMarca())
                     .accessibilityIdentifier("cerrar-sesion")
             }
@@ -470,7 +470,7 @@ private struct ListaEntreno: View {
                 celda("Restan", "\(restan) ej")
             }
             Button { cerrando = true } label: {
-                Label("Cerrar sesión de hoy", systemImage: "flag.checkered")
+                Label("Terminar el entrenamiento de hoy", systemImage: "flag.checkered")
             }
             .buttonStyle(BotonSecundario())
             .disabled(!motor.cierreHabilitado)
