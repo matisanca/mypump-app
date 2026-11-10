@@ -62,6 +62,7 @@ struct SuplementacionView: View {
                         }
                     }
                 }
+                if let f = app.feedback { SeccionYaLoTenes(modelo: f, items: v.items) }
                 if let sigue = v.sigue {
                     Text("\(Text("Sigue igual.").fontWeight(.semibold)) \(sigue)")
                         .font(.subheadline)
@@ -88,6 +89,109 @@ struct SuplementacionView: View {
             .anchoLectura()
         }
         .refreshable { await modelo.cargar() }
+    }
+}
+
+/// «¿Ya lo tenés?» (palanca `suple_estado`): cada suplemento una vez, con su marca. Se marca una sola vez y se puede cambiar.
+/// Los protectores no aparecen acá. Con la palanca apagada o sin el servidor nuevo, la sección no existe.
+private struct SeccionYaLoTenes: View {
+    let modelo: ModeloFeedback
+    let items: [ItemSuplemento]
+    @State private var fallo = false
+    @Environment(\.dynamicTypeSize) private var letra
+
+    var body: some View {
+        let filas = ReglasSupleEstado.filas(items, marcas: modelo.marcas)
+        if modelo.supleHabilitado, !filas.isEmpty {
+            VStack(alignment: .leading, spacing: Espacio.s) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(TextosFeedback.supleTitulo).textoCeja().accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: Espacio.xs)
+                    Text(ReglasSupleEstado.resumen(filas)).font(.caption.weight(.semibold)).foregroundStyle(.secondary).monospacedDigit()
+                        .accessibilityIdentifier("supl-estado-resumen")
+                }
+                VStack(spacing: 0) {
+                    ForEach(Array(filas.enumerated()), id: \.element.id) { n, f in
+                        if n > 0 { Divider().padding(.leading, Espacio.m) }
+                        fila(f, n)
+                    }
+                }
+                .superficieTarjeta()
+                Text(TextosFeedback.supleAyuda).font(.footnote).foregroundStyle(.secondary).padding(.horizontal, 4)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("supl-estado")
+            .alert(TextosFeedback.supleError, isPresented: $fallo) { Button("OK", role: .cancel) {} }
+        }
+    }
+
+    @ViewBuilder private func fila(_ f: ReglasSupleEstado.Fila, _ n: Int) -> some View {
+        let disposicion = letra.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.xs)) : AnyLayout(HStackLayout(spacing: Espacio.s))
+        VStack(alignment: .leading, spacing: 6) {
+            disposicion {
+                Text(f.nombre).font(.body.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
+                Menu {
+                    ForEach(ReglasSupleEstado.Estado.allCases) { e in
+                        Button { marcar(f, e) } label: {
+                            if f.estado == e { Label(e.accion, systemImage: "checkmark") } else { Text(e.accion) }
+                        }
+                    }
+                } label: {
+                    Marca(estado: f.estado, viajando: modelo.marcando.contains(f.id))
+                }
+                .accessibilityLabel(f.estado.map { "\(f.nombre), \($0.marcado)" } ?? "\(f.nombre), \(TextosFeedback.supleMarcar)")
+                .accessibilityIdentifier("supl-estado-\(n)")
+            }
+            if f.estado == .noLoConsigo {
+                Text(TextosFeedback.supleNoConsigoAviso).font(.footnote).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("supl-estado-no-consigo")
+            }
+        }
+        .padding(.horizontal, Espacio.m)
+        .padding(.vertical, Espacio.s)
+    }
+
+    private func marcar(_ f: ReglasSupleEstado.Fila, _ e: ReglasSupleEstado.Estado) {
+        // Si esa marca todavía viaja, el toque no hace nada: no es un fallo.
+        guard !modelo.marcando.contains(ReglasSupleEstado.clave(f.nombre)) else { return }
+        Task {
+            if await modelo.marcar(nombre: f.nombre, e) { UISelectionFeedbackGenerator().selectionChanged() } else { fallo = true }
+        }
+    }
+
+    /// La píldora de la marca: «Marcar» sin elegir, o el estado con su color.
+    private struct Marca: View {
+        let estado: ReglasSupleEstado.Estado?
+        let viajando: Bool
+
+        var body: some View {
+            let tono: Color = switch estado {
+            case .tomando: .exito
+            case .comprado: .marcaTexto
+            case .noLoConsigo: .alerta
+            case .loDeje: .secondary
+            case nil: .primary
+            }
+            let icono = switch estado {
+            case .tomando: "checkmark.circle.fill"
+            case .comprado: "bag.fill"
+            case .noLoConsigo: "magnifyingglass"
+            case .loDeje: "pause.circle.fill"
+            case nil: "circle"
+            }
+            HStack(spacing: 6) {
+                if viajando { ProgressView().controlSize(.small) } else { Image(systemName: icono).imageScale(.small) }
+                Text(estado?.marcado ?? TextosFeedback.supleMarcar)
+                Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.bold)).opacity(0.6)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(tono)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 40)
+            .background(estado == nil || estado == .loDeje ? Color.campo : tono.opacity(0.14), in: .capsule)
+            .contentShape(.capsule)
+        }
     }
 }
 
