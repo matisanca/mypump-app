@@ -157,8 +157,8 @@ public struct GrabadoraSerie: Sendable {
     public func contarEnVivo(hasta t: Double) -> ContadorReps.Resultado? {
         guard let iv = inicioVentana else { return nil }
         let (desde, cs) = cuadros(desde: Self.inicioConteo(inicioVentana: iv, hasta: t), hasta: t)
-        var r = ContadorReps.contar(cs)
         let cero = (t0 ?? 0) + Double(desde) / Self.hz
+        var r = ContadorReps.contar(cs, noAntesDe: finDescanso.map { $0 - cero })
         let inicio = cero + r.desde
         if let h = ultimoHueco, r.reps > 0,
            h.hasta >= inicio - 1.5 * r.periodo, h.desde <= cero + r.hasta + ContadorReps.esperaFinal(periodo: r.periodo) {

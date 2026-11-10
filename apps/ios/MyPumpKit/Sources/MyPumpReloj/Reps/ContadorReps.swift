@@ -22,6 +22,11 @@ import Foundation
 ///    `esfuerzoMinimo` no se propone. Con una sola persona y solo poleas: es un umbral a confirmar con más datos.
 /// 7. Tampoco se propone si la racha va al ritmo de los pasos (`ritmoPasosMaximo`: caminar; en lo real, 0,08 a 0,16 en las
 ///    series) ni si los picos no se separan de la vibración (`relacionMinima`, amplitud / esfuerzo).
+/// 8. Criterios físicos agregados el 9-nov, elegidos con datos sintéticos separados de los de validación: una racha cuyos picos
+///    saltean ciclos parecidos no son reps (`tieneCiclosIntermedios`: la caminata leída de a dos pasos); se recuenta en el eje
+///    principal del movimiento (`enEjePrincipal`: un giro grande pasa dos veces por el mismo valor en un eje del reloj); las
+///    últimas reps lentas y chicas se buscan contra las reps anteriores (`conCola`); las puntas sin vibración de carga no
+///    cuentan (`sinPuntasSinCarga`); y lo que terminó mucho antes del fin del descanso no es la serie (`noAntesDe`).
 public enum ContadorReps {
     public static let hzAnalisis: Double = 25
     public static let corteAlto: Double = 2.0
@@ -40,14 +45,21 @@ public enum ContadorReps {
     public static let recencia: Double = 0.6
     public static let esfuerzoMinimo: Double = 0.075
     public static let ritmoPasosMaximo: Double = 0.3
-    /// La prominencia de los picos sobre la vibración. Por debajo los picos pueden ser la vibración misma (máquina con la muñeca quieta).
-    public static let relacionMinima: Double = 1.5
+    /// La prominencia de los picos sobre la vibración. Por debajo los picos pueden ser la vibración misma (máquina con la muñeca
+    /// quieta). Era 1,5; con 2 baja la cobertura sintética de 77 a 69 % a cambio de que casi no queden números errados.
+    public static let relacionMinima: Double = 2.0
     static let corteEsfuerzo: Double = 2.5
     /// La prominencia mínima de un pico (g): por debajo es ruido del sensor, el pulso o la respiración.
     public static let pisoAcel: Double = 0.05
     /// Desde esta prominencia (g) la señal ya alcanza y no suma puntos.
     public static let amplitudPlena: Double = 0.25
     static let pasoEscala: Double = 1.35
+    /// Hasta dónde puede caer la amplitud de referencia al fallo (una fracción de la típica de la serie).
+    static let pisoFatiga: Double = 0.45
+    /// Una punta de la racha cuenta como hecha con carga si vibra al menos esta fracción de la típica de la serie.
+    static let fraccionCarga: Double = 0.55
+    /// Lo que puede haber terminado la serie antes de que termine el descanso (s): el que terminó y fue a mirar el reloj.
+    static let margenDescanso: Double = 15
     /// La racha más corta (s): cinco picos en menos que esto son un temblor o un gesto.
     static let duracionMinima: Double = 6
 
@@ -80,7 +92,9 @@ public enum ContadorReps {
     /// Lo que se espera sin un pico nuevo para dar la serie por terminada (s).
     public static func esperaFinal(periodo: Double) -> Double { max(3, 1.3 * periodo) }
 
-    public static func contar(_ cuadros: [CuadroSensor], hz: Double = GrabadoraSerie.hz) -> Resultado {
+    /// `noAntesDe`: los segundos (desde el primer cuadro) en que terminó el descanso. Una racha que terminó antes no es la
+    /// serie que se va a confirmar: es una aproximación o algo hecho en pleno descanso.
+    public static func contar(_ cuadros: [CuadroSensor], hz: Double = GrabadoraSerie.hz, noAntesDe: Double? = nil) -> Resultado {
         let fs = hzAnalisis
         let factor = max(1, Int((hz / fs).rounded()))
         let n = cuadros.count / factor
@@ -96,12 +110,22 @@ public enum ContadorReps {
         }
         let filtro = Filtro.biquad(true, fs: fs, corte: corteAlto)
         var rachas: [Racha] = []
-        for eje in ejes { rachas += buscar(Filtro.filtfilt(filtro, eje, relleno: Int(3 * fs)), fs: fs) }
-        guard let (r, e) = elegir(rachas, esfuerzo: { esfuerzoSinCaminar(cuadros, desde: $0.desde, hasta: $0.hasta, hz: hz) }) else { return .vacio }
+        var filtrados: [[Double]] = []
+        filtrados.reserveCapacity(3)
+        for (k, eje) in ejes.enumerated() {
+            let x = Filtro.filtfilt(filtro, eje, relleno: Int(3 * fs))
+            filtrados.append(x)
+            rachas += buscar(x, fs: fs).map { var r = $0; r.eje = k; return r }
+        }
+        if let limite = noAntesDe { rachas.removeAll { $0.hasta < limite - margenDescanso } }
+        guard let (r0, e) = elegir(rachas, fundamental: { !tieneCiclosIntermedios($0, x: filtrados[$0.eje], fs: fs) },
+                                  esfuerzo: { esfuerzoSinCaminar(cuadros, desde: $0.desde, hasta: $0.hasta, hz: hz) }) else { return .vacio }
+        let r = sinPuntasSinCarga(enEjePrincipal(r0, filtrados, fs: fs), cuadros, hz: hz, fs: fs)
         let duracion = Double(n) / fs
         return Resultado(reps: r.picos, periodo: r.periodo, calidad: r.calidad, senal: .acel, desde: r.desde, hasta: r.hasta,
                          quieto: duracion - r.hasta >= esperaFinal(periodo: r.periodo), esfuerzo: e, amplitud: r.amplitud)
     }
+
 
     /// El desvío de la aceleración total arriba de `corteEsfuerzo` entre dos momentos (s).
     static func esfuerzo(_ cuadros: [CuadroSensor], desde: Double, hasta: Double, hz: Double) -> Double {
@@ -149,6 +173,10 @@ public enum ContadorReps {
         var picos: Int
         var desde: Double, hasta: Double
         var amplitud: Double, periodo: Double, calidad: Double
+        var eje = 0
+        /// Los picos de la racha (para la cola y para recortar lo que no fue con carga).
+        var serie: [Pico] = []
+        var negado = false
         var puntaje: Double { Double(picos) * calidad * calidad * calidad * min(1, amplitud / ContadorReps.amplitudPlena) }
     }
 
@@ -193,10 +221,120 @@ public enum ContadorReps {
             let e = extremos(x, retroceso: d)
             if e.count >= 7, e.count <= 500 {
                 salida += rachas(picos(x, extremos: e), fs: fs)
-                salida += rachas(picos(negado, extremos: e), fs: fs)
+                salida += rachas(picos(negado, extremos: e), fs: fs).map { var r = $0; r.negado = true; return r }
             }
             d *= pasoEscala
         }
+        return salida
+    }
+
+    /// Hay ciclos parecidos entre los picos de la racha: los picos saltean ciclos (la caminata leída de a dos pasos) y no son
+    /// repeticiones. Una repetición es un solo ciclo: a media amplitud tiene que haber uno entre pico y pico.
+    static func tieneCiclosIntermedios(_ r: Racha, x: [Double], fs: Double) -> Bool {
+        let i0 = max(0, Int(r.desde * fs)), i1 = min(x.count - 1, Int(r.hasta * fs))
+        guard i1 > i0 + 2 else { return false }
+        let ciclos = Double(extremos(Array(x[i0...i1]), retroceso: 0.5 * r.amplitud).count) / 2
+        return ciclos >= 1.5 * Double(r.picos - 1)
+    }
+
+    /// Vuelve a contar la racha sobre el eje principal del movimiento (la dirección en la que más varió la gravedad durante
+    /// la serie). En un eje del reloj un giro grande de muñeca pasa dos veces por el mismo valor y da dos picos por repetición;
+    /// en el eje principal el recorrido es monótono y hay uno solo. Si ahí no aparece una racha buena que cubra la misma
+    /// serie, queda la original.
+    static func enEjePrincipal(_ r: Racha, _ s: [[Double]], fs: Double) -> Racha {
+        let n = s[0].count
+        let i0 = max(0, Int(r.desde * fs)), i1 = min(n - 1, Int(r.hasta * fs))
+        guard i1 > i0 + 10 else { return r }
+        var media = [0.0, 0.0, 0.0]
+        for k in 0..<3 { for i in i0...i1 { media[k] += s[k][i] } }
+        let cuenta = Double(i1 - i0 + 1)
+        for k in 0..<3 { media[k] /= cuenta }
+        var cov = [[Double]](repeating: [0, 0, 0], count: 3)
+        for i in i0...i1 {
+            let d = [s[0][i] - media[0], s[1][i] - media[1], s[2][i] - media[2]]
+            for a in 0..<3 { for b in 0..<3 { cov[a][b] += d[a] * d[b] } }
+        }
+        var v = [cov[0][0], cov[1][1], cov[2][2]]
+        let k0 = v.firstIndex(of: v.max() ?? 0) ?? 0
+        v = [0, 0, 0]; v[k0] = 1
+        for _ in 0..<16 {
+            var w = [0.0, 0.0, 0.0]
+            for a in 0..<3 { for b in 0..<3 { w[a] += cov[a][b] * v[b] } }
+            let norma = (w[0] * w[0] + w[1] * w[1] + w[2] * w[2]).squareRoot()
+            guard norma > 1e-12 else { return r }
+            v = w.map { $0 / norma }
+        }
+        let antes = Int(r.periodo * fs)
+        let a0 = max(0, i0 - antes), a1 = min(n - 1, i1 + antes), a2 = min(n - 1, i1 + Int(2 * intervaloMaximo * fs))
+        var x = [Double](repeating: 0, count: a2 - a0 + 1)
+        for k in 0..<3 { for i in a0...a2 { x[i - a0] += v[k] * s[k][i] } }
+        let origen = Double(a0) / fs
+        let tramo = Array(x[0...(a1 - a0)])
+        let candidatas = buscar(tramo, fs: fs).filter {
+            $0.periodo >= periodoMinimo && $0.periodo <= periodoMaximo && $0.calidad >= calidadMinima && $0.hasta - $0.desde >= duracionMinima
+                && !tieneCiclosIntermedios($0, x: tramo, fs: fs)
+        }.filter {
+            min($0.hasta + origen, r.hasta) - max($0.desde + origen, r.desde) >= 0.65 * (r.hasta - r.desde)
+        }
+        guard var c = candidatas.max(by: { $0.puntaje < $1.puntaje }) else { return r }
+        c = conCola(c, x: c.negado ? x.map { -$0 } : x, fs: fs)
+        c.desde += origen; c.hasta += origen
+        c.serie = c.serie.map { var p = $0; p.i += a0; return p }
+        return c
+    }
+
+    /// Al fallo las últimas reps salen lentas y chicas: la escala a la que se encontró la racha ya no las ve. Sigue buscando
+    /// después del último pico a un tercio de la amplitud, siempre contra lo que venía haciendo (las últimas reps) y no contra la
+    /// serie entera: una que cae de golpe a un tercio es una repetición a medias y no cuenta.
+    static func conCola(_ r: Racha, x y: [Double], fs: Double) -> Racha {
+        guard let ultimo = r.serie.last, ultimo.i + 2 < y.count else { return r }
+        var salida = r
+        let e = extremos(Array(y[ultimo.i...]), retroceso: max(pisoAcel, 0.3 * r.amplitud))
+        var previo = ultimo.i
+        for q0 in picos(Array(y[ultimo.i...]), extremos: e) where q0.i > 0 {
+            let q = Pico(i: q0.i + ultimo.i, v: q0.v, prominencia: q0.prominencia)
+            let dt = Double(q.i - previo) / fs
+            if dt < periodoMinimo { continue }
+            guard dt <= intervaloMaximo else { break }
+            let recientes = Array(salida.serie.suffix(3))
+            let referencia = max(pisoFatiga * r.amplitud, min(r.amplitud, mediana(recientes.map(\.prominencia))))
+            guard q.prominencia >= amplitudBaja * referencia, q.prominencia <= amplitudAlta * r.amplitud,
+                  abs(q.v - mediana(recientes.map(\.v))) <= nivel * r.amplitud + 0.5 * (r.amplitud - referencia) else { break }
+            salida.serie.append(q)
+            previo = q.i
+        }
+        salida.picos = salida.serie.count
+        salida.hasta = Double(salida.serie[salida.serie.count - 1].i) / fs
+        return salida
+    }
+
+    /// Saca de las puntas de la racha lo que no se hizo con carga: acomodarse antes de arrancar o moverse al soltar el peso
+    /// pueden dar un pico igual a una repetición, pero no la vibración de hacer fuerza.
+    static func sinPuntasSinCarga(_ r: Racha, _ cuadros: [CuadroSensor], hz: Double, fs: Double) -> Racha {
+        let escala = hz / fs
+        guard r.serie.count >= 3 else { return r }
+        let a = Int(Double(r.serie[0].i) * escala), b = min(cuadros.count, Int(Double(r.serie[r.serie.count - 1].i) * escala))
+        guard b > a + 20 else { return r }
+        let m = cuadros[a..<b].map { (Double($0.ax) * Double($0.ax) + Double($0.ay) * Double($0.ay) + Double($0.az) * Double($0.az)).squareRoot() }
+        let y = Filtro.filtfilt(Filtro.biquad(false, fs: hz, corte: corteEsfuerzo), m, relleno: Int(hz / 2))
+        var porTramo: [Double] = []
+        for k in 1..<r.serie.count {
+            let u = max(0, Int(Double(r.serie[k - 1].i) * escala) - a), v = min(y.count, Int(Double(r.serie[k].i) * escala) - a)
+            guard v > u + 2 else { porTramo.append(0); continue }
+            let tramo = y[u..<v]
+            let media = tramo.reduce(0, +) / Double(tramo.count)
+            porTramo.append((tramo.reduce(0) { $0 + ($1 - media) * ($1 - media) } / Double(tramo.count)).squareRoot())
+        }
+        let tipico = mediana(porTramo)
+        var desde = 0, hasta = porTramo.count
+        while desde < hasta, porTramo[desde] < fraccionCarga * tipico { desde += 1 }
+        while hasta > desde, porTramo[hasta - 1] < fraccionCarga * tipico { hasta -= 1 }
+        guard desde > 0 || hasta < porTramo.count, hasta > desde else { return r }
+        var salida = r
+        salida.serie = Array(r.serie[desde...hasta])
+        salida.picos = salida.serie.count
+        salida.desde = Double(salida.serie[0].i) / fs
+        salida.hasta = Double(salida.serie[salida.serie.count - 1].i) / fs
         return salida
     }
 
@@ -234,7 +372,7 @@ public enum ContadorReps {
             let c = mediana(tiempos)
             let calidad = max(0, 1 - mediana(s.map { abs($0.prominencia - a) }) / a - mediana(tiempos.map { abs($0 - c) }) / c)
             salida.append(Racha(picos: s.count, desde: Double(s[0].i) / fs, hasta: Double(s[s.count - 1].i) / fs,
-                                amplitud: a, periodo: c, calidad: calidad))
+                                amplitud: a, periodo: c, calidad: calidad, serie: s))
             i = j + 1
         }
         return salida
@@ -242,7 +380,7 @@ public enum ContadorReps {
 
     /// Las rachas que se pisan son la misma serie (gana la de mejor puntaje entre las de duración parecida). Si alguna
     /// serie tiene esfuerzo, las que no lo tienen se descartan. De las que quedan, la última comparable a la mejor.
-    static func elegir(_ todas: [Racha], esfuerzo medir: (Racha) -> Double) -> (Racha, Double)? {
+    static func elegir(_ todas: [Racha], fundamental: (Racha) -> Bool = { _ in true }, esfuerzo medir: (Racha) -> Double) -> (Racha, Double)? {
         let validas = todas.filter {
             $0.periodo >= periodoMinimo && $0.periodo <= periodoMaximo && $0.calidad >= calidadMinima && $0.hasta - $0.desde >= duracionMinima
         }.sorted { $0.desde < $1.desde }
@@ -257,7 +395,8 @@ public enum ContadorReps {
         }
         let mejores: [(Racha, Double)] = grupos.compactMap { g in
             let larga = g.miembros.map { $0.hasta - $0.desde }.max() ?? 0
-            guard let r = g.miembros.filter({ $0.hasta - $0.desde >= 0.65 * larga }).max(by: { $0.puntaje < $1.puntaje }) else { return nil }
+            let lista = g.miembros.filter { $0.hasta - $0.desde >= 0.65 * larga }.sorted { $0.puntaje > $1.puntaje }
+            guard let r = lista.first(where: fundamental) else { return nil }
             return (r, medir(r))
         }
         let conEsfuerzo = mejores.filter { $0.1 >= esfuerzoMinimo && $0.0.amplitud >= relacionMinima * $0.1 }
