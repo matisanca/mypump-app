@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS mypump_gimnasio (
   fotos_borradas_en TIMESTAMPTZ,
   error_detalle  TEXT,
   intentos       INTEGER     NOT NULL DEFAULT 0,
+  reaperturas    INTEGER     NOT NULL DEFAULT 0,
   creado_en      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (cliente_id, version),
@@ -268,7 +269,7 @@ BEGIN
   IF p_modo IS NULL OR p_modo NOT IN ('completa','parcial') THEN RAISE EXCEPTION 'modo inválido' USING ERRCODE = '22023'; END IF;
 
   SELECT * INTO v_fila FROM mypump_gimnasio WHERE cliente_id = v_cliente_id AND estado NOT IN ('listo','reemplazado');
-  IF FOUND THEN RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'id', v_fila.id, 'version', v_fila.version, 'estado', v_fila.estado); END IF;
+  IF FOUND THEN RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'id', v_fila.id, 'version', v_fila.version, 'estado', CASE WHEN v_fila.estado = 'error' THEN 'enviado' ELSE v_fila.estado END); END IF;
 
   IF p_modo = 'parcial' THEN
     SELECT id INTO v_base FROM mypump_gimnasio WHERE cliente_id = v_cliente_id AND estado = 'listo';
@@ -283,9 +284,9 @@ BEGIN
   EXCEPTION WHEN unique_violation THEN
     SELECT * INTO v_fila FROM mypump_gimnasio WHERE cliente_id = v_cliente_id AND estado NOT IN ('listo','reemplazado');
     IF NOT FOUND THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'reintentar'); END IF;
-    RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'id', v_fila.id, 'version', v_fila.version, 'estado', v_fila.estado);
+    RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'id', v_fila.id, 'version', v_fila.version, 'estado', CASE WHEN v_fila.estado = 'error' THEN 'enviado' ELSE v_fila.estado END);
   END;
-  RETURN jsonb_build_object('ok', TRUE, 'ya', FALSE, 'id', v_fila.id, 'version', v_fila.version, 'estado', v_fila.estado);
+  RETURN jsonb_build_object('ok', TRUE, 'ya', FALSE, 'id', v_fila.id, 'version', v_fila.version, 'estado', CASE WHEN v_fila.estado = 'error' THEN 'enviado' ELSE v_fila.estado END);
 END;
 $$;
 
@@ -486,6 +487,8 @@ DECLARE
   v_fila mypump_gimnasio%ROWTYPE;
   v_fase TEXT;
 BEGIN
+  -- Con la palanca maestra apagada no sale ninguna foto hacia Codex ni Claude, aunque haya cargas en cola.
+  IF NOT COALESCE((SELECT valor = 'true'::JSONB FROM mypump_app_config WHERE clave = 'gimnasio_fotos'), FALSE) THEN RETURN NULL; END IF;
   SELECT * INTO v_fila FROM mypump_gimnasio WHERE estado IN ('enviado','respondido')
    ORDER BY COALESCE(respondido_en, enviado_en), id LIMIT 1 FOR UPDATE SKIP LOCKED;
   IF NOT FOUND THEN RETURN NULL; END IF;
@@ -531,6 +534,26 @@ BEGIN
     WHERE estado = 'procesando' AND procesando_desde < NOW() - make_interval(mins => p_minutos)
     RETURNING 1)
   SELECT count(*) INTO v_n FROM t;
+  RETURN v_n;
+END;
+$$;
+
+-- `error` no es un pozo: pasadas unas horas vuelve a la cola. Tras p_max reaperturas queda para revisar a mano
+-- (la misma función con p_horas 0 y un p_max mayor la reabre).
+CREATE OR REPLACE FUNCTION mypump_gimnasio_reabrir_errores(p_horas INTEGER DEFAULT 6, p_max INTEGER DEFAULT 3)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_n INTEGER;
+BEGIN
+  UPDATE mypump_gimnasio
+     SET estado = CASE WHEN respondido_en IS NOT NULL THEN 'respondido' ELSE 'enviado' END,
+         intentos = 0, reaperturas = reaperturas + 1, procesando_desde = NULL, actualizado_en = NOW()
+   WHERE estado = 'error' AND reaperturas < p_max AND actualizado_en <= NOW() - make_interval(hours => p_horas);
+  GET DIAGNOSTICS v_n = ROW_COUNT;
   RETURN v_n;
 END;
 $$;
@@ -662,8 +685,10 @@ SET search_path = public
 AS $$
   SELECT COALESCE(jsonb_agg(jsonb_build_object('id', g.id, 'cliente_id', g.cliente_id)), '[]'::JSONB)
   FROM (SELECT id, cliente_id FROM mypump_gimnasio
-        WHERE estado IN ('listo','reemplazado') AND fotos_borradas_en IS NULL AND aprobado_en < NOW() - make_interval(days => p_dias)
-        ORDER BY aprobado_en LIMIT p_limite) g;
+        WHERE fotos_borradas_en IS NULL
+          AND ((estado IN ('listo','reemplazado') AND aprobado_en < NOW() - make_interval(days => p_dias))
+            OR (estado IN ('borrador','a_revisar','en_editor','error') AND actualizado_en < NOW() - make_interval(days => p_dias)))
+        ORDER BY COALESCE(aprobado_en, actualizado_en) LIMIT p_limite) g;
 $$;
 
 CREATE OR REPLACE FUNCTION mypump_gimnasio_limpieza_hecha(p_id UUID)
@@ -674,7 +699,9 @@ SET search_path = public
 AS $$
 BEGIN
   DELETE FROM mypump_gimnasio_fotos WHERE gimnasio_id = p_id;
-  UPDATE mypump_gimnasio SET fotos_borradas_en = NOW(), actualizado_en = NOW() WHERE id = p_id AND estado IN ('listo','reemplazado');
+  -- Un borrador abandonado puede retomarse: sin marca, sus fotos nuevas vuelven a entrar al barrido.
+  UPDATE mypump_gimnasio SET fotos_borradas_en = CASE WHEN estado = 'borrador' THEN NULL ELSE NOW() END, actualizado_en = NOW()
+   WHERE id = p_id AND estado IN ('listo','reemplazado','borrador','a_revisar','en_editor','error');
   RETURN FOUND;
 END;
 $$;
@@ -683,13 +710,13 @@ REVOKE ALL ON FUNCTION
   mypump_gimnasio_tomar(), mypump_gimnasio_devolver(UUID, BOOLEAN, TEXT), mypump_gimnasio_liberar_colgadas(INTEGER, INTEGER),
   mypump_gimnasio_guardar(UUID, TEXT, JSONB, JSONB, JSONB, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, JSONB), mypump_gimnasio_vencer_confirmaciones(INTEGER),
   mypump_gimnasio_servicio(TEXT), mypump_gimnasio_cerrar(UUID, TEXT, TEXT), mypump_gimnasio_avisado(UUID),
-  mypump_gimnasio_para_limpiar(INTEGER, INTEGER), mypump_gimnasio_limpieza_hecha(UUID)
+  mypump_gimnasio_para_limpiar(INTEGER, INTEGER), mypump_gimnasio_limpieza_hecha(UUID), mypump_gimnasio_reabrir_errores(INTEGER, INTEGER)
 FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION
   mypump_gimnasio_tomar(), mypump_gimnasio_devolver(UUID, BOOLEAN, TEXT), mypump_gimnasio_liberar_colgadas(INTEGER, INTEGER),
   mypump_gimnasio_guardar(UUID, TEXT, JSONB, JSONB, JSONB, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, JSONB), mypump_gimnasio_vencer_confirmaciones(INTEGER),
   mypump_gimnasio_servicio(TEXT), mypump_gimnasio_cerrar(UUID, TEXT, TEXT), mypump_gimnasio_avisado(UUID),
-  mypump_gimnasio_para_limpiar(INTEGER, INTEGER), mypump_gimnasio_limpieza_hecha(UUID)
+  mypump_gimnasio_para_limpiar(INTEGER, INTEGER), mypump_gimnasio_limpieza_hecha(UUID), mypump_gimnasio_reabrir_errores(INTEGER, INTEGER)
 TO service_role;
 
 COMMIT;

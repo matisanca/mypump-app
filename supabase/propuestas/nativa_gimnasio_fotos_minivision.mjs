@@ -5,7 +5,8 @@
 //   if (req.method === 'POST' && req.url === '/gimnasio/urls')   return handleGimnasioUrls(req, res, origin);
 //   if (req.method === 'POST' && req.url === '/gimnasio/borrar') return handleGimnasioBorrar(req, res, origin);
 // En overLimit, el tope de esta función:
-//   const tope = feature === 'fotos' ? RATE_FOTOS : feature === 'gimnasio' ? RATE_GIMNASIO : RATE_LIMIT;
+//   sumar la rama `feature === 'gimnasio' ? RATE_GIMNASIO :` justo antes del `RATE_LIMIT` final de `const tope`, sin tocar las demás
+//   (el server.mjs vivo ya tiene `reps` y `repsConsent`: reemplazar la línea entera las borraría).
 // En send(), para que la web pueda mandar los encabezados (fetch hace un preflight):
 //   headers['Access-Control-Allow-Headers'] = 'Content-Type, x-gimnasio-token, x-gimnasio-id, x-gimnasio-foto, x-gimnasio-zona';
 // El binario: en la Mini `swiftc` no compila (Command Line Tools rotas: redefinition of module SwiftBridging). Compilar en la MacBook
@@ -21,7 +22,7 @@
 
 import { execFile as execFileGim } from 'node:child_process';
 import { createHash as hashGim } from 'node:crypto';
-import { mkdtemp as mkdtempGim, readFile as readFileGim, rm as rmGim, writeFile as writeFileGim } from 'node:fs/promises';
+import { mkdtemp as mkdtempGim, readdir as readdirGim, readFile as readFileGim, rm as rmGim, writeFile as writeFileGim } from 'node:fs/promises';
 import { tmpdir as tmpdirGim, homedir as homedirGim } from 'node:os';
 import { join as joinGim } from 'node:path';
 
@@ -40,6 +41,14 @@ const RECHAZOS_GIMNASIO = {
   no_encontrado: [404, 'carga no encontrada'], ajena: [409, 'id de foto repetido'], estado: [409, 'esta carga ya no recibe fotos'],
   tope: [413, 'llegaste al máximo de fotos'], no_habilitado: [403, 'no habilitado'],
 };
+
+// Una caída a mitad de tapado deja la foto original en el temporal. Al primer uso de cada arranque se barre lo que quedó de antes.
+let gimnasioBarrido = null;
+function barrerTemporalesGimnasio() {        // se espera antes de crear el temporal propio: si no, el barrido podría llevárselo
+  gimnasioBarrido ??= readdirGim(tmpdirGim()).then((nombres) => Promise.all(nombres.filter((n) => n.startsWith('gimnasio-'))
+    .map((n) => rmGim(joinGim(tmpdirGim(), n), { recursive: true, force: true })))).catch((e) => console.error('[gimnasio] barrido', e.message || e));
+  return gimnasioBarrido;
+}
 
 const gimnasioEnCurso = new Set();                // cuentas subiendo ahora
 
@@ -93,6 +102,7 @@ function leerCuerpoGimnasio(req, largo) {
 
 // Tapa y recodifica. Devuelve { buf, caras, borde_blanco }, null si no era una imagen válida, o lanza si el binario falló.
 async function taparCaras(buf) {
+  await barrerTemporalesGimnasio();
   const dir = await mkdtempGim(joinGim(tmpdirGim(), 'gimnasio-'));   // 0700: la foto original solo la ve este usuario
   try {
     const entrada = joinGim(dir, 'entrada.jpg'), salida = joinGim(dir, 'salida.jpg');
