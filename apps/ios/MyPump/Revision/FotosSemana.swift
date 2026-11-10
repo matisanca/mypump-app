@@ -66,6 +66,23 @@ struct FotosSemana: View {
                         .transition(.opacity)
                 }
 
+                // F6 (auditoría 10/11): la foto que el servidor rechazó queda a la vista.
+                if let modelo, !modelo.rechazadas.isEmpty {
+                    ForEach(modelo.rechazadas.keys.sorted(), id: \.self) { clave in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Esta foto no se pudo subir", systemImage: "exclamationmark.triangle.fill")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Color.alerta)
+                            HStack(spacing: 12) {
+                                Button("Reintentar") { Task { await modelo.reintentarRechazada(clave) } }
+                                    .accessibilityIdentifier("foto-reintentar")
+                                Button("Descartar", role: .destructive) { modelo.descartarRechazada(clave) }
+                            }
+                            .font(.footnote.weight(.bold))
+                        }
+                    }
+                }
+
                 if racha >= 2 {
                     Label("\(racha) semanas seguidas registradas", systemImage: "flame.fill")
                         .labelStyle(IconoTeñido(color: .alerta))

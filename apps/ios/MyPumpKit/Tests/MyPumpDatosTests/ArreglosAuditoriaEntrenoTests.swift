@@ -59,3 +59,63 @@ struct ArreglosAuditoriaEntrenoTests {
         #expect(p.keys.sorted() == ["b"])
     }
 }
+
+// Auditoría del 10/11, F5: lo que el servidor rechazaba se abandonaba en más o menos un minuto (8 intentos) con un cartel
+// de 9 segundos, y no quedaba ningún lugar para reintentarlo.
+@Suite("Auditoría F5: lo rechazado no se pierde", .serialized)
+struct ArreglosAuditoriaColaTests {
+    final class Estado: @unchecked Sendable {
+        private let lock = NSLock()
+        private var _ms = 1_000_000.0, _rechaza = true
+        var ms: Double { get { lock.withLock { _ms } } set { lock.withLock { _ms = newValue } } }
+        var rechaza: Bool { get { lock.withLock { _rechaza } } set { lock.withLock { _rechaza = newValue } } }
+    }
+
+    @Test func rechazadaSeSigueIntentandoYDespuesSeReintentaAMano() async {
+        let e = Estado()
+        let cola = Outbox(archivo: nil, ventanaAbandono: 30 * 60 * 1000, reintentoAutomatico: false, reloj: { e.ms }) { _ in
+            e.rechaza ? .respuesta(.failure(ErrorRPC(clase: .permanente, status: 400, codigo: "22P02", mensaje: "boom")))
+                      : .respuesta(.success(.texto("ok")))
+        }
+        _ = await cola.encolar("carga", .objeto(["x": .numero(1)]), dedupeKey: "k1")
+        for _ in 0..<12 { await cola.drenar(); e.ms += 1000 }
+        #expect(await cola.operaciones.count == 1, "con 12 rechazos en 12 segundos sigue en la cola")
+        #expect(await cola.perdidos.isEmpty)
+        e.ms += 31 * 60 * 1000
+        await cola.drenar()
+        #expect(await cola.operaciones.isEmpty)
+        #expect(await cola.perdidos.count == 1, "pasada la ventana queda en «No se pudo guardar»")
+        e.rechaza = false
+        #expect(await cola.reintentarPerdidos() == 1)
+        #expect(await cola.operaciones.first?.tries == 0)
+        await cola.drenar()
+        #expect(await cola.operaciones.isEmpty)
+        #expect(await cola.perdidos.isEmpty)
+    }
+}
+
+// Auditoría del 10/11, F6: una foto de progreso que el servidor rechazaba al subirse sola se borraba sin avisar.
+@Suite("Auditoría F6: la foto rechazada queda a la vista", .serialized)
+@MainActor
+struct ArreglosAuditoriaFotosTests {
+    let raiz = FileManager.default.temporaryDirectory.appendingPathComponent("fotos-rechazo-\(UUID().uuidString)")
+    let token = "tokenDePrueba_0000000000"
+
+    @Test func rechazadaEnLaColaNoSeBorraEnSilencio() async throws {
+        let ok = RelojDePrueba(0)   // 0 = rechaza; 1 = acepta
+        let t = TransporteProgramado { _, _ in ok.ms == 0 ? (400, #"{"ok":false,"error":"fecha fuera de rango"}"#) : (200, #"{"ok":true}"#) }
+        let disco = Disco(raiz: raiz, token: token)
+        let clave = "2026-11-02|frente"
+        disco.guardar([clave: FotoPendiente(pose: "frente", fecha: "2026-11-03", dataUrl: "data:image/jpeg;base64,/9j/")], FotoPendiente.archivo)
+        let m = ModeloFotos(cliente: ClienteRPC(transporte: t), token: token, disco: disco)
+        await m.drenar()
+        #expect(m.pendientes.isEmpty)
+        #expect(m.rechazadas[clave]?.motivo == "fecha fuera de rango")
+        // Sobrevive a cerrar la app.
+        #expect(ModeloFotos(cliente: ClienteRPC(transporte: t), token: token, disco: disco).rechazadas[clave] != nil)
+        ok.ms = 1
+        await m.reintentarRechazada(clave)
+        #expect(m.rechazadas.isEmpty && m.pendientes.isEmpty)
+        #expect(t.llamadas.filter { $0 == "upload" }.count == 2)
+    }
+}

@@ -50,6 +50,19 @@ public final class ModeloApp {
     /// Lo que le falta a la dieta publicada (`normalizarDieta`): para el aviso "a tu plan le falta información".
     public private(set) var problemasDieta: [String] = []
     public private(set) var estadoGuardado: EstadoGuardado = .quieto
+    /// F5 (auditoría 10/11): cuántas cosas la cola no pudo guardar (quedan a la vista con «Reintentar» hasta que salgan).
+    public private(set) var perdidos = 0
+    /// F5: lo mínimo que se sigue intentando algo que el servidor rechaza antes de darlo por perdido.
+    public static let ventanaAbandono: Double = 30 * 60 * 1000
+
+    /// F5: «Reintentar» de «No se pudo guardar».
+    public func reintentarPerdidos() async {
+        guard let cola = outbox else { return }
+        await cola.reintentarPerdidos()
+        perdidos = await cola.perdidos.count
+        await cola.drenar()
+        perdidos = await cola.perdidos.count
+    }
 
     // Dieta
     public private(set) var excluir: [String] = []
@@ -321,7 +334,8 @@ public final class ModeloApp {
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones, carpetaAudios: disco.url("audios"))
-        let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true, retenerSwaps: Self.faltaDecidirSwaps(en: disco)) { op in
+        let cola = Outbox(archivo: disco.url("outbox.json"), ventanaAbandono: Self.ventanaAbandono, retenerLegadas: true,
+                          retenerSwaps: Self.faltaDecidirSwaps(en: disco)) { op in
             await escrituras.ejecutar(op)
         }
         UltimaCuenta.anotar(t)
@@ -339,6 +353,8 @@ public final class ModeloApp {
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3).
         salud = ModeloSalud(cliente: cliente, token: t, almacen: AlmacenSaludPorCuenta(base: AlmacenSaludDefaults(), cuenta: Disco.huella(t)))
         Task { [weak self] in
+            let n = await cola.perdidos.count
+            await MainActor.run { self?.perdidos = n }
             await cola.observar(estado: { e in Task { @MainActor in self?.estadoGuardado = e } },
                                 abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } },
                                 guardadas: { ops in Task { @MainActor in self?.alGuardar(ops) } })
@@ -357,6 +373,7 @@ public final class ModeloApp {
     /// Lo que la cola abandonó (va a fallidos, no se borra). Un mensaje del chat se marca en su burbuja para
     /// reintentarlo ("no salió → Reintentar"), como `marcarChatFallido` de la web.
     private func alAbandonar(_ ops: [Operacion]) {
+        if let cola = outbox { Task { [weak self] in let n = await cola.perdidos.count; self?.perdidos = n } }
         guia?.alAbandonar(ops)
         for op in ops where op.kind == Self.kindAjustes { ajusteAbandonado(op) }
         for op in ops where op.kind == "chat" {

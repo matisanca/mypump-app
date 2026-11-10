@@ -24,6 +24,9 @@ struct RaizApp<Contenido: View>: View {
                     // las pestañas no se corrían y el aviso tapaba el botón de volver, en la demo y sin conexión).
                     VStack(spacing: 0) {
                         if modelo.esDemo { if !DemoUI.captura { BarraDemo(modelo: modelo) } } else if modelo.desdeCache { BannerSinConexion() }
+                        if !modelo.esDemo, modelo.perdidos > 0 {
+                            BannerPerdidos(cantidad: modelo.perdidos) { Task { await modelo.reintentarPerdidos() } }
+                        }
                         contenido()
                     }
                     .overlay(alignment: .bottom) {

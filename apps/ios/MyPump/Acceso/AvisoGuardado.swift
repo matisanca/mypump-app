@@ -66,7 +66,7 @@ struct AvisoGuardado: View {
         case .guardando: ("Guardando…", "arrow.triangle.2.circlepath", .secondary)
         case .guardado: ("Guardado", "checkmark.circle.fill", Color.exito)
         case .sinConexion: ("Sin conexión, se reintenta solo", "wifi.slash", Color.alerta)
-        case .perdido: ("Algo no se pudo guardar. Revisalo y cargalo de nuevo", "exclamationmark.triangle.fill", Color.peligro)
+        case .perdido: ("Algo no se pudo guardar. Arriba podés reintentarlo", "exclamationmark.triangle.fill", Color.peligro)
         }
     }
 }
@@ -81,5 +81,28 @@ struct BannerSinConexion: View {
             .padding(.vertical, 8)
             .background(.bar)
             .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+/// F5 (auditoría 10/11): lo que la cola no pudo guardar queda a la vista con «Reintentar» (antes era un cartel de 9 s que
+/// el alumno casi nunca veía porque estaba entrenando).
+struct BannerPerdidos: View {
+    let cantidad: Int
+    let reintentar: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Label(cantidad == 1 ? "Algo no se pudo guardar" : "\(cantidad) cosas no se pudieron guardar",
+                  systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.peligro)
+            Spacer(minLength: 0)
+            Button("Reintentar", action: reintentar)
+                .font(.footnote.weight(.bold))
+                .accessibilityIdentifier("reintentar-perdidos")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.bar)
     }
 }

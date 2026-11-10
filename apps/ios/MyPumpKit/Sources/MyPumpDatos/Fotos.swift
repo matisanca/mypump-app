@@ -57,6 +57,15 @@ public final class ModeloFotos {
     /// "<lunes>|<pose>" → URL firmada (1 h).
     public private(set) var urls: [String: URL] = [:]
     public private(set) var subiendo: Set<String> = []
+    /// F6 (auditoría 10/11): las que el servidor rechazó al subirlas solas (antes se borraban sin avisar). Quedan a la vista
+    /// con «Reintentar» y «Descartar». "<lunes>|<pose>" → la foto y el motivo.
+    public private(set) var rechazadas: [String: FotoRechazada] = [:]
+
+    public struct FotoRechazada: Codable, Equatable, Sendable {
+        public let foto: FotoPendiente
+        public let motivo: String
+    }
+    static let archivoRechazadas = "fotos-rechazadas.json"
 
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
@@ -71,6 +80,29 @@ public final class ModeloFotos {
     public init(cliente: ClienteRPC, token: String, disco: Disco?) {
         self.cliente = cliente; self.token = token; self.disco = disco
         pendientes = disco?.leer([String: FotoPendiente].self, Self.archivo) ?? [:]
+        rechazadas = disco?.leer([String: FotoRechazada].self, Self.archivoRechazadas) ?? [:]
+    }
+
+    /// F6: «Reintentar» de una foto rechazada: vuelve a la cola (si el alumno no sacó otra de esa pose) y se sube.
+    public func reintentarRechazada(_ clave: String) async {
+        guard let r = rechazadas.removeValue(forKey: clave) else { return }
+        guardarRechazadas()
+        if pendientes[clave] == nil {
+            pendientes[clave] = r.foto
+            _ = guardarCola()
+        }
+        await drenar()
+    }
+
+    /// F6: «Descartar» de una foto rechazada.
+    public func descartarRechazada(_ clave: String) {
+        guard rechazadas.removeValue(forKey: clave) != nil else { return }
+        guardarRechazadas()
+    }
+
+    private func guardarRechazadas() {
+        guard let disco else { return }
+        if rechazadas.isEmpty { disco.borrar(Self.archivoRechazadas) } else { disco.guardar(rechazadas, Self.archivoRechazadas) }
     }
 
     /// Las fotos que quedaron en la carpeta de otro link de la misma persona. Una de esta cuenta para la misma pose y
@@ -155,7 +187,12 @@ public final class ModeloFotos {
                 sacar(clave, si: item)
                 conErrorDelServidor.remove(clave)
                 subioAlgo = true
-            case .fatal:
+            case .fatal(let motivo):
+                // F6: no se borra en silencio: queda en «Esta foto no se pudo subir» hasta que la reintente o la descarte.
+                if pendientes[clave] == item {
+                    rechazadas[clave] = FotoRechazada(foto: item, motivo: motivo)
+                    guardarRechazadas()
+                }
                 sacar(clave, si: item)
                 conErrorDelServidor.remove(clave)
             case .reintentar:
