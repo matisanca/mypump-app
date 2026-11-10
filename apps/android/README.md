@@ -239,9 +239,12 @@ lleva tocar un aviso) está en `:core:datos` (`Avisos.kt`), con sus tests en la 
   el reposo forzado) la alarma llegó entre 10 y 50 ms después del fin. Pero el sistema le da a una alarma inexacta una
   ventana del 75 % de lo que faltaba (en `dumpsys alarm`, un descanso de 2:28 tiene +1:51), y con la pantalla apagada
   Android 12+ puede despertar el teléfono recién al final de esa ventana: si nada lo despierta antes (la música, otra
-  alarma), un descanso de 90 s puede avisar hasta un minuto tarde. Sin alarmas exactas no se puede asegurar más; las
-  alternativas (encadenar alarmas de menos de 10 s, que salen exactas pero despiertan el teléfono seguido, o un servicio
-  en primer plano con el reloj en una notificación fija) son una decisión de producto.
+  alarma), un descanso de 90 s podía avisar hasta un minuto tarde. **Desde la auditoría del 10/11 (F8)** se encadenan
+  alarmas inexactas (`SaltosDescanso`): cada una apunta lo bastante antes para que, con todo el margen del sistema, suene
+  antes del fin, y cuando faltan menos de 8 s el receptor espera despierto (`goAsync`) y avisa en el segundo. Un descanso
+  de 90 s despierta el teléfono cuatro veces como mucho. Sin permisos nuevos. Lo que queda como decisión de producto: un
+  servicio en primer plano con el reloj en una notificación fija necesita `FOREGROUND_SERVICE` (tipo `shortService`,
+  Android 14+), y una alarma exacta, `SCHEDULE_EXACT_ALARM`; los dos cambian los permisos de la tienda y no se agregaron.
 - **Pruebas.** Instrumentadas: `OnboardingUiTest` y `AvisosUiTest`. El permiso no se puede sacar desde una prueba
   (`pm revoke` mata el proceso, también el de la prueba): las que necesitan "sin permiso" lo fijan en `PermisoDePrueba`, y
   las que miran lo publicado lo dan de verdad con `pm grant`. El token de FCM es inventado (`AvisosDePrueba`): las pruebas
