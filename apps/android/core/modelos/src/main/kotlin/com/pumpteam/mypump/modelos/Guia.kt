@@ -261,6 +261,8 @@ data class ItemSuplemento(
     val dias: List<String> = emptyList(),
     /** Qué buscar en la tienda. */
     val comprar: CompraSuplemento? = null,
+    /** Es un protector (un fármaco, `entregas_016`). Se muestra como los demás, pero no se marca «lo compré / lo estoy tomando». */
+    val protector: Boolean = false,
 ) {
     companion object {
         fun desde(e: JsonElement): ItemSuplemento? {
@@ -292,6 +294,7 @@ data class ItemSuplemento(
                     else -> listOfNotNull(Lector.textoTolerante(d)?.trim()?.ifEmpty { null })
                 },
                 comprar = CompraSuplemento.desde(o["comprar"]),
+                protector = o.booleano("protector") ?: false,
             )
         }
     }
