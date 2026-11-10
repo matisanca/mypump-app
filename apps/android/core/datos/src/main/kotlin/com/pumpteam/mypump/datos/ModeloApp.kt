@@ -70,6 +70,8 @@ class ModeloApp(
     /** `UserDefaults` de iOS: lo poco que se recuerda fuera de la cuenta. */
     val preferencias: Preferencias,
     internal val alcance: CoroutineScope,
+    /** Donde esperan los archivos de «Estudios» hasta subir (en la app, `noBackupFilesDir`). Sin ella, [raizDisco]. */
+    private val raizSinRespaldo: File? = null,
 ) {
     enum class Fase {
         /** "Bienvenido a MyPump": pegá tu link o mirá la demo. */
@@ -242,6 +244,10 @@ class ModeloApp(
     /** Técnica por video: existe con cuenta, pero solo llama al servidor con la palanca `tecnica_video` prendida. */
     private val _tecnica = MutableStateFlow<ModeloTecnica?>(null)
     val tecnica: StateFlow<ModeloTecnica?> = _tecnica.asStateFlow()
+
+    /** Estudios y órdenes: existe con cuenta, pero solo llama al servidor con la palanca `estudios_app` prendida. */
+    private val _estudios = MutableStateFlow<ModeloEstudios?>(null)
+    val estudios: StateFlow<ModeloEstudios?> = _estudios.asStateFlow()
 
     /** Progreso: se carga al abrir la pestaña (como la web). */
     private val _progreso = MutableStateFlow<ModeloProgreso?>(null)
@@ -495,6 +501,7 @@ class ModeloApp(
         _fotos.value = null
         _gimnasio.value = null
         _tecnica.value = null
+        _estudios.value = null
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
@@ -534,6 +541,7 @@ class ModeloApp(
         _fotos.value = ModeloFotos(cliente, t, d)
         _gimnasio.value = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _tecnica.value = ModeloTecnica(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        _estudios.value = ModeloEstudios(cliente, t, d, ColaEstudios.carpeta(raizSinRespaldo ?: raizDisco, d), lanzar = { tarea -> alcance.launch { tarea() } })
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
@@ -673,6 +681,7 @@ class ModeloApp(
         val fotosCuenta = _fotos.value
         val gimnasioCuenta = _gimnasio.value
         val tecnicaCuenta = _tecnica.value
+        val estudiosCuenta = _estudios.value
         val clienteId = _info.value?.clienteId
         if (discoCuenta != null && colaCuenta != null && !clienteId.isNullOrEmpty()) {
             CuentasDelTelefono.anotar(clienteId, discoCuenta)
@@ -683,6 +692,7 @@ class ModeloApp(
             fotosCuenta?.let { f -> CuentasDelTelefono.adoptarFotos(clienteId, discoCuenta, f) }
             gimnasioCuenta?.let { g -> CuentasDelTelefono.adoptarGimnasio(clienteId, discoCuenta, g) }
             tecnicaCuenta?.let { x -> CuentasDelTelefono.adoptarTecnica(clienteId, discoCuenta, x) }
+            estudiosCuenta?.let { x -> CuentasDelTelefono.adoptarEstudios(clienteId, discoCuenta, x) }
             if (!vigente()) return
         }
 
@@ -702,6 +712,7 @@ class ModeloApp(
             _palanca.value = it
             _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
             _tecnica.value?.recordarPalanca(it.tecnicaVideo)
+            _estudios.value?.recordarPalanca(it.estudiosApp)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -765,6 +776,7 @@ class ModeloApp(
         }
         sincronizarGimnasio()
         sincronizarTecnica()
+        sincronizarEstudios()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -782,6 +794,18 @@ class ModeloApp(
         _fotos.value?.drenar()
         _gimnasio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
         _tecnica.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+        _estudios.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+    }
+
+    /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
+    private suspend fun sincronizarEstudios() {
+        val x = _estudios.value ?: return
+        if (x.palancaRecordada) {
+            x.refrescar()
+            x.drenarEnFondo()   // un PDF grande no frena el resto de la carga
+        } else {
+            x.apagar()
+        }
     }
 
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
@@ -851,6 +875,7 @@ class ModeloApp(
         _fotos.value?.drenar()
         sincronizarGimnasio()
         sincronizarTecnica()
+        sincronizarEstudios()
         _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }

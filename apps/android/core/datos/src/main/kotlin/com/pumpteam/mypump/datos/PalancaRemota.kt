@@ -22,6 +22,8 @@ data class PalancaRemota(
     val gimnasioFotos: Boolean = false,
     /** Técnica por video (`tecnica_video`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. */
     val tecnicaVideo: Boolean = false,
+    /** Estudios y órdenes (`estudios_app`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. */
+    val estudiosApp: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -36,6 +38,7 @@ data class PalancaRemota(
             diasMarcarDieta = (j["dieta_dias_marcar"] as? ValorJson.Numero)?.valor?.takeIf { it == Math.rint(it) && it in 0.0..30.0 }?.toInt(),
             gimnasioFotos = (j["gimnasio_fotos"] as? ValorJson.Booleano)?.valor ?: false,
             tecnicaVideo = (j["tecnica_video"] as? ValorJson.Booleano)?.valor ?: false,
+            estudiosApp = (j["estudios_app"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */
