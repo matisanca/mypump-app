@@ -409,7 +409,7 @@ public final class ModeloEstudios {
         let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
         // Lo que no habla del archivo sino del link o del envío no gasta el archivo.
         switch status {
-        case 403: return .token
+        case 401, 403: return .token      // 401: link regenerado; 403: la cuenta ya no tiene la función
         case 404: return .reabrir
         case 409: return .cerrado
         default: break
