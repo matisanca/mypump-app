@@ -252,6 +252,108 @@ struct EstudiosTests {
         #expect(m.aviso == nil)
     }
 
+    @Test func elMismoArchivoDosVecesEntraUnaSola() async {
+        let d = DobleEstudios.escenario("vacio")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        #expect(m.elegir(jpeg(1)) == .ok)
+        #expect(m.elegir(jpeg(1)) == .ok)
+        #expect(m.elegir(jpeg(2)) == .ok)
+        #expect(m.borrador.count == 2)
+        _ = m.enviar()
+        await m.drenar()
+        #expect(m.cola.isEmpty)
+        #expect(d.envios[0].estado == "enviado")
+        #expect(d.ultimoEnviar?["p_archivos"] == .numero(2))
+        #expect(m.aviso == .recibido)
+    }
+
+    @Test func subidaSinPermisoNoGastaLosArchivos() async {
+        let d = DobleEstudios.escenario("vacio")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        for i in 1...2 { _ = m.elegir(jpeg(UInt8(i))) }
+        _ = m.enviar()
+        d.proximasSubidas = [403]
+        await m.drenar()
+        #expect(m.cola.first?.archivos.count == 2)
+        #expect(archivosEn(m, EnvioEstudioPendiente.carpeta).count == 2)
+        #expect(m.aviso == nil)
+        await m.drenar()   // la próxima pasada sale entera
+        #expect(m.cola.isEmpty)
+        #expect(d.envios[0].archivos.count == 2)
+        #expect(m.aviso == .recibido)
+    }
+
+    @Test func siElServidorNoConoceElEnvioSeAbreDeNuevo() async {
+        let d = DobleEstudios.escenario("vacio")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        for i in 1...2 { _ = m.elegir(jpeg(UInt8(i))) }
+        _ = m.enviar()
+        d.proximasSubidas = [200, 404]
+        await m.drenar()
+        #expect(m.cola.isEmpty)
+        #expect(d.envios[0].archivos.count == 2)
+        #expect(d.envios[0].estado == "enviado")
+        #expect(m.aviso == .recibido)
+    }
+
+    @Test func envioYaCerradoNoGiraNiGastaReintentos() async {
+        let d = DobleEstudios.escenario("vacio")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        _ = m.elegir(pdf)
+        _ = m.enviar()
+        d.proximasSubidas = [409]
+        await m.drenar()
+        #expect(m.cola.isEmpty)
+        #expect(d.intentosDeSubida == 1)
+        #expect(archivosEn(m, EnvioEstudioPendiente.carpeta).isEmpty)
+    }
+
+    @Test func siLoDeshabilitanLaColaSeConserva() async {
+        let d = DobleEstudios.escenario("vacio")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        _ = m.elegir(pdf)
+        _ = m.enviar()
+        d.habilitado = false
+        await m.drenar()
+        #expect(!m.habilitado)
+        #expect(m.cola.count == 1)
+        #expect(archivosEn(m, EnvioEstudioPendiente.carpeta).count == 1)
+        d.habilitado = true
+        await m.refrescar()
+        await m.drenar()
+        #expect(m.cola.isEmpty)
+        #expect(d.envios.first?.estado == "enviado")
+    }
+
+    @Test func unEnvioQueNoSalioEnDosSemanasSeBorra() async throws {
+        let d = DobleEstudios.escenario("vacio")
+        let (m, raiz) = armar(d)
+        await m.refrescar()
+        _ = m.elegir(pdf)
+        _ = m.enviar()
+        #expect(m.cola.first?.creado != nil)
+        // Se envejece el índice a mano: tres semanas atrás.
+        let fm = FileManager.default
+        var tocado = false
+        let todos = (fm.enumerator(at: raiz, includingPropertiesForKeys: nil)?.allObjects as? [URL]) ?? []
+        for u in todos where u.lastPathComponent == EnvioEstudioPendiente.archivo {
+            var lista = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: u)) as? [[String: Any]])
+            let viejo = try #require(lista[0]["creado"] as? Double) - 21 * 86_400
+            lista[0]["creado"] = viejo
+            try JSONSerialization.data(withJSONObject: lista).write(to: u)
+            tocado = true
+        }
+        #expect(tocado)
+        let (m2, _) = armar(d, raiz: raiz)
+        #expect(m2.cola.isEmpty)
+        #expect(archivosEn(m2, EnvioEstudioPendiente.carpeta).isEmpty)
+    }
+
     @Test func reintentarElMismoEnvioNoDuplica() async {
         let d = DobleEstudios.escenario("vacio")
         let (m, raiz) = armar(d)

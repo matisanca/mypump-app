@@ -615,7 +615,7 @@ public final class ModeloApp {
         await fotos?.drenar()
         if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
         if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
-        if palanca.estudiosApp { estudios?.drenarEnFondo() }
+        if palanca.estudiosApp, estudios?.habilitado == true { estudios?.drenarEnFondo() }
     }
 
     private func sincronizarEstudios() async {
