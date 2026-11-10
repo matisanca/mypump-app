@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copiar a ~/Library/LaunchAgents/com.pump.firma.plist cambiando USUARIO. Ver RUNBOOK.md, paso 4. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.pump.firma</string>
+  <key>WorkingDirectory</key><string>/Users/USUARIO/pump-firma</string>
+  <key>ProgramArguments</key><array>
+    <string>/Users/USUARIO/pump-firma/venv/bin/python</string><string>-m</string><string>uvicorn</string>
+    <string>--factory</string><string>firma.app:app</string>
+    <string>--host</string><string>127.0.0.1</string><string>--port</string><string>8793</string>
+    <string>--no-access-log</string><string>--workers</string><string>1</string>
+  </array>
+  <key>EnvironmentVariables</key><dict>
+    <key>FIRMA_ENV</key><string>/Users/USUARIO/pump-firma-datos/firma.env</string>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>DYLD_FALLBACK_LIBRARY_PATH</key><string>/opt/homebrew/lib</string>
+  </dict>
+  <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/Users/USUARIO/pump-firma-datos/firma.log</string>
+  <key>StandardErrorPath</key><string>/Users/USUARIO/pump-firma-datos/firma.log</string>
+</dict></plist>

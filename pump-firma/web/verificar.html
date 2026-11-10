@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Verificar un documento · Pump Team</title>
+<link rel="stylesheet" href="/static/firma.css">
+</head>
+<body>
+<header class="barra"><span class="marca">PUMP TEAM</span><span class="sub">Verificar un documento</span></header>
+<main>
+<section class="tarjeta">
+<h1>Verificar un documento firmado</h1>
+<p>Subí el PDF que recibiste por correo para comprobar que es el que quedó registrado y que no cambió. El archivo no se guarda: solo se calcula su huella.</p>
+<label class="campo">PDF<input type="file" id="pdf" accept="application/pdf"></label>
+<p class="o">o escribí el identificador y la huella que figuran en tu correo</p>
+<label class="campo">Identificador<input type="text" id="id" autocomplete="off" spellcheck="false"></label>
+<label class="campo">Huella SHA-256<input type="text" id="sha" autocomplete="off" spellcheck="false"></label>
+<button class="boton" id="verificar" type="button">Verificar</button>
+<div id="resultado" class="resultado" aria-live="polite"></div>
+</section>
+</main>
+<script src="/static/verificar.js"></script>
+</body>
+</html>
