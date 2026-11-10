@@ -1,0 +1,38 @@
+/* «Novedades de tu plan» (js/novedades-ui.js): la hoja, la tarjeta de Entreno y la lista de Mis datos. */
+.nov-hoja{max-width:480px;gap:var(--space-4);padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom,0px))}
+.nov-cab{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.nov-icono{flex:none;width:52px;height:52px;border-radius:16px;display:grid;place-items:center;margin-bottom:6px;color:#fff;
+  background:linear-gradient(145deg,color-mix(in oklab,var(--color-brand) 80%,#fff),var(--color-brand));box-shadow:0 6px 18px color-mix(in oklab,var(--color-brand) 30%,transparent)}
+.nov-icono svg{width:26px;height:26px}
+.nov-ceja{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-brand-text)}
+.nov-titular{margin:0;font-family:"Archivo",var(--font-sans);font-size:24px;line-height:1.15;font-weight:800;letter-spacing:-.015em;color:var(--color-text-primary)}
+.nov-resumen{margin:0;font-size:15px;line-height:1.45;color:var(--color-text-secondary)}
+.nov-partes{display:flex;flex-direction:column;gap:var(--space-3)}
+.nov-parte{background:var(--color-bg-secondary);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}
+.nov-parte-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.nov-parte-ic{flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.nov-parte-tit{flex:1;min-width:0;font-family:"Archivo",var(--font-sans);font-size:16px;font-weight:700;color:var(--color-text-primary)}
+.nov-chip{flex:none;font-size:12px;font-weight:600;padding:3px 9px;border-radius:var(--radius-full);background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.nov-ver{all:unset;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:14px;font-weight:600;color:var(--color-brand-text);cursor:pointer;padding:4px 0 4px 6px}
+.nov-ver:focus-visible,.nov-tarjeta:focus-visible,.nov-fila:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px;border-radius:8px}
+.nov-lineas{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.nov-lineas li{position:relative;padding-left:18px;font-size:15px;line-height:1.4;color:var(--color-text-primary)}
+.nov-lineas li::before{content:"";position:absolute;left:3px;top:.55em;width:7px;height:7px;border-radius:50%;background:var(--color-brand)}
+.nov-botones{display:flex;flex-direction:column;gap:var(--space-2)}
+.nov-btn{width:100%}
+
+.nov-tarjeta,.nov-fila{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:var(--space-3);width:100%;padding:var(--space-3) var(--space-4);
+  background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer}
+.nov-tarjeta{margin-bottom:var(--space-3)}
+.nov-tarjeta.is-nueva{border-color:color-mix(in oklab,var(--color-brand) 45%,var(--color-border));background:color-mix(in oklab,var(--color-brand) 6%,var(--color-bg-primary))}
+.nov-tarjeta-ic{flex:none;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(145deg,color-mix(in oklab,var(--color-brand) 80%,#fff),var(--color-brand))}
+.nov-tarjeta-ic svg{width:22px;height:22px}
+.nov-tarjeta-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.nov-tarjeta-ceja{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-brand-text)}
+.nov-tarjeta-txt strong{font-family:"Archivo",var(--font-sans);font-size:16px;font-weight:700;color:var(--color-text-primary)}
+.nov-tarjeta-txt span:last-child{font-size:14px;line-height:1.35;color:var(--color-text-secondary)}
+.nov-lista{display:flex;flex-direction:column;gap:var(--space-2)}
+.nov-vacio{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--space-2);padding:var(--space-4) 0}
+.nov-vacio p{margin:0;font-size:15px;line-height:1.45;color:var(--color-text-secondary)}
+@media (prefers-reduced-motion:reduce){.nov-hoja{animation:none}}

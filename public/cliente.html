@@ -16,6 +16,7 @@
 
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/gimnasio.css">
+<link rel="stylesheet" href="/css/novedades.css">
 <link rel="stylesheet" href="/css/tecnica.css">
 <style>
 *{box-sizing:border-box}
@@ -1601,6 +1602,8 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/tecnica.js"></script>
 <script src="/js/tecnica-cola.js"></script>
 <script src="/js/tecnica-ui.js"></script>
+<script src="/js/novedades-plan.js"></script>
+<script src="/js/novedades-ui.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1784,9 +1787,27 @@ function _tecPalanca(cfg) {
   });
   window.TecnicaUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.tecnica_video === true : null);
 }
+/* «Novedades de tu plan» (js/novedades-*.js), detrás de `novedades_plan`. Sin la clave, apagada; sin red, lo último que se
+   supo. Apagada no se guarda ni se muestra nada. En las previews, ?novedades=1 la prende y ?novedades=plan|rutina|bloque
+   (con DEMO) muestra una lista armada para las capturas. */
+const _NOV_KEY = 'mypump_palanca_novedades_plan';
+let _novResolver = null;
+const _novCfg = new Promise((r) => { _novResolver = r; });
+function _novPalanca(cfg) {
+  let v = null;
+  if (cfg && typeof cfg === 'object') {
+    v = cfg.novedades_plan === true;
+    try { localStorage.setItem(_NOV_KEY, v ? '1' : '0'); } catch (_) {}
+  } else {
+    try { v = localStorage.getItem(_NOV_KEY) === '1'; } catch (_) { v = false; }
+  }
+  try { if (_hostDePrueba() && new URLSearchParams(location.search).get('novedades') === '1') v = true; } catch (_) {}
+  return v;
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
+  _novResolver(cfg);
   _gimPalanca(cfg);
   _tecPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
@@ -10771,6 +10792,7 @@ async function loadSuplementacion() {
   // rpc() devuelve null si falló (red o error) y [] si no hay suplementación:
   // solo un [] o una fila buena cambian lo guardado.
   const filas = await window.mypumpDB.getSuplementacion(TOKEN).catch(() => null);
+  STATE.suplLlego = Array.isArray(filas);
   if (Array.isArray(filas)) {
     const f = filas[0];
     resp = (f && _suplHay(f.suplementacion)) ? f : null;
@@ -10983,6 +11005,7 @@ function renderMisDatos() {
 
     <div class="md-ceja">Tu información</div>
     <div class="md-grupo">
+      ${window.NovedadesUI && window.NovedadesUI.entradaVisible() ? fila('mdNovedades', window.NovedadesUI.T.entradaMisDatos) : ''}
       ${guia ? fila('mdGuia', 'Ver mi guía') : ''}
       ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
       ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? fila('mdTecnica', window.Tecnica.T.titulo) : ''}
@@ -10992,6 +11015,8 @@ function renderMisDatos() {
     </div>
     <div class="md-pie md-legal">Pump Team no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.</div>`;
   document.getElementById('mdRec').onclick = () => setScene('salud');
+  const nov = document.getElementById('mdNovedades');
+  if (nov) nov.onclick = () => window.NovedadesUI.abrirLista();
   const gim = document.getElementById('mdGimnasio');
   if (gim) gim.onclick = () => window.GimnasioUI.abrir('misdatos');
   const tec = document.getElementById('mdTecnica');
@@ -11395,6 +11420,7 @@ function _bienvenidaGuia() {
     const r = document.getElementById('scene-train');
     if (r && window.MyPumpGuia && _guiaHost.dataset.montado) { r.insertBefore(_guiaHost, r.firstChild); _bienvenidaGuia(); }
     if (r && window.GimnasioUI) window.GimnasioUI.montarTarjeta(r, _guiaHost);
+    if (r && window.NovedadesUI) window.NovedadesUI.montarTarjeta(r, document.getElementById('gimHost') || _guiaHost);
   };
   renderProgress = function () {
     _rp.apply(this, arguments);
@@ -11539,6 +11565,7 @@ async function init() {
 
   let info, rutina, dieta;
   let _fromCache = false;
+  let _novErrDieta = false, _novSemilla = null;
   if (DEMO) {
     // Sin red: rutina/dieta quedan sin definir y cae al SAMPLE de abajo
     // (_isDemo:true), que ademas apaga todas las escrituras a Supabase.
@@ -11550,6 +11577,7 @@ async function init() {
     rutina = await window.mypumpDB.getRutinaActiva(TOKEN);
     const errRutina = window.mypumpDB._lastError;
     dieta = await window.mypumpDB.getDietaActiva(TOKEN);
+    _novErrDieta = !!window.mypumpDB._lastError;
     // Si la rutina NO llegó por un fallo de red/servicio (getClienteInfo
     // entró, el segundo request se cayó), antes se seguía como si el cliente
     // no tuviera rutina: entraba al modo DEMO con la rutina de ejemplo,
@@ -11568,6 +11596,7 @@ async function init() {
       }
     }
     // Guardar snapshot para modo offline (solo si trajo rutina real con estructura).
+    _novSemilla = loadOfflineSnapshot();   // lo que ya vio, antes de pisarlo (Novedades de tu plan)
     if (!_fromCache && rutina && rutina.estructura && rutina.estructura.dias) {
       saveOfflineSnapshot(info, rutina, dieta);
     }
@@ -11722,7 +11751,7 @@ async function init() {
   // dispositivo, incógnito, cache limpio, retroceso de semana).
   await restoreSesionDelDia();
   aplicarPendientesEntreno();
-  if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
+  if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {}).finally(() => _novResolver(null));
   // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio también va, como en la app.
   else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => _gimPalanca(r.ok ? r.data : null)).catch(() => {});
 
@@ -11759,7 +11788,12 @@ async function init() {
   loadSalud();    // alimenta la card Salud (Mi Día) Y la de Peso (Revisión)
   loadRecuperacion();  // score de recuperación (Mi Día) — motor SQL, mig 043
   loadConexiones();    // wearables conectados por OAuth (Revisión)
-  loadSuplementacion(); // pestaña Suplementación (app 2.1.0), solo si hay ítems
+  const _suplCacheAntes = _novSuplCache();
+  const _suplListo = loadSuplementacion(); // pestaña Suplementación (app 2.1.0), solo si hay ítems
+  arrancarNovedades({
+    rutina: _fromCache ? undefined : (rutina || null),
+    dieta: (_fromCache || (!dieta && _novErrDieta)) ? undefined : (dieta || null),
+  }, _novSemilla, _suplCacheAntes, _suplListo).catch((e) => console.warn('[novedades]', e));
   try { arrancarGuia(); } catch (_) {}   // «Tu guía»: tarjeta en Entreno y bienvenida
   loadRevision(); // check + fotos → Revisión
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
@@ -11784,6 +11818,47 @@ async function init() {
   if (_onboardingPendiente()) {
     setTimeout(() => { try { mostrarOnboardingPermisos(); } catch (e) { console.warn('[onboarding]', e); } }, 1200);
   }
+}
+
+/* ---- NOVEDADES DE TU PLAN (app 2.3.0, palanca `novedades_plan`) ----
+   Compara lo que llegó con lo que el alumno ya vio (js/novedades-plan.js) y, si Mati cambió algo, lo muestra una vez y lo
+   deja en la tarjeta de Entreno y en Mis datos. Lo que no llegó por la red no se compara ni pisa lo visto. */
+function _novSuplCache() {
+  try { const c = JSON.parse(localStorage.getItem(_SUPL_CACHE) || 'null'); return c && c.token === TOKEN && c.resp ? c.resp : undefined; }
+  catch (_) { return undefined; }
+}
+function _novRepintar() {
+  if (STATE.scene === 'train') renderTrain();
+  else if (STATE.scene === 'misdatos') renderMisDatos();
+}
+async function arrancarNovedades(llego, semilla, suplAntes, suplListo) {
+  if (!window.NovedadesUI || !window.NovedadesPlan) return;
+  const N = window.NovedadesUI;
+  N.configurar({
+    token: TOKEN || 'demo',
+    host: () => document.getElementById('modalHost'),
+    ocupado: () => !!document.querySelector('#modalHost .modal-back:not(#novBack)') || _onboardingPendiente(),
+    puedeIr: (a) => a !== 'suplementacion' || !!STATE.supl,
+    irA: (a) => setScene(a === 'rutina' ? 'train' : a === 'dieta' ? 'diet' : 'supl'),
+  });
+  if (DEMO || (DATA && DATA._isDemo)) {
+    let t = null;
+    try { t = _hostDePrueba() ? new URLSearchParams(location.search).get('novedades') : null; } catch (_) {}
+    if (!t || t === '1') return;
+    N.usarMuestra(N.muestra(t));
+    _novRepintar();
+    if (N.prendida()) N.mostrarPendiente();
+    return;
+  }
+  const cfg = await Promise.race([_novCfg, new Promise((r) => setTimeout(() => r(null), 8000))]);
+  N.aplicarPalanca(_novPalanca(cfg));
+  if (!N.prendida()) { _novRepintar(); return; }
+  await suplListo.catch(() => {});
+  N.observar(
+    { rutina: llego.rutina, dieta: llego.dieta, suplementacion: STATE.suplLlego ? (STATE.supl || null) : undefined },
+    { rutina: semilla && semilla.rutina || undefined, dieta: semilla && semilla.dieta || undefined, suplementacion: suplAntes });
+  _novRepintar();
+  N.mostrarPendiente();
 }
 
 /* ---- OFFLINE: snapshot de datos + banner (R3) ---- */
