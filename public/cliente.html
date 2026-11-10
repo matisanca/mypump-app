@@ -4026,7 +4026,7 @@ function renderDayPicker() {
 // serie confirmada ahí creaba una SEGUNDA sesión (iniciar_sesion no es
 // idempotente) con la duración del día anterior.
 async function cambiarDia(dia) {
-  _csVaciarDeshacer();
+  _csVaciarDeshacer(true);
   _csCorr = null;
   stopRest();
   // Podar ANTES de mover DATA.dia: _diaFinalizado todavía es el del día que
@@ -4892,12 +4892,12 @@ function csDeshacer() {
   renderTrain();
 }
 // Cierra la ventana: lo demorado sale a la cola. Al vencer, al próximo OK, al ocultarse la página y antes de todo lo que cambie el día.
-function _csVaciarDeshacer() {
+function _csVaciarDeshacer(dejaElDia) {   // dejaElDia: la cola resuelve la sesión de ese día; crearla acá podría duplicarla
   const f = _csFoto;
   if (!f) return;
   clearTimeout(_csFotoTimer);
   _csFoto = null;
-  if (f.diferidos.length && RUTINA_ID) ensureSesionIniciada().catch(() => {});
+  if (f.diferidos.length && RUTINA_ID && !dejaElDia) ensureSesionIniciada().catch(() => {});
   for (const op of f.diferidos) Outbox.enqueue(op.kind, op.payload, op.dedupeKey);
   try { localStorage.removeItem(_csKeyOK()); } catch (_) {}
   if (f.diaCompleto && !DATA._isDemo && checkIfDayCompleted()) setTimeout(() => showDayCompletedModal(), 500);
