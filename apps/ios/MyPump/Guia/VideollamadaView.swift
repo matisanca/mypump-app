@@ -28,9 +28,18 @@ enum Videollamada {
 
 /// Arriba de todo en Entreno: la videollamada agendada (hasta que termina) o, con la palanca y horarios libres, «Agendá tu
 /// videollamada». También agenda o borra los avisos locales cuando cambia la reserva.
+/// Si la pantalla de elegir horario de Entreno está abierta. Vive afuera de la tarjeta: al reservar, la tarjeta pasa de
+/// «Agendá» a la videollamada y una hoja colgada de ella se cerraba antes de mostrar «Listo».
+@MainActor @Observable
+final class EstadoVideollamada {
+    static let shared = EstadoVideollamada()
+    var elegir = false
+    /// La reserva que se está cambiando desde Entreno (misma razón: al cambiar, la tarjeta se rearma y cerraba la hoja).
+    var cambiando: ReservaAgenda?
+}
+
 struct TarjetaVideollamadaEntreno: View {
     let modelo: ModeloGuia
-    @State private var elegir = false
 
     var body: some View {
         let r = modelo.reservaTarjeta()
@@ -38,7 +47,7 @@ struct TarjetaVideollamadaEntreno: View {
             if r != nil {
                 TimelineView(.periodic(from: .now, by: 15)) { ctx in
                     if let r = modelo.reservaTarjeta(ahora: ctx.date) {
-                        TarjetaVideollamada(modelo: modelo, reserva: r, ahora: ctx.date)
+                        TarjetaVideollamada(modelo: modelo, reserva: r, ahora: ctx.date, hojaAfuera: true)
                             // En la ventana: la agenda cada 30 s (el link si falta y «Mati ya está en la sala»). Si la reserva
                             // vino solo del resumen (la guía no se abrió), primero se trae la agenda.
                             .task(id: r) {
@@ -48,10 +57,9 @@ struct TarjetaVideollamadaEntreno: View {
                     }
                 }
             } else if Videollamada.elegirHorario, case .franjas = modelo.vistaAgenda {
-                TarjetaElegirHorario(modelo: modelo) { elegir = true }
+                TarjetaElegirHorario(modelo: modelo) { EstadoVideollamada.shared.elegir = true }
             }
         }
-        .sheet(isPresented: $elegir) { PantallaHorario(modelo: modelo, cambiando: nil) }
     }
 }
 
@@ -68,6 +76,10 @@ struct TareasVideollamada: ViewModifier {
                 await AvisosVideollamada.programar(r, desdeMin: modelo?.agenda.entrarDesdeMin)
             }
             .task { if let modelo, Videollamada.elegirHorario, r == nil { await modelo.agenda.consultar() } }
+            .sheet(isPresented: Binding(get: { EstadoVideollamada.shared.elegir },
+                                        set: { EstadoVideollamada.shared.elegir = $0; if !$0 { EstadoVideollamada.shared.cambiando = nil } })) {
+                if let modelo { PantallaHorario(modelo: modelo, cambiando: EstadoVideollamada.shared.cambiando) }
+            }
     }
 
     private func claveAvisos(_ r: ReservaAgenda?) -> String {
@@ -82,6 +94,8 @@ struct TarjetaVideollamada: View {
     let modelo: ModeloGuia
     let reserva: ReservaAgenda
     var ahora: Date = Date()
+    /// En Entreno la hoja de cambiar cuelga de `TareasVideollamada` (afuera de la tarjeta); en la guía, de la tarjeta.
+    var hojaAfuera = false
     @State private var paraCalendario = false
     @State private var cambiar = false
     @State private var ayuda = false
@@ -276,7 +290,9 @@ struct TarjetaVideollamada: View {
                     .accessibilityLabel("Agregar a mi calendario")
                     .accessibilityIdentifier("agenda-calendario")
                 if puedeCambiar {
-                    Button { cambiar = true } label: {
+                    Button {
+                        if hojaAfuera { EstadoVideollamada.shared.cambiando = reserva; EstadoVideollamada.shared.elegir = true } else { cambiar = true }
+                    } label: {
                         Label("Cambiar horario", systemImage: "arrow.triangle.2.circlepath").lineLimit(1).minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity)
                     }

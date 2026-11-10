@@ -44,6 +44,10 @@ public struct PalancaRemota: Equatable, Sendable {
         if defaults.bool(forKey: claveGimnasioFotos) { p.gimnasioFotos = true }
         if defaults.bool(forKey: claveTecnicaVideo) { p.tecnicaVideo = true }
         if defaults.bool(forKey: claveElegirHorario) { p.elegirHorario = true }
+        #if DEBUG
+        // Pruebas de interfaz y capturas: `-elegirHorario YES` (lo mismo que mira la pantalla).
+        if let v = defaults.string(forKey: "elegirHorario") { p.elegirHorario = v == "YES" }
+        #endif
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
