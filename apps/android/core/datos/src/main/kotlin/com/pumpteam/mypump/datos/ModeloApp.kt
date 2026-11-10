@@ -243,6 +243,10 @@ class ModeloApp(
     private val _tecnica = MutableStateFlow<ModeloTecnica?>(null)
     val tecnica: StateFlow<ModeloTecnica?> = _tecnica.asStateFlow()
 
+    /** Feedback del alumno: existe con cuenta, pero solo llama al servidor con `me_duele` o `suple_estado` prendidas. */
+    private val _feedback = MutableStateFlow<ModeloFeedback?>(null)
+    val feedback: StateFlow<ModeloFeedback?> = _feedback.asStateFlow()
+
     /** Progreso: se carga al abrir la pestaña (como la web). */
     private val _progreso = MutableStateFlow<ModeloProgreso?>(null)
     val progreso: StateFlow<ModeloProgreso?> = _progreso.asStateFlow()
@@ -495,6 +499,7 @@ class ModeloApp(
         _fotos.value = null
         _gimnasio.value = null
         _tecnica.value = null
+        _feedback.value = null
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
@@ -534,6 +539,7 @@ class ModeloApp(
         _fotos.value = ModeloFotos(cliente, t, d)
         _gimnasio.value = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _tecnica.value = ModeloTecnica(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        _feedback.value = ModeloFeedback(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
@@ -765,6 +771,7 @@ class ModeloApp(
         }
         sincronizarGimnasio()
         sincronizarTecnica()
+        sincronizarFeedback()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -782,6 +789,13 @@ class ModeloApp(
         _fotos.value?.drenar()
         _gimnasio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
         _tecnica.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+    }
+
+    /** Con las dos palancas apagadas no se llama a nada: la app es la de siempre. */
+    private suspend fun sincronizarFeedback() {
+        val f = _feedback.value ?: return
+        val p = _palanca.value
+        if (p.meDuele || p.supleEstado) f.refrescar() else f.apagar()
     }
 
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
@@ -851,6 +865,7 @@ class ModeloApp(
         _fotos.value?.drenar()
         sincronizarGimnasio()
         sincronizarTecnica()
+        sincronizarFeedback()
         _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }
