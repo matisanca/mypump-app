@@ -66,6 +66,9 @@ struct PesoTarjeta: View {
                 }
                 .accessibilityElement(children: .combine)
 
+                // El ritmo que buscamos (2.3.0, palanca `metas_pasos`): solo si el plan lo trae.
+                RitmoPesoLinea(serie: s)
+
                 if puntos.count >= 2 {
                     grafico(puntos).frame(height: 168)
                 }

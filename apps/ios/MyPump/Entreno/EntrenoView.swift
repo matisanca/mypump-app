@@ -218,6 +218,8 @@ private struct ListaEntreno: View {
                 // hay; D16: la barra no se toca).
                 if let g = GuiaUI.modelo, !g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia) }
                 BannerRevision()
+                // «Pump del día» (2.3.0): solo con la palanca `metas_pasos` y una meta de pasos en el plan.
+                PumpDelDiaSiCorresponde()
                 // Eventos del Apple Watch que esperan hace horas sin poder pasar (otro día abierto, otra cuenta…).
                 if let t = motor.relojEsperando {
                     AvisoProgresion(icono: "applewatch", texto: Text(t), tono: .alerta)
