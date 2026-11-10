@@ -273,13 +273,18 @@
     return plano.split(/\s+/).filter(Boolean).join(' ');
   }
 
+  /* Tolerante como las apps y el servidor: true, 1 o el texto. Ante la duda, es un protector y no se marca. */
+  function esProtector(v) {
+    return v === true || v === 1 || (typeof v === 'string' && ['true', 't', '1', 'si', 'sí', 'yes'].includes(v.trim().toLowerCase()));
+  }
+
   /* Lo que se puede marcar: cada suplemento una vez, en el orden del plan. Los protectores (fármacos) no van nunca; lo que
      «sale» tampoco, salvo que ya tenga una marca. `marcas` = { clave: estado }. */
   function filas(items, marcas) {
     const vistos = new Set();
     const salen = [];
     for (const it of (Array.isArray(items) ? items : [])) {
-      if (!esObjeto(it) || it.protector === true || typeof it.nombre !== 'string') continue;
+      if (!esObjeto(it) || esProtector(it.protector) || typeof it.nombre !== 'string') continue;
       const k = clave(it.nombre);
       if (!k || vistos.has(k)) continue;
       vistos.add(k);
