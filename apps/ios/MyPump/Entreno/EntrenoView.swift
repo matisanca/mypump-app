@@ -341,6 +341,12 @@ private struct ListaEntreno: View {
                             texto: Text("Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3): no te guardes reps."))
         }
 
+        // F1 (auditoría 10/11): sin respuesta del servidor, las series se pintan con lo guardado en el teléfono.
+        if motor.seriesSinConfirmar {
+            AvisoProgresion(icono: "icloud.slash",
+                            texto: Text("Sin conexión. Ves las series guardadas en este teléfono."))
+        }
+
         // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre): ni su lugar en la pila.
         if !motor.todoHecho {
             TimelineView(.periodic(from: .now, by: 1)) { _ in

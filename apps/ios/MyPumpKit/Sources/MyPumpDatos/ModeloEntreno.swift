@@ -85,6 +85,11 @@ public final class ModeloEntreno {
     @ObservationIgnored public var alCambiarRutina: ((CambioRutina) -> Void)?
 
     @ObservationIgnored var sesionesLocales: [String: SesionLocal] = [:]
+    /// F1 (auditoría 10/11): las series y los estados que este teléfono mandó a la cola, por clave (lo último gana). Se
+    /// pintan al reabrir sin red: antes, lo que ya había subido solo lo conocía el servidor y se veía vacío.
+    @ObservationIgnored var anotadas: [String: EscrituraAnotada] = [:]
+    /// F1: lo que se ve del día salió de lo guardado en el teléfono porque el servidor no contestó (sin confirmar).
+    public internal(set) var seriesSinConfirmar = false
     @ObservationIgnored var sinHistorialPorClave = false
     @ObservationIgnored var generacionHistorial: [String: Int] = [:]
     @ObservationIgnored var historialEnVuelo: [String: Task<Void, Never>] = [:]
@@ -161,6 +166,8 @@ public final class ModeloEntreno {
         let enDisco = disco?.leer(Descanso.Guardado.self, Archivo.descanso)
         descanso = BarraDescanso(guardado: enDisco)
         sesionesLocales = disco?.leer([String: SesionLocal].self, Archivo.sesiones) ?? [:]
+        anotadas = Self.podarAnotadas(disco?.leer([String: EscrituraAnotada].self, Archivo.anotadas(rutina.id)) ?? [:],
+                                      ahora: reloj().timeIntervalSince1970 * 1000)
         let semana = rutina.semanaActual == 0 ? 1 : rutina.semanaActual
         let guardado = disco?.leer(String.self, Archivo.dia(rutina.id))
         habiaDiaGuardado = guardado != nil
@@ -696,6 +703,7 @@ public final class ModeloEntreno {
         // Las fechas de la sesión anterior no se heredan (una clave repetida, otro bloque con los mismos lugares): vuelven
         // del servidor (`registrado_en`) y de la cola, y lo que se toque desde ahora se anota de nuevo.
         fechasSeries = [:]
+        seriesSinConfirmar = false
         dia.sesionId = nil
         dia.diaFinalizado = false
         sesionIniciada = false
@@ -743,7 +751,8 @@ public final class ModeloEntreno {
         guard case .respondio(let s)? = remota, let s, let id = JS.verdadero(s.id) else {
             // Sin sesión conocida (sin red, o todavía no se pudo crear): lo que está en la cola para este día se pinta
             // igual. Antes las series confirmadas sin señal aparecían vacías y un toque las pisaba (revisión, hallazgo 5).
-            await aplicarPendientes()
+            // Sin respuesta del servidor, también lo que ya había subido desde este teléfono (F1).
+            await aplicarPendientes(conAnotadas: remota == .sinRespuesta)
             return
         }
         dia.sesionId = id
@@ -778,24 +787,41 @@ public final class ModeloEntreno {
     /// `loadExerciseStates` + `loadRegistrosCarga`, y encima lo que sigue en la cola para este día y esta semana (lo
     /// pendiente gana: una serie confirmada sin red no vuelve a aparecer vacía si se cerró la app).
     func cargarEstadosYSeries(_ seq: Int) async {
-        guard let token, let sid = dia.sesionId else { await aplicarPendientes(); return }
+        guard let token, let sid = dia.sesionId else { await aplicarPendientes(conAnotadas: true); return }
         let p: [String: JSONValue] = ["p_token": .texto(token), "p_sesion_id": .texto(sid)]
         async let e = cliente.filas("mypump_get_ejercicios_estado", p, como: EstadoEjercicio.self)
         async let r = cliente.filas("mypump_get_registros_sesion", p, como: RegistroSesion.self)
         let (estados, registros) = await (e, r)
         guard seq == restauracion, dia.sesionId == sid else { return }
         if case .success(let f) = estados { dia.aplicarEstados(f) }
+        var fallo = false
         if case .success(let f) = registros {
             for r in f { if let t = r.registradoEn { anotarFecha(r.ejercicioId, r.serie, FechaLocal.de(t, zona: zona)) } }
             dia.aplicarRegistros(f)
+        } else {
+            fallo = true
         }
-        await aplicarPendientes()
+        // F1: si el servidor no devolvió las series, lo que ya subió desde este teléfono se pinta (sin confirmar) para que
+        // un toque no pise la serie buena con una cargada de memoria.
+        await aplicarPendientes(conAnotadas: fallo)
     }
 
     /// Lo que está en la cola sin mandar para el día y la semana que se miran se pinta encima de lo del servidor: es lo
-    /// más nuevo (una serie corregida sin red le gana a la que el servidor ya tenía).
-    func aplicarPendientes() async {
-        guard let ops = await outbox?.operaciones, let diaId = dia.dia.id else { return }
+    /// más nuevo (una serie corregida sin red le gana a la que el servidor ya tenía). `conAnotadas`: el servidor no
+    /// contestó, así que primero va lo que este teléfono ya había mandado (F1) y la cola encima.
+    func aplicarPendientes(conAnotadas: Bool = false) async {
+        guard let diaId = dia.dia.id else { return }
+        let cola = await outbox?.operaciones ?? []
+        var ops: [(kind: String, payload: JSONValue, ts: Double)] = []
+        if conAnotadas {
+            let propias = anotadas.values.filter { a in
+                a.payload["diaId"]?.comoTexto == diaId && a.payload["semana"]?.comoNumero == Double(semana)
+            }
+            if !propias.isEmpty { seriesSinConfirmar = true }
+            ops += propias.sorted { $0.ts < $1.ts }.map { ($0.kind, $0.payload, $0.ts) }
+        }
+        ops += cola.map { ($0.kind, $0.payload, $0.ts) }
+        guard !ops.isEmpty else { return }
         for op in ops {
             let p = op.payload
             guard p["diaId"]?.comoTexto == diaId, p["semana"]?.comoNumero == Double(semana) else { continue }
@@ -1296,7 +1322,7 @@ public final class ModeloEntreno {
         for e in efectos {
             switch e {
             case .encolar(let kind, let payload, let clave):
-                await outbox?.encolar(kind, payload, dedupeKey: clave)
+                await encolarYAnotar(kind, payload, clave: clave)
             case .iniciarDescanso(let s):
                 // Una serie que llega tarde (del reloj) ancla el descanso a cuando se hizo; si ya terminó, no arranca.
                 let desde = min(instanteEvento ?? ahoraMs, ahoraMs)
@@ -1367,6 +1393,8 @@ public final class ModeloEntreno {
         static let preparacion = "entreno-preparacion.json"
         /// 2.3.0: lo escrito por un OK dentro de su ventana de Deshacer (si la app muere ahí, va a la cola al abrir).
         static let okDemorado = "entreno-ok-demorado.json"
+        /// F1: lo que este teléfono mandó del día (`anotadas`), por rutina.
+        static func anotadas(_ rutinaId: String) -> String { "entreno-anotadas_\(rutinaId).json" }
         /// 2.3.0: la carga simple de la semana.
         static func cargas(_ rutinaId: String) -> String { "entreno-cargas_\(rutinaId).json" }
         static let preparacionOculta = "entreno-preparacion-oculta.json"
@@ -1414,6 +1442,29 @@ public final class ModeloEntreno {
     }
 
     func guardarSesiones() { disco?.guardar(sesionesLocales, Archivo.sesiones) }
+
+    /// F1: una serie o un estado mandados desde este teléfono (lo que se pinta si al reabrir el servidor no contesta).
+    struct EscrituraAnotada: Codable, Equatable, Sendable {
+        var kind: String
+        var payload: JSONValue
+        var ts: Double
+    }
+
+    /// Cuánto se guarda lo mandado: una semana alcanza para el día que se mira (una sesión que cruza la medianoche, o
+    /// abrir sin red al otro día) sin que el archivo crezca.
+    static let vigenciaAnotadas: Double = 7 * 24 * 3600 * 1000
+
+    static func podarAnotadas(_ a: [String: EscrituraAnotada], ahora: Double) -> [String: EscrituraAnotada] {
+        a.filter { ahora - $0.value.ts < vigenciaAnotadas }
+    }
+
+    /// Toda escritura del día pasa por acá: a la cola y, si es una serie o un estado, anotada en el teléfono (F1).
+    func encolarYAnotar(_ kind: String, _ payload: JSONValue, clave: String?) async {
+        await outbox?.encolar(kind, payload, dedupeKey: clave)
+        guard kind == "carga" || kind == "estado", let clave, !demo else { return }
+        anotadas[clave] = EscrituraAnotada(kind: kind, payload: payload, ts: ahoraMs)
+        disco?.guardar(anotadas, Archivo.anotadas(rutina.id))
+    }
 
     func guardarInicio() {
         guard let d = dia.dia.id else { return }
