@@ -20,12 +20,18 @@ extension XCUIApplication {
     /// Deja el elemento entre la barra de arriba y el panel fijo, con arrastres cortos para no pasarse.
     func traerArribaDelPanel(_ e: XCUIElement) {
         let dial = descendants(matching: .any)["reps-dial"]
-        let centro = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.28))
+        let arriba: CGFloat = 170
         for _ in 0..<10 {
             let tope = dial.exists ? dial.frame.minY - 90 : frame.maxY - 120
-            let dy: CGFloat
-            if e.frame.minY < 170 { dy = 130 } else if e.frame.maxY > tope { dy = -130 } else if e.isHittable { return } else { dy = -60 }
-            centro.press(forDuration: 0.05, thenDragTo: centro.withOffset(CGVector(dx: 0, dy: dy)))
+            let f = e.frame
+            if f.minY >= arriba, f.maxY <= tope, e.isHittable { return }
+            // Proporcional al centro de la zona libre: en un SE la zona es más angosta que un paso fijo y rebotaba.
+            var dy = (arriba + tope) / 2 - f.midY
+            if abs(dy) < 40 { dy = -60 }
+            dy = max(-170, min(170, dy))
+            let inicio = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dy < 0 ? 0.42 : 0.28))
+            // Lento y sosteniendo al final: sin inercia, si no la lista se pasa y en un SE no converge.
+            inicio.press(forDuration: 0.05, thenDragTo: inicio.withOffset(CGVector(dx: 0, dy: dy)), withVelocity: .slow, thenHoldForDuration: 0.15)
             RunLoop.current.run(until: Date().addingTimeInterval(0.6))
         }
     }

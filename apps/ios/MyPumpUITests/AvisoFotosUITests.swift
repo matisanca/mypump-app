@@ -14,7 +14,7 @@ final class AvisoFotosUITests: XCTestCase {
     }
 
     private func sinFotos(oscuro: Bool) {
-        app.launchArguments = ["-entrar", "demo", "-sinOnboarding", "YES", "-pestana", "revision"] + (oscuro ? ["-AppleInterfaceStyle", "Dark"] : [])
+        app.launchArguments = ["-entrar", "demo", "-sinOnboarding", "YES", "-pestana", "revision"] + (oscuro ? ["-mypump-theme", "dark"] : [])
         app.launch()
         XCTAssertTrue(aviso.waitForExistence(timeout: 20), "Sin fotos tiene que aparecer el aviso")
         XCTAssertTrue(aviso.label.contains("Tus fotos de la semana"), aviso.label)

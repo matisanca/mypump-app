@@ -102,8 +102,8 @@ final class EntrenoUITests: XCTestCase {
         let hoja = abrirSustituirDeLaExtension()
         XCTAssertTrue(app.staticTexts["Otra variante u otro ejercicio de tríceps"].waitForExistence(timeout: 5), "El subtítulo no avisa de los otros ejercicios")
         // Primero el título (la lista es perezosa: al bajar hasta los fondos, el encabezado ya salió de la pantalla).
-        let titulo = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Otros ejercicios de tríceps'")).firstMatch
-        for _ in 0..<10 where !titulo.exists { app.swipeUp() }
+        let titulo = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH[cd] 'Otros ejercicios de triceps'")).firstMatch
+        for _ in 0..<16 where !titulo.exists { app.swipeUp(velocity: .slow) }   // lento: en pantalla chica uno rápido se pasa de largo
         XCTAssertTrue(titulo.exists, "Sin el título de la sección")
         let t = XCTAttachment(screenshot: app.screenshot()); t.name = "otros-del-mismo-musculo-titulo"; t.lifetime = .keepAlways; add(t)
         let fondos = app.buttons.matching(NSPredicate(format: "identifier == 'otro-ejercicio' AND label BEGINSWITH 'Fondos'")).firstMatch

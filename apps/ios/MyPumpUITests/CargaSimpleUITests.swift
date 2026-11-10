@@ -63,7 +63,8 @@ final class CargaSimpleUITests: XCTestCase {
         let antes1 = app.textFields["kg-serie-1"].value as? String ?? ""
         let antes3 = app.textFields["kg-serie-3"].value as? String ?? ""
         let antes2 = app.textFields["kg-serie-2"].value as? String ?? ""
-        for _ in 0..<4 where !app.buttons["kg-mas-2"].isHittable { app.swipeUp(velocity: .slow) }
+        app.traerArribaDelPanel(app.buttons["kg-mas-2"])
+        RunLoop.current.run(until: Date().addingTimeInterval(0.8))   // un toque mientras frena solo frena el scroll
         app.buttons["kg-mas-2"].tap()
         XCTAssertNotEqual(app.textFields["kg-serie-2"].value as? String, antes2)
         XCTAssertEqual(app.textFields["kg-serie-1"].value as? String, antes1)

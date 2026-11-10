@@ -101,8 +101,10 @@ final class Entreno203UITests: XCTestCase {
 
         // E3: confirmar 62,5 × 10 contra 60 × 10 de la última vez. Con otra carga la base es la del plan.
         app.fijarReps(10)
-        app.darOK()
-        let aviso = app.descendants(matching: .any)["aviso-record"]
+        // Toque directo: el aviso dura 3 s y `darOK` puede comérselos esperando.
+        app.okSerie.tap()
+        // En el panel, que siempre está a la vista; el de la tarjeta puede haber quedado fuera de pantalla.
+        let aviso = app.staticTexts["aviso-record-panel"].firstMatch
         XCTAssertTrue(aviso.waitForExistence(timeout: 5), "No avisó el récord")
         XCTAssertTrue(aviso.label.contains("Récord: +2,5 kg"), aviso.label)
         captura("record-aviso")
