@@ -45,7 +45,9 @@ CREATE TABLE IF NOT EXISTS mypump_reps_grabaciones (
   PRIMARY KEY (cliente_id, sesion)
 );
 
--- Supabase dejó de dar permisos automáticos a las tablas nuevas. Sin esto service_role recibe 42501. anon, nada.
+-- En este proyecto las tablas nuevas heredan permisos por defecto para anon y authenticated, incluido TRUNCATE, que RLS no
+-- frena. Se sacan todos y se dan solo estos. El ensayo lo verifica. anon, nada.
+REVOKE ALL ON mypump_reps_subida, mypump_reps_grabaciones FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON mypump_reps_subida, mypump_reps_grabaciones TO service_role;
 GRANT SELECT ON mypump_reps_subida, mypump_reps_grabaciones TO authenticated;   -- el coach solo lee
 
