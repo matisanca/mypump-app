@@ -61,6 +61,9 @@ class CardioUiTest : PruebaUi() {
         Telefono.captura("cardio-sustituir")
         p.atras()
         p.tocar(etiqueta("dia-d2"))
+        // El día nuevo llega con todo cerrado: el abierto del día anterior no se le contagia al de la misma posición.
+        p.nodo(etiqueta("ejercicio-$cintaD2"))
+        assertFalse("el ejercicio del día nuevo aparece abierto", p.existe(etiqueta("ejercicio-abierto-$cintaD2")))
         comprobarPorTiempo(cintaD2, "calentamiento")
     }
 }

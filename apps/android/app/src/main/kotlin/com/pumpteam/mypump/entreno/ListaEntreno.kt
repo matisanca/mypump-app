@@ -645,25 +645,29 @@ private fun BloqueEjercicios(
         }
         Column(Modifier.fillMaxWidth().superficieTarjeta()) {
             b.ejercicios.forEachIndexed { j, e ->
-                // Tocar un ejercicio lo abre ahí mismo, como la card de la web (Mati, 15-oct); la página del ejercicio
-                // queda para la técnica y los comentarios ("Técnica y notas").
-                val abierto = v.dia.expandido == e.id
-                val aLaVista = remember(e.id) { BringIntoViewRequester() }
-                var tamano by remember(e.id) { mutableStateOf(IntSize.Zero) }
-                val barra = with(LocalDensity.current) { LocalRellenoInferior.current.toPx() }
-                // Al abrirse (tocado, o el siguiente cuando se completa uno) la lista baja hasta él: abierto abajo de todo
-                // quedaba fuera de la pantalla. Si entra entero no se mueve; si no, queda arriba la fila con su nombre. Lo
-                // de abajo cuenta la barra de pestañas, que flota encima: si no, «Terminé este ejercicio» quedaba tapado.
-                LaunchedEffect(abierto) {
-                    if (abierto) {
-                        delay(320)   // lo que tarda en abrirse
-                        aLaVista.bringIntoView(Rect(0f, 0f, tamano.width.toFloat(), tamano.height + barra))
+                // Con la clave, al cambiar de día el ejercicio de esa posición es otro: sin ella heredaba la animación del que
+                // estaba abierto y el del día nuevo se veía abierto mientras se cerraba solo.
+                key(e.id) {
+                    // Tocar un ejercicio lo abre ahí mismo, como la card de la web (Mati, 15-oct); la página del ejercicio
+                    // queda para la técnica y los comentarios ("Técnica y notas").
+                    val abierto = v.dia.expandido == e.id
+                    val aLaVista = remember(e.id) { BringIntoViewRequester() }
+                    var tamano by remember(e.id) { mutableStateOf(IntSize.Zero) }
+                    val barra = with(LocalDensity.current) { LocalRellenoInferior.current.toPx() }
+                    // Al abrirse (tocado, o el siguiente cuando se completa uno) la lista baja hasta él: abierto abajo de todo
+                    // quedaba fuera de la pantalla. Si entra entero no se mueve; si no, queda arriba la fila con su nombre. Lo
+                    // de abajo cuenta la barra de pestañas, que flota encima: si no, «Terminé este ejercicio» quedaba tapado.
+                    LaunchedEffect(abierto) {
+                        if (abierto) {
+                            delay(320)   // lo que tarda en abrirse
+                            aLaVista.bringIntoView(Rect(0f, 0f, tamano.width.toFloat(), tamano.height + barra))
+                        }
                     }
-                }
-                Column(Modifier.onSizeChanged { tamano = it }.bringIntoViewRequester(aLaVista)) {
-                    FilaEjercicio(motor, v, e, primerNumero + j)
-                    AnimatedVisibility(visible = abierto, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                        EjercicioEnLista(motor, v, e.id, preguntador, alAbrir, alCompletarDia)
+                    Column(Modifier.onSizeChanged { tamano = it }.bringIntoViewRequester(aLaVista)) {
+                        FilaEjercicio(motor, v, e, primerNumero + j)
+                        AnimatedVisibility(visible = abierto, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                            EjercicioEnLista(motor, v, e.id, preguntador, alAbrir, alCompletarDia)
+                        }
                     }
                 }
                 if (j < total - 1) Separador(sangria = 90.dp)
