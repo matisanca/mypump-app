@@ -10,7 +10,6 @@ public final class DobleTecnica: Transporte, @unchecked Sendable {
     public var palanca = true
     public var sinFuncion = false
     public var habilitado = true
-    public var consentimientoAceptado = false
     public var sinRed = false
     public var tope = false
     /// Estados forzados para las próximas subidas, en orden. 0 = sin red en esa.
@@ -51,7 +50,7 @@ public final class DobleTecnica: Transporte, @unchecked Sendable {
             return (404, #"{"code":"PGRST202","message":"no existe"}"#)
         case "mypump_tecnica_get":
             if !habilitado { return (200, #"{"habilitado":false}"#) }
-            return (200, json(.objeto(["habilitado": .bool(true), "consentimiento_version": .texto(Tecnica.consentimientoVigente), "consentimiento_aceptado": .bool(consentimientoAceptado),
+            return (200, json(.objeto(["habilitado": .bool(true), 
                                        "topes": .objeto(["duracion_min_s": .numero(4), "duracion_max_s": .numero(75), "bytes_max": .numero(62_914_560), "por_semana": .numero(3)]),
                                        "envios": .lista(envios.map(JSONValue.objeto))])))
         case "mypump_tecnica_nuevo": return try nuevo(cuerpo(p))
@@ -73,7 +72,6 @@ public final class DobleTecnica: Transporte, @unchecked Sendable {
     }
 
     private func nuevo(_ j: JSONValue) throws -> (Int, String) {
-        guard j["p_consentimiento"]?.comoTexto == Tecnica.consentimientoVigente else { return (200, #"{"ok":false,"error":"consentimiento"}"#) }
         if let e = envios.first(where: { ["enviado", "procesando"].contains($0["estado"]?.comoTexto ?? "") }), let id = e["id"]?.comoTexto { return (200, #"{"ok":false,"error":"en_curso","id":"\#(id)"}"#) }
         if tope { return (200, #"{"ok":false,"error":"tope_semanal"}"#) }
         ultimoNuevo = j
@@ -105,7 +103,6 @@ public final class DobleTecnica: Transporte, @unchecked Sendable {
         bytesSubidos.append(p.httpBody?.count ?? 0)
         envios[i]["estado"] = .texto("enviado")
         envios[i]["tiene_video"] = .bool(true)
-        consentimientoAceptado = true
         return (200, #"{"ok":true}"#)
     }
 
@@ -135,14 +132,14 @@ public final class DobleTecnica: Transporte, @unchecked Sendable {
         switch nombre {
         case "apagado": d.palanca = false
         case "sinServidor": d.sinFuncion = true
-        case "corte": d.consentimientoAceptado = true; d.proximasSubidas = [0]
-        case "rechazo": d.consentimientoAceptado = true; d.proximasSubidas = [400]
-        case "reintento": d.consentimientoAceptado = true; d.proximasSubidas = [503, 429]
-        case "tope": d.consentimientoAceptado = true; d.tope = true
-        case "enRevision": d.consentimientoAceptado = true; d.envios = [envio("enviado")]
-        case "publicado": d.consentimientoAceptado = true; d.envios = [envio("publicado", extra: ["publicado_en": .texto("2026-11-12T15:00:00+00:00"), "devolucion": devolucionDeEjemplo])]
-        case "publicadoSinCorrecciones": d.consentimientoAceptado = true; d.envios = [envio("publicado", extra: ["publicado_en": .texto("2026-11-12T15:00:00+00:00"), "devolucion": devolucionSinCorrecciones])]
-        case "rechazado": d.consentimientoAceptado = true; d.envios = [envio("rechazado", extra: ["rechazo_texto": .texto(TextosTecnica.rechazoIlegible), "tiene_video": .bool(false)])]
+        case "corte": d.proximasSubidas = [0]
+        case "rechazo": d.proximasSubidas = [400]
+        case "reintento": d.proximasSubidas = [503, 429]
+        case "tope": d.tope = true
+        case "enRevision": d.envios = [envio("enviado")]
+        case "publicado": d.envios = [envio("publicado", extra: ["publicado_en": .texto("2026-11-12T15:00:00+00:00"), "devolucion": devolucionDeEjemplo])]
+        case "publicadoSinCorrecciones": d.envios = [envio("publicado", extra: ["publicado_en": .texto("2026-11-12T15:00:00+00:00"), "devolucion": devolucionSinCorrecciones])]
+        case "rechazado": d.envios = [envio("rechazado", extra: ["rechazo_texto": .texto(TextosTecnica.rechazoIlegible), "tiene_video": .bool(false)])]
         default: break    // "vacio": habilitado, sin nada
         }
         return d

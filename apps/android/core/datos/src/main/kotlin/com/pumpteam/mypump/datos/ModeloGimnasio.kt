@@ -47,21 +47,20 @@ data class EnvioGimnasio(
     val gimnasioId: String,
     val noHay: List<String> = emptyList(),
     val nota: String = "",
-    val consentimiento: String = "",
     val quitar: List<String> = emptyList(),
 ) {
     enum class Tipo { ENVIAR, RESPONDER }
 
     fun aValor(): ValorJson = ValorJson.objeto(
         "tipo" to ValorJson.Texto(tipo.name), "gimnasioId" to ValorJson.Texto(gimnasioId), "noHay" to textos(noHay), "nota" to ValorJson.Texto(nota),
-        "consentimiento" to ValorJson.Texto(consentimiento), "quitar" to textos(quitar),
+        "quitar" to textos(quitar),
     )
 
     companion object {
         fun desde(v: ValorJson?): EnvioGimnasio? {
             v ?: return null
             val tipo = Tipo.entries.firstOrNull { it.name == v["tipo"]?.comoTexto } ?: return null
-            return EnvioGimnasio(tipo, v["gimnasioId"]?.comoTexto ?: return null, listaTextos(v["noHay"]), v["nota"]?.comoTexto ?: "", v["consentimiento"]?.comoTexto ?: "", listaTextos(v["quitar"]))
+            return EnvioGimnasio(tipo, v["gimnasioId"]?.comoTexto ?: return null, listaTextos(v["noHay"]), v["nota"]?.comoTexto ?: "", listaTextos(v["quitar"]))
         }
     }
 }
@@ -76,14 +75,12 @@ data class BorradorGimnasio(
     val nota: String = "",
     val quitar: List<String> = emptyList(),
     val respuestas: Map<String, ValorJson> = emptyMap(),
-    val avisoVersion: String? = null,
     val envio: EnvioGimnasio? = null,
 ) {
     fun aValor(): ValorJson = ValorJson.Objeto(
         buildMap {
             gimnasioId?.let { put("gimnasioId", ValorJson.Texto(it)) }
             put("noHay", textos(noHay)); put("nota", ValorJson.Texto(nota)); put("quitar", textos(quitar)); put("respuestas", ValorJson.Objeto(respuestas))
-            avisoVersion?.let { put("avisoVersion", ValorJson.Texto(it)) }
             envio?.let { put("envio", it.aValor()) }
         },
     )
@@ -93,7 +90,7 @@ data class BorradorGimnasio(
 
         fun desde(v: ValorJson): BorradorGimnasio = BorradorGimnasio(
             v["gimnasioId"]?.comoTexto, listaTextos(v["noHay"]), v["nota"]?.comoTexto ?: "", listaTextos(v["quitar"]),
-            (v["respuestas"] as? ValorJson.Objeto)?.campos ?: emptyMap(), v["avisoVersion"]?.comoTexto, EnvioGimnasio.desde(v["envio"]),
+            (v["respuestas"] as? ValorJson.Objeto)?.campos ?: emptyMap(), EnvioGimnasio.desde(v["envio"]),
         )
     }
 }
@@ -116,7 +113,6 @@ class ModeloGimnasio(
 
     sealed interface AvisoEnvio {
         data class Faltan(val zonas: List<String>) : AvisoEnvio
-        data object SinConsentimiento : AvisoEnvio
         data object SinNovedad : AvisoEnvio
         data object Error : AvisoEnvio
     }
@@ -176,10 +172,6 @@ class ModeloGimnasio(
     val tarjetaVisible: Boolean get() = Gimnasio.tarjetaVisible(_estado.value != null, abierta?.estado, vigente != null)
     val entradaVisible: Boolean get() = Gimnasio.entradaVisible(_estado.value != null, vigente != null)
     val pantalla: Gimnasio.Pantalla get() = Gimnasio.pantalla(abierta?.estado, vigente != null)
-
-    /** El aviso de terceros, una sola vez: si el servidor no lo tiene aceptado y en este teléfono no se aceptó esta versión. */
-    val necesitaAviso: Boolean get() = _estado.value?.let { !it.consentimientoAceptado && _borrador.value.avisoVersion != it.consentimientoVersion } ?: false
-
     private val colaDeLaCarga: List<PendienteGimnasio>
         get() {
             val a = abierta ?: return emptyList()
@@ -241,7 +233,7 @@ class ModeloGimnasio(
         _estado.value = e
         var b = _borrador.value
         val id = e.abierta?.id
-        if (b.gimnasioId != id) b = BorradorGimnasio(gimnasioId = id, avisoVersion = b.avisoVersion, envio = b.envio?.takeIf { it.gimnasioId == id })
+        if (b.gimnasioId != id) b = BorradorGimnasio(gimnasioId = id, envio = b.envio?.takeIf { it.gimnasioId == id })
         val en = b.envio
         val a = e.abierta
         // Lo que el servidor ya tomó deja de estar pendiente (un reintento devuelve `ya`).
@@ -254,12 +246,6 @@ class ModeloGimnasio(
     suspend fun empezar(modo: String = "completa"): Salida {
         return nuevo(modo, 1)
     }
-
-    fun aceptarAviso() {
-        val e = _estado.value ?: return
-        guardar(_borrador.value.copy(avisoVersion = e.consentimientoVersion))
-    }
-
     private suspend fun nuevo(modo: String, reintentos: Int): Salida {
         return when (val r = cliente.llamar("mypump_gimnasio_nuevo", mapOf("p_token" to ValorJson.Texto(token), "p_modo" to ValorJson.Texto(modo)))) {
             is Resultado.Ok -> {
@@ -490,16 +476,12 @@ class ModeloGimnasio(
     /** «Enviar a Mati»: queda anotado en disco y sale al vaciarse la cola; si no hay red, cuando vuelva. */
     suspend fun enviarCarga() {
         val a = abierta ?: return
-        val e = _estado.value ?: return
-        if (necesitaAviso) {   // la raíz muestra el aviso antes de seguir
-            _avisoEnvio.value = AvisoEnvio.SinConsentimiento
-            return
-        }
+        if (_estado.value == null) return
         _avisoEnvio.value = null
         _totalEnvio.value = totalFotos
         _subidasEnvio.value = a.fotos.size
         val b = _borrador.value
-        guardar(b.copy(envio = EnvioGimnasio(EnvioGimnasio.Tipo.ENVIAR, a.id, b.noHay, b.nota, e.consentimientoVersion, if (a.modo == "parcial") b.quitar else emptyList())))
+        guardar(b.copy(envio = EnvioGimnasio(EnvioGimnasio.Tipo.ENVIAR, a.id, b.noHay, b.nota, if (a.modo == "parcial") b.quitar else emptyList())))
         drenar()
     }
 
@@ -528,7 +510,7 @@ class ModeloGimnasio(
             val r = when (e.tipo) {
                 EnvioGimnasio.Tipo.ENVIAR -> cliente.llamar(
                     "mypump_gimnasio_enviar",
-                    base + mapOf("p_no_hay" to textos(e.noHay), "p_nota" to ValorJson.Texto(e.nota), "p_consentimiento" to ValorJson.Texto(e.consentimiento), "p_quitar" to textos(e.quitar)),
+                    base + mapOf("p_no_hay" to textos(e.noHay), "p_nota" to ValorJson.Texto(e.nota), "p_quitar" to textos(e.quitar)),
                 )
                 EnvioGimnasio.Tipo.RESPONDER -> cliente.llamar(
                     "mypump_gimnasio_responder",
@@ -560,11 +542,6 @@ class ModeloGimnasio(
         guardar(_borrador.value.copy(envio = null))
         when (j["error"]?.comoTexto) {
             "faltan_zonas" -> _avisoEnvio.value = AvisoEnvio.Faltan(listaTextos(j["faltan"]))
-            "sin_consentimiento" -> {
-                guardar(_borrador.value.copy(avisoVersion = null))
-                _avisoEnvio.value = AvisoEnvio.SinConsentimiento
-                refrescar()
-            }
             "sin_novedad" -> _avisoEnvio.value = AvisoEnvio.SinNovedad
             "no_encontrado", "estado_invalido" -> refrescar()
             "no_habilitado" -> apagar()

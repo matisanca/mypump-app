@@ -15,7 +15,6 @@ class TecnicaVectoresTest {
     private fun txt(j: ValorJson?) = (j as? ValorJson.Texto)?.valor
 
     @Test fun constantesYTextos() {
-        assertEquals(txt(v["consentimiento"]), Tecnica.CONSENTIMIENTO_VIGENTE)
         assertEquals(num(v["maxNota"]).toInt(), Tecnica.MAX_NOTA)
         val f = TopesTecnica()
         assertEquals(num(v["topesDeFabrica"]?.get("duracion_min_s")), f.duracionMinS)
@@ -53,7 +52,6 @@ class TecnicaVectoresTest {
             }
             assertNotNull(e)
             assertEquals(lista(c["ids"]).map { txt(it) }, e!!.envios.map { it.id })
-            assertEquals(c["aceptado"] == ValorJson.Booleano(true), e.consentimientoAceptado)
             assertEquals(num(c["duracionMax"]), e.topes.duracionMaxS)
             assertEquals(num(c["bytesMax"]).toLong(), e.topes.bytesMax)
             if (c["titulos"] != null) {

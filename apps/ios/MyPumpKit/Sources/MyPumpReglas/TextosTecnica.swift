@@ -2,11 +2,11 @@ import Foundation
 
 /// Todo lo que lee el alumno en «Técnica por video», en un solo lugar: para cambiar un texto se cambia acá y en el gemelo
 /// `TextosTecnica.kt`, sin tocar lógica (`apps/shared/vectores/tecnica.json` hace fallar las pruebas si difieren).
-/// Lista para el OK de Mati en `privado/TEXTOS_PARA_OK.md`. La única mención a la IA es el aviso de terceros.
+/// Lista para el OK de Mati en `privado/TEXTOS_PARA_OK.md`.
 public enum TextosTecnica {
     public static let entradaEjercicio = "Mandar mi técnica"
     public static let entradaMisDatos = "Mi técnica"
-    public static let avisoTerceros = "Para analizar tu técnica, partes de tu video las procesan servicios externos de inteligencia artificial, con la cara tapada y sin tu nombre. Mati revisa todo antes de que te llegue. El video se borra a los 90 días y lo podés sacar cuando quieras"
+    public static let avisoBreve = "Mati revisa tu video antes de que te llegue la devolución. El video se borra a los 90 días y lo podés sacar cuando quieras."
     public static let avisoBoton = "Entendido, empezar"
     public static let consejo = "Apoyá el teléfono a unos 3 metros, a la altura de la cadera. De costado es lo mejor para casi todos los ejercicios. Que entre todo tu cuerpo. Una serie, de hasta 75 segundos. No grabes a otras personas"
     public static let notaPregunta = "¿Querés que mire algo en particular?"
@@ -57,7 +57,7 @@ public enum TextosTecnica {
 
     /// Todos los fijos, para comparar con los vectores.
     public static let todos: [String: String] = [
-        "entradaEjercicio": entradaEjercicio, "entradaMisDatos": entradaMisDatos, "avisoTerceros": avisoTerceros, "avisoBoton": avisoBoton, "consejo": consejo,
+        "entradaEjercicio": entradaEjercicio, "entradaMisDatos": entradaMisDatos, "avisoBreve": avisoBreve, "avisoBoton": avisoBoton, "consejo": consejo,
         "notaPregunta": notaPregunta, "botonEnviar": botonEnviar, "subiendo": subiendo, "recibido": recibido, "loQueEstaBien": loQueEstaBien, "paraCorregir": paraCorregir,
         "queSeVe": queSeVe, "porQueImporta": porQueImporta, "comoHacerlo": comoHacerlo, "verEnElVideo": verEnElVideo, "noSePudoVer": noSePudoVer, "mandameOtro": mandameOtro,
         "sinCorrecciones": sinCorrecciones, "rechazoCorto": rechazoCorto, "rechazoLargo": rechazoLargo, "rechazoPesado": rechazoPesado, "rechazoIlegible": rechazoIlegible,

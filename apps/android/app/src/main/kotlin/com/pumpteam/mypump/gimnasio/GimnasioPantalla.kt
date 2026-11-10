@@ -202,9 +202,8 @@ fun GimnasioPantalla(m: ModeloGimnasio, alVolver: () -> Unit) {
             destino == A_REVISAR -> RevisarGimnasio(m, relleno)
             destino == A_YA_NO_ESTA -> YaNoEstaGimnasio(m, relleno)
             v.borrador.envio != null -> EnviandoGimnasio(m, relleno)
-            m.pantalla == Gimnasio.Pantalla.ZONAS && m.necesitaAviso -> InicioGimnasio(m, relleno)
             else -> when (m.pantalla) {
-                Gimnasio.Pantalla.INICIO -> InicioGimnasio(m, relleno)
+                Gimnasio.Pantalla.INICIO -> ArranqueGimnasio(m, relleno)
                 Gimnasio.Pantalla.ZONAS -> ZonasGimnasio(m, relleno, alAbrir = { destino = it })
                 Gimnasio.Pantalla.RECIBIDO -> RecibidoGimnasio(relleno)
                 Gimnasio.Pantalla.PREGUNTAS -> PreguntasGimnasio(m, relleno)
@@ -252,7 +251,7 @@ private fun AvisoEnvio(aviso: ModeloGimnasio.AvisoEnvio?) {
     val texto = when (aviso) {
         is ModeloGimnasio.AvisoEnvio.Faltan -> T.faltanZonas(aviso.zonas.size)
         ModeloGimnasio.AvisoEnvio.SinNovedad -> T.sinNovedad
-        ModeloGimnasio.AvisoEnvio.Error, ModeloGimnasio.AvisoEnvio.SinConsentimiento -> T.errorGenerico
+        ModeloGimnasio.AvisoEnvio.Error -> T.errorGenerico
         null -> return
     }
     NotaGimnasio(texto, Modifier.testTag("gimnasio-aviso-envio"), alerta = true)
@@ -264,43 +263,43 @@ private fun textoDe(s: ModeloGimnasio.Salida): String? = when (s) {
     else -> T.errorGenerico
 }
 
+/** Sin carga abierta no hay nada que leer: abre una sola y sigue a las zonas. Solo se queda acá si no se pudo. */
 @Composable
-private fun InicioGimnasio(m: ModeloGimnasio, relleno: PaddingValues) {
-    val v = observar(m)
-    val c = MyPump.colores
+private fun ArranqueGimnasio(m: ModeloGimnasio, relleno: PaddingValues) {
     val alcance = LocalAlcanceApp.current
     var error by remember { mutableStateOf<String?>(null) }
-    var ocupado by remember { mutableStateOf(false) }
-    Desplazable(relleno) {
-        Text(T.inicioTitulo, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-        Text(T.inicioBajada, style = MaterialTheme.typography.bodyLarge, color = c.textoSecundario)
-        if (v.estado != null && m.necesitaAviso) {
-            Row(
-                Modifier.fillMaxWidth().background(c.marcaSuave, RoundedCornerShape(Radio.control)).padding(Espacio.s).semantics(mergeDescendants = true) {}.testTag("gimnasio-aviso"),
-                horizontalArrangement = Arrangement.spacedBy(Espacio.xs),
-            ) {
-                Icon(Iconos.Candado, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
-                Text(T.avisoTerceros, style = MaterialTheme.typography.bodyMedium, color = c.texto)
-            }
+    var ocupado by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        try {
+            if (m.abierta == null) error = textoDe(m.empezar()) ?: T.sinSenal.takeIf { m.abierta == null }
+        } finally {
+            ocupado = false
         }
-        NotaGimnasio(T.consejoPermiso)
-        error?.let { NotaGimnasio(it, alerta = true) }
-        BotonMarca(
-            T.botonEmpezar,
-            alTocar = {
-                ocupado = true
-                alcance.launch {
-                    try {
-                        m.aceptarAviso()
-                        if (m.abierta == null) error = textoDe(m.empezar())
-                    } finally {
-                        ocupado = false
+    }
+    val mensaje = error
+    if (mensaje == null) {
+        Box(Modifier.fillMaxSize().padding(relleno).testTag("gimnasio-arrancando"), contentAlignment = Alignment.Center) {
+            if (ocupado) CircularProgressIndicator()
+        }
+    } else {
+        Desplazable(relleno) {
+            NotaGimnasio(mensaje, alerta = true)
+            BotonMarca(
+                T.botonReintentar,
+                alTocar = {
+                    ocupado = true
+                    alcance.launch {
+                        try {
+                            if (m.abierta == null) error = textoDe(m.empezar()) ?: T.sinSenal.takeIf { m.abierta == null }
+                        } finally {
+                            ocupado = false
+                        }
                     }
-                }
-            },
-            modifier = Modifier.fillMaxWidth().testTag("gimnasio-empezar"),
-            habilitado = !ocupado,
-        )
+                },
+                modifier = Modifier.fillMaxWidth().testTag("gimnasio-reintentar"),
+                habilitado = !ocupado,
+            )
+        }
     }
 }
 

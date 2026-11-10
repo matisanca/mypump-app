@@ -14,13 +14,12 @@ public struct PendienteTecnica: Codable, Equatable, Sendable {
     public let slug: String
     public let nombre: String
     public let nota: String
-    public let consentimiento: String
     public static let carpeta = "tecnica-videos"
 }
 
-/// Lo que vive en disco: el aviso aceptado y el video en camino, juntos en un archivo que se escribe de una vez.
+/// Lo que vive en disco: si ya vio el aviso y el video en camino, juntos en un archivo que se escribe de una vez.
 struct ColaTecnica: Codable, Equatable {
-    var avisoVersion: String?
+    var avisoVisto: Bool?
     var pendiente: PendienteTecnica?
     static let archivo = "tecnica-cola.json"
 }
@@ -78,12 +77,8 @@ public final class ModeloTecnica {
     public var habilitado: Bool { estado != nil }
     public var envios: [EnvioTecnica] { estado?.visibles ?? [] }
     public var topes: TopesTecnica { estado?.topes ?? TopesTecnica() }
-    /// El aviso de terceros, una sola vez: si el servidor no lo tiene aceptado y en este teléfono no se aceptó esta versión.
-    public var necesitaAviso: Bool {
-        guard let e = estado else { return false }
-        // El texto del aviso es el de esta versión de la app: lo que se registra es esa, no la que dicte el servidor.
-        return !(e.consentimientoAceptado && e.consentimientoVersion == Tecnica.consentimientoVigente) && local.avisoVersion != Tecnica.consentimientoVigente
-    }
+    /// El aviso breve, solo la primera vez: es informativo y no frena ni condiciona el envío.
+    public var necesitaAviso: Bool { estado != nil && local.avisoVisto != true && envios.isEmpty }
     /// Se puede mandar otro: nada en camino y nada esperando la devolución.
     public var puedeMandar: Bool { estado != nil && local.pendiente == nil && estado?.enRevision == nil }
 
@@ -108,9 +103,8 @@ public final class ModeloTecnica {
 
     public func apagar() { estado = nil }
 
-    public func aceptarAviso() {
-        guard let e = estado else { return }
-        local.avisoVersion = Tecnica.consentimientoVigente
+    public func marcarAvisoVisto() {
+        local.avisoVisto = true
         guardar()
     }
 
@@ -120,7 +114,7 @@ public final class ModeloTecnica {
 
     /// Mueve el video ya preparado a la cola. Después hay que drenar.
     public func encolar(archivo: URL, slug: String, nombre: String, nota: String) -> Encolar {
-        guard let e = estado, local.pendiente == nil, estado?.enRevision == nil, !necesitaAviso else { return .ocupado }
+        guard let e = estado, local.pendiente == nil, estado?.enRevision == nil else { return .ocupado }
         guard let disco else { return .noSeGuardo }
         let id = UUID().uuidString.lowercased()
         var carpeta = disco.url(PendienteTecnica.carpeta)
@@ -132,7 +126,7 @@ public final class ModeloTecnica {
             try FileManager.default.moveItem(at: archivo, to: carpeta.appendingPathComponent("\(id).mp4"))
         } catch { return .noSeGuardo }
         local.pendiente = PendienteTecnica(id: id, envioId: nil, slug: String(slug.prefix(Tecnica.maxNombre)), nombre: String(nombre.prefix(Tecnica.maxNombre)),
-                                           nota: Tecnica.nota(nota), consentimiento: Tecnica.consentimientoVigente)
+                                           nota: Tecnica.nota(nota))
         guard guardar() else {
             local.pendiente = nil
             disco.borrar("\(PendienteTecnica.carpeta)/\(id).mp4")
@@ -189,7 +183,7 @@ public final class ModeloTecnica {
     private func abrir(_ p: PendienteTecnica) async -> Paso {
         let r = await cliente.llamar("mypump_tecnica_nuevo", [
             "p_token": .texto(token), "p_ejercicio_slug": .texto(p.slug), "p_ejercicio_nombre": .texto(p.nombre),
-            "p_nota": .texto(p.nota), "p_consentimiento": .texto(p.consentimiento),
+            "p_nota": .texto(p.nota),
         ])
         switch r {
         case .success(.null):
@@ -205,10 +199,6 @@ public final class ModeloTecnica {
             case "no_habilitado": apagar(); return .fin
             case "en_curso": await soltar(p, aviso: .enCurso); return .fin
             case "tope_semanal": await soltar(p, aviso: .topeSemanal); return .fin
-            case "consentimiento":
-                local.avisoVersion = nil
-                await soltar(p, aviso: .error)
-                return .fin
             default: await soltar(p, aviso: .error); return .fin
             }
         case .failure(let e):

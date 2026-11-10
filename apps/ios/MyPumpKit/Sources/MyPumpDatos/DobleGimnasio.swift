@@ -12,7 +12,6 @@ public final class DobleGimnasio: Transporte, @unchecked Sendable {
     public var palanca = true
     public var sinFuncion = false
     public var habilitado = true
-    public var consentimientoAceptado = false
     public var sinRed = false
     /// Estados forzados para las próximas subidas, en orden (503, 429, 400…). 0 = sin red en esa.
     public var proximasSubidas: [Int] = []
@@ -98,7 +97,6 @@ public final class DobleGimnasio: Transporte, @unchecked Sendable {
     private func enviarCarga(_ j: JSONValue) -> String {
         guard var a = abierta, a["id"] == j["p_id"] else { return #"{"ok":false,"error":"no_encontrado"}"# }
         guard a["estado"]?.comoTexto == "borrador" else { return #"{"ok":true,"ya":true,"estado":"enviado"}"# }
-        guard j["p_consentimiento"]?.comoTexto == Gimnasio.consentimientoVigente else { return #"{"ok":false,"error":"sin_consentimiento"}"# }
         ultimoEnviar = { if case .objeto(let o) = j { o } else { nil } }()
         var noHay = Set<String>(); if case .lista(let l)? = j["p_no_hay"] { noHay = Set(l.compactMap(\.comoTexto)) }
         let con = Set(fotos.map(\.zona))
@@ -110,7 +108,6 @@ public final class DobleGimnasio: Transporte, @unchecked Sendable {
         }
         a["estado"] = .texto("enviado")
         abierta = a
-        consentimientoAceptado = true
         return #"{"ok":true,"ya":false,"estado":"enviado"}"#
     }
 
@@ -133,8 +130,7 @@ public final class DobleGimnasio: Transporte, @unchecked Sendable {
             }
             return .objeto(c)
         }
-        return .objeto(["habilitado": .bool(true), "consentimiento_version": .texto(Gimnasio.consentimientoVigente),
-                        "consentimiento_aceptado": .bool(consentimientoAceptado), "abierta": carga(abierta), "vigente": carga(vigente)])
+        return .objeto(["habilitado": .bool(true), "abierta": carga(abierta), "vigente": carga(vigente)])
     }
 
     // MARK: Datos de ejemplo (sin nombres reales)
@@ -167,19 +163,15 @@ public final class DobleGimnasio: Transporte, @unchecked Sendable {
         case "apagado": d.palanca = false
         case "sinServidor": d.sinFuncion = true
         case "borrador", "corte", "rechazo", "reintento":
-            d.consentimientoAceptado = true
             d.abierta = ["id": .texto(id), "estado": .texto("borrador"), "modo": .texto("completa")]
             if nombre == "corte" { d.proximasSubidas = [200, 0] }
             if nombre == "rechazo" { d.proximasSubidas = [400] }
             if nombre == "reintento" { d.proximasSubidas = [503] }
         case "enProceso":
-            d.consentimientoAceptado = true
             d.abierta = ["id": .texto(id), "estado": .texto("procesando"), "modo": .texto("completa")]
         case "preguntas":
-            d.consentimientoAceptado = true
             d.abierta = ["id": .texto(id), "estado": .texto("a_confirmar"), "modo": .texto("completa"), "preguntas": preguntasDeEjemplo]
         case "listo", "listoSinCambios":
-            d.consentimientoAceptado = true
             d.vigente = ["id": .texto(id), "estado": .texto("listo"), "modo": .texto("completa"), "resultado": .texto(nombre == "listo" ? "adaptada" : "sin_cambios"),
                          "publicado_en": .texto("2026-11-12T15:00:00+00:00"), "equipos": equiposDeEjemplo]
         default: break    // "vacio": habilitado, sin nada

@@ -54,9 +54,6 @@ final class GimnasioUITests: XCTestCase {
     private func recorridoCompleto() {
         lanzar("vacio")
         abrirTarjeta()
-        esperar("gimnasio-aviso")
-        foto("1-inicio")
-        tocarDebajo("gimnasio-empezar")
         esperar("gimnasio-zona-poleas")
         foto("2-zonas")
         tocar("gimnasio-zona-poleas")

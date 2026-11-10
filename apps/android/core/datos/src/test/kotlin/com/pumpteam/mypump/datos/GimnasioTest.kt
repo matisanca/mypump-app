@@ -25,10 +25,7 @@ class GimnasioTest {
         assertTrue(m.tarjetaVisible)
         assertFalse(m.entradaVisible)
         assertEquals(Gimnasio.Pantalla.INICIO, m.pantalla)
-        assertTrue(m.necesitaAviso)
-        m.aceptarAviso()
         assertEquals(ModeloGimnasio.Salida.OK, m.empezar())
-        assertFalse(m.necesitaAviso)
         assertEquals(9, m.faltantes.size)
         for (z in Gimnasio.zonas.map { it.clave }.filter { it != "otros" && it != "bancos" }) assertEquals(ModeloGimnasio.Foto.GUARDADA, m.agregar(z, jpeg))
         m.marcarNoHay("bancos", true)
@@ -41,25 +38,9 @@ class GimnasioTest {
         assertTrue(m.cola.value.isEmpty())
         assertEquals(Gimnasio.Pantalla.RECIBIDO, m.pantalla)
         assertNull(m.borrador.value.envio)
-        assertEquals("terceros-v1", d.ultimoEnviar?.get("p_consentimiento")?.comoTexto)
         assertEquals(token, d.cabecerasUltimaSubida["x-gimnasio-token"])
         assertTrue(jpeg.contentEquals(d.fotos[0].bytes))
     }
-
-    @Test fun sinAvisoVigenteNoSeEnvia(): Unit = runBlocking {
-        val d = DobleGimnasio.escenario("borrador")
-        d.consentimientoAceptado = false
-        val m = armar(d)
-        m.refrescar()
-        assertTrue(m.necesitaAviso)
-        m.empezar()
-        assertTrue(m.necesitaAviso, "empezar no acepta el aviso por su cuenta")
-        m.enviarCarga()
-        assertNull(m.borrador.value.envio)
-        assertEquals(ModeloGimnasio.AvisoEnvio.SinConsentimiento, m.avisoEnvio.value)
-        assertNull(d.ultimoEnviar)
-    }
-
     @Test fun volverAEditarNoPierdeLaFoto(): Unit = runBlocking {
         val d = DobleGimnasio.escenario("borrador")
         val m = armar(d)

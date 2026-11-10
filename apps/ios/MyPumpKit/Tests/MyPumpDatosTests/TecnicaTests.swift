@@ -23,7 +23,7 @@ struct TecnicaTests {
     }
     private func lista(_ m: ModeloTecnica) async -> ModeloTecnica {
         await m.refrescar()
-        m.aceptarAviso()
+        m.marcarAvisoVisto()
         return m
     }
     private func videosEnDisco(_ m: ModeloTecnica) -> Int {
@@ -38,8 +38,7 @@ struct TecnicaTests {
         #expect(m.habilitado)
         #expect(m.necesitaAviso)
         let sinAviso = video()
-        #expect(m.encolar(archivo: sinAviso, slug: "s", nombre: "Remo", nota: "") == .ocupado)   // el aviso va primero
-        m.aceptarAviso()
+        m.marcarAvisoVisto()
         #expect(!m.necesitaAviso)
         #expect(m.encolar(archivo: sinAviso, slug: "s", nombre: "Remo", nota: String(repeating: "x", count: 400)) == .guardado)
         #expect(videosEnDisco(m) == 1)
@@ -47,14 +46,12 @@ struct TecnicaTests {
         await m.drenar()
         #expect(m.pendiente == nil)
         #expect(videosEnDisco(m) == 0)
-        #expect(d.ultimoNuevo?["p_consentimiento"]?.comoTexto == Tecnica.consentimientoVigente)
         #expect(d.ultimoNuevo?["p_nota"]?.comoTexto?.count == 300)
         #expect(d.bytesSubidos == [2048])
         #expect(d.cabecerasUltimaSubida["x-tecnica-token"] == token)
         #expect(d.cabecerasUltimaSubida["Content-Length"] == "2048")
         #expect(m.envios.first?.estado == .enviado)
         #expect(!m.puedeMandar)
-        #expect(m.estado?.consentimientoAceptado == true)
     }
 
     @Test func palancaApagadaOSinServidorNoSeVeNada() async {
@@ -99,7 +96,7 @@ struct TecnicaTests {
     }
 
     @Test func corteDespuesDeAbrirNoDuplicaElEnvio() async {
-        let d = DobleTecnica.escenario("vacio"); d.consentimientoAceptado = true; d.cortesEnNuevo = 1
+        let d = DobleTecnica.escenario("vacio"); d.cortesEnNuevo = 1
         let (m, _) = armar(d)
         await m.refrescar()
         #expect(m.encolar(archivo: video(), slug: "s", nombre: "Remo", nota: "") == .guardado)
@@ -122,7 +119,7 @@ struct TecnicaTests {
     }
 
     @Test func insistirSinParar() async {
-        let d = DobleTecnica.escenario("vacio"); d.consentimientoAceptado = true; d.proximasSubidas = [503, 503, 503]
+        let d = DobleTecnica.escenario("vacio"); d.proximasSubidas = [503, 503, 503]
         let (m, _) = armar(d)
         await m.refrescar()
         #expect(m.encolar(archivo: video(), slug: "s", nombre: "Remo", nota: "") == .guardado)
@@ -147,7 +144,7 @@ struct TecnicaTests {
     }
 
     @Test func tokenCaidoGuardaElVideo() async {
-        let d = DobleTecnica.escenario("vacio"); d.consentimientoAceptado = true; d.proximasSubidas = [403]
+        let d = DobleTecnica.escenario("vacio"); d.proximasSubidas = [403]
         let (m, _) = armar(d)
         await m.refrescar()
         #expect(m.encolar(archivo: video(), slug: "s", nombre: "Remo", nota: "") == .guardado)

@@ -78,8 +78,6 @@ class GimnasioVectoresTest {
             val e = EstadoGimnasio.desde(c["j"]!!)
             assertEquals(bool(c["habilitado"]), e != null)
             if (e == null) continue
-            assertEquals(c["version"]?.comoTexto, e.consentimientoVersion)
-            assertEquals(bool(c["aceptado"]), e.consentimientoAceptado)
             assertEquals(c["abierta"]?.comoTexto, e.abierta?.estado)
             if (c["equipos"] != null) {
                 assertEquals(entero(c["equipos"]), e.vigente?.equipos?.size)

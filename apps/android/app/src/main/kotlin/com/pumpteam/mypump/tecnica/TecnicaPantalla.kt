@@ -318,7 +318,7 @@ fun EnviarTecnicaPantalla(m: ModeloTecnica, slug: String, nombre: String, alVolv
             !puede && !mandado -> Box(Modifier.padding(relleno).fillMaxSize().padding(Espacio.l), contentAlignment = Alignment.Center) {
                 Nota(T.enCurso, Modifier.testTag("tecnica-en-curso"))
             }
-            m.necesitaAviso -> AvisoTerceros(m, relleno)
+            m.necesitaAviso -> AvisoBreve(m, relleno)
             else -> Formulario(m, v, slug, nombre, relleno, alMandado = { mandado = true })
         }
     }
@@ -326,7 +326,7 @@ fun EnviarTecnicaPantalla(m: ModeloTecnica, slug: String, nombre: String, alVolv
 }
 
 @Composable
-private fun AvisoTerceros(m: ModeloTecnica, relleno: PaddingValues) {
+private fun AvisoBreve(m: ModeloTecnica, relleno: PaddingValues) {
     val c = MyPump.colores
     Desplazable(relleno) {
         Row(
@@ -334,9 +334,9 @@ private fun AvisoTerceros(m: ModeloTecnica, relleno: PaddingValues) {
             horizontalArrangement = Arrangement.spacedBy(Espacio.s),
         ) {
             Icon(Iconos.Candado, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(20.dp))
-            Text(T.avisoTerceros, style = MaterialTheme.typography.bodyMedium, color = c.texto, modifier = Modifier.weight(1f))
+            Text(T.avisoBreve, style = MaterialTheme.typography.bodyMedium, color = c.texto, modifier = Modifier.weight(1f))
         }
-        BotonMarca(T.avisoBoton, alTocar = { m.aceptarAviso() }, modifier = Modifier.fillMaxWidth().testTag("tecnica-aviso-ok"))
+        BotonMarca(T.avisoBoton, alTocar = { m.marcarAvisoVisto() }, modifier = Modifier.fillMaxWidth().testTag("tecnica-aviso-ok"))
     }
 }
 

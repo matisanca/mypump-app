@@ -23,7 +23,6 @@ public struct EnvioGimnasio: Codable, Equatable, Sendable {
     public var gimnasioId: String
     public var noHay: [String] = []
     public var nota: String = ""
-    public var consentimiento: String = ""
     public var quitar: [String] = []
 }
 
@@ -34,7 +33,6 @@ struct BorradorGimnasio: Codable, Equatable {
     var nota = ""
     var quitar: [String] = []
     var respuestas: [String: JSONValue] = [:]
-    var avisoVersion: String?
     var envio: EnvioGimnasio?
     static let archivo = "gimnasio-borrador.json"
 }
@@ -46,7 +44,7 @@ struct BorradorGimnasio: Codable, Equatable {
 public final class ModeloGimnasio {
     public enum Resultado: Equatable, Sendable { case ok, sinSenal, error, tokenCaido }
     public enum Foto: Equatable, Sendable { case guardada, tope, noSeGuardo }
-    public enum AvisoEnvio: Equatable, Sendable { case faltan([String]), sinConsentimiento, sinNovedad, error }
+    public enum AvisoEnvio: Equatable, Sendable { case faltan([String]), sinNovedad, error }
 
     public struct VistaFoto: Identifiable, Equatable, Sendable {
         public let id: String
@@ -118,13 +116,6 @@ public final class ModeloGimnasio {
     }
     public var entradaVisible: Bool { Gimnasio.entradaVisible(habilitado: estado != nil, hayVigente: vigente != nil) }
     public var pantalla: Gimnasio.Pantalla { Gimnasio.pantalla(abierta: abierta?.estado, hayVigente: vigente != nil) }
-
-    /// El aviso de terceros, una sola vez: si el servidor no lo tiene aceptado y en este teléfono no se aceptó esta versión.
-    public var necesitaAviso: Bool {
-        guard let e = estado else { return false }
-        return !e.consentimientoAceptado && borrador.avisoVersion != e.consentimientoVersion
-    }
-
     private var colaDeLaCarga: [PendienteGimnasio] {
         guard let id = abierta?.id else { return [] }
         let enServidor = Set(abierta?.fotos.map(\.id) ?? [])
@@ -184,7 +175,7 @@ public final class ModeloGimnasio {
         var b = borrador
         let id = e.abierta?.id
         if b.gimnasioId != id {
-            b = BorradorGimnasio(gimnasioId: id, avisoVersion: b.avisoVersion, envio: b.envio?.gimnasioId == id ? b.envio : nil)
+            b = BorradorGimnasio(gimnasioId: id, envio: b.envio?.gimnasioId == id ? b.envio : nil)
         }
         // Lo que el servidor ya tomó deja de estar pendiente (un reintento devuelve `ya`).
         if let en = b.envio, let a = e.abierta, (en.tipo == .enviar && a.estado != "borrador") || (en.tipo == .responder && a.estado != "a_confirmar") {
@@ -198,14 +189,6 @@ public final class ModeloGimnasio {
     public func empezar(modo: String = "completa") async -> Resultado {
         return await nuevo(modo: modo, reintentos: 1)
     }
-
-    /// El aviso de terceros quedó aceptado en este teléfono (`enviar` lleva la versión al servidor).
-    public func aceptarAviso() {
-        guard let e = estado else { return }
-        borrador.avisoVersion = e.consentimientoVersion
-        guardarBorrador()
-    }
-
     private func nuevo(modo: String, reintentos: Int) async -> Resultado {
         switch await cliente.llamar("mypump_gimnasio_nuevo", ["p_token": .texto(token), "p_modo": .texto(modo)]) {
         case .success(.null): return .tokenCaido
@@ -399,13 +382,12 @@ public final class ModeloGimnasio {
 
     /// «Enviar a Mati»: queda anotado en disco y sale al vaciarse la cola; si no hay red, cuando vuelva.
     public func enviarCarga() async {
-        guard let a = abierta, let e = estado else { return }
-        guard !necesitaAviso else { avisoEnvio = .sinConsentimiento; return }   // la raíz muestra el aviso antes de seguir
+        guard let a = abierta, estado != nil else { return }
         avisoEnvio = nil
         totalEnvio = totalFotos
         subidasEnvio = abierta?.fotos.count ?? 0
         borrador.envio = EnvioGimnasio(tipo: .enviar, gimnasioId: a.id, noHay: borrador.noHay, nota: borrador.nota,
-                                       consentimiento: e.consentimientoVersion, quitar: a.modo == "parcial" ? borrador.quitar : [])
+                                       quitar: a.modo == "parcial" ? borrador.quitar : [])
         guardarBorrador()
         await drenar()
     }
@@ -434,7 +416,7 @@ public final class ModeloGimnasio {
         case .enviar:
             r = await cliente.llamar("mypump_gimnasio_enviar", [
                 "p_token": .texto(token), "p_id": .texto(e.gimnasioId), "p_no_hay": .lista(e.noHay.map(JSONValue.texto)),
-                "p_nota": .texto(e.nota), "p_consentimiento": .texto(e.consentimiento), "p_quitar": .lista(e.quitar.map(JSONValue.texto)),
+                "p_nota": .texto(e.nota), "p_quitar": .lista(e.quitar.map(JSONValue.texto)),
             ])
         case .responder:
             let preguntas = abierta?.preguntas ?? []
@@ -458,11 +440,6 @@ public final class ModeloGimnasio {
             guardarBorrador()
             switch j["error"]?.comoTexto {
             case "faltan_zonas": avisoEnvio = .faltan((j["faltan"]?.listaGim ?? []).compactMap(\.comoTexto))
-            case "sin_consentimiento":
-                borrador.avisoVersion = nil
-                guardarBorrador()
-                avisoEnvio = .sinConsentimiento
-                await refrescar()
             case "sin_novedad": avisoEnvio = .sinNovedad
             case "no_encontrado", "estado_invalido": await refrescar()
             case "no_habilitado": apagar()

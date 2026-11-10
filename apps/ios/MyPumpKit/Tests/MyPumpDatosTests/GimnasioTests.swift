@@ -27,10 +27,7 @@ struct GimnasioTests {
         #expect(m.tarjetaVisible)
         #expect(!m.entradaVisible)
         #expect(m.pantalla == .inicio)
-        #expect(m.necesitaAviso)
-        m.aceptarAviso()
         #expect(await m.empezar() == .ok)
-        #expect(!m.necesitaAviso)
         #expect(m.pantalla == .zonas)
         #expect(m.faltantes.count == 9)
         completa(m, menos: ["bancos"])
@@ -44,27 +41,11 @@ struct GimnasioTests {
         #expect(m.cola.isEmpty)
         #expect(m.pantalla == .recibido)
         #expect(m.envio == nil)
-        #expect(d.ultimoEnviar?["p_consentimiento"] == .texto("terceros-v1"))
         #expect(d.ultimoEnviar?["p_no_hay"] == .lista([.texto("bancos")]))
         #expect(d.cabecerasUltimaSubida["x-gimnasio-token"] == token)
         #expect(d.fotos[0].bytes == jpeg)
         #expect(!d.llamadas.joined().contains("cliente_id"))
     }
-
-    @Test func sinAvisoVigenteNoSeEnvia() async {
-        let d = DobleGimnasio.escenario("borrador")
-        d.consentimientoAceptado = false
-        let (m, _) = armar(d)
-        await m.refrescar()
-        #expect(m.necesitaAviso)
-        _ = await m.empezar(modo: "completa")
-        #expect(m.necesitaAviso, "empezar no acepta el aviso por su cuenta")
-        await m.enviarCarga()
-        #expect(m.envio == nil)
-        #expect(m.avisoEnvio == .sinConsentimiento)
-        #expect(d.ultimoEnviar == nil)
-    }
-
     @Test func volverAEditarNoPierdeLaFoto() async {
         let d = DobleGimnasio.escenario("borrador")
         let (m, _) = armar(d)

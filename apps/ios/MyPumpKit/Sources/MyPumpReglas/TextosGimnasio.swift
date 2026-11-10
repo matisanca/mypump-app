@@ -9,10 +9,8 @@ public enum TextosGimnasio {
     public static let entradaMisDatos = "Mi gimnasio"
     public static let confirmarTarjeta = "Confirmanos qué de esto hay en tu gimnasio"
     // Inicio
-    public static let inicioTitulo = "Mostranos tu gimnasio"
     public static let inicioBajada = "Sacale fotos a lo que hay y adaptamos tu plan a tus máquinas"
-    public static let avisoTerceros = "Para reconocer los equipos, tus fotos las procesan servicios externos de inteligencia artificial, sin tu nombre. Mati y tu entrenador deciden los cambios"
-    public static let botonEmpezar = "Entendido, empezar"
+    public static let botonReintentar = "Probar de nuevo"
     public static let consejoPermiso = "Si tu gimnasio no deja, pedí permiso o sacalas en un horario tranquilo"
     // Zonas
     public static let noHay = "No hay en mi gimnasio"
@@ -41,7 +39,7 @@ public enum TextosGimnasio {
     public static let sinNovedad = "Sumá una foto o marcá algo que ya no esté"
     public static let errorGenerico = "No se pudo enviar. Probá de nuevo"
     // Estados
-    public static let recibido = "Recibido. Mati y tu entrenador lo están viendo. Te avisamos por WhatsApp"
+    public static let recibido = "Recibido. Mati lo está viendo. Te avisamos por WhatsApp"
     public static func adaptadoPorMati(_ fecha: String) -> String { "Adaptado por Mati el \(fecha)" }
     public static let sinCambios = "Mati revisó tu gimnasio y tu rutina encaja tal cual"
     // Preguntas

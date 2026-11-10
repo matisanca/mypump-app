@@ -19,11 +19,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.json.Json
 
 /** El video que espera subir. Uno por vez: el contrato no deja abrir otro mientras haya uno en curso. */
-data class PendienteTecnica(val id: String, val envioId: String?, val slug: String, val nombre: String, val nota: String, val consentimiento: String) {
+data class PendienteTecnica(val id: String, val envioId: String?, val slug: String, val nombre: String, val nota: String) {
     fun aValor(): ValorJson = ValorJson.Objeto(
         buildMap {
             put("id", ValorJson.Texto(id)); put("slug", ValorJson.Texto(slug)); put("nombre", ValorJson.Texto(nombre))
-            put("nota", ValorJson.Texto(nota)); put("consentimiento", ValorJson.Texto(consentimiento))
+            put("nota", ValorJson.Texto(nota))
             envioId?.let { put("envioId", ValorJson.Texto(it)) }
         },
     )
@@ -35,17 +35,17 @@ data class PendienteTecnica(val id: String, val envioId: String?, val slug: Stri
             v ?: return null
             return PendienteTecnica(
                 v["id"]?.comoTexto ?: return null, v["envioId"]?.comoTexto, v["slug"]?.comoTexto ?: "", v["nombre"]?.comoTexto ?: "",
-                v["nota"]?.comoTexto ?: "", v["consentimiento"]?.comoTexto ?: return null,
+                v["nota"]?.comoTexto ?: "",
             )
         }
     }
 }
 
 /** Lo que vive en disco: el aviso aceptado y el video en camino, juntos en un archivo que se escribe de una vez. */
-data class ColaTecnica(val avisoVersion: String? = null, val pendiente: PendienteTecnica? = null) {
+data class ColaTecnica(val avisoVisto: Boolean = false, val pendiente: PendienteTecnica? = null) {
     fun aValor(): ValorJson = ValorJson.Objeto(
         buildMap {
-            avisoVersion?.let { put("avisoVersion", ValorJson.Texto(it)) }
+            if (avisoVisto) put("avisoVisto", ValorJson.Booleano(true))
             pendiente?.let { put("pendiente", it.aValor()) }
         },
     )
@@ -55,7 +55,7 @@ data class ColaTecnica(val avisoVersion: String? = null, val pendiente: Pendient
 
         fun leer(disco: Disco): ColaTecnica {
             val v = disco.leer(ARCHIVO)?.let { ValorJson.desde(it) } ?: return ColaTecnica()
-            return ColaTecnica(v["avisoVersion"]?.comoTexto, PendienteTecnica.desde(v["pendiente"]))
+            return ColaTecnica(v["avisoVisto"] == ValorJson.Booleano(true), PendienteTecnica.desde(v["pendiente"]))
         }
     }
 }
@@ -118,8 +118,8 @@ class ModeloTecnica(
     val envios: List<EnvioTecnica> get() = _estado.value?.visibles ?: emptyList()
     val topes: TopesTecnica get() = _estado.value?.topes ?: TopesTecnica()
 
-    /** El aviso de terceros, una sola vez: si el servidor no lo tiene aceptado y en este teléfono no se aceptó esta versión. */
-    val necesitaAviso: Boolean get() = _estado.value?.let { !(it.consentimientoAceptado && it.consentimientoVersion == Tecnica.CONSENTIMIENTO_VIGENTE) && _cola.value.avisoVersion != Tecnica.CONSENTIMIENTO_VIGENTE } ?: false
+    /** El aviso breve, solo la primera vez: es informativo y no frena ni condiciona el envío. */
+    val necesitaAviso: Boolean get() = _estado.value != null && !_cola.value.avisoVisto && envios.isEmpty()
 
     /** Se puede mandar otro: nada en camino y nada esperando la devolución. */
     val puedeMandar: Boolean get() = _estado.value != null && pendiente == null && _estado.value?.enRevision == null
@@ -158,9 +158,8 @@ class ModeloTecnica(
         _estado.value = null
     }
 
-    fun aceptarAviso() {
-        val e = _estado.value ?: return
-        _cola.update { it.copy(avisoVersion = Tecnica.CONSENTIMIENTO_VIGENTE) }
+    fun marcarAvisoVisto() {
+        _cola.update { it.copy(avisoVisto = true) }
         guardar()
     }
 
@@ -173,7 +172,7 @@ class ModeloTecnica(
     /** Mueve el video ya preparado a la cola. Después hay que drenar. */
     fun encolar(archivo: File, slug: String, nombre: String, nota: String): Encolar {
         val e = _estado.value ?: return Encolar.OCUPADO
-        if (pendiente != null || e.enRevision != null || necesitaAviso) return Encolar.OCUPADO
+        if (pendiente != null || e.enRevision != null) return Encolar.OCUPADO
         val d = disco ?: return Encolar.NO_SE_GUARDO
         val id = UUID.randomUUID().toString()
         val destino = d.archivo("${PendienteTecnica.CARPETA}/$id.mp4")
@@ -187,7 +186,7 @@ class ModeloTecnica(
             destino.delete()
             return Encolar.NO_SE_GUARDO
         }
-        _cola.update { it.copy(pendiente = PendienteTecnica(id, null, slug.take(Tecnica.MAX_NOMBRE), nombre.take(Tecnica.MAX_NOMBRE), Tecnica.nota(nota), Tecnica.CONSENTIMIENTO_VIGENTE)) }
+        _cola.update { it.copy(pendiente = PendienteTecnica(id, null, slug.take(Tecnica.MAX_NOMBRE), nombre.take(Tecnica.MAX_NOMBRE), Tecnica.nota(nota))) }
         if (!guardar()) {
             _cola.update { it.copy(pendiente = null) }
             destino.delete()
@@ -255,7 +254,7 @@ class ModeloTecnica(
             "mypump_tecnica_nuevo",
             mapOf(
                 "p_token" to ValorJson.Texto(token), "p_ejercicio_slug" to ValorJson.Texto(p.slug), "p_ejercicio_nombre" to ValorJson.Texto(p.nombre),
-                "p_nota" to ValorJson.Texto(p.nota), "p_consentimiento" to ValorJson.Texto(p.consentimiento),
+                "p_nota" to ValorJson.Texto(p.nota),
             ),
         )
         when (r) {
@@ -272,10 +271,6 @@ class ModeloTecnica(
                     "no_habilitado" -> apagar()
                     "en_curso" -> soltar(p, Aviso.EnCurso)
                     "tope_semanal" -> soltar(p, Aviso.TopeSemanal)
-                    "consentimiento" -> {
-                        _cola.update { it.copy(avisoVersion = null) }
-                        soltar(p, Aviso.Error)
-                    }
                     else -> soltar(p, Aviso.Error)
                 }
                 return Paso.FIN

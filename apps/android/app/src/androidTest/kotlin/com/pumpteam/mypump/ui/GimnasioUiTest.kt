@@ -68,9 +68,6 @@ class GimnasioUiTest : PruebaUi() {
         p.nodo(etiqueta("gimnasio-tarjeta"))
         Telefono.captura("gim-tarjeta-$tema")
         p.tocar(etiqueta("gimnasio-tarjeta"))
-        p.nodo(etiqueta("gimnasio-aviso"))
-        Telefono.captura("gim-inicio-$tema")
-        p.tocar(etiqueta("gimnasio-empezar"))
         p.nodo(etiqueta("gimnasio-zona-poleas"))
         p.nodo(texto("Te faltan 9 zonas"))
         Telefono.captura("gim-zonas-$tema")
@@ -97,7 +94,6 @@ class GimnasioUiTest : PruebaUi() {
         val d = recorridoCompleto("claro")
         assertEquals(8, d.fotos.size)
         assertEquals(8, d.fotos.map { it.id }.toSet().size)
-        assertEquals("terceros-v1", d.ultimoEnviar?.get("p_consentimiento")?.comoTexto)
         assertEquals("Hay una polea nueva", d.ultimoEnviar?.get("p_nota")?.comoTexto)
         val foto = FotoDePrueba.propiedades(d.fotos[0].bytes)
         assertEquals(1600 to 1200, foto.ancho to foto.alto)
@@ -194,7 +190,7 @@ class GimnasioUiTest : PruebaUi() {
         lanzar("enProceso")
         p.tocar(etiqueta("gimnasio-tarjeta"))
         p.nodo(etiqueta("gimnasio-recibido"))
-        p.nodo(textoQueContiene("Mati y tu entrenador lo están viendo"))
+        p.nodo(textoQueContiene("Mati lo está viendo"))
     }
 
     private fun preguntas(tema: String): DobleGimnasio {

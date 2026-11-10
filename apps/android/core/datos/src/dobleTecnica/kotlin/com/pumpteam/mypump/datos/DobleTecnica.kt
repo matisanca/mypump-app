@@ -15,7 +15,6 @@ class DobleTecnica : Transporte {
     @Volatile var palanca = true
     @Volatile var sinFuncion = false
     @Volatile var habilitado = true
-    @Volatile var consentimientoAceptado = false
     @Volatile var sinRed = false
     @Volatile var tope = false
 
@@ -52,8 +51,6 @@ class DobleTecnica : Transporte {
         nombre.startsWith("mypump_tecnica") && sinFuncion -> 404 to """{"code":"PGRST202","message":"no existe"}"""
         nombre == "mypump_tecnica_get" -> if (!habilitado) 200 to """{"habilitado":false}""" else 200 to ValorJson.objeto(
             "habilitado" to ValorJson.Booleano(true),
-            "consentimiento_version" to ValorJson.Texto(Tecnica.CONSENTIMIENTO_VIGENTE),
-            "consentimiento_aceptado" to ValorJson.Booleano(consentimientoAceptado),
             "topes" to ValorJson.objeto("duracion_min_s" to ValorJson.Numero(4.0), "duracion_max_s" to ValorJson.Numero(75.0), "bytes_max" to ValorJson.Numero(62914560.0), "por_semana" to ValorJson.Numero(3.0)),
             "envios" to ValorJson.Lista(envios.map { ValorJson.Objeto(it.toMap()) }),
         ).serializar()
@@ -74,7 +71,6 @@ class DobleTecnica : Transporte {
     }
 
     private fun nuevo(j: ValorJson): Pair<Int, String> {
-        if (j["p_consentimiento"]?.comoTexto != Tecnica.CONSENTIMIENTO_VIGENTE) return 200 to """{"ok":false,"error":"consentimiento"}"""
         envios.firstOrNull { it["estado"]?.comoTexto in listOf("enviado", "procesando") }?.let { return 200 to """{"ok":false,"error":"en_curso","id":"${it["id"]?.comoTexto}"}""" }
         if (tope) return 200 to """{"ok":false,"error":"tope_semanal"}"""
         ultimoNuevo = j
@@ -108,7 +104,6 @@ class DobleTecnica : Transporte {
         bytesSubidos.add(p.archivo?.length() ?: (p.cuerpo?.size?.toLong() ?: 0))
         e["estado"] = ValorJson.Texto("enviado")
         e["tiene_video"] = ValorJson.Booleano(true)
-        consentimientoAceptado = true
         return 200 to """{"ok":true}"""
     }
 
@@ -134,14 +129,14 @@ class DobleTecnica : Transporte {
             when (nombre) {
                 "apagado" -> d.palanca = false
                 "sinServidor" -> d.sinFuncion = true
-                "corte" -> { d.consentimientoAceptado = true; d.proximasSubidas += 0 }
-                "rechazo" -> { d.consentimientoAceptado = true; d.proximasSubidas += 400 }
-                "reintento" -> { d.consentimientoAceptado = true; d.proximasSubidas += listOf(503, 429) }
-                "tope" -> { d.consentimientoAceptado = true; d.tope = true }
-                "enRevision" -> { d.consentimientoAceptado = true; d.envios += envio("enviado") }
-                "publicado" -> { d.consentimientoAceptado = true; d.envios += envio("publicado", publicado, "devolucion" to devolucionDeEjemplo) }
-                "publicadoSinCorrecciones" -> { d.consentimientoAceptado = true; d.envios += envio("publicado", publicado, "devolucion" to devolucionSinCorrecciones) }
-                "rechazado" -> { d.consentimientoAceptado = true; d.envios += envio("rechazado", "rechazo_texto" to ValorJson.Texto(TextosTecnica.rechazoIlegible), "tiene_video" to ValorJson.Booleano(false)) }
+                "corte" -> { d.proximasSubidas += 0 }
+                "rechazo" -> { d.proximasSubidas += 400 }
+                "reintento" -> { d.proximasSubidas += listOf(503, 429) }
+                "tope" -> { d.tope = true }
+                "enRevision" -> { d.envios += envio("enviado") }
+                "publicado" -> { d.envios += envio("publicado", publicado, "devolucion" to devolucionDeEjemplo) }
+                "publicadoSinCorrecciones" -> { d.envios += envio("publicado", publicado, "devolucion" to devolucionSinCorrecciones) }
+                "rechazado" -> { d.envios += envio("rechazado", "rechazo_texto" to ValorJson.Texto(TextosTecnica.rechazoIlegible), "tiene_video" to ValorJson.Booleano(false)) }
                 else -> Unit   // "vacio": habilitado, sin nada
             }
             return d

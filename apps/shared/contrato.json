@@ -1377,10 +1377,6 @@
      "tipo": "text"
     },
     {
-     "nombre": "p_consentimiento",
-     "tipo": "text"
-    },
-    {
      "nombre": "p_quitar",
      "tipo": "text[]",
      "por_defecto": "'{}'"
@@ -1451,10 +1447,6 @@
     },
     {
      "nombre": "p_nota",
-     "tipo": "text"
-    },
-    {
-     "nombre": "p_consentimiento",
      "tipo": "text"
     }
    ],

@@ -236,7 +236,7 @@ struct EnviarTecnica: View {
     private var aviso: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.m) {
-                Label { Text(T.avisoTerceros).font(.subheadline).fixedSize(horizontal: false, vertical: true) } icon: {
+                Label { Text(T.avisoBreve).font(.subheadline).fixedSize(horizontal: false, vertical: true) } icon: {
                     Image(systemName: "lock.fill").foregroundStyle(Color.marcaTexto)
                 }
                 .labelStyle(EtiquetaCompacta())
@@ -245,7 +245,7 @@ struct EnviarTecnica: View {
                 .background(Color.marcaSuave, in: .rect(cornerRadius: Radio.control, style: .continuous))
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("tecnica-aviso")
-                Button(T.avisoBoton) { modelo.aceptarAviso() }.buttonStyle(BotonMarca()).accessibilityIdentifier("tecnica-aviso-ok")
+                Button(T.avisoBoton) { modelo.marcarAvisoVisto() }.buttonStyle(BotonMarca()).accessibilityIdentifier("tecnica-aviso-ok")
             }
             .padding(Espacio.m)
             .anchoLectura()

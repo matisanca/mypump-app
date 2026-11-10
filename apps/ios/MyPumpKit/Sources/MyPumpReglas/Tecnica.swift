@@ -4,7 +4,6 @@ import MyPumpModelos
 /// Reglas y decodificación de «Técnica por video» (`tecnica/CONTRATO_APP.md`). Decodifica con tolerancia: lo que no se entiende se
 /// descarta y un campo roto vale lo de fábrica. Gemelo de Tecnica.kt; `apps/shared/vectores/tecnica.json` hace fallar si difieren.
 public enum Tecnica {
-    public static let consentimientoVigente = "terceros-tecnica-v1"
     public static let maxNota = 300
     public static let maxNombre = 120
 
@@ -175,15 +174,11 @@ public struct EnvioTecnica: Equatable, Sendable, Identifiable {
 
 /// `mypump_tecnica_get` con la sección habilitada. Si no vino `habilitado: true`, nil: no se muestra nada.
 public struct EstadoTecnica: Equatable, Sendable {
-    public let consentimientoVersion: String
-    public let consentimientoAceptado: Bool
     public let topes: TopesTecnica
     public var envios: [EnvioTecnica]
 
     public init?(_ j: JSONValue) {
         guard j["habilitado"] == .bool(true) else { return nil }
-        consentimientoVersion = j["consentimiento_version"]?.comoTexto ?? Tecnica.consentimientoVigente
-        consentimientoAceptado = j["consentimiento_aceptado"] == .bool(true)
         topes = TopesTecnica(j["topes"])
         if case .lista(let l)? = j["envios"] { envios = l.compactMap(EnvioTecnica.init) } else { envios = [] }
     }

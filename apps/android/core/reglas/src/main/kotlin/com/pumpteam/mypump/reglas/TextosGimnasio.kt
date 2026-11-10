@@ -9,10 +9,8 @@ object TextosGimnasio {
     const val tarjetaTitulo = "Tu gimnasio"
     const val entradaMisDatos = "Mi gimnasio"
     const val confirmarTarjeta = "Confirmanos qué de esto hay en tu gimnasio"
-    const val inicioTitulo = "Mostranos tu gimnasio"
     const val inicioBajada = "Sacale fotos a lo que hay y adaptamos tu plan a tus máquinas"
-    const val avisoTerceros = "Para reconocer los equipos, tus fotos las procesan servicios externos de inteligencia artificial, sin tu nombre. Mati y tu entrenador deciden los cambios"
-    const val botonEmpezar = "Entendido, empezar"
+    const val botonReintentar = "Probar de nuevo"
     const val consejoPermiso = "Si tu gimnasio no deja, pedí permiso o sacalas en un horario tranquilo"
     const val noHay = "No hay en mi gimnasio"
     const val noHayCorto = "No hay"
@@ -37,7 +35,7 @@ object TextosGimnasio {
     const val enviandoSeguir = "Queda guardado y se envía solo cuando vuelva la señal"
     const val sinNovedad = "Sumá una foto o marcá algo que ya no esté"
     const val errorGenerico = "No se pudo enviar. Probá de nuevo"
-    const val recibido = "Recibido. Mati y tu entrenador lo están viendo. Te avisamos por WhatsApp"
+    const val recibido = "Recibido. Mati lo está viendo. Te avisamos por WhatsApp"
     fun adaptadoPorMati(fecha: String) = "Adaptado por Mati el $fecha"
     const val sinCambios = "Mati revisó tu gimnasio y tu rutina encaja tal cual"
     fun necesitamosFotos(n: Int) = if (n == 1) "Necesitamos 1 foto más" else "Necesitamos $n fotos más"
@@ -62,8 +60,7 @@ object TextosGimnasio {
 
     /** Para los vectores: clave → texto. */
     val todos: Map<String, String> = linkedMapOf(
-        "tarjetaTitulo" to tarjetaTitulo, "entradaMisDatos" to entradaMisDatos, "confirmarTarjeta" to confirmarTarjeta, "inicioTitulo" to inicioTitulo,
-        "inicioBajada" to inicioBajada, "avisoTerceros" to avisoTerceros, "botonEmpezar" to botonEmpezar, "consejoPermiso" to consejoPermiso,
+        "tarjetaTitulo" to tarjetaTitulo, "entradaMisDatos" to entradaMisDatos, "confirmarTarjeta" to confirmarTarjeta, "inicioBajada" to inicioBajada, "botonReintentar" to botonReintentar, "consejoPermiso" to consejoPermiso,
         "noHay" to noHay, "noHayCorto" to noHayCorto, "sinFotos" to sinFotos, "opcional" to opcional, "consejoCamara" to consejoCamara,
         "agregarFoto" to agregarFoto, "borrarFoto" to borrarFoto, "subiendo" to subiendo, "esperandoSenal" to esperandoSenal,
         "revisarYEnviar" to revisarYEnviar, "tope" to tope, "fotoRechazada" to fotoRechazada, "noSeGuardo" to noSeGuardo, "sinSenal" to sinSenal,

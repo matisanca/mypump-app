@@ -56,16 +56,8 @@ AS $$
   SELECT ARRAY['poleas','accesorios_polea','piernas','empuje','tiron','barras_racks','discos','mancuernas','bancos','otros']::TEXT[];
 $$;
 
--- La versión del aviso de terceros que hay que aceptar para enviar. Si cambia el texto, cambia esto.
-CREATE OR REPLACE FUNCTION mypump_gimnasio_consentimiento_vigente()
-RETURNS TEXT
-LANGUAGE sql
-IMMUTABLE
-SET search_path = public
-AS $$ SELECT 'terceros-v1'::TEXT; $$;
-
-REVOKE ALL ON FUNCTION mypump_gimnasio_tipos(), mypump_gimnasio_zonas(), mypump_gimnasio_consentimiento_vigente() FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION mypump_gimnasio_tipos(), mypump_gimnasio_zonas(), mypump_gimnasio_consentimiento_vigente() TO service_role;
+REVOKE ALL ON FUNCTION mypump_gimnasio_tipos(), mypump_gimnasio_zonas() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_gimnasio_tipos(), mypump_gimnasio_zonas() TO service_role;
 
 -- ── Tablas ──
 CREATE TABLE IF NOT EXISTS mypump_gimnasio (
@@ -86,8 +78,6 @@ CREATE TABLE IF NOT EXISTS mypump_gimnasio (
   preguntas      JSONB       NOT NULL DEFAULT '[]'::JSONB CHECK (jsonb_typeof(preguntas) = 'array'),
   respuestas     JSONB       NOT NULL DEFAULT '{}'::JSONB CHECK (jsonb_typeof(respuestas) = 'object'),
   resultado      TEXT        CHECK (resultado IN ('sin_cambios','adaptada','plan_nuevo')),
-  consentimiento_en           TIMESTAMPTZ,
-  consentimiento_texto_version TEXT,
   enviado_en     TIMESTAMPTZ,
   procesando_desde TIMESTAMPTZ,
   procesado_en   TIMESTAMPTZ,
@@ -107,7 +97,7 @@ CREATE TABLE IF NOT EXISTS mypump_gimnasio (
   UNIQUE (cliente_id, version),
   UNIQUE (id, cliente_id),
   CONSTRAINT gimnasio_listo_con_ok CHECK (estado <> 'listo' OR (resultado IS NOT NULL AND length(btrim(COALESCE(aprobado_por, ''))) > 0 AND aprobado_en IS NOT NULL)),
-  CONSTRAINT gimnasio_enviado_con_permiso CHECK (estado IN ('borrador') OR (enviado_en IS NOT NULL AND consentimiento_en IS NOT NULL AND momento IS NOT NULL))
+  CONSTRAINT gimnasio_enviado_con_permiso CHECK (estado IN ('borrador') OR (enviado_en IS NOT NULL AND momento IS NOT NULL))
 );
 
 -- Una sola carga abierta por alumno, y un solo gimnasio vigente.
@@ -243,8 +233,6 @@ BEGIN
   SELECT * INTO v_vigente FROM mypump_gimnasio WHERE cliente_id = v_cliente_id AND estado = 'listo';
   RETURN jsonb_build_object(
     'habilitado', TRUE,
-    'consentimiento_version', mypump_gimnasio_consentimiento_vigente(),
-    'consentimiento_aceptado', EXISTS (SELECT 1 FROM mypump_gimnasio WHERE cliente_id = v_cliente_id AND consentimiento_texto_version = mypump_gimnasio_consentimiento_vigente()),
     'abierta', CASE WHEN v_abierta.id IS NULL THEN NULL ELSE mypump_gimnasio_vista_alumno(v_abierta) END,
     'vigente', CASE WHEN v_vigente.id IS NULL THEN NULL ELSE mypump_gimnasio_vista_alumno(v_vigente) END
   );
@@ -296,7 +284,6 @@ CREATE OR REPLACE FUNCTION mypump_gimnasio_enviar(
   p_id              UUID,
   p_no_hay          TEXT[],
   p_nota            TEXT,
-  p_consentimiento  TEXT,
   p_quitar          TEXT[] DEFAULT '{}'
 )
 RETURNS JSONB
@@ -320,9 +307,6 @@ BEGIN
     RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'estado', CASE WHEN v_fila.estado = 'error' THEN 'enviado' ELSE v_fila.estado END);
   END IF;
   IF NOT mypump_gimnasio_habilitado(v_cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_habilitado'); END IF;
-  IF p_consentimiento IS DISTINCT FROM mypump_gimnasio_consentimiento_vigente() THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'sin_consentimiento');
-  END IF;
   IF NOT (COALESCE(p_no_hay, '{}') <@ mypump_gimnasio_zonas()) OR NOT (v_quitar <@ mypump_gimnasio_tipos()) THEN
     RAISE EXCEPTION 'zona o tipo inválido' USING ERRCODE = '22023';
   END IF;
@@ -348,8 +332,6 @@ BEGIN
     zonas_no_hay = v_no_hay,
     quitar = v_quitar,
     nota_alumno = NULLIF(left(btrim(regexp_replace(COALESCE(p_nota, ''), '[[:cntrl:]]+', ' ', 'g')), 300), ''),
-    consentimiento_en = NOW(),
-    consentimiento_texto_version = p_consentimiento,
     enviado_en = NOW(),
     actualizado_en = NOW()
   WHERE id = p_id;
@@ -391,8 +373,8 @@ $$;
 
 REVOKE ALL ON FUNCTION mypump_gimnasio_habilitado(TEXT), mypump_gimnasio_vista_alumno(mypump_gimnasio) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION mypump_gimnasio_habilitado(TEXT), mypump_gimnasio_vista_alumno(mypump_gimnasio) TO service_role;
-REVOKE ALL ON FUNCTION mypump_gimnasio_get(TEXT), mypump_gimnasio_nuevo(TEXT, TEXT), mypump_gimnasio_enviar(TEXT, UUID, TEXT[], TEXT, TEXT, TEXT[]), mypump_gimnasio_responder(TEXT, UUID, JSONB) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION mypump_gimnasio_get(TEXT), mypump_gimnasio_nuevo(TEXT, TEXT), mypump_gimnasio_enviar(TEXT, UUID, TEXT[], TEXT, TEXT, TEXT[]), mypump_gimnasio_responder(TEXT, UUID, JSONB) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION mypump_gimnasio_get(TEXT), mypump_gimnasio_nuevo(TEXT, TEXT), mypump_gimnasio_enviar(TEXT, UUID, TEXT[], TEXT, TEXT[]), mypump_gimnasio_responder(TEXT, UUID, JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_gimnasio_get(TEXT), mypump_gimnasio_nuevo(TEXT, TEXT), mypump_gimnasio_enviar(TEXT, UUID, TEXT[], TEXT, TEXT[]), mypump_gimnasio_responder(TEXT, UUID, JSONB) TO anon, authenticated, service_role;
 
 -- ── Mini-vision (service_role) ──
 -- Antes de procesar una foto y otra vez, con la carga trabada, al registrarla. 'ok', 'ya', 'no_encontrado', 'ajena', 'estado', 'tope', 'no_habilitado'.

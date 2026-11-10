@@ -26,7 +26,6 @@ object Gimnasio {
     const val MAX_NOTA = 300
     const val MAX_PX = 1600
     const val CALIDAD = 0.8
-    const val CONSENTIMIENTO_VIGENTE = "terceros-v1"
     const val KILOS_MAXIMO = 400.0
 
     fun nombreZona(clave: String): String = zonas.firstOrNull { it.clave == clave }?.nombre ?: clave
@@ -201,8 +200,6 @@ data class CargaGimnasio(
 }
 
 data class EstadoGimnasio(
-    val consentimientoVersion: String,
-    val consentimientoAceptado: Boolean,
     val abierta: CargaGimnasio?,
     val vigente: CargaGimnasio?,
 ) {
@@ -211,8 +208,6 @@ data class EstadoGimnasio(
         fun desde(j: ValorJson): EstadoGimnasio? {
             if (j["habilitado"] != ValorJson.Booleano(true)) return null
             return EstadoGimnasio(
-                consentimientoVersion = j["consentimiento_version"]?.comoTexto ?: Gimnasio.CONSENTIMIENTO_VIGENTE,
-                consentimientoAceptado = j["consentimiento_aceptado"] == ValorJson.Booleano(true),
                 abierta = CargaGimnasio.desde(j["abierta"]),
                 vigente = CargaGimnasio.desde(j["vigente"]),
             )

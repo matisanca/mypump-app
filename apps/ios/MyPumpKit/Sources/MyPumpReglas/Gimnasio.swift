@@ -33,7 +33,6 @@ public enum Gimnasio {
     public static let maxPx = 1600
     public static let calidad = 0.8
     public static let maxBytes = 8 * 1024 * 1024
-    public static let consentimientoVigente = "terceros-v1"
     public static let kilosMaximo = 400.0
 
     // MARK: Zonas y tope
@@ -266,16 +265,12 @@ public struct CargaGimnasio: Equatable, Sendable {
 }
 
 public struct EstadoGimnasio: Equatable, Sendable {
-    public let consentimientoVersion: String
-    public let consentimientoAceptado: Bool
     public var abierta: CargaGimnasio?
     public let vigente: CargaGimnasio?
 
     /// nil: no es una respuesta con `habilitado:true`.
     public init?(_ j: JSONValue) {
         guard j["habilitado"] == .bool(true) else { return nil }
-        consentimientoVersion = j["consentimiento_version"]?.comoTexto ?? Gimnasio.consentimientoVigente
-        consentimientoAceptado = j["consentimiento_aceptado"] == .bool(true)
         abierta = CargaGimnasio(j["abierta"])
         vigente = CargaGimnasio(j["vigente"])
     }

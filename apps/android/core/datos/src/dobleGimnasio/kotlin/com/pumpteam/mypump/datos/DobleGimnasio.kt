@@ -16,7 +16,6 @@ class DobleGimnasio : Transporte {
     @Volatile var palanca = true
     @Volatile var sinFuncion = false
     @Volatile var habilitado = true
-    @Volatile var consentimientoAceptado = false
     @Volatile var sinRed = false
 
     /** Estados forzados para las próximas subidas, en orden. 0 = sin red en esa. */
@@ -103,7 +102,6 @@ class DobleGimnasio : Transporte {
         val a = abierta
         if (a == null || a["id"] != j["p_id"]) return """{"ok":false,"error":"no_encontrado"}"""
         if (a["estado"]?.comoTexto != "borrador") return """{"ok":true,"ya":true,"estado":"enviado"}"""
-        if (j["p_consentimiento"]?.comoTexto != Gimnasio.CONSENTIMIENTO_VIGENTE) return """{"ok":false,"error":"sin_consentimiento"}"""
         ultimoEnviar = j
         val con = fotos.map { it.zona }.toSet()
         if (a["modo"]?.comoTexto == "completa") {
@@ -113,7 +111,6 @@ class DobleGimnasio : Transporte {
             return """{"ok":false,"error":"sin_novedad"}"""
         }
         a["estado"] = t("enviado")
-        consentimientoAceptado = true
         return """{"ok":true,"ya":false,"estado":"enviado"}"""
     }
 
@@ -137,8 +134,7 @@ class DobleGimnasio : Transporte {
             return ValorJson.Objeto(m)
         }
         return ValorJson.objeto(
-            "habilitado" to si, "consentimiento_version" to t(Gimnasio.CONSENTIMIENTO_VIGENTE), "consentimiento_aceptado" to ValorJson.Booleano(consentimientoAceptado),
-            "abierta" to carga(abierta), "vigente" to carga(vigente),
+            "habilitado" to si, "abierta" to carga(abierta), "vigente" to carga(vigente),
         )
     }
 
@@ -169,7 +165,6 @@ class DobleGimnasio : Transporte {
                 "apagado" -> d.palanca = false
                 "sinServidor" -> d.sinFuncion = true
                 "borrador", "corte", "rechazo", "reintento" -> {
-                    d.consentimientoAceptado = true
                     d.abierta = linkedMapOf("id" to t(ID), "estado" to t("borrador"), "modo" to t("completa"))
                     when (nombre) {
                         "corte" -> d.proximasSubidas.addAll(listOf(200, 0))
@@ -178,15 +173,12 @@ class DobleGimnasio : Transporte {
                     }
                 }
                 "enProceso" -> {
-                    d.consentimientoAceptado = true
                     d.abierta = linkedMapOf("id" to t(ID), "estado" to t("procesando"), "modo" to t("completa"))
                 }
                 "preguntas" -> {
-                    d.consentimientoAceptado = true
                     d.abierta = linkedMapOf("id" to t(ID), "estado" to t("a_confirmar"), "modo" to t("completa"), "preguntas" to PREGUNTAS)
                 }
                 "listo", "listoSinCambios" -> {
-                    d.consentimientoAceptado = true
                     d.vigente = linkedMapOf(
                         "id" to t(ID), "estado" to t("listo"), "modo" to t("completa"), "resultado" to t(if (nombre == "listo") "adaptada" else "sin_cambios"),
                         "publicado_en" to t("2026-11-12T15:00:00+00:00"), "equipos" to EQUIPOS,

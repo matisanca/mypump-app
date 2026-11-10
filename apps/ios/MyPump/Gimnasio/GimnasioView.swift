@@ -78,11 +78,9 @@ struct GimnasioRaiz: View {
                     Color.fondo
                 } else if modelo.envio != nil {
                     EnviandoGimnasio(modelo: modelo)
-                } else if modelo.pantalla == .zonas && modelo.necesitaAviso {
-                    InicioGimnasio(modelo: modelo)
                 } else {
                     switch modelo.pantalla {
-                    case .inicio: InicioGimnasio(modelo: modelo)
+                    case .inicio: ArranqueGimnasio(modelo: modelo)
                     case .zonas: ZonasGimnasio(modelo: modelo, destino: destino)
                     case .recibido: RecibidoGimnasio()
                     case .preguntas: PreguntasGimnasio(modelo: modelo)
@@ -132,56 +130,45 @@ private struct AvisoEnvioGimnasio: View {
         switch modelo.avisoEnvio {
         case .faltan(let f)?: NotaGimnasio(texto: T.faltanZonas(f.count), alerta: true).accessibilityIdentifier("gimnasio-aviso-envio")
         case .sinNovedad?: NotaGimnasio(texto: T.sinNovedad, alerta: true).accessibilityIdentifier("gimnasio-aviso-envio")
-        case .error?, .sinConsentimiento?: NotaGimnasio(texto: T.errorGenerico, alerta: true).accessibilityIdentifier("gimnasio-aviso-envio")
+        case .error?: NotaGimnasio(texto: T.errorGenerico, alerta: true).accessibilityIdentifier("gimnasio-aviso-envio")
         case nil: EmptyView()
         }
     }
 }
 
-private struct InicioGimnasio: View {
+/// Sin carga abierta no hay nada que leer: abre una sola y sigue a las zonas. Solo se queda acá si no se pudo.
+private struct ArranqueGimnasio: View {
     let modelo: ModeloGimnasio
     @State private var error: String?
     @State private var ocupado = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Espacio.m) {
-                Text(T.inicioTitulo).font(.title2.bold()).accessibilityAddTraits(.isHeader)
-                Text(T.inicioBajada).font(.body).foregroundStyle(.secondary)
-                if modelo.necesitaAviso {
-                    Label { Text(T.avisoTerceros).font(.subheadline).fixedSize(horizontal: false, vertical: true) } icon: {
-                        Image(systemName: "lock.fill").foregroundStyle(Color.marcaTexto)
-                    }
-                    .labelStyle(EtiquetaCompacta())
-                    .padding(Espacio.s)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.marcaSuave, in: .rect(cornerRadius: Radio.control, style: .continuous))
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("gimnasio-aviso")
-                }
-                NotaGimnasio(texto: T.consejoPermiso)
-                if let error { NotaGimnasio(texto: error, alerta: true) }
-                Button(T.botonEmpezar) { empezar() }
+        VStack(spacing: Espacio.m) {
+            if let error {
+                NotaGimnasio(texto: error, alerta: true)
+                Button(T.botonReintentar) { Task { await empezar() } }
                     .buttonStyle(BotonMarca())
                     .disabled(ocupado)
-                    .accessibilityIdentifier("gimnasio-empezar")
+                    .accessibilityIdentifier("gimnasio-reintentar")
+            } else {
+                ProgressView().accessibilityIdentifier("gimnasio-arrancando")
             }
-            .padding(Espacio.m)
-            .anchoLectura()
         }
+        .padding(Espacio.m)
+        .anchoLectura()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task { await empezar() }
     }
 
-    private func empezar() {
+    private func empezar() async {
+        guard !ocupado, modelo.abierta == nil else { return }
         ocupado = true
-        Task {
-            defer { ocupado = false }
-            modelo.aceptarAviso()
-            if modelo.abierta != nil { return }
-            switch await modelo.empezar() {
-            case .ok: error = nil
-            case .sinSenal: error = T.sinSenal
-            default: error = T.errorGenerico
-            }
+        defer { ocupado = false }
+        switch await modelo.empezar() {
+        // Abrió la carga pero no se pudo traer: sin esto quedaría cargando para siempre.
+        case .ok: error = modelo.abierta == nil ? T.sinSenal : nil
+        case .sinSenal: error = T.sinSenal
+        default: error = T.errorGenerico
         }
     }
 }

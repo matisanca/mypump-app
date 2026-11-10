@@ -3,12 +3,12 @@ package com.pumpteam.mypump.reglas
 /**
  * Todo lo que lee el alumno en «Técnica por video», en un solo lugar: para cambiar un texto se cambia acá y en el gemelo
  * `TextosTecnica.swift`, sin tocar lógica (`apps/shared/vectores/tecnica.json` hace fallar las pruebas si difieren). Lista para el
- * OK de Mati en `privado/TEXTOS_PARA_OK.md`. La única mención a la IA es el aviso de terceros.
+ * OK de Mati en `privado/TEXTOS_PARA_OK.md`.
  */
 object TextosTecnica {
     const val entradaEjercicio = "Mandar mi técnica"
     const val entradaMisDatos = "Mi técnica"
-    const val avisoTerceros = "Para analizar tu técnica, partes de tu video las procesan servicios externos de inteligencia artificial, con la cara tapada y sin tu nombre. Mati revisa todo antes de que te llegue. El video se borra a los 90 días y lo podés sacar cuando quieras"
+    const val avisoBreve = "Mati revisa tu video antes de que te llegue la devolución. El video se borra a los 90 días y lo podés sacar cuando quieras."
     const val avisoBoton = "Entendido, empezar"
     const val consejo = "Apoyá el teléfono a unos 3 metros, a la altura de la cadera. De costado es lo mejor para casi todos los ejercicios. Que entre todo tu cuerpo. Una serie, de hasta 75 segundos. No grabes a otras personas"
     const val notaPregunta = "¿Querés que mire algo en particular?"
@@ -61,7 +61,7 @@ object TextosTecnica {
     val todos: Map<String, String> = mapOf(
         "entradaEjercicio" to entradaEjercicio,
         "entradaMisDatos" to entradaMisDatos,
-        "avisoTerceros" to avisoTerceros,
+        "avisoBreve" to avisoBreve,
         "avisoBoton" to avisoBoton,
         "consejo" to consejo,
         "notaPregunta" to notaPregunta,

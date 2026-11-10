@@ -29,8 +29,7 @@ class TecnicaTest {
         assertTrue(m.habilitado)
         assertTrue(m.necesitaAviso)
         val v = video()
-        assertEquals(ModeloTecnica.Encolar.OCUPADO, m.encolar(v, "s", "Remo", ""))   // el aviso va primero
-        m.aceptarAviso()
+        m.marcarAvisoVisto()
         assertFalse(m.necesitaAviso)
         assertEquals(ModeloTecnica.Encolar.GUARDADO, m.encolar(v, "s", "Remo", "x".repeat(400)))
         assertEquals(1, enDisco(r))
@@ -38,7 +37,6 @@ class TecnicaTest {
         m.drenar()
         assertNull(m.pendiente)
         assertEquals(0, enDisco(r))
-        assertEquals(Tecnica.CONSENTIMIENTO_VIGENTE, d.ultimoNuevo?.get("p_consentimiento")?.comoTexto)
         assertEquals(300, d.ultimoNuevo?.get("p_nota")?.comoTexto?.length)
         assertEquals(listOf(2048L), d.bytesSubidos.toList())
         assertTrue(d.usoArchivo, "se sube desde el archivo")
@@ -81,7 +79,7 @@ class TecnicaTest {
     }
 
     @Test fun corteDespuesDeAbrirNoDuplica(): Unit = runBlocking {
-        val d = DobleTecnica.escenario("vacio").apply { consentimientoAceptado = true; cortesEnNuevo = 1 }
+        val d = DobleTecnica.escenario("vacio").apply { cortesEnNuevo = 1 }
         val m = armar(d)
         m.refrescar()
         m.encolar(video(), "s", "Remo", "")
@@ -104,7 +102,7 @@ class TecnicaTest {
     }
 
     @Test fun tresSeguidosParaYGuarda(): Unit = runBlocking {
-        val d = DobleTecnica.escenario("vacio").apply { consentimientoAceptado = true; proximasSubidas += listOf(503, 503, 503) }
+        val d = DobleTecnica.escenario("vacio").apply { proximasSubidas += listOf(503, 503, 503) }
         val r = raiz()
         val m = armar(d, r)
         m.refrescar()
@@ -131,7 +129,7 @@ class TecnicaTest {
     }
 
     @Test fun tokenCaidoGuarda(): Unit = runBlocking {
-        val d = DobleTecnica.escenario("vacio").apply { consentimientoAceptado = true; proximasSubidas += 403 }
+        val d = DobleTecnica.escenario("vacio").apply { proximasSubidas += 403 }
         val r = raiz()
         val m = armar(d, r)
         m.refrescar()

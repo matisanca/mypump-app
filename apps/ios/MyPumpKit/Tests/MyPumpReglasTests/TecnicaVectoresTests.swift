@@ -15,7 +15,6 @@ final class TecnicaVectoresTests: XCTestCase {
 
     func testConstantesYTextos() throws {
         let v = try vectores()
-        XCTAssertEqual(Tecnica.consentimientoVigente, v["consentimiento"]?.comoTexto)
         XCTAssertEqual(Double(Tecnica.maxNota), num(v["maxNota"]))
         let f = TopesTecnica()
         XCTAssertEqual(f.duracionMinS, num(v["topesDeFabrica"]?["duracion_min_s"]))
@@ -53,7 +52,6 @@ final class TecnicaVectoresTests: XCTestCase {
             if c["nulo"] == .bool(true) { XCTAssertNil(e); continue }
             let est = try XCTUnwrap(e)
             XCTAssertEqual(est.envios.map(\.id), lista(c["ids"]).compactMap(\.comoTexto))
-            XCTAssertEqual(est.consentimientoAceptado, c["aceptado"] == .bool(true))
             XCTAssertEqual(est.topes.duracionMaxS, num(c["duracionMax"]))
             XCTAssertEqual(Double(est.topes.bytesMax), num(c["bytesMax"]))
             if case .lista(let t)? = c["titulos"] {

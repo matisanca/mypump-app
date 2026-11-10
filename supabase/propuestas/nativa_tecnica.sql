@@ -22,14 +22,6 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 VALUES ('tecnica', 'tecnica', false, 62914560, ARRAY['video/mp4'])
 ON CONFLICT (id) DO NOTHING;
 
--- La versión del aviso de terceros. Si cambia el texto, cambia esto.
-CREATE OR REPLACE FUNCTION mypump_tecnica_consentimiento_vigente()
-RETURNS TEXT
-LANGUAGE sql
-IMMUTABLE
-SET search_path = public
-AS $$ SELECT 'terceros-tecnica-v1'::TEXT; $$;
-
 -- La última barrera antes del alumno. El worker ya filtra; esto cubre también lo que se edite a mano.
 CREATE OR REPLACE FUNCTION mypump_tecnica_texto_prohibido(p JSONB)
 RETURNS BOOLEAN
@@ -61,8 +53,8 @@ AS $$
      AND NOT mypump_tecnica_texto_prohibido(p);
 $$;
 
-REVOKE ALL ON FUNCTION mypump_tecnica_consentimiento_vigente(), mypump_tecnica_texto_prohibido(JSONB), mypump_tecnica_devolucion_valida(JSONB) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION mypump_tecnica_consentimiento_vigente(), mypump_tecnica_texto_prohibido(JSONB), mypump_tecnica_devolucion_valida(JSONB) TO service_role;
+REVOKE ALL ON FUNCTION mypump_tecnica_texto_prohibido(JSONB), mypump_tecnica_devolucion_valida(JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_tecnica_texto_prohibido(JSONB), mypump_tecnica_devolucion_valida(JSONB) TO service_role;
 
 -- ── Tablas ──
 -- Una fila por código emitido: guarda el hash, nunca el código. service_role no la toca: solo por las funciones de abajo.
@@ -93,8 +85,6 @@ CREATE TABLE IF NOT EXISTS mypump_tecnica (
   path              TEXT        UNIQUE CHECK (path !~ '^[a-z]+://'),
   bytes             INTEGER     CHECK (bytes > 0),
   duracion_s        REAL        CHECK (duracion_s > 0),
-  consentimiento_en TIMESTAMPTZ NOT NULL,
-  consentimiento_texto_version TEXT NOT NULL,
   enviado_en        TIMESTAMPTZ,
   procesando_desde  TIMESTAMPTZ,
   procesado_en      TIMESTAMPTZ,
@@ -215,8 +205,6 @@ BEGIN
   IF NOT mypump_tecnica_habilitado(v_cliente_id) THEN RETURN jsonb_build_object('habilitado', FALSE); END IF;
   RETURN jsonb_build_object(
     'habilitado', TRUE,
-    'consentimiento_version', mypump_tecnica_consentimiento_vigente(),
-    'consentimiento_aceptado', EXISTS (SELECT 1 FROM mypump_tecnica WHERE cliente_id = v_cliente_id AND consentimiento_texto_version = mypump_tecnica_consentimiento_vigente()),
     'topes', jsonb_build_object('duracion_min_s', 4, 'duracion_max_s', 75, 'bytes_max', 62914560, 'por_semana', 3),
     'envios', COALESCE((SELECT jsonb_agg(mypump_tecnica_vista_alumno(t) ORDER BY t.creado_en DESC)
                         FROM (SELECT * FROM mypump_tecnica WHERE cliente_id = v_cliente_id AND estado <> 'descartado' ORDER BY creado_en DESC LIMIT 20) t), '[]'::JSONB)
@@ -229,8 +217,7 @@ CREATE OR REPLACE FUNCTION mypump_tecnica_nuevo(
   p_token          TEXT,
   p_ejercicio_slug TEXT,
   p_ejercicio_nombre TEXT,
-  p_nota           TEXT,
-  p_consentimiento TEXT
+  p_nota           TEXT
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -244,7 +231,6 @@ BEGIN
   v_cliente_id := mypump_get_cliente_id_from_token(p_token);
   IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
   IF NOT mypump_tecnica_habilitado(v_cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_habilitado'); END IF;
-  IF p_consentimiento IS DISTINCT FROM mypump_tecnica_consentimiento_vigente() THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'consentimiento'); END IF;
   IF char_length(COALESCE(p_nota, '')) > 300 OR char_length(COALESCE(p_ejercicio_slug, '')) > 120 OR char_length(COALESCE(p_ejercicio_nombre, '')) > 120 THEN
     RAISE EXCEPTION 'texto muy largo' USING ERRCODE = '22023';
   END IF;
@@ -262,8 +248,8 @@ BEGIN
   END IF;
 
   BEGIN
-    INSERT INTO mypump_tecnica (cliente_id, ejercicio_slug, ejercicio_nombre, nota_alumno, consentimiento_en, consentimiento_texto_version)
-    VALUES (v_cliente_id, p_ejercicio_slug, p_ejercicio_nombre, NULLIF(btrim(p_nota), ''), NOW(), p_consentimiento)
+    INSERT INTO mypump_tecnica (cliente_id, ejercicio_slug, ejercicio_nombre, nota_alumno)
+    VALUES (v_cliente_id, p_ejercicio_slug, p_ejercicio_nombre, NULLIF(btrim(p_nota), ''))
     RETURNING * INTO v_fila;
   EXCEPTION WHEN unique_violation THEN
     RETURN jsonb_build_object('ok', FALSE, 'error', 'reintentar');
@@ -291,8 +277,8 @@ $$;
 
 REVOKE ALL ON FUNCTION mypump_tecnica_habilitado(TEXT), mypump_tecnica_vista_alumno(mypump_tecnica) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION mypump_tecnica_habilitado(TEXT), mypump_tecnica_vista_alumno(mypump_tecnica) TO service_role;
-REVOKE ALL ON FUNCTION mypump_tecnica_get(TEXT), mypump_tecnica_nuevo(TEXT, TEXT, TEXT, TEXT, TEXT), mypump_tecnica_cancelar(TEXT, UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION mypump_tecnica_get(TEXT), mypump_tecnica_nuevo(TEXT, TEXT, TEXT, TEXT, TEXT), mypump_tecnica_cancelar(TEXT, UUID) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION mypump_tecnica_get(TEXT), mypump_tecnica_nuevo(TEXT, TEXT, TEXT, TEXT), mypump_tecnica_cancelar(TEXT, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION mypump_tecnica_get(TEXT), mypump_tecnica_nuevo(TEXT, TEXT, TEXT, TEXT), mypump_tecnica_cancelar(TEXT, UUID) TO anon, authenticated, service_role;
 
 -- ── mini-vision (service_role) ──
 CREATE OR REPLACE FUNCTION mypump_tecnica_puede(p_cliente_id TEXT, p_id UUID)

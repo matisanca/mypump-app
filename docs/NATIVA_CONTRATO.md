@@ -515,10 +515,10 @@ app no muestra nada. Palancas `gimnasio_fotos` y `tecnica_video` en `mypump_app_
 |---|---|---|
 | `mypump_gimnasio_get` | `p_token` | jsonb; `null` token caído, `{habilitado:false}` no mostrar |
 | `mypump_gimnasio_nuevo` | `p_token`, `p_modo` (`'completa'` por defecto) | jsonb `{ok,id}` o `{ok:false,error}` |
-| `mypump_gimnasio_enviar` | `p_token`, `p_id`, `p_no_hay`, `p_nota`, `p_consentimiento`, `p_quitar` (`'{}'`) | jsonb |
+| `mypump_gimnasio_enviar` | `p_token`, `p_id`, `p_no_hay`, `p_nota`, `p_quitar` (`'{}'`) | jsonb |
 | `mypump_gimnasio_responder` | `p_token`, `p_id`, `p_respuestas` | jsonb |
 | `mypump_tecnica_get` | `p_token` | jsonb; `null` token caído, `{habilitado:false}` no mostrar |
-| `mypump_tecnica_nuevo` | `p_token`, `p_ejercicio_slug`, `p_ejercicio_nombre`, `p_nota`, `p_consentimiento` | jsonb `{ok,id}` o `{ok:false,error}` |
+| `mypump_tecnica_nuevo` | `p_token`, `p_ejercicio_slug`, `p_ejercicio_nombre`, `p_nota` | jsonb `{ok,id}` o `{ok:false,error}` |
 | `mypump_tecnica_cancelar` | `p_token`, `p_id` | jsonb |
 
 Mini-vision (`vision.mypumpteam.com`), POST:

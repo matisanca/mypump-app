@@ -112,13 +112,14 @@ class TecnicaUiTest : PruebaUi() {
     }
 
     @Test fun avisoUnaSolaVez() {
-        desdeEjercicio("corte")
-        p.nodo(etiqueta("tecnica-consejo"))
+        desdeEjercicio("enRevision")
+        p.nodo(etiqueta("tecnica-en-curso"))
         assertFalse(p.existe(etiqueta("tecnica-aviso")))
     }
 
     @Test fun corteEsperaYSePuedeCancelar() {
         val d = desdeEjercicio("corte")
+        p.tocar(etiqueta("tecnica-aviso-ok"))
         elegirYEnviar()
         p.nodo(etiqueta("tecnica-cancelar"), 30_000)
         Telefono.captura("tec-8-esperando-senal")
@@ -130,6 +131,7 @@ class TecnicaUiTest : PruebaUi() {
 
     @Test fun reintentaAnte503Y429() {
         val d = desdeEjercicio("reintento")
+        p.tocar(etiqueta("tecnica-aviso-ok"))
         elegirYEnviar()
         p.nodo(etiqueta("tecnica-recibido"), 30_000)
         assertEquals(3, d.intentosDeSubida)
@@ -137,6 +139,7 @@ class TecnicaUiTest : PruebaUi() {
 
     @Test fun rechazoSeVeYDejaProbarDeNuevo() {
         desdeEjercicio("rechazo")
+        p.tocar(etiqueta("tecnica-aviso-ok"))
         elegirYEnviar()
         p.nodo(etiqueta("tecnica-aviso-envio"), 30_000)
         Telefono.captura("tec-9-rechazo")
@@ -146,6 +149,7 @@ class TecnicaUiTest : PruebaUi() {
 
     @Test fun topeSemanal() {
         desdeEjercicio("tope")
+        p.tocar(etiqueta("tecnica-aviso-ok"))
         elegirYEnviar()
         p.nodo(etiqueta("tecnica-aviso-envio"), 30_000)
         p.nodo(textoQueContiene("3 videos"))

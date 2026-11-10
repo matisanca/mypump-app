@@ -99,13 +99,14 @@ final class TecnicaUITests: XCTestCase {
     }
 
     func testAvisoUnaSolaVez() {
-        abrirDesdeEjercicio("corte")   // ya aceptado en el servidor
-        esperar("tecnica-consejo")
+        abrirDesdeEjercicio("enRevision")   // con envíos previos ya no hace falta
+        esperar("tecnica-en-curso")
         XCTAssertFalse(e("tecnica-aviso").exists)
     }
 
     func testCorteEsperaYSePuedeCancelar() {
         abrirDesdeEjercicio("corte")
+        tocar("tecnica-aviso-ok")
         elegirYEnviar()
         esperar("tecnica-cancelar", 20)
         foto("8-esperando-senal")
@@ -116,12 +117,14 @@ final class TecnicaUITests: XCTestCase {
 
     func testReintentaSoloAnte503Y429() {
         abrirDesdeEjercicio("reintento")
+        tocar("tecnica-aviso-ok")
         elegirYEnviar()
         esperar("tecnica-recibido", 25)
     }
 
     func testRechazoSeVeYDejaProbarDeNuevo() {
         abrirDesdeEjercicio("rechazo")
+        tocar("tecnica-aviso-ok")
         elegirYEnviar()
         esperar("tecnica-aviso-envio", 20)
         foto("9-rechazo")
@@ -131,6 +134,7 @@ final class TecnicaUITests: XCTestCase {
 
     func testTopeSemanal() {
         abrirDesdeEjercicio("tope")
+        tocar("tecnica-aviso-ok")
         elegirYEnviar()
         esperar("tecnica-aviso-envio", 20)
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "3 videos")).firstMatch.exists)

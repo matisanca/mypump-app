@@ -28,8 +28,8 @@ final class GimnasioVectoresTests: XCTestCase {
         let v = try vectores()
         guard case .objeto(let t)? = v["textos"] else { return XCTFail() }
         let enCodigo: [String: String] = [
-            "tarjetaTitulo": TextosGimnasio.tarjetaTitulo, "confirmarTarjeta": TextosGimnasio.confirmarTarjeta, "entradaMisDatos": TextosGimnasio.entradaMisDatos, "inicioTitulo": TextosGimnasio.inicioTitulo,
-            "inicioBajada": TextosGimnasio.inicioBajada, "avisoTerceros": TextosGimnasio.avisoTerceros, "botonEmpezar": TextosGimnasio.botonEmpezar,
+            "tarjetaTitulo": TextosGimnasio.tarjetaTitulo, "confirmarTarjeta": TextosGimnasio.confirmarTarjeta, "entradaMisDatos": TextosGimnasio.entradaMisDatos,
+            "inicioBajada": TextosGimnasio.inicioBajada, "botonReintentar": TextosGimnasio.botonReintentar,
             "consejoPermiso": TextosGimnasio.consejoPermiso, "noHay": TextosGimnasio.noHay, "noHayCorto": TextosGimnasio.noHayCorto,
             "sinFotos": TextosGimnasio.sinFotos, "opcional": TextosGimnasio.opcional, "consejoCamara": TextosGimnasio.consejoCamara,
             "agregarFoto": TextosGimnasio.agregarFoto, "borrarFoto": TextosGimnasio.borrarFoto, "subiendo": TextosGimnasio.subiendo,
@@ -120,8 +120,6 @@ final class GimnasioVectoresTests: XCTestCase {
             let e = EstadoGimnasio(c["j"]!)
             XCTAssertEqual(e != nil, bool(c["habilitado"]))
             guard let e else { continue }
-            XCTAssertEqual(e.consentimientoVersion, c["version"]?.comoTexto)
-            XCTAssertEqual(e.consentimientoAceptado, bool(c["aceptado"]))
             XCTAssertEqual(e.abierta?.estado, c["abierta"]?.comoTexto)
             if c["equipos"] != nil { XCTAssertEqual(e.vigente?.equipos.count, entero(c["equipos"])); XCTAssertEqual(e.vigente?.equipos.last?.cantidad, entero(c["cantidad"])) }
             if c["preguntas"] != nil { XCTAssertEqual(e.abierta?.preguntas.count, entero(c["preguntas"])) }

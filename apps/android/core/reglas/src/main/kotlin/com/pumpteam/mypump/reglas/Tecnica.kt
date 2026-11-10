@@ -9,7 +9,6 @@ import com.pumpteam.mypump.modelos.ValorJson
  * descarta y un campo roto vale lo de fábrica. Gemelo de Tecnica.swift; `apps/shared/vectores/tecnica.json` hace fallar si difieren.
  */
 object Tecnica {
-    const val CONSENTIMIENTO_VIGENTE = "terceros-tecnica-v1"
     const val MAX_NOTA = 300
     const val MAX_NOMBRE = 120
 
@@ -154,7 +153,7 @@ data class EnvioTecnica(
 }
 
 /** `mypump_tecnica_get` con la sección habilitada. Si no vino `habilitado: true`, null: no se muestra nada. */
-data class EstadoTecnica(val consentimientoVersion: String, val consentimientoAceptado: Boolean, val topes: TopesTecnica, val envios: List<EnvioTecnica>) {
+data class EstadoTecnica(val topes: TopesTecnica, val envios: List<EnvioTecnica>) {
     /** El borrador es del teléfono: el alumno nunca lo ve en la lista. */
     val visibles: List<EnvioTecnica> get() = envios.filter { it.estado != EnvioTecnica.Estado.BORRADOR }
     val enRevision: EnvioTecnica? get() = envios.firstOrNull { it.estado == EnvioTecnica.Estado.ENVIADO }
@@ -163,8 +162,6 @@ data class EstadoTecnica(val consentimientoVersion: String, val consentimientoAc
         fun desde(j: ValorJson): EstadoTecnica? {
             if (j["habilitado"] != ValorJson.Booleano(true)) return null
             return EstadoTecnica(
-                j["consentimiento_version"]?.comoTexto ?: Tecnica.CONSENTIMIENTO_VIGENTE,
-                j["consentimiento_aceptado"] == ValorJson.Booleano(true),
                 TopesTecnica.desde(j["topes"]),
                 (j["envios"] as? ValorJson.Lista)?.elementos?.mapNotNull(EnvioTecnica::desde) ?: emptyList(),
             )
