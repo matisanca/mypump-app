@@ -132,6 +132,24 @@ enum CuentasDelTelefono {
         return total
     }
 
+    /// Lo mismo con el video de técnica que no llegó a subirse. El envío sigue siendo de esa persona: sube con el link nuevo.
+    @MainActor @discardableResult
+    static func adoptarTecnica(clienteId: String, en disco: Disco, tecnica: ModeloTecnica) -> Bool {
+        guard !clienteId.isEmpty else { return false }
+        let base = disco.carpeta.deletingLastPathComponent()
+        let propia = disco.carpeta.lastPathComponent
+        let nombres = ((try? FileManager.default.contentsOfDirectory(atPath: base.path)) ?? []).filter { $0.hasPrefix("cuenta-") && $0 != propia }.sorted()
+        for nombre in nombres {
+            let otra = Disco(carpeta: base.appendingPathComponent(nombre, isDirectory: true))
+            guard var cola = otra.leer(ColaTecnica.self, ColaTecnica.archivo), let viejo = cola.pendiente, Self.clienteId(de: otra) == clienteId,
+                  tecnica.adoptar(viejo, desde: otra) else { continue }
+            cola.pendiente = nil
+            otra.guardar(cola, ColaTecnica.archivo)
+            return true
+        }
+        return false
+    }
+
     /// Lo mismo con las fotos del gimnasio que no llegaron a subirse. Cada una lleva su carga: se suben a la misma.
     @MainActor @discardableResult
     static func adoptarGimnasio(clienteId: String, en disco: Disco, gimnasio: ModeloGimnasio) -> Int {

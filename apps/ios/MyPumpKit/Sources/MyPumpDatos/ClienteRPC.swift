@@ -40,10 +40,22 @@ public struct ErrorRPC: Error, Sendable, Equatable {
 /// Lo que manda los bytes. En la app es URLSession; en los tests, un doble que contesta lo que contestó la API real.
 public protocol Transporte: Sendable {
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse)
+    /// Manda el cuerpo desde un archivo, sin cargarlo en memoria (un video de técnica).
+    func subir(_ pedido: URLRequest, archivo: URL) async throws -> (Data, URLResponse)
+}
+
+public extension Transporte {
+    /// Los dobles: acá no importa la memoria.
+    func subir(_ pedido: URLRequest, archivo: URL) async throws -> (Data, URLResponse) {
+        var p = pedido
+        p.httpBody = try Data(contentsOf: archivo)
+        return try await enviar(p)
+    }
 }
 
 extension URLSession: Transporte {
     public func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) { try await data(for: pedido) }
+    public func subir(_ pedido: URLRequest, archivo: URL) async throws -> (Data, URLResponse) { try await upload(for: pedido, fromFile: archivo) }
 }
 
 /// Cliente propio y fino de PostgREST: `POST /rest/v1/rpc/<fn>` con la anon key, igual que la web. Devuelve el JSON
