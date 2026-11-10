@@ -51,7 +51,7 @@ AS $$
     CASE WHEN p_zona = 'pecho' THEN 'pecho' END,
     CASE WHEN p_intensidad >= 8 THEN 'intensidad ' || p_intensidad END,
     CASE WHEN translate(lower(COALESCE(p_nota, '')), 'áéíóúü', 'aeiouu')
-              ~ 'palpitac|taquicard|mare[oae]|desmay|falta de aire|me ahog|no puedo respirar|adormec|se me duerm|hormigue|entumec|pecho|agud|no puedo mover|sin fuerza|perdi fuerza|se me trab|se trab|chasquido|crujido|hinchad|inflamad|moreton|hematoma|fiebre|vision borrosa|dolor de cabeza'
+              ~ 'palpitac|taquicard|mare[oae]|desmay|falta de aire|me ahog|no puedo respirar|adormec|se me duerm|hormigue|entumec|pecho|agud|no puedo mover|sin fuerza|perdi fuerza|se me trab|se trab|chasquido|crujido|hinchad|inflamad|moreton|hematoma|fiebre|vision borrosa|dolor de cabeza|desgarr|tiron|se me sali|disloc|electric|corriente|irradia|no siento|nausea|vomit|sangr'
          THEN 'nota' END
   ), '');
 $$;
@@ -82,7 +82,8 @@ CREATE TABLE IF NOT EXISTS mypump_molestias (
   plataforma       TEXT        CHECK (plataforma IN ('ios','android','web')),
   version_app      TEXT        CHECK (char_length(version_app) <= 40),
   creado_en        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  actualizado_en   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  actualizado_en   TIMESTAMPTZ NOT NULL DEFAULT NOW(),               -- la última vez que el alumno cambió el contenido
+  correcciones     SMALLINT    NOT NULL DEFAULT 0,                   -- cada una vuelve a avisar: tope 6
   CONSTRAINT molestia_clinica_a_mati CHECK (destino = CASE WHEN clinico THEN 'mati' ELSE 'editor' END),
   CONSTRAINT molestia_cerrada_con_fecha CHECK (estado NOT IN ('resuelta','descartada') OR resuelto_en IS NOT NULL)
 );
@@ -139,7 +140,9 @@ DECLARE
   v_fila       mypump_molestias%ROWTYPE;
   v_rutina     UUID;
   v_en_rutina  BOOLEAN;
-  v_nota       TEXT := NULLIF(btrim(COALESCE(p_nota, '')), '');
+  -- Texto del alumno que termina en un aviso de una línea: sin saltos ni caracteres de control.
+  v_nota       TEXT := NULLIF(btrim(regexp_replace(COALESCE(p_nota, ''), '[[:cntrl:]]+', ' ', 'g')), '');
+  v_nombre     TEXT := btrim(regexp_replace(COALESCE(p_ejercicio_nombre, ''), '[[:cntrl:]]+', ' ', 'g'));
   v_motivo     TEXT;
   v_ya         BOOLEAN := FALSE;
 BEGIN
@@ -148,7 +151,8 @@ BEGIN
   IF NOT mypump_feedback_palanca('me_duele') THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'apagado'); END IF;
   IF p_id IS NULL
      OR char_length(btrim(COALESCE(p_ejercicio_id, ''))) NOT BETWEEN 1 AND 160
-     OR char_length(btrim(COALESCE(p_ejercicio_nombre, ''))) NOT BETWEEN 1 AND 160
+     OR char_length(v_nombre) NOT BETWEEN 1 AND 160
+     OR p_ejercicio_id ~ '[[:cntrl:]]' OR COALESCE(p_dia_id, '') ~ '[[:cntrl:]]' OR COALESCE(p_version, '') ~ '[[:cntrl:]]'
      OR char_length(COALESCE(p_dia_id, '')) > 80
      OR p_zona IS NULL OR p_zona NOT IN ('cuello','hombro','pecho','brazo','codo','antebrazo','muneca','abdomen',
           'espalda_alta','espalda_baja','cadera','gluteo','muslo_frente','muslo_atras','rodilla','pantorrilla','tobillo')
@@ -166,7 +170,7 @@ BEGIN
   v_motivo := mypump_molestia_motivo_clinico(p_zona, p_tipo, p_intensidad, v_nota);
 
   -- La misma (reintento) o la abierta de este ejercicio (corrección).
-  SELECT * INTO v_fila FROM mypump_molestias WHERE id = p_id;
+  SELECT * INTO v_fila FROM mypump_molestias WHERE id = p_id FOR UPDATE;
   IF FOUND AND v_fila.cliente_id <> v_cliente_id THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'datos'); END IF;
   IF FOUND AND v_fila.estado NOT IN ('nueva','avisada') THEN
     RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'molestia', mypump_molestia_vista_alumno(v_fila));
@@ -181,11 +185,12 @@ BEGIN
     -- Si cambió algo, vuelve a «nueva» para que se avise otra vez; si pasó a clínico, cambia de destino.
     IF (v_fila.zona, v_fila.lado, v_fila.desde, v_fila.cuando, v_fila.tipo, v_fila.intensidad, COALESCE(v_fila.nota, ''))
        IS DISTINCT FROM (p_zona, p_lado, p_desde, p_cuando, p_tipo, p_intensidad::SMALLINT, COALESCE(v_nota, '')) THEN
+      IF v_fila.correcciones >= 6 THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'tope'); END IF;
       UPDATE mypump_molestias SET zona = p_zona, lado = p_lado, desde = p_desde, cuando = p_cuando, tipo = p_tipo,
              intensidad = p_intensidad, nota = v_nota, clinico = v_motivo IS NOT NULL, motivo_clinico = v_motivo,
              destino = CASE WHEN v_motivo IS NOT NULL THEN 'mati' ELSE 'editor' END,
-             estado = 'nueva', avisado_en = NULL, actualizado_en = NOW()
-      WHERE id = v_fila.id RETURNING * INTO v_fila;
+             estado = 'nueva', avisado_en = NULL, actualizado_en = clock_timestamp(), correcciones = v_fila.correcciones + 1
+      WHERE id = v_fila.id AND estado IN ('nueva','avisada') RETURNING * INTO v_fila;
     END IF;
     RETURN jsonb_build_object('ok', TRUE, 'ya', v_ya, 'molestia', mypump_molestia_vista_alumno(v_fila));
   END IF;
@@ -202,12 +207,16 @@ BEGIN
   BEGIN
     INSERT INTO mypump_molestias (id, cliente_id, rutina_id, en_rutina, ejercicio_id, ejercicio_nombre, dia_id, zona, lado, desde, cuando, tipo,
                                   intensidad, nota, clinico, motivo_clinico, destino, plataforma, version_app)
-    VALUES (p_id, v_cliente_id, v_rutina, v_en_rutina, btrim(p_ejercicio_id), btrim(p_ejercicio_nombre), NULLIF(btrim(COALESCE(p_dia_id, '')), ''),
+    VALUES (p_id, v_cliente_id, v_rutina, v_en_rutina, btrim(p_ejercicio_id), v_nombre, NULLIF(btrim(COALESCE(p_dia_id, '')), ''),
             p_zona, p_lado, p_desde, p_cuando, p_tipo, p_intensidad, v_nota, v_motivo IS NOT NULL, v_motivo,
             CASE WHEN v_motivo IS NOT NULL THEN 'mati' ELSE 'editor' END, p_plataforma, NULLIF(btrim(COALESCE(p_version, '')), ''))
     RETURNING * INTO v_fila;
   EXCEPTION WHEN unique_violation THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'reintentar');
+    -- Dos altas a la vez del mismo ejercicio: quedó la otra, y es la que se le muestra.
+    SELECT * INTO v_fila FROM mypump_molestias
+    WHERE cliente_id = v_cliente_id AND ejercicio_id = btrim(p_ejercicio_id) AND estado IN ('nueva','avisada');
+    IF NOT FOUND THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'reintentar'); END IF;
+    RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'molestia', mypump_molestia_vista_alumno(v_fila));
   END;
   RETURN jsonb_build_object('ok', TRUE, 'ya', FALSE, 'molestia', mypump_molestia_vista_alumno(v_fila));
 END;
@@ -231,20 +240,22 @@ AS $$
                     ORDER BY clinico DESC, creado_en LIMIT LEAST(GREATEST(COALESCE(p_limite, 20), 1), 100)) m), '[]'::JSONB) END;
 $$;
 
--- El aviso salió: no vuelve a aparecer en pendientes (salvo que el alumno la corrija).
-CREATE OR REPLACE FUNCTION mypump_molestia_avisada(p_id UUID)
+-- El aviso salió: no vuelve a aparecer en pendientes (salvo que el alumno la corrija). `p_actualizado_en` es el que vino en
+-- pendientes: si el alumno la corrigió entre la lectura y esta llamada, no se marca (false) y sale de nuevo con lo corregido.
+CREATE OR REPLACE FUNCTION mypump_molestia_avisada(p_id UUID, p_actualizado_en TIMESTAMPTZ)
 RETURNS BOOLEAN
 LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  WITH u AS (UPDATE mypump_molestias SET estado = 'avisada', avisado_en = NOW(), actualizado_en = NOW()
-             WHERE id = p_id AND estado = 'nueva' RETURNING 1)
+  WITH u AS (UPDATE mypump_molestias SET estado = 'avisada', avisado_en = NOW()
+             WHERE id = p_id AND estado = 'nueva' AND actualizado_en = p_actualizado_en RETURNING 1)
   SELECT EXISTS (SELECT 1 FROM u);
 $$;
 
--- EDITOR cambió el ejercicio (o Mati la cerró). `p_resolucion` es interna: qué se cambió.
-CREATE OR REPLACE FUNCTION mypump_molestia_cerrar(p_id UUID, p_estado TEXT, p_resolucion TEXT)
+-- EDITOR cambió el ejercicio (o Mati la cerró). `p_resolucion` es interna: qué se cambió. `p_actualizado_en` es el de la
+-- molestia que se atendió: si el alumno la corrigió después, no se cierra (false) y hay que volver a mirarla.
+CREATE OR REPLACE FUNCTION mypump_molestia_cerrar(p_id UUID, p_estado TEXT, p_resolucion TEXT, p_actualizado_en TIMESTAMPTZ)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -253,11 +264,11 @@ AS $$
 DECLARE
   v_n INTEGER;
 BEGIN
-  IF p_estado IS NULL OR p_estado NOT IN ('resuelta','descartada') OR char_length(COALESCE(p_resolucion, '')) > 500 THEN
+  IF p_estado IS NULL OR p_estado NOT IN ('resuelta','descartada') OR p_actualizado_en IS NULL OR char_length(COALESCE(p_resolucion, '')) > 500 THEN
     RAISE EXCEPTION 'estado o resolución inválidos' USING ERRCODE = '22023';
   END IF;
-  UPDATE mypump_molestias SET estado = p_estado, resolucion = NULLIF(btrim(COALESCE(p_resolucion, '')), ''), resuelto_en = NOW(), actualizado_en = NOW()
-  WHERE id = p_id AND estado IN ('nueva','avisada');
+  UPDATE mypump_molestias SET estado = p_estado, resolucion = NULLIF(btrim(COALESCE(p_resolucion, '')), ''), resuelto_en = NOW()
+  WHERE id = p_id AND estado IN ('nueva','avisada') AND actualizado_en = p_actualizado_en;
   GET DIAGNOSTICS v_n = ROW_COUNT;
   RETURN v_n = 1;
 END;
@@ -273,7 +284,7 @@ LANGUAGE sql
 IMMUTABLE
 SET search_path = public
 AS $$
-  SELECT btrim(regexp_replace(translate(lower(COALESCE(p_nombre, '')), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun'), '\s+', ' ', 'g'));
+  SELECT btrim(regexp_replace(translate(lower(normalize(COALESCE(p_nombre, ''), NFC)), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun'), '[\s\u00A0]+', ' ', 'g'));
 $$;
 
 CREATE TABLE IF NOT EXISTS mypump_suple_estado (
@@ -304,7 +315,7 @@ DECLARE
   v_cliente_id TEXT;
   v_clave      TEXT := mypump_suple_clave(p_item);
   v_nombre     TEXT;
-  v_nota       TEXT := NULLIF(btrim(COALESCE(p_nota, '')), '');
+  v_nota       TEXT := NULLIF(btrim(regexp_replace(COALESCE(p_nota, ''), '[[:cntrl:]]+', ' ', 'g')), '');
   v_fila       mypump_suple_estado%ROWTYPE;
 BEGIN
   v_cliente_id := mypump_get_cliente_id_from_token(p_token);
@@ -319,13 +330,17 @@ BEGIN
   SELECT it->>'nombre' INTO v_nombre
   FROM mypump_suplementacion(p_token) s, jsonb_array_elements(CASE WHEN jsonb_typeof(s.suplementacion->'items') = 'array' THEN s.suplementacion->'items' ELSE '[]'::JSONB END) it
   WHERE mypump_suple_clave(it->>'nombre') = v_clave
-    AND COALESCE(it->>'protector', '') NOT IN ('true', '1', 'si', 'sí')
+    AND lower(COALESCE(it->>'protector', '')) NOT IN ('true', 't', '1', 'si', 'sí', 'yes')
   LIMIT 1;
   IF v_nombre IS NULL THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'item'); END IF;
 
   SELECT * INTO v_fila FROM mypump_suple_estado WHERE cliente_id = v_cliente_id AND item = v_clave FOR UPDATE;
   IF FOUND AND v_fila.estado = p_estado AND COALESCE(v_fila.nota, '') = COALESCE(v_nota, '') THEN
     RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'item', v_clave, 'estado', v_fila.estado, 'marcado_en', v_fila.marcado_en);
+  END IF;
+  -- Tope: 10 cambios por día en un ítem. Se marca una vez; más que eso es ruido (o abuso del token).
+  IF FOUND AND (SELECT count(*) FROM jsonb_array_elements(v_fila.historial) h WHERE (h->>'marcado_en')::TIMESTAMPTZ > NOW() - INTERVAL '24 hours') >= 10 THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'tope');
   END IF;
 
   INSERT INTO mypump_suple_estado AS e (cliente_id, item, item_nombre, estado, nota)
@@ -334,7 +349,9 @@ BEGIN
     historial = (SELECT COALESCE(jsonb_agg(h ORDER BY n), '[]'::JSONB)
                  FROM (SELECT h, n FROM jsonb_array_elements(e.historial || jsonb_build_object('estado', e.estado, 'nota', e.nota, 'marcado_en', e.marcado_en))
                        WITH ORDINALITY AS t(h, n) ORDER BY n DESC LIMIT 20) u),
-    item_nombre = EXCLUDED.item_nombre, estado = EXCLUDED.estado, nota = EXCLUDED.nota, marcado_en = NOW(), avisado_en = NULL
+    item_nombre = EXCLUDED.item_nombre, estado = EXCLUDED.estado, nota = EXCLUDED.nota, marcado_en = clock_timestamp(),
+    -- Se avisa al entrar a «no lo consigo»; cambiarle la nota no avisa de nuevo.
+    avisado_en = CASE WHEN e.estado = 'no_lo_consigo' AND EXCLUDED.estado = 'no_lo_consigo' THEN e.avisado_en END
   RETURNING * INTO v_fila;
   RETURN jsonb_build_object('ok', TRUE, 'ya', FALSE, 'item', v_clave, 'estado', v_fila.estado, 'marcado_en', v_fila.marcado_en);
 END;
@@ -354,14 +371,15 @@ AS $$
                     ORDER BY marcado_en LIMIT LEAST(GREATEST(COALESCE(p_limite, 20), 1), 100)) e), '[]'::JSONB) END;
 $$;
 
-CREATE OR REPLACE FUNCTION mypump_suple_avisado(p_cliente_id TEXT, p_item TEXT)
+-- `p_marcado_en` es el que vino en la lectura: si el alumno lo cambió en el medio, no se marca.
+CREATE OR REPLACE FUNCTION mypump_suple_avisado(p_cliente_id TEXT, p_item TEXT, p_marcado_en TIMESTAMPTZ)
 RETURNS BOOLEAN
 LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 AS $$
   WITH u AS (UPDATE mypump_suple_estado SET avisado_en = NOW()
-             WHERE cliente_id = p_cliente_id AND item = p_item AND estado = 'no_lo_consigo' AND avisado_en IS NULL RETURNING 1)
+             WHERE cliente_id = p_cliente_id AND item = p_item AND estado = 'no_lo_consigo' AND avisado_en IS NULL AND marcado_en = p_marcado_en RETURNING 1)
   SELECT EXISTS (SELECT 1 FROM u);
 $$;
 
@@ -406,8 +424,8 @@ CREATE OR REPLACE VIEW public.mypump_datos_dia WITH (security_invoker = true) AS
 SELECT s.cliente_id, s.fecha,
        max(s.valor) FILTER (WHERE s.tipo = 'pasos' AND s.fuente <> 'manual')::INTEGER                                AS pasos,
        max(s.valor) FILTER (WHERE s.tipo = 'sueno_min' AND s.fuente <> 'manual')::INTEGER                            AS sueno_min,
-       COALESCE((array_agg(s.valor ORDER BY s.updated_at DESC) FILTER (WHERE s.tipo = 'peso_kg' AND s.fuente = 'manual'))[1],
-                (array_agg(s.valor ORDER BY s.updated_at DESC) FILTER (WHERE s.tipo = 'peso_kg' AND s.fuente <> 'manual'))[1])::NUMERIC(5,2) AS peso_ayunas,
+       round(COALESCE((array_agg(s.valor ORDER BY s.updated_at DESC) FILTER (WHERE s.tipo = 'peso_kg' AND s.fuente = 'manual'))[1],
+                (array_agg(s.valor ORDER BY s.updated_at DESC) FILTER (WHERE s.tipo = 'peso_kg' AND s.fuente <> 'manual'))[1])::NUMERIC, 2) AS peso_ayunas,
        -- De dónde salió cada dato: 'salud' (Apple Salud o Health Connect), 'reloj' (otra fuente conectada) o 'manual'.
        CASE WHEN bool_or(s.tipo IN ('pasos','sueno_min') AND s.fuente IN ('apple_health','health_connect')) THEN 'salud'
             WHEN bool_or(s.tipo IN ('pasos','sueno_min') AND s.fuente <> 'manual') THEN 'reloj' END                    AS fuente,
@@ -423,13 +441,15 @@ COMMENT ON VIEW public.mypump_datos_dia IS
 
 -- El resumen que leen el brief y control_kcal, a una fecha (por defecto, hoy en Buenos Aires). El día `p_al` no entra:
 -- está a medias. `pasos_confiable`: más de 4 días con dato; si no, el brief sigue con el formulario.
+-- No escribe ni muestra nada al alumno: con `datos_brief` apagada devuelve igual (habilitado = false) y el que lee decide no usarlo.
+-- El cambio semanal de peso sale con cualquier cantidad de pesajes: mirar `peso_ayunas_dias_7d` y `_previo` antes de usarlo.
 CREATE OR REPLACE FUNCTION mypump_datos_resumen(p_al DATE DEFAULT NULL)
 RETURNS TABLE (
   cliente_id TEXT, al DATE, habilitado BOOLEAN,
   pasos_promedio_7d INTEGER, pasos_dias_7d INTEGER, pasos_confiable BOOLEAN,
   sueno_promedio_7d_min INTEGER, sueno_dias_7d INTEGER,
   peso_ayunas_ultimo NUMERIC, peso_ayunas_fecha DATE, peso_ayunas_promedio_7d NUMERIC, peso_ayunas_dias_7d INTEGER,
-  peso_ayunas_promedio_7d_previo NUMERIC, peso_cambio_semanal_kg NUMERIC,
+  peso_ayunas_promedio_7d_previo NUMERIC, peso_ayunas_dias_7d_previo INTEGER, peso_cambio_semanal_kg NUMERIC,
   adherencia_ultima SMALLINT, adherencia_semana DATE, adherencia_promedio_4s NUMERIC, adherencia_checks_4s INTEGER,
   fuente TEXT, ultimo_dato DATE
 )
@@ -462,6 +482,7 @@ AS $$
            round(avg(d.peso) FILTER (WHERE d.fecha > hoy.d - 7), 2) AS peso_prom,
            count(d.peso) FILTER (WHERE d.fecha > hoy.d - 7)::INTEGER AS peso_dias,
            round(avg(d.peso) FILTER (WHERE d.fecha > hoy.d - 14 AND d.fecha <= hoy.d - 7), 2) AS peso_prom_previo,
+           count(d.peso) FILTER (WHERE d.fecha > hoy.d - 14 AND d.fecha <= hoy.d - 7)::INTEGER AS peso_dias_previo,
            CASE WHEN bool_or(d.de_salud AND d.fecha >= hoy.d - 7) THEN 'salud' WHEN bool_or(d.de_reloj AND d.fecha >= hoy.d - 7) THEN 'reloj'
                 WHEN bool_or(d.peso IS NOT NULL) THEN 'manual' END AS fuente,
            max(d.fecha) AS ultimo
@@ -481,7 +502,7 @@ AS $$
          s.pasos_prom, COALESCE(s.pasos_dias, 0), COALESCE(s.pasos_dias, 0) > 4,
          s.sueno_prom, COALESCE(s.sueno_dias, 0),
          s.peso_ultimo, s.peso_fecha, s.peso_prom, COALESCE(s.peso_dias, 0),
-         s.peso_prom_previo, CASE WHEN s.peso_prom IS NOT NULL AND s.peso_prom_previo IS NOT NULL THEN s.peso_prom - s.peso_prom_previo END,
+         s.peso_prom_previo, COALESCE(s.peso_dias_previo, 0), CASE WHEN s.peso_prom IS NOT NULL AND s.peso_prom_previo IS NOT NULL THEN s.peso_prom - s.peso_prom_previo END,
          k.ultima, k.semana, k.prom, COALESCE(k.n, 0),
          s.fuente, s.ultimo
   FROM salud s FULL JOIN checks k ON k.cliente_id = s.cliente_id, hoy;
@@ -501,13 +522,13 @@ GRANT SELECT ON public.mypump_datos_dia, public.mypump_datos_brief TO service_ro
 
 REVOKE ALL ON FUNCTION
   mypump_feedback_palanca(TEXT), mypump_molestia_motivo_clinico(TEXT, TEXT, INTEGER, TEXT), mypump_molestia_vista_alumno(mypump_molestias),
-  mypump_molestias_pendientes(TEXT, INTEGER), mypump_molestia_avisada(UUID), mypump_molestia_cerrar(UUID, TEXT, TEXT),
-  mypump_suple_clave(TEXT), mypump_suple_no_consigue(INTEGER), mypump_suple_avisado(TEXT, TEXT), mypump_datos_resumen(DATE)
+  mypump_molestias_pendientes(TEXT, INTEGER), mypump_molestia_avisada(UUID, TIMESTAMPTZ), mypump_molestia_cerrar(UUID, TEXT, TEXT, TIMESTAMPTZ),
+  mypump_suple_clave(TEXT), mypump_suple_no_consigue(INTEGER), mypump_suple_avisado(TEXT, TEXT, TIMESTAMPTZ), mypump_datos_resumen(DATE)
 FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION
   mypump_feedback_palanca(TEXT), mypump_molestia_motivo_clinico(TEXT, TEXT, INTEGER, TEXT), mypump_molestia_vista_alumno(mypump_molestias),
-  mypump_molestias_pendientes(TEXT, INTEGER), mypump_molestia_avisada(UUID), mypump_molestia_cerrar(UUID, TEXT, TEXT),
-  mypump_suple_clave(TEXT), mypump_suple_no_consigue(INTEGER), mypump_suple_avisado(TEXT, TEXT), mypump_datos_resumen(DATE)
+  mypump_molestias_pendientes(TEXT, INTEGER), mypump_molestia_avisada(UUID, TIMESTAMPTZ), mypump_molestia_cerrar(UUID, TEXT, TEXT, TIMESTAMPTZ),
+  mypump_suple_clave(TEXT), mypump_suple_no_consigue(INTEGER), mypump_suple_avisado(TEXT, TEXT, TIMESTAMPTZ), mypump_datos_resumen(DATE)
 TO service_role;
 
 REVOKE ALL ON FUNCTION

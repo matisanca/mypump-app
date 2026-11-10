@@ -551,6 +551,8 @@ apagadas las apps no llaman a ninguna de estas RPC. Todo campo nuevo es opcional
   `desde`: `hoy`, `esta_semana`, `semanas`, `mas_de_un_mes`. `cuando`: `al_bajar`, `al_subir`, `todo_el_recorrido`, `despues`, `al_dia_siguiente`.
   `tipo`: `punzante`, `sordo`, `hormigueo`. La escala simple de las apps guarda 2, 5, 7 o 9.
 - Una molestia abierta por ejercicio: volver a avisar la corrige. «Me duele» no escribe en `mypump_comentarios`.
+  Topes (`error: tope`): 8 molestias nuevas por día, 6 correcciones por molestia y 10 cambios por día en un suplemento.
+  La nota y el nombre del ejercicio se guardan en una sola línea (el servidor cambia los saltos por un espacio).
 - **Suplementos**: `estado` es `comprado`, `tomando`, `no_lo_consigo` o `lo_deje`. `item` en la respuesta es la clave: el nombre en minúsculas,
   sin tildes y con un solo espacio. Los ítems con `protector: true` (campo nuevo y opcional de `mypump_suplementacion`) no se marcan: las
   apps no los muestran en «¿Ya lo tenés?» y el servidor contesta `item`.
