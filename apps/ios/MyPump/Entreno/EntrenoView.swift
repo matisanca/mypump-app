@@ -38,6 +38,7 @@ struct EntrenoView: View {
                     }
                 case .sinRutina:
                     ScrollView {
+                        TarjetaGimnasio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
                             TarjetaEntregaAhora(modelo: g).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
@@ -206,6 +207,7 @@ private struct ListaEntreno: View {
                 // 2.2.0: el link de la entrega, desde 30 min antes hasta el fin (aunque la tarjeta de la guía esté oculta).
                 if let g = GuiaUI.modelo { TarjetaEntregaAhora(modelo: g) }
                 if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
+                TarjetaGimnasio()
                 cabecera
                 if deEjemplo {
                     AvisoProgresion(icono: "exclamationmark.triangle.fill",

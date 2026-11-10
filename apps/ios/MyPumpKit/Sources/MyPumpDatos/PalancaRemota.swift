@@ -18,6 +18,8 @@ public struct PalancaRemota: Equatable, Sendable {
     public var versionMinimaAndroid: String?
     /// Cuántos días atrás acepta «Comí» / «Salté» el servidor (`dieta_dias_marcar`). Sin la clave, lo de fábrica.
     public var diasMarcarDieta: Int?
+    /// Gimnasio por fotos (`gimnasio_fotos`). Sin la clave, apagado: ni se muestra ni se llama a nada nuevo.
+    public var gimnasioFotos = false
 
     public init() {}
 
@@ -25,12 +27,18 @@ public struct PalancaRemota: Equatable, Sendable {
 
     /// El último valor leído de `reloj_contador_reps`: apagado, sigue apagado aunque el iPhone arranque sin red.
     static let claveContadorReps = "mypump-palanca-contador-reps"
+    /// El último valor leído de `gimnasio_fotos`: prendida, sin red en el gimnasio se pueden seguir sacando fotos.
+    static let claveGimnasioFotos = "mypump-palanca-gimnasio-fotos"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
+        if defaults.bool(forKey: claveGimnasioFotos) { p.gimnasioFotos = true }
         return p
     }
-    public func recordar(defaults: UserDefaults = .standard) { defaults.set(contadorRepsReloj, forKey: Self.claveContadorReps) }
+    public func recordar(defaults: UserDefaults = .standard) {
+        defaults.set(contadorRepsReloj, forKey: Self.claveContadorReps)
+        defaults.set(gimnasioFotos, forKey: Self.claveGimnasioFotos)
+    }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
     public init(_ j: JSONValue) {
@@ -38,6 +46,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["migracion_escritura_vuelta"] { escrituraVuelta = b }
         if case .bool(let b)? = j["anclaje_borra_swaps"] { anclajeBorraSwaps = b }
         if case .bool(let b)? = j["reloj_contador_reps"] { contadorRepsReloj = b }
+        if case .bool(let b)? = j["gimnasio_fotos"] { gimnasioFotos = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

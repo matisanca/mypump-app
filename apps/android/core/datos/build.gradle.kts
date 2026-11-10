@@ -29,3 +29,6 @@ tasks.withType<Test>().configureEach {
     // La integración contra el backend real no se cachea: lo que valida está afuera.
     outputs.upToDateWhen { false }
 }
+
+// El doble del servidor del gimnasio: solo para las pruebas (también lo usa :app en androidTest).
+kotlin.sourceSets.named("test") { kotlin.srcDir("src/dobleGimnasio/kotlin") }

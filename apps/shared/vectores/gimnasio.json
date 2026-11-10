@@ -1,0 +1,1120 @@
+{
+ "_": "Vectores de Gimnasio por fotos, comunes a iOS y Android. Fuente: gimnasio/CONTRATO_APP.md.",
+ "zonas": [
+  {
+   "clave": "poleas",
+   "nombre": "Poleas"
+  },
+  {
+   "clave": "accesorios_polea",
+   "nombre": "Accesorios de polea"
+  },
+  {
+   "clave": "piernas",
+   "nombre": "Máquinas de piernas"
+  },
+  {
+   "clave": "empuje",
+   "nombre": "Máquinas de empuje"
+  },
+  {
+   "clave": "tiron",
+   "nombre": "Máquinas de tirón"
+  },
+  {
+   "clave": "barras_racks",
+   "nombre": "Barras y racks"
+  },
+  {
+   "clave": "discos",
+   "nombre": "Discos"
+  },
+  {
+   "clave": "mancuernas",
+   "nombre": "Mancuernas"
+  },
+  {
+   "clave": "bancos",
+   "nombre": "Bancos"
+  },
+  {
+   "clave": "otros",
+   "nombre": "Otros"
+  }
+ ],
+ "topeFotos": 80,
+ "maxNota": 300,
+ "maxPx": 1600,
+ "calidad": 0.8,
+ "textos": {
+  "tarjetaTitulo": "Tu gimnasio",
+  "entradaMisDatos": "Mi gimnasio",
+  "inicioTitulo": "Mostranos tu gimnasio",
+  "inicioBajada": "Sacale fotos a lo que hay y adaptamos tu plan a tus máquinas",
+  "avisoTerceros": "Para reconocer los equipos, tus fotos las procesan servicios externos de inteligencia artificial, sin tu nombre. Mati y tu entrenador deciden los cambios",
+  "botonEmpezar": "Entendido, empezar",
+  "consejoPermiso": "Si tu gimnasio no deja, pedí permiso o sacalas en un horario tranquilo",
+  "noHay": "No hay en mi gimnasio",
+  "noHayCorto": "No hay",
+  "sinFotos": "Sin fotos",
+  "opcional": "Opcional",
+  "consejoCamara": "La máquina entera, de costado. Si hay alguien, esperá a que se vaya: no sacamos fotos con gente",
+  "agregarFoto": "Sacar o elegir foto",
+  "borrarFoto": "Borrar foto",
+  "subiendo": "Subiendo…",
+  "esperandoSenal": "Esperando señal",
+  "revisarYEnviar": "Revisar y enviar",
+  "tope": "Llegaste al máximo de 80 fotos",
+  "fotoRechazada": "Una foto no se pudo usar. Sacala de nuevo",
+  "noSeGuardo": "No se pudo guardar la foto en el teléfono. Probá de nuevo",
+  "sinSenal": "Se cortó la conexión. Probá de nuevo cuando tengas señal.",
+  "revisarTitulo": "Revisar y enviar",
+  "notaPlaceholder": "Algo que no se vea en las fotos",
+  "botonEnviar": "Enviar a Mati",
+  "enviandoSeguir": "Queda guardado y se envía solo cuando vuelva la señal",
+  "sinNovedad": "Sumá una foto o marcá algo que ya no esté",
+  "errorGenerico": "No se pudo enviar. Probá de nuevo",
+  "recibido": "Recibido. Mati y tu entrenador lo están viendo. Te avisamos por WhatsApp",
+  "sinCambios": "Mati revisó tu gimnasio y tu rutina encaja tal cual",
+  "anterior": "Anterior",
+  "siguiente": "Siguiente",
+  "noSe": "No sé",
+  "si": "Sí",
+  "no": "No",
+  "noPuedoFoto": "No puedo sacarla",
+  "marcarTodas": "Marcá todas las que haya: lo que no marques cuenta como que no está",
+  "elegirKilos": "Kilos",
+  "kilosInvalidos": "Poné un número entre 1 y 400",
+  "faltaAlgo": "Falta algo",
+  "yaNoEsta": "Esto ya no está",
+  "cambieDeGimnasio": "Cambié de gimnasio",
+  "marcarLoQueNoEsta": "Marcá lo que ya no está", "volverAEditar": "Volver a editar", "cerrar": "Cerrar", "listoTeclado": "Listo", "kg": "kg",
+  "confirmarTarjeta": "Confirmanos qué de esto hay en tu gimnasio"
+ },
+ "plurales": [
+  {
+   "n": 1,
+   "fotos": "1 foto",
+   "faltan": "Te falta 1 zona",
+   "necesitamos": "Necesitamos 1 foto más"
+  },
+  {
+   "n": 3,
+   "fotos": "3 fotos",
+   "faltan": "Te faltan 3 zonas",
+   "necesitamos": "Necesitamos 3 fotos más"
+  }
+ ],
+ "faltantes": [
+  {
+   "conFotos": [],
+   "noHay": [],
+   "modo": "completa",
+   "faltan": [
+    "poleas",
+    "accesorios_polea",
+    "piernas",
+    "empuje",
+    "tiron",
+    "barras_racks",
+    "discos",
+    "mancuernas",
+    "bancos"
+   ]
+  },
+  {
+   "conFotos": [
+    "poleas",
+    "accesorios_polea",
+    "piernas",
+    "empuje",
+    "tiron",
+    "barras_racks",
+    "discos",
+    "mancuernas",
+    "bancos"
+   ],
+   "noHay": [],
+   "modo": "completa",
+   "faltan": []
+  },
+  {
+   "conFotos": [
+    "poleas",
+    "piernas"
+   ],
+   "noHay": [
+    "empuje",
+    "tiron",
+    "accesorios_polea"
+   ],
+   "modo": "completa",
+   "faltan": [
+    "barras_racks",
+    "discos",
+    "mancuernas",
+    "bancos"
+   ]
+  },
+  {
+   "conFotos": [
+    "otros"
+   ],
+   "noHay": [],
+   "modo": "completa",
+   "faltan": [
+    "poleas",
+    "accesorios_polea",
+    "piernas",
+    "empuje",
+    "tiron",
+    "barras_racks",
+    "discos",
+    "mancuernas",
+    "bancos"
+   ]
+  },
+  {
+   "conFotos": [],
+   "noHay": [],
+   "modo": "parcial",
+   "faltan": []
+  }
+ ],
+ "puedeEnviar": [
+  {
+   "modo": "completa",
+   "conFotos": [
+    "poleas",
+    "accesorios_polea",
+    "piernas",
+    "empuje",
+    "tiron",
+    "barras_racks",
+    "discos",
+    "mancuernas",
+    "bancos"
+   ],
+   "noHay": [],
+   "quitar": [],
+   "puede": true
+  },
+  {
+   "modo": "completa",
+   "conFotos": [
+    "poleas",
+    "accesorios_polea",
+    "piernas",
+    "empuje",
+    "tiron",
+    "barras_racks",
+    "discos",
+    "mancuernas"
+   ],
+   "noHay": [],
+   "quitar": [],
+   "puede": false
+  },
+  {
+   "modo": "completa",
+   "conFotos": [
+    "poleas",
+    "accesorios_polea",
+    "piernas",
+    "empuje",
+    "tiron",
+    "barras_racks",
+    "discos",
+    "mancuernas"
+   ],
+   "noHay": [
+    "bancos"
+   ],
+   "quitar": [],
+   "puede": true
+  },
+  {
+   "modo": "parcial",
+   "conFotos": [],
+   "noHay": [],
+   "quitar": [],
+   "puede": false
+  },
+  {
+   "modo": "parcial",
+   "conFotos": [
+    "otros"
+   ],
+   "noHay": [],
+   "quitar": [],
+   "puede": true
+  },
+  {
+   "modo": "parcial",
+   "conFotos": [],
+   "noHay": [],
+   "quitar": [
+    "pec_deck"
+   ],
+   "puede": true
+  }
+ ],
+ "tope": [
+  {
+   "servidor": 0,
+   "cola": 0,
+   "restan": 80,
+   "puede": true
+  },
+  {
+   "servidor": 78,
+   "cola": 1,
+   "restan": 1,
+   "puede": true
+  },
+  {
+   "servidor": 79,
+   "cola": 1,
+   "restan": 0,
+   "puede": false
+  },
+  {
+   "servidor": 80,
+   "cola": 3,
+   "restan": 0,
+   "puede": false
+  }
+ ],
+ "pantalla": [
+  {
+   "abierta": null,
+   "vigente": false,
+   "pantalla": "inicio"
+  },
+  {
+   "abierta": null,
+   "vigente": true,
+   "pantalla": "listo"
+  },
+  {
+   "abierta": "borrador",
+   "vigente": false,
+   "pantalla": "zonas"
+  },
+  {
+   "abierta": "borrador",
+   "vigente": true,
+   "pantalla": "zonas"
+  },
+  {
+   "abierta": "enviado",
+   "vigente": false,
+   "pantalla": "recibido"
+  },
+  {
+   "abierta": "procesando",
+   "vigente": false,
+   "pantalla": "recibido"
+  },
+  {
+   "abierta": "respondido",
+   "vigente": false,
+   "pantalla": "recibido"
+  },
+  {
+   "abierta": "a_revisar",
+   "vigente": false,
+   "pantalla": "recibido"
+  },
+  {
+   "abierta": "en_editor",
+   "vigente": true,
+   "pantalla": "recibido"
+  },
+  {
+   "abierta": "a_confirmar",
+   "vigente": false,
+   "pantalla": "preguntas"
+  },
+  {
+   "abierta": "reemplazado",
+   "vigente": false,
+   "pantalla": "inicio"
+  },
+  {
+   "abierta": "estado_del_futuro",
+   "vigente": false,
+   "pantalla": "recibido"
+  }
+ ],
+ "tarjeta": [
+  {
+   "habilitado": false,
+   "abierta": null,
+   "vigente": false,
+   "visible": false
+  },
+  {
+   "habilitado": true,
+   "abierta": null,
+   "vigente": false,
+   "visible": true
+  },
+  {
+   "habilitado": true,
+   "abierta": "borrador",
+   "vigente": false,
+   "visible": true
+  },
+  {
+   "habilitado": true,
+   "abierta": "enviado",
+   "vigente": false,
+   "visible": true
+  },
+  {
+   "habilitado": true,
+   "abierta": null,
+   "vigente": true,
+   "visible": false
+  },
+  {
+   "habilitado": true,
+   "abierta": "borrador",
+   "vigente": true,
+   "visible": false
+  },
+  {
+   "habilitado": true,
+   "abierta": "a_confirmar",
+   "vigente": true,
+   "visible": true
+  }
+ ],
+ "entrada": [
+  {
+   "habilitado": false,
+   "vigente": true,
+   "visible": false
+  },
+  {
+   "habilitado": true,
+   "vigente": false,
+   "visible": false
+  },
+  {
+   "habilitado": true,
+   "vigente": true,
+   "visible": true
+  }
+ ],
+ "subida": [
+  {
+   "status": 200,
+   "ok": true,
+   "accion": "ok"
+  },
+  {
+   "status": 200,
+   "ok": false,
+   "accion": "reintentar"
+  },
+  {
+   "status": 400,
+   "ok": false,
+   "accion": "descartar",
+   "aviso": "rechazada"
+  },
+  {
+   "status": 411,
+   "ok": false,
+   "accion": "descartar",
+   "aviso": "rechazada"
+  },
+  {
+   "status": 403,
+   "ok": false,
+   "accion": "descartar"
+  },
+  {
+   "status": 404,
+   "ok": false,
+   "accion": "descartar",
+   "refrescar": true
+  },
+  {
+   "status": 409,
+   "ok": false,
+   "accion": "descartar",
+   "refrescar": true
+  },
+  {
+   "status": 413,
+   "ok": false,
+   "accion": "descartar",
+   "aviso": "tope"
+  },
+  {
+   "status": 429,
+   "ok": false,
+   "accion": "reintentar"
+  },
+  {
+   "status": 500,
+   "ok": false,
+   "accion": "reintentar"
+  },
+  {
+   "status": 502,
+   "ok": false,
+   "accion": "reintentar"
+  },
+  {
+   "status": 503,
+   "ok": false,
+   "accion": "reintentar"
+  },
+  {
+   "status": 530,
+   "ok": false,
+   "accion": "reintentar"
+  }
+ ],
+ "respuestas": [
+  {
+   "p": {
+    "id": "par_1",
+    "clase": "elegir",
+    "multiple": true,
+    "zona": "tiron",
+    "texto": "x",
+    "fotos": [
+     "f1"
+    ],
+    "opciones": [
+     {
+      "valor": "remo_t",
+      "texto": "Remo T"
+     },
+     {
+      "valor": "remo_pecho",
+      "texto": "Remo apoyado"
+     }
+    ]
+   },
+   "v": [
+    "remo_t"
+   ],
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "par_1",
+    "clase": "elegir",
+    "multiple": true,
+    "zona": "tiron",
+    "texto": "x",
+    "fotos": [
+     "f1"
+    ],
+    "opciones": [
+     {
+      "valor": "remo_t",
+      "texto": "Remo T"
+     },
+     {
+      "valor": "remo_pecho",
+      "texto": "Remo apoyado"
+     }
+    ]
+   },
+   "v": [],
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "par_1",
+    "clase": "elegir",
+    "multiple": true,
+    "zona": "tiron",
+    "texto": "x",
+    "fotos": [
+     "f1"
+    ],
+    "opciones": [
+     {
+      "valor": "remo_t",
+      "texto": "Remo T"
+     },
+     {
+      "valor": "remo_pecho",
+      "texto": "Remo apoyado"
+     }
+    ]
+   },
+   "v": "no_se",
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "par_1",
+    "clase": "elegir",
+    "multiple": true,
+    "zona": "tiron",
+    "texto": "x",
+    "fotos": [
+     "f1"
+    ],
+    "opciones": [
+     {
+      "valor": "remo_t",
+      "texto": "Remo T"
+     },
+     {
+      "valor": "remo_pecho",
+      "texto": "Remo apoyado"
+     }
+    ]
+   },
+   "v": [
+    "inventado"
+   ],
+   "valida": false
+  },
+  {
+   "p": {
+    "id": "par_1",
+    "clase": "elegir",
+    "multiple": true,
+    "zona": "tiron",
+    "texto": "x",
+    "fotos": [
+     "f1"
+    ],
+    "opciones": [
+     {
+      "valor": "remo_t",
+      "texto": "Remo T"
+     },
+     {
+      "valor": "remo_pecho",
+      "texto": "Remo apoyado"
+     }
+    ]
+   },
+   "v": "remo_t",
+   "valida": false
+  },
+  {
+   "p": {
+    "id": "peso_discos",
+    "clase": "elegir",
+    "multiple": false,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "1.25",
+      "texto": "1,25 kg"
+     },
+     {
+      "valor": "2.5",
+      "texto": "2,5 kg"
+     }
+    ]
+   },
+   "v": "2.5",
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "peso_discos",
+    "clase": "elegir",
+    "multiple": false,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "1.25",
+      "texto": "1,25 kg"
+     },
+     {
+      "valor": "2.5",
+      "texto": "2,5 kg"
+     }
+    ]
+   },
+   "v": "no_se",
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "peso_discos",
+    "clase": "elegir",
+    "multiple": false,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "1.25",
+      "texto": "1,25 kg"
+     },
+     {
+      "valor": "2.5",
+      "texto": "2,5 kg"
+     }
+    ]
+   },
+   "v": "3",
+   "valida": false
+  },
+  {
+   "p": {
+    "id": "peso_discos",
+    "clase": "elegir",
+    "multiple": false,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "1.25",
+      "texto": "1,25 kg"
+     },
+     {
+      "valor": "2.5",
+      "texto": "2,5 kg"
+     }
+    ]
+   },
+   "v": [
+    "2.5"
+   ],
+   "valida": false
+  },
+  {
+   "p": {
+    "id": "peso_mancuernas",
+    "clase": "numero",
+    "texto": "x",
+    "unidad": "kg"
+   },
+   "v": 32.5,
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "peso_mancuernas",
+    "clase": "numero",
+    "texto": "x",
+    "unidad": "kg"
+   },
+   "v": 400,
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "peso_mancuernas",
+    "clase": "numero",
+    "texto": "x",
+    "unidad": "kg"
+   },
+   "v": 0,
+   "valida": false
+  },
+  {
+   "p": {
+    "id": "peso_mancuernas",
+    "clase": "numero",
+    "texto": "x",
+    "unidad": "kg"
+   },
+   "v": 400.5,
+   "valida": false
+  },
+  {
+   "p": {
+    "id": "peso_mancuernas",
+    "clase": "numero",
+    "texto": "x",
+    "unidad": "kg"
+   },
+   "v": "32",
+   "valida": false
+  },
+  {
+   "p": {
+    "id": "peso_mancuernas",
+    "clase": "numero",
+    "texto": "x",
+    "unidad": "kg"
+   },
+   "v": "no_se",
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "confirmar_empuje",
+    "clase": "confirmar",
+    "zona": "empuje",
+    "texto": "x",
+    "items": [
+     {
+      "tipo": "press_pecho",
+      "texto": "Press",
+      "fotos": []
+     },
+     {
+      "tipo": "pec_deck",
+      "texto": "Pec deck",
+      "fotos": [
+       "f2"
+      ]
+     }
+    ]
+   },
+   "v": {
+    "press_pecho": "si",
+    "pec_deck": "no_se"
+   },
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "confirmar_empuje",
+    "clase": "confirmar",
+    "zona": "empuje",
+    "texto": "x",
+    "items": [
+     {
+      "tipo": "press_pecho",
+      "texto": "Press",
+      "fotos": []
+     },
+     {
+      "tipo": "pec_deck",
+      "texto": "Pec deck",
+      "fotos": [
+       "f2"
+      ]
+     }
+    ]
+   },
+   "v": {
+    "press_pecho": "si"
+   },
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "confirmar_empuje",
+    "clase": "confirmar",
+    "zona": "empuje",
+    "texto": "x",
+    "items": [
+     {
+      "tipo": "press_pecho",
+      "texto": "Press",
+      "fotos": []
+     },
+     {
+      "tipo": "pec_deck",
+      "texto": "Pec deck",
+      "fotos": [
+       "f2"
+      ]
+     }
+    ]
+   },
+   "v": {
+    "otro": "si"
+   },
+   "valida": false
+  },
+  {
+   "p": {
+    "id": "confirmar_empuje",
+    "clase": "confirmar",
+    "zona": "empuje",
+    "texto": "x",
+    "items": [
+     {
+      "tipo": "press_pecho",
+      "texto": "Press",
+      "fotos": []
+     },
+     {
+      "tipo": "pec_deck",
+      "texto": "Pec deck",
+      "fotos": [
+       "f2"
+      ]
+     }
+    ]
+   },
+   "v": {
+    "press_pecho": "tal_vez"
+   },
+   "valida": false
+  },
+  {
+   "p": {
+    "id": "foto_1",
+    "clase": "foto",
+    "zona": "bancos",
+    "texto": "x",
+    "fotos": []
+   },
+   "v": "subida",
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "foto_1",
+    "clase": "foto",
+    "zona": "bancos",
+    "texto": "x",
+    "fotos": []
+   },
+   "v": "no_puedo",
+   "valida": true
+  },
+  {
+   "p": {
+    "id": "foto_1",
+    "clase": "foto",
+    "zona": "bancos",
+    "texto": "x",
+    "fotos": []
+   },
+   "v": "no_se",
+   "valida": false
+  }
+ ],
+ "paraEnviar": {
+  "preguntas": [
+   {
+    "id": "par_1",
+    "clase": "elegir",
+    "multiple": true,
+    "zona": "tiron",
+    "texto": "x",
+    "fotos": [
+     "f1"
+    ],
+    "opciones": [
+     {
+      "valor": "remo_t",
+      "texto": "Remo T"
+     },
+     {
+      "valor": "remo_pecho",
+      "texto": "Remo apoyado"
+     }
+    ]
+   },
+   {
+    "id": "peso_discos",
+    "clase": "elegir",
+    "multiple": false,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "1.25",
+      "texto": "1,25 kg"
+     },
+     {
+      "valor": "2.5",
+      "texto": "2,5 kg"
+     }
+    ]
+   },
+   {
+    "id": "peso_mancuernas",
+    "clase": "numero",
+    "texto": "x",
+    "unidad": "kg"
+   },
+   {
+    "id": "confirmar_empuje",
+    "clase": "confirmar",
+    "zona": "empuje",
+    "texto": "x",
+    "items": [
+     {
+      "tipo": "press_pecho",
+      "texto": "Press",
+      "fotos": []
+     },
+     {
+      "tipo": "pec_deck",
+      "texto": "Pec deck",
+      "fotos": [
+       "f2"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "foto_1",
+    "clase": "foto",
+    "zona": "bancos",
+    "texto": "x",
+    "fotos": []
+   }
+  ],
+  "borrador": {
+   "par_1": [
+    "remo_pecho"
+   ],
+   "peso_discos": "9",
+   "peso_mancuernas": 50,
+   "inventada": "si"
+  },
+  "resultado": {
+   "par_1": [
+    "remo_pecho"
+   ],
+   "peso_mancuernas": 50
+  },
+  "fotosPedidas": 1
+ },
+ "kilos": [
+  {
+   "s": "32,5",
+   "n": 32.5
+  },
+  {
+   "s": " 40 ",
+   "n": 40
+  },
+  {
+   "s": "0",
+   "n": null
+  },
+  {
+   "s": "-3",
+   "n": null
+  },
+  {
+   "s": "401",
+   "n": null
+  },
+  {
+   "s": "abc",
+   "n": null
+  },
+  {
+   "s": "",
+   "n": null
+  }
+ ],
+ "fechas": [
+  {
+   "iso": "2026-11-12T15:00:00.123456+00:00",
+   "zona": "America/Argentina/Buenos_Aires",
+   "texto": "12/11"
+  },
+  {
+   "iso": "2026-11-13T01:30:00+00:00",
+   "zona": "America/Argentina/Buenos_Aires",
+   "texto": "12/11"
+  },
+  {
+   "iso": "cualquiera",
+   "zona": "UTC",
+   "texto": null
+  },
+  {
+   "iso": null,
+   "zona": "UTC",
+   "texto": null
+  }
+ ],
+ "decodificar": [
+  {
+   "j": {
+    "habilitado": false
+   },
+   "habilitado": false
+  },
+  {
+   "j": {
+    "habilitado": true,
+    "abierta": null,
+    "vigente": null,
+    "campo_nuevo": {
+     "a": 1
+    }
+   },
+   "habilitado": true,
+   "version": "terceros-v1",
+   "aceptado": false
+  },
+  {
+   "j": {
+    "habilitado": true,
+    "consentimiento_version": "v9",
+    "consentimiento_aceptado": true,
+    "abierta": {
+     "id": "a",
+     "estado": "estado_del_futuro",
+     "extra": [
+      1
+     ]
+    },
+    "vigente": {
+     "id": "b",
+     "estado": "listo",
+     "modo": "completa",
+     "resultado": "resultado_del_futuro",
+     "equipos": [
+      {
+       "tipo": "press_banca"
+      },
+      {
+       "zona": "x"
+      },
+      {
+       "tipo": "prensa_45",
+       "nombre": "Prensa",
+       "zona": "piernas",
+       "cantidad": 2
+      }
+     ]
+    }
+   },
+   "habilitado": true,
+   "version": "v9",
+   "aceptado": true,
+   "abierta": "estado_del_futuro",
+   "equipos": 2,
+   "cantidad": 2
+  },
+  {
+   "j": {
+    "habilitado": true,
+    "abierta": {
+     "id": "a",
+     "estado": "a_confirmar",
+     "preguntas": [
+      {
+       "id": "q",
+       "clase": "clase_del_futuro",
+       "texto": "t"
+      },
+      {
+       "id": "foto_1",
+       "clase": "foto",
+       "texto": "t",
+       "zona": "bancos"
+      },
+      {
+       "clase": "foto"
+      }
+     ]
+    }
+   },
+   "habilitado": true,
+   "version": "terceros-v1",
+   "aceptado": false,
+   "abierta": "a_confirmar",
+   "preguntas": 1
+  }
+ ]
+}
