@@ -98,4 +98,23 @@ struct ArreglosAuditoriaVolverTests {
         await m.alVolverAPrimerPlano()
         #expect(m.rutina?.version == 2, "pasados unos minutos llega el plan nuevo")
     }
+
+    @Test func conLaCopiaViejaElMotorSeRestauraConLaRutinaNueva() async throws {
+        let plan = Plan()
+        let t = TransporteProgramado { fn, _ in
+            switch fn {
+            case "mypump_get_cliente_info": return (200, #"[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"#)
+            case "mypump_get_rutina_activa": return (200, "[" + Self.rutina(plan.version) + "]")
+            default: return (200, "[]")
+            }
+        }
+        await ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria("AAAAAAAAAAAAAAAAAAAA"), raizDisco: raiz).cargar()
+        plan.version = 2
+        let m = ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria("AAAAAAAAAAAAAAAAAAAA"), raizDisco: raiz)
+        let antes = t.llamadas.filter { $0 == "mypump_get_sesion_dia" }.count
+        await m.cargar()
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(m.entreno?.rutina.version == 2)
+        #expect(t.llamadas.filter { $0 == "mypump_get_sesion_dia" }.count - antes >= 2, "el día se restauró después de reemplazar la rutina")
+    }
 }

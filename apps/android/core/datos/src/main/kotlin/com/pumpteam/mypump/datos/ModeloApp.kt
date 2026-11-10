@@ -644,11 +644,13 @@ class ModeloApp(
         // F2 (auditoría 10/11): con el plan guardado en el teléfono, se muestra ya y se actualiza por detrás. Antes se miraba
         // el logo hasta 20 a 40 segundos con mala señal, aunque el plan estuviera guardado.
         var motorDeLaCopia: ModeloEntreno? = null
+        var rutinaDeLaCopia: RutinaActiva? = null
         if (_fase.value == Fase.CARGANDO) {
             leerCopia()?.let { c ->
                 aplicar(c, cargarMotor = false)
                 _entreno.value?.let { e ->
                     motorDeLaCopia = e
+                    rutinaDeLaCopia = e.rutina.value
                     cargaDelMotor = alcance.launch {
                         cargarCatalogo()
                         e.aplicarLegadoDelDisco()
@@ -780,8 +782,9 @@ class ModeloApp(
         prepararEntreno()
         _fase.value = Fase.LISTO
         if (faltaron.isEmpty()) _cargasConRed.update { it + 1 }
-        // El motor que ya arrancó con la copia no se vuelve a cargar (si la rutina cambió, `prepararEntreno` la reemplazó).
-        _entreno.value?.takeIf { it !== motorDeLaCopia }?.let { e ->
+        // El motor que ya arrancó con la copia no se vuelve a cargar, salvo que la rutina haya cambiado: `prepararEntreno` la
+        // reemplazó y eso deja el día limpio (sin la sesión ni las series), así que hay que restaurarlo.
+        _entreno.value?.takeIf { it !== motorDeLaCopia || it.rutina.value != rutinaDeLaCopia }?.let { e ->
             cargaDelMotor = alcance.launch {
                 cargarCatalogo()
                 e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
@@ -810,6 +813,7 @@ class ModeloApp(
         sincronizarTecnica()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
+        anotarCargaCompleta()
         // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
         _salud.value?.let { s -> alcance.launch { s.alAbrir() } }
     }
@@ -886,21 +890,117 @@ class ModeloApp(
             // Cambió el día: se vuelve a hoy (el que se miraba pudo salir de la ventana del servidor).
             irADia(null)
         }
+        // F7 (auditoría 10/11): la rutina y la dieta se pedían solo al arrancar. Un plan publicado hoy no se veía hasta
+        // cerrar la app del todo. Ahora se vuelven a pedir pasados unos minutos.
+        if (toca(Relectura.PLAN)) refrescarPlan()
         outbox?.drenar()
-        // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
-        hidratarMarcas()
-        refrescarDiaPasado()
+        // F11: lo demás tampoco se relee en cada vuelta (el alumno entra y sale veinte veces en un entreno, y al girar el
+        // teléfono también pasaba por acá). Las marcas de hoy: las pudo cambiar la web u otro teléfono (DIE-05, D25).
+        if (toca(Relectura.MARCAS)) {
+            hidratarMarcas()
+            refrescarDiaPasado()
+        }
         _chat.value?.sondear()
         _fotos.value?.drenar()
-        sincronizarGimnasio()
-        sincronizarTecnica()
-        _guia.value?.refrescarResumen()
+        if (toca(Relectura.GIMNASIO)) {
+            sincronizarGimnasio()
+            sincronizarTecnica()
+        }
+        if (toca(Relectura.GUIA)) _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }
         // Suplementación: aparte, así no demora lo que sigue (es solo lectura).
-        _suplementacion.value?.let { m -> alcance.launch { m.refrescar() } }
-        _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y retomar el historial (visibilitychange)
+        if (toca(Relectura.SUPLEMENTACION)) _suplementacion.value?.let { m -> alcance.launch { m.refrescar() } }
+        if (toca(Relectura.SALUD)) _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y el historial
         _entreno.value?.alVolverAPrimerPlano()
+    }
+
+    // ── F7 y F11: cada cuánto se relee al volver a la app ──
+
+    /** Lo que se relee al volver a la app, con su tiempo mínimo (ms) entre una lectura y la siguiente. */
+    enum class Relectura(val cadaMs: Long) {
+        PLAN(5 * 60_000L),
+        MARCAS(2 * 60_000L),
+        GUIA(10 * 60_000L),
+        SUPLEMENTACION(10 * 60_000L),
+        GIMNASIO(10 * 60_000L),
+        SALUD(60 * 60_000L),
+    }
+
+    /** El reloj de las relecturas (ms; las pruebas lo mueven). */
+    var relojRelecturas: () -> Long = System::currentTimeMillis
+    private val ultimaRelectura = HashMap<Relectura, Long>()
+
+    /** Si ya pasó su tiempo mínimo desde la última vez (y la anota). Una carga completa cuenta como lectura de todo. */
+    internal fun toca(r: Relectura): Boolean {
+        val ahora = relojRelecturas()
+        val u = ultimaRelectura[r]
+        if (u != null && ahora - u < r.cadaMs) return false
+        ultimaRelectura[r] = ahora
+        return true
+    }
+
+    private fun anotarCargaCompleta() {
+        val ahora = relojRelecturas()
+        for (r in Relectura.entries) ultimaRelectura[r] = ahora
+    }
+
+    /**
+     * Hay un entrenamiento abierto ahora: arrancó hace menos de 4 horas y no se cerró. El plan no se cambia en el medio
+     * (reemplazar la rutina cierra la tarjeta de carga y deja el día limpio); se aplica en la próxima vuelta.
+     */
+    private val entrenoAbierto: Boolean
+        get() {
+            val e = _entreno.value ?: return false
+            val ini = e.inicioSesion.value ?: return false
+            return e.sesionIniciada.value && !e.dia.value.diaFinalizado && relojRelecturas() - ini < 4 * 3600_000.0
+        }
+
+    /** F7: la rutina y la dieta de nuevo, sin el resto de la carga. Lo que no llega (red) no toca nada. */
+    internal suspend fun refrescarPlan() {
+        val t = token ?: return
+        if (_esDemo.value) return
+        val p = mapOf("p_token" to texto(t))
+        val conEntreno = entrenoAbierto
+        val rr: Resultado<ValorJson>?
+        val dd: Resultado<ValorJson>
+        coroutineScope {
+            val r = if (conEntreno) null else async { cliente.llamar("mypump_get_rutina_activa", p) }
+            val d = async { cliente.llamar("mypump_get_dieta_activa", p) }
+            rr = r?.await()
+            dd = d.await()
+        }
+        if (token != t || _esDemo.value) return
+        var copia = leerCopia()
+        if (rr is Resultado.Ok) {
+            val fila = rr.valor.primeraFila
+            val nueva = fila?.let { decodificar(it.aJson(), RutinaActiva::desde) }
+            copia = copia?.copy(rutina = fila)
+            if (nueva != _rutina.value) {
+                _rutina.value = nueva
+                prepararEntreno()
+                // Motor nuevo, o el mismo con la rutina reemplazada (eso deja el día limpio): se restaura.
+                _entreno.value?.let { e ->
+                    cargaDelMotor = alcance.launch {
+                        cargarCatalogo()
+                        e.cargar()
+                    }
+                }
+            }
+        }
+        if (dd is Resultado.Ok) {
+            val fila = dd.valor.primeraFila
+            val nueva = dietaNormalizada(fila)
+            copia = copia?.copy(dieta = fila)
+            if (nueva != _dieta.value) {
+                _dieta.value = nueva
+                _swaps.value = nueva?.id?.let(::leerSwaps) ?: emptyMap()
+                cargarAjustes()
+                cargarMarcas()
+                hidratarDieta()
+            }
+        }
+        copia?.let { disco?.guardar(ARCHIVO_COPIA, it.copy(ts = System.currentTimeMillis().toDouble()).aValor()) }
     }
 
     // ── Entreno ──

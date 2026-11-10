@@ -405,10 +405,12 @@ public final class ModeloApp {
         // F2 (auditoría 10/11): con el plan guardado en el teléfono, se muestra ya y se actualiza por detrás. Antes se
         // miraba el logo hasta 20 a 40 segundos con mala señal, aunque el plan estuviera guardado.
         var motorDeLaCopia: ModeloEntreno?
+        var rutinaDeLaCopia: RutinaActiva?
         if fase == .cargando, let copia = disco?.leer(CopiaOffline.self, "offline.json") {
             aplicar(copia, cargarMotor: false)
             if let e = entreno {
                 motorDeLaCopia = e
+                rutinaDeLaCopia = e.rutina
                 cargaDelMotor = Task {
                     await self.cargarCatalogo()
                     await e.aplicarLegadoDelDisco()
@@ -525,8 +527,9 @@ public final class ModeloApp {
         fase = .listo
         // Suplementación sin esperar a lo demás: decide si la pestaña está (con copia guardada ya se ve desde el arranque).
         if let suplementacion { Task { await suplementacion.cargar() } }
-        // El motor que ya arrancó con la copia no se vuelve a cargar (si la rutina cambió, `prepararEntreno` la reemplazó).
-        if let e = entreno, e !== motorDeLaCopia {
+        // El motor que ya arrancó con la copia no se vuelve a cargar, salvo que la rutina haya cambiado: `prepararEntreno`
+        // la reemplazó y eso deja el día limpio (sin la sesión ni las series), así que hay que restaurarlo.
+        if let e = entreno, e !== motorDeLaCopia || e.rutina != rutinaDeLaCopia {
             cargaDelMotor = Task {
                 await self.cargarCatalogo()
                 await e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
@@ -782,9 +785,9 @@ public final class ModeloApp {
             copia?.rutina = fila
             if nueva != rutina {
                 rutina = nueva
-                let antes = entreno
                 prepararEntreno()
-                if let e = entreno, e !== antes {
+                // Motor nuevo, o el mismo con la rutina reemplazada (eso deja el día limpio): se restaura.
+                if let e = entreno {
                     cargaDelMotor = Task {
                         await self.cargarCatalogo()
                         await e.cargar()

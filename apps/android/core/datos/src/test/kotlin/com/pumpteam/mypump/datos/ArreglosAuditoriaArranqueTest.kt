@@ -5,6 +5,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -57,5 +58,52 @@ class ArreglosAuditoriaArranqueTest {
         assertEquals(ModeloApp.Fase.CARGANDO, m.fase.value)
         carga.await()
         assertEquals(ModeloApp.Fase.LISTO, m.fase.value)
+    }
+
+    private fun rutinaV(v: Int) = RUTINA.replace("\"version\":1", "\"version\":$v")
+
+    @Test
+    fun conLaCopiaViejaElMotorSeRestauraConLaRutinaNueva() = enUnHilo { alcance ->
+        var version = 1
+        val t = TransporteProgramado { fn, _ ->
+            when (fn) {
+                "mypump_get_cliente_info" -> 200 to """[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"""
+                "mypump_get_rutina_activa" -> 200 to "[${rutinaV(version)}]"
+                else -> 200 to "[]"
+            }
+        }
+        ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria("AAAAAAAAAAAAAAAAAAAA"), raiz, PreferenciasEnMemoria(), alcance).cargar()
+        version = 2
+        val m = ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria("AAAAAAAAAAAAAAAAAAAA"), raiz, PreferenciasEnMemoria(), alcance)
+        val antes = t.llamadas.count { it == "mypump_get_sesion_dia" }
+        m.cargar()
+        delay(300)
+        assertEquals(2, m.entreno.value?.rutina?.value?.version)
+        assertTrue(t.llamadas.count { it == "mypump_get_sesion_dia" } - antes >= 2, "el día se restauró después de reemplazar la rutina")
+    }
+
+    @Test
+    fun elPlanNuevoLlegaAlVolverPasadosUnosMinutos() = enUnHilo { alcance ->
+        var version = 1
+        val t = TransporteProgramado { fn, _ ->
+            when (fn) {
+                "mypump_get_cliente_info" -> 200 to """[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"""
+                "mypump_get_rutina_activa" -> 200 to "[${rutinaV(version)}]"
+                else -> 200 to "[]"
+            }
+        }
+        val m = ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria("AAAAAAAAAAAAAAAAAAAA"), raiz, PreferenciasEnMemoria(), alcance)
+        var ahora = 1_792_000_000_000L
+        m.relojRelecturas = { ahora }
+        m.cargar()
+        assertEquals(1, m.rutina.value?.version)
+        version = 2
+        val antes = t.llamadas.count { it == "mypump_get_rutina_activa" }
+        ahora += 60_000
+        m.alVolverAPrimerPlano()
+        assertEquals(antes, t.llamadas.count { it == "mypump_get_rutina_activa" }, "al minuto no se relee")
+        ahora += 6 * 60_000
+        m.alVolverAPrimerPlano()
+        assertEquals(2, m.rutina.value?.version, "pasados unos minutos llega el plan nuevo")
     }
 }
