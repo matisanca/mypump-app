@@ -257,24 +257,24 @@ const AHORA = fecha('2026-11-06T12:00:00-03:00');
   eq(RA.textoBloqueada(2), 'Cuando termines los videos de arriba se habilita la agenda. Te faltan 2.', 'bloqueada 2');
   eq(RA.TEXTO_NO_AUTORIZADA, 'Cuando termines de ver todo te habilitamos la agenda.', 'no autorizada');
   eq(RA.TEXTO_AVISO.tomada, 'Ese horario se ocupó recién, elegí otro.', 'tomada');
-  eq(RA.TEXTO_SIN_FRANJAS, 'Ahora no hay horarios libres. Te escribimos por WhatsApp para coordinar.', 'sin franjas');
+  eq(RA.TEXTO_SIN_FRANJAS, 'Ahora no hay horarios libres. Mirá de nuevo más tarde o escribinos por el chat.', 'sin franjas');
 }
 {
   const d = RA.dias(agenda({ ok: true, autorizada: true, habilitada: true, franjas: FRANJAS }).franjas, BA, AHORA);
   eq(d.map(x => x.titulo), ['jueves 12 de noviembre', 'viernes 13 de noviembre'], 'por día');
   eq(d[0].chips.map(c => c.texto), ['10:00 a 12:00', '14:00 a 16:00'], 'chips');
   ok(!RA.difiereDeArgentina(d.flatMap(x => x.chips).map(c => c.inicio), BA), 'en Argentina no difiere');
-  eq(RA.textoConfirmar(d[0].chips[0], BA), '¿Confirmás la entrega el jueves 12 a las 10:00? Dura unas 2 horas.', 'confirmar');
+  eq(RA.textoConfirmar(d[0].chips[0], BA), '¿Confirmás tu videollamada de comienzo el jueves 12 a las 10:00? Dura unas 2 horas.', 'confirmar');
   eq(RA.textoConfirmada({ inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T12:00:00-03:00', estado: 'confirmada' }, BA),
-     'Tu entrega: jueves 12 de noviembre, 10:00 a 12:00', 'confirmada');
+     'Jueves 12 de noviembre, de 10:00 a 12:00', 'confirmada');
 }
 {
   const fs = agenda({ ok: true, autorizada: true, habilitada: true, franjas: [{ id: 'f1', inicio: '2026-11-12T11:00:00-03:00', fin: '2026-11-12T12:00:00-03:00' },
                                                                                 { id: 'f2', inicio: '2026-11-12T12:00:00-03:00', fin: '2026-11-12T12:45:00-03:00' }] }).franjas;
   const d = RA.dias(fs, BA, AHORA);
   eq(d[0].chips.map(c => c.texto), ['11:00 a 12:00', '12:00 a 12:45'], 'la duración sale de cada franja');
-  eq(RA.textoConfirmar(d[0].chips[0], BA), '¿Confirmás la entrega el jueves 12 a las 11:00? Dura alrededor de 1 hora.', '1 h');
-  eq(RA.textoConfirmar(d[0].chips[1], BA), '¿Confirmás la entrega el jueves 12 a las 12:00? Dura unos 45 minutos.', '45 min');
+  eq(RA.textoConfirmar(d[0].chips[0], BA), '¿Confirmás tu videollamada de comienzo el jueves 12 a las 11:00? Dura alrededor de 1 hora.', '1 h');
+  eq(RA.textoConfirmar(d[0].chips[1], BA), '¿Confirmás tu videollamada de comienzo el jueves 12 a las 12:00? Dura unos 45 minutos.', '45 min');
   eq(RA.textoElegir(d[0].chips), 'Elegí un horario para la videollamada.', 'duran distinto');
   eq(RA.textoElegir([d[0].chips[0]]), 'Elegí un horario para la videollamada. Dura alrededor de 1 hora.', 'una sola');
   const dos = RA.dias(agenda({ ok: true, autorizada: true, habilitada: true, franjas: FRANJAS }).franjas, BA, AHORA);
@@ -297,14 +297,14 @@ const AHORA = fecha('2026-11-06T12:00:00-03:00');
   eq(dm.map(x => x.titulo), ['jueves 12 de noviembre', 'viernes 13 de noviembre'], 'Madrid: la de las 22 pasa al otro día');
   ok(dm[0].chips[0].texto === '14:00 a 16:00' && dm[1].chips[0].texto === '02:00 a 04:00', 'Madrid: hora convertida');
   ok(RA.difiereDeArgentina(dm.flatMap(x => x.chips).map(c => c.inicio), M), 'Madrid difiere');
-  eq(RA.textoConfirmar(dm[0].chips[0], M), '¿Confirmás la entrega el jueves 12 a las 14:00 (10:00 en Argentina)? Dura unas 2 horas.', 'Madrid confirmar');
+  eq(RA.textoConfirmar(dm[0].chips[0], M), '¿Confirmás tu videollamada de comienzo el jueves 12 a las 14:00 (10:00 en Argentina)? Dura unas 2 horas.', 'Madrid confirmar');
   const X = 'America/Mexico_City';
   const dx = RA.dias(fs, X, AHORA);
   ok(dx.length === 1 && dx[0].titulo === 'jueves 12 de noviembre', 'México: un día');
   eq(dx[0].chips.map(c => c.texto), ['07:00 a 09:00', '19:00 a 21:00'], 'México: 3 h menos');
   const r = { inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T12:00:00-03:00', estado: 'confirmada' };
-  eq(RA.textoConfirmada(r, X), 'Tu entrega: jueves 12 de noviembre, 07:00 a 09:00', 'México confirmada');
-  eq(RA.textoEsperandoSala(r, M), 'Tu entrega es hoy a las 14:00. Cuando Mati abra la videollamada se habilita el botón para entrar.', 'Madrid sala');
+  eq(RA.textoConfirmada(r, X), 'Jueves 12 de noviembre, de 07:00 a 09:00', 'México confirmada');
+  eq(RA.textoEsperandoSala(r, M), 'Tu videollamada de comienzo es hoy a las 14:00. El botón para entrar se habilita 10 minutos antes.', 'Madrid sala');
 }
 {
   const fs = [{ id: 'vieja', inicio: '2026-11-05T10:00:00-03:00', fin: '2026-11-05T12:00:00-03:00' },
@@ -318,20 +318,25 @@ const AHORA = fecha('2026-11-06T12:00:00-03:00');
   const r = { inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T12:00:00-03:00', estado: 'confirmada', meetUrl: 'https://meet.google.com/abc', salaAbiertaEn: null };
   const t = s => fecha(`2026-11-12T${s}:00-03:00`);
   ok(!RA.enVentana(r, t('09:29')) && RA.enVentana(r, t('09:30')) && !RA.enVentana(r, t('12:00')), 'ventana de 30 min');
-  ok(!RA.puedeEntrar(r, t('09:50')) && RA.esperandoSala(r, t('09:50')), 'sin sala: sin botón');
+  // Sin `sala_abierta_en` (Mati, 10/11): el botón desde 10 min antes; Meet restringido, Mati lo admite.
+  ok(!RA.puedeEntrar(r, t('09:49')), 'a 11 min, todavía no');
+  eq(RA.estadoEntrar(r, t('09:49')), { tipo: 'falta', segundos: 60 }, 'falta 1 min');
+  ok(RA.puedeEntrar(r, t('09:50')) && RA.esperandoSala(r, t('09:50')), 'desde 10 min antes, y se sigue consultando la sala');
+  ok(RA.puedeEntrar(r, t('09:45'), 15), 'el servidor lo puede cambiar');
   ok(!RA.esperandoSala(r, t('09:00')), 'antes de la ventana no se consulta');
-  ok(RA.puedeEntrar(r, t('10:00')) && !RA.esperandoSala(r, t('10:00')), 'a la hora de inicio, el respaldo');
-  eq(RA.textoEntrar(r, BA), 'Tu entrega empezó a las 10:00', 'texto del respaldo');
+  ok(RA.puedeEntrar(r, t('10:00')) && RA.esperandoSala(r, t('10:00')), 'a la hora de inicio, sin sala, se sigue mirando');
+  eq(RA.textoEntrar(r, BA), 'Ya podés entrar', 'texto sin la sala');
   ok(!RA.puedeEntrar(r, t('12:00')), 'terminó');
   const abierta = { ...r, salaAbiertaEn: '2026-11-12T09:52:00-03:00' };
   ok(RA.puedeEntrar(abierta, t('09:53')), 'sala abierta');
-  eq(RA.textoEntrar(abierta, BA), 'Mati ya está en la videollamada', 'texto de la sala');
+  eq(RA.textoEntrar(abierta, BA), 'Mati ya está en la sala', 'texto de la sala');
+  ok(!RA.esperandoSala(abierta, t('09:53')), 'con la sala abierta no se consulta más');
   ok(!RA.puedeEntrar(abierta, t('12:01')), 'sala abierta, terminó');
   ok(!RA.puedeEntrar({ ...abierta, meetUrl: null }, t('10:00')), 'sin link');
   const pend = { ...abierta, estado: 'pendiente' };
   ok(!RA.puedeEntrar(pend, t('10:00')) && !RA.enVentana(pend, t('10:00')), 'pendiente');
   ok(RA.esHoy(r, BA, t('07:00')) && !RA.esHoy(r, BA, fecha('2026-11-11T22:00:00-03:00')) && !RA.esHoy(r, BA, t('12:30')), 'es hoy');
-  eq(RA.textoEsperandoSala(r, BA), 'Tu entrega es hoy a las 10:00. Cuando Mati abra la videollamada se habilita el botón para entrar.', 'esperando sala');
+  eq(RA.textoEsperandoSala(r, BA), 'Tu videollamada de comienzo es hoy a las 10:00. El botón para entrar se habilita 10 minutos antes.', 'esperando sala');
   const R1 = { inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T12:00:00-03:00', estado: 'confirmada', meet_url: 'https://meet.google.com/abc' };
   eq(agenda({ ok: true, autorizada: true, habilitada: true, reserva: { ...R1, sala_abierta_en: '2026-11-12T09:52:00-03:00' } }).reserva.salaAbiertaEn,
      '2026-11-12T09:52:00-03:00', 'sala_abierta_en');
@@ -497,6 +502,138 @@ function cuadroLuma(ancho, alto, x0, x1, y0 = 0, y1 = alto) {
   eq(i.pasos.map(p => p.estado), ['hecho', 'pendiente'], 'los pasos');
   eq(RD.textoHablado(i.pasos[0], 2), 'Paso 1 de 2, Mirá tus videos, hecho', 'lo hablado');
   eq(RD.introduccion({ ...g, dolor: null }, false), null, 'sin dolor, sin intro');
+}
+
+// ── Videollamada 2.3.0: tarjeta, cuenta regresiva y cambio (VideollamadaReglasTests de AgendaTests.swift) ──
+{
+  const r = { id: 'r1', inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T11:00:00-03:00', estado: 'confirmada',
+              meetUrl: 'https://meet.google.com/abc', salaAbiertaEn: null, tipo: 'comienzo' };
+  // Nunca dice «entrega», ni WhatsApp, ni «tu coach» o «tu entrenador»; sin «:» salvo en la hora.
+  eq(RA.nombre('comienzo'), 'videollamada de comienzo', 'nombre comienzo');
+  eq(RA.nombre('revision'), 'videollamada de revisión', 'nombre revisión');
+  eq(RA.tituloTarjeta('revision'), 'Tu videollamada de revisión', 'título de la tarjeta');
+  eq(RA.textos().titulo, 'Agendá tu videollamada de comienzo', 'título de la agenda');
+  eq(RA.textos().tituloDe('revision'), 'Agendá tu videollamada de revisión', 'título de la agenda de revisión');
+  const todos = [RA.TEXTO_DESDE_ACA, RA.TEXTO_ADMITE, RA.TEXTO_CAMBIAR, RA.TEXTO_SIN_FRANJAS, RA.ETIQUETA_OBLIGATORIO,
+    RA.textoEsperandoSala(r, BA), RA.textoListoEntrar(null), RA.TEXTO_AVISO.sinCambio, RA.textoEntrar(r), RA.textoEntrar({ ...r, salaAbiertaEn: 'x' }),
+    RA.textoCuenta({ tipo: 'falta', segundos: 90000 }), RA.textoCuenta({ tipo: 'preparando' }), RA.textoConfirmada(r, BA),
+    RA.textoTope({ permitido: true, restantes: 1, hasta: '2026-11-11T10:00:00-03:00' }, BA), RA.textoAhoraEs(r, BA),
+    RA.tituloElegir('comienzo'), RA.textoDesde([], BA), ...RA.AYUDA_ENTRAR];
+  for (const t of todos) {
+    ok(!/entrega/i.test(t) && (!t.includes(':') || /\d:\d\d/.test(t)), `sin «entrega» ni «:» · ${t}`);
+    ok(!/whatsapp|coach|entrenador/i.test(t), `sin WhatsApp ni coach · ${t}`);
+  }
+}
+{
+  // Tipo tolerante, entrar_desde_min de 1 a 60, cambio raro = sin cambio.
+  eq(agenda({ ok: true, tipo: 'revision', reserva: { inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T11:00:00-03:00', estado: 'confirmada', tipo: 'REVISION' } }).reserva.tipo,
+     'revision', 'tipo de la reserva en mayúsculas');
+  eq(agenda({ ok: true, tipo: 'otra' }).tipo, 'comienzo', 'tipo desconocido');
+  eq(agenda({ ok: true }).tipo, 'comienzo', 'sin tipo');
+  eq(agenda({ ok: true, entrar_desde_min: 500 }).entrarDesdeMin, null, 'entrar_desde_min fuera de rango');
+  eq(agenda({ ok: true, entrar_desde_min: 15 }).entrarDesdeMin, 15, 'entrar_desde_min');
+  eq(agenda({ ok: true, cambio: 'si' }).cambio, null, 'cambio raro');
+  eq(agenda({ ok: true, cambio: { permitido: true, restantes: -2, hasta: ' ' } }).cambio, { permitido: true, restantes: 0, hasta: null }, 'cambio normalizado');
+  // Con la reserva confirmada y el cambio permitido, las franjas se conservan (son las del cambio).
+  const R1 = { id: 'r1', inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T11:00:00-03:00', estado: 'confirmada', meet_url: 'https://meet.google.com/x' };
+  const fs = [{ id: 'f9', inicio: '2026-11-13T12:00:00-03:00', fin: '2026-11-13T13:00:00-03:00' }];
+  eq(agenda({ ok: true, autorizada: true, habilitada: true, franjas: fs, reserva: R1, cambio: { permitido: true } }).franjas.length, 1, 'franjas para el cambio');
+  eq(agenda({ ok: true, autorizada: true, habilitada: true, franjas: fs, reserva: R1, cambio: { permitido: false } }).franjas.length, 0, 'sin permiso, sin franjas');
+  eq(agenda({ ok: true, autorizada: true, habilitada: true, franjas: fs, reserva: { ...R1, estado: 'pendiente' }, cambio: { permitido: true } }).franjas.length, 0,
+     'pendiente: sin franjas aunque diga permitido');
+  // La copia guardada conserva lo nuevo.
+  const a = agenda({ ok: true, autorizada: true, habilitada: true, franjas: fs, reserva: { ...R1, tipo: 'revision' }, cambio: { permitido: true, restantes: 1 }, tipo: 'revision', entrar_desde_min: 12 });
+  ok(a.reserva.tipo === 'revision' && a.tipo === 'revision' && a.entrarDesdeMin === 12 && a.cambio.restantes === 1, 'campos nuevos');
+}
+{
+  const r = { inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T11:00:00-03:00', estado: 'confirmada', meetUrl: 'https://meet.google.com/abc', salaAbiertaEn: null };
+  const t = s => RA.textoCuenta(RA.estadoEntrar(r, fecha(s)));
+  eq(t('2026-11-10T09:00:00-03:00'), 'Se habilita 10 minutos antes de empezar', 'lejos');
+  eq(t('2026-11-11T12:00:00-03:00'), 'Se habilita en 21 h 50 min', 'a menos de un día');
+  eq(t('2026-11-12T07:50:00-03:00'), 'Se habilita en 2 h', 'horas justas');
+  eq(t('2026-11-12T09:25:00-03:00'), 'Se habilita en 25 min', 'minutos');
+  eq(t('2026-11-12T09:49:30-03:00'), 'Se habilita en menos de 1 min', 'menos de 1 min');
+  eq(t('2026-11-12T09:50:00-03:00'), null, 'habilitado');
+  eq(RA.textoCuenta(RA.estadoEntrar(r, fecha('2026-11-10T09:00:00-03:00'), 15), 15), 'Se habilita 15 minutos antes de empezar', 'los minutos del servidor');
+  eq(RA.estadoEntrar(r, fecha('2026-11-12T11:00:00-03:00')), { tipo: 'nada' }, 'terminó');
+  eq(RA.estadoEntrar({ ...r, meetUrl: null }, fecha('2026-11-12T09:55:00-03:00')), { tipo: 'preparando' }, 'sin link: preparando');
+  eq(RA.textoCuenta({ tipo: 'preparando' }), 'Estamos preparando la sala. El botón se activa en un momento.', 'texto de preparando');
+  eq(RA.estadoEntrar({ ...r, estado: 'pendiente' }, fecha('2026-11-12T09:55:00-03:00')), { tipo: 'nada' }, 'pendiente: nada');
+  // Con la sala abierta se entra antes de los 10 minutos.
+  eq(RA.estadoEntrar({ ...r, salaAbiertaEn: '2026-11-12T09:30:00-03:00' }, fecha('2026-11-12T09:31:00-03:00')), { tipo: 'habilitado' }, 'sala abierta antes');
+  eq(RA.cuenta(0), 'menos de 1 min', 'cero');
+  eq(RA.cuenta(61), '2 min', 'redondea para arriba');
+}
+{
+  const r = { inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T11:00:00-03:00', estado: 'confirmada', meetUrl: 'https://meet.google.com/abc', salaAbiertaEn: null };
+  eq(RA.cuando(r, BA, fecha('2026-11-12T08:00:00-03:00')), 'Hoy', 'hoy');
+  eq(RA.cuando(r, BA, fecha('2026-11-11T23:00:00-03:00')), 'Mañana', 'mañana');
+  eq(RA.cuando(r, BA, fecha('2026-11-09T23:00:00-03:00')), 'En 3 días', 'en 3 días');
+  eq(RA.cuando(r, BA, fecha('2026-11-13T08:00:00-03:00')), null, 'ya pasó');
+  const M = 'Europe/Madrid';
+  eq(RA.horaArgentina(fecha(r.inicio), M), '10:00 en Argentina', 'hora de Argentina');
+  eq(RA.horaArgentina(fecha(r.inicio), BA), null, 'en Argentina no va');
+  eq(RA.textoConfirmada(r, M), 'Jueves 12 de noviembre, de 14:00 a 15:00', 'confirmada en Madrid');
+  ok(RA.paraTarjeta(r, fecha('2026-11-01T10:00:00-03:00')), 'tarjeta desde que se agenda');
+  ok(RA.paraTarjeta(r, fecha('2026-11-12T10:59:00-03:00')), 'tarjeta hasta el fin');
+  ok(!RA.paraTarjeta(r, fecha('2026-11-12T11:00:00-03:00')), 'terminó: sin tarjeta');
+  ok(RA.paraTarjeta({ ...r, estado: 'pendiente' }, fecha('2026-11-01T10:00:00-03:00')), 'reservándose también');
+  ok(!RA.paraTarjeta({ ...r, estado: 'fallo' }, fecha('2026-11-01T10:00:00-03:00')), 'fallo: sin tarjeta');
+}
+{
+  const base = { ok: true, autorizada: true, habilitada: true, franjas: [{ id: 'f9', inicio: '2026-11-13T12:00:00-03:00', fin: '2026-11-13T13:00:00-03:00' }],
+                 reserva: { id: 'r1', inicio: '2026-11-12T10:00:00-03:00', fin: '2026-11-12T11:00:00-03:00', estado: 'confirmada' } };
+  const ahora = fecha('2026-11-10T09:00:00-03:00');
+  ok(RA.puedeCambiar(agenda({ ...base, cambio: { permitido: true, restantes: 1, hasta: '2026-11-11T10:00:00-03:00' } }), ahora), 'se puede cambiar');
+  ok(!RA.puedeCambiar(agenda({ ...base, cambio: { permitido: true, restantes: 0 } }), ahora), 'sin cambios restantes');
+  ok(!RA.puedeCambiar(agenda({ ...base, cambio: { permitido: true, hasta: '2026-11-10T08:00:00-03:00' } }), ahora), 'pasó el plazo');
+  ok(!RA.puedeCambiar(agenda({ ...base, cambio: { permitido: false } }), ahora), 'no permitido');
+  ok(!RA.puedeCambiar(agenda(base), ahora), 'sin cambio (servidor 2.2.0)');
+  ok(!RA.puedeCambiar(agenda({ ...base, franjas: [], cambio: { permitido: true } }), ahora), 'sin horarios');
+  eq(RA.textoTope({ permitido: true, restantes: 1, hasta: '2026-11-11T10:00:00-03:00' }, BA), 'Podés cambiarlo 1 vez, hasta el miércoles 11 a las 10:00.', 'tope');
+  eq(RA.textoTope({ permitido: true, restantes: 2, hasta: null }, BA), 'Podés cambiarlo 2 veces.', 'tope sin plazo');
+  eq(RA.textoTope({ permitido: false }, BA), null, 'sin permiso, sin tope');
+  eq(RA.textoAhoraEs(base.reserva, BA), 'Ahora es el jueves 12 a las 10:00.', 'ahora es');
+  const chips = RA.dias(base.franjas, BA, ahora).flatMap(d => d.chips);
+  eq(RA.textoBotonElegir(chips[0], false, BA), 'Confirmar viernes 13, 12:00', 'botón confirmar');
+  eq(RA.textoBotonElegir(chips[0], true, BA), 'Cambiar al viernes 13, 12:00', 'botón cambiar');
+  eq(RA.textoElegirPantalla(chips), 'Dura alrededor de 1 hora y vas a entrar desde la app.', 'pantalla elegir');
+  eq(RA.textoDesde(RA.dias(base.franjas, BA, ahora), BA), 'Elegí el día y el horario. Hay lugar desde el viernes 13.', 'hay lugar desde');
+  eq(RA.textoConfirmar(chips[0], BA, 'revision'), '¿Confirmás tu videollamada de revisión el viernes 13 a las 12:00? Dura alrededor de 1 hora.', 'confirmar revisión');
+  eq(RA.textos({ fallo: 'Elegí otro' }).fallo('sinCambio'), RA.TEXTO_AVISO.sinCambio, 'el texto de Mati no pisa el del cambio');
+}
+
+// ── El doble de prueba de la web (ServidorAgendaUI de AgendaView.swift): sin red, sin Meet real ──
+{
+  const D = require('./lib/doble-agenda.js');
+  const ahora = fecha('2026-11-10T09:00:00-03:00');   // martes
+  const el = D.crear('elegir', { ahora });
+  const a = agenda((await el.getAgendaGuia('tk')).data);
+  eq(a.franjas.length, 10, 'elegir: 10 franjas');
+  eq(a.franjas.slice(0, 2).map(f => f.inicio), ['2026-11-11T10:00:00-03:00', '2026-11-11T12:00:00-03:00'], 'elegir: 10 y 12 de Argentina');
+  ok(!a.franjas.some(f => [0, 6].includes(fecha(f.inicio).getUTCDay())), 'elegir: solo días hábiles');
+  ok(a.franjas.every(f => fecha(f.fin) - fecha(f.inicio) === 3600000), 'elegir: 1 h');
+  ok(a.reserva === null && RA.vista(a, 0, false).tipo === 'franjas', 'elegir: sin reserva');
+  const res = await el.reservarEntregaGuia('tk', 'f3', '00000000-0000-4000-8000-000000000001');
+  ok(res.data.ok && res.data.reserva.estado === 'confirmada' && res.data.reserva.meet_url === D.MEET_DE_MENTIRA, 'elegir: reservar confirma enseguida');
+  const tras = agenda((await el.getAgendaGuia('tk')).data);
+  ok(RA.puedeCambiar(tras, ahora) && !tras.franjas.some(f => f.inicio === tras.reserva.inicio), 'elegir: después, un cambio y sin su franja');
+  const da = D.crear('diasAntes', { ahora });
+  const d = agenda((await da.getAgendaGuia('tk')).data);
+  eq(d.reserva.inicio, '2026-11-12T10:00:00-03:00', 'diasAntes: en la 3.ª franja');
+  ok(RA.puedeCambiar(d, ahora) && d.cambio.restantes === 1, 'diasAntes: con 1 cambio');
+  eq(RA.textoTope(d.cambio, BA), 'Podés cambiarlo 1 vez, hasta el miércoles 11 a las 10:00.', 'diasAntes: tope');
+  eq(RA.cuando(d.reserva, BA, ahora), 'En 2 días', 'diasAntes: etiqueta');
+  const c1 = await da.cambiarEntregaGuia('tk', 'r1', 'f6', '00000000-0000-4000-8000-000000000002');
+  ok(c1.data.ok && c1.data.reserva.inicio === d.franjas.find(f => f.id === 'f6').inicio, 'diasAntes: cambia');
+  eq((await da.cambiarEntregaGuia('tk', 'r1', 'f7', '00000000-0000-4000-8000-000000000003')).data.motivo, 'tope', 'diasAntes: segundo cambio, tope');
+  ok(!RA.puedeCambiar(agenda((await da.getAgendaGuia('tk')).data), ahora), 'diasAntes: sin cambios restantes');
+  const pe = D.crear('porEntrar', { ahora });
+  const p = agenda((await pe.getAgendaGuia('tk')).data);
+  eq(RA.estadoEntrar(p.reserva, ahora), { tipo: 'habilitado' }, 'porEntrar: Entrar habilitado');
+  eq(p.reserva.meetUrl, 'https://meet.google.com/abc-defg-hij', 'porEntrar: link de mentira');
+  eq(RA.estadoEntrar(p.reserva, new Date(ahora.getTime() - 4 * 60000)).tipo, 'falta', 'porEntrar: 4 minutos antes, todavía no');
+  ok(el.llamadas.concat(da.llamadas, pe.llamadas).every(l => l.p_token === 'tk'), 'el doble no sale a la red');
 }
 
 console.log(`test-guia-agenda: ${n} comprobaciones OK`);
