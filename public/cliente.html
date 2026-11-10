@@ -1186,6 +1186,84 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .dz-pill{border:1px solid transparent;border-radius:14px;padding:4px 10px;background:color-mix(in oklab,var(--color-brand-subtle) 55%,transparent);color:var(--color-brand-text);font-size:16px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums}
 .dz-pill.is-cambiada{background:var(--color-brand-subtle);border-color:color-mix(in oklab,var(--color-brand-text) 35%,transparent)}
 .dz-food-kcal.is-cambiada{color:var(--color-brand-text)}
+.cs{display:flex;flex-direction:column;gap:var(--space-2)}
+.cs-carga{display:flex;flex-direction:column;gap:var(--space-2);padding:12px;border-radius:14px;background:var(--color-bg-tertiary)}
+.cs-carga-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.cs-ceja{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary)}
+.cs-tenue{font-size:13px;color:var(--color-text-muted)}
+.cs-nota{font-size:13px;color:var(--color-text-muted);line-height:1.35}
+.cs-carga-fila{display:flex;align-items:center;gap:var(--space-2)}
+.cs-redondo{width:48px;height:48px;flex:0 0 auto;border-radius:50%;border:0;background:var(--color-bg-primary);color:var(--color-text-primary);font-size:24px;font-weight:700;line-height:1;cursor:pointer;touch-action:manipulation}
+.cs-redondo:disabled{opacity:.4;cursor:default}
+.cs-redondo.is-grande{width:56px;height:56px;background:var(--color-bg-tertiary)}
+.cs-carga-campo{flex:1;min-width:0;display:flex;align-items:baseline;justify-content:center;gap:6px;min-height:56px}
+.cs-carga-num{width:132px;max-width:100%;border:0;background:none;text-align:right;font-family:var(--font-num);font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--color-text-primary);padding:0}
+.cs-carga-num:focus{outline:none;box-shadow:0 2px 0 var(--color-brand)}
+.cs-carga-campo span{font-size:16px;font-weight:600;color:var(--color-text-muted)}
+.cs-aumento{padding:10px;border-radius:12px;background:var(--color-brand-subtle);display:flex;flex-direction:column;gap:8px}
+.cs-aumento-t{font-size:14px;font-weight:600;color:var(--color-brand-text)}
+.cs-aumento-b{display:flex;gap:8px}
+.cs-btn-marca,.cs-btn-sec{flex:1;min-height:44px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;touch-action:manipulation}
+.cs-btn-marca{border:0;background:var(--color-brand);color:var(--color-on-brand)}
+.cs-btn-sec{border:1px solid var(--color-border);background:var(--color-bg-primary);color:var(--color-text-primary)}
+.cs-banners{display:flex;flex-direction:column;gap:6px}
+.cs-banners:empty{display:none}
+.cs-linea{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:13px}
+.cs-link{border:0;background:none;padding:6px 0;color:var(--color-brand-text);font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation}
+.cs-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;font-size:14px;font-weight:500;cursor:pointer}
+.cs-toggle input{position:absolute;opacity:0;width:1px;height:1px}
+.cs-toggle i{position:relative;width:46px;height:28px;flex:0 0 auto;border-radius:14px;background:var(--color-border-strong);transition:background .15s}
+.cs-toggle i::after{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.cs-toggle input:checked+i{background:var(--color-brand)}
+.cs-toggle input:checked+i::after{transform:translateX(18px)}
+.cs-toggle input:focus-visible+i{outline:2px solid var(--color-brand);outline-offset:2px}
+.cs-pista:empty{display:none}
+.cs-filas{display:flex;flex-direction:column;gap:2px}
+.cs-fila{display:flex;align-items:center;gap:var(--space-2);width:100%;min-height:44px;padding:4px 8px;border:0;border-radius:10px;background:none;color:var(--color-text-muted);font-size:16px;text-align:left;font-variant-numeric:tabular-nums}
+.cs-fila.is-activa{background:var(--color-brand-subtle);color:var(--color-text-primary);font-weight:600}
+.cs-fila.is-hecha{color:var(--color-text-primary);font-weight:600;cursor:pointer}
+.cs-fila.is-corrigiendo{background:var(--color-bg-tertiary)}
+.cs-punto{width:28px;height:28px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--color-bg-tertiary);font-size:13px;font-weight:700;color:var(--color-text-muted)}
+.cs-punto.is-activa{background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.cs-punto.is-hecha{background:var(--color-brand);color:var(--color-on-brand)}
+.cs-fila-reps{flex:1;min-width:0}
+.cs-fila-kg{font-weight:500}
+.cs-lapiz{display:inline-flex;color:var(--color-text-muted)}
+.cs-lapiz svg{width:14px;height:14px}
+.cs-kg-serie{display:inline-flex;align-items:center;gap:4px}
+.cs-mini{width:40px;height:40px;border:0;border-radius:50%;background:var(--color-bg-tertiary);color:var(--color-text-primary);font-size:20px;font-weight:700;line-height:1;cursor:pointer;touch-action:manipulation}
+.cs-mini:disabled{opacity:.4}
+.cs-kg-input{width:64px;height:40px;border:0;border-radius:8px;background:var(--color-bg-tertiary);text-align:center;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+.cs-kg-input.is-grande{width:96px;height:44px;font-size:20px}
+.cs-panel{position:fixed;left:0;right:0;margin-inline:auto;width:100%;max-width:480px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:40;background:color-mix(in oklab,var(--color-bg-primary) 96%,transparent);backdrop-filter:saturate(140%) blur(12px);-webkit-backdrop-filter:saturate(140%) blur(12px);border-top:1px solid var(--color-border);box-shadow:0 -6px 18px rgba(0,0,0,.08)}
+.cs-p-inner{display:flex;flex-direction:column;gap:6px;padding:10px 16px 4px}
+.cs-p-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:30px;font-size:15px}
+.cs-record{color:var(--color-warning)}
+.cs-descanso{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-text-muted)}
+.cs-descanso .is-listo{color:var(--color-brand-text)}
+.cs-descanso .cs-link{font-size:13px;padding:2px 0}
+.cs-dial{display:flex;align-items:center;gap:var(--space-2)}
+.cs-rueda{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ns-resize;border-radius:12px}
+.cs-rueda:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
+.cs-rueda-num{display:flex;flex-direction:column;align-items:center;-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.35),#000 24%,#000 76%,rgba(0,0,0,.35));mask-image:linear-gradient(to bottom,rgba(0,0,0,.35),#000 24%,#000 76%,rgba(0,0,0,.35))}
+.cs-n{font-family:var(--font-num);font-size:52px;line-height:60px;font-weight:700;font-variant-numeric:tabular-nums}
+.cs-fantasma{height:20px;line-height:20px;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-text-muted)}
+.cs-dif{position:absolute;right:4px;top:50%;transform:translateY(-70%);padding:3px 8px;border-radius:999px;background:var(--color-bg-tertiary);color:var(--color-text-secondary);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.cs-dif.is-mas{background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.cs-dif[hidden]{display:none}
+.cs-ref{font-size:12px;color:var(--color-text-muted);white-space:nowrap}
+.cs-ok{width:100%;min-height:52px;border:0;border-radius:14px;background:var(--color-brand);color:var(--color-on-brand);display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;touch-action:manipulation}
+.cs-ok b{font-weight:800}
+.cs-ok:disabled{opacity:.45;cursor:default}
+.cs-ok.is-guardia{background:var(--color-warning);color:#1a1200}
+.cs-aviso{font-size:12px;color:var(--color-danger);text-align:center}
+.cs-corr-kg{display:flex;align-items:center;justify-content:center;gap:var(--space-2)}
+.cs-deshacer{display:flex;align-items:center;justify-content:center;gap:6px;min-height:28px;font-size:13px;color:var(--color-text-muted)}
+.cs-deshacer .cs-link{font-size:13px;padding:2px 4px}
+.cs-terminado{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 0;color:var(--color-text-muted);font-size:13px}
+.cs-terminado b{font-size:16px;color:var(--color-brand-text)}
+body.cs-con-panel .rest-bar{display:none}
+body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--space-4))}
 /* Entreno como la app 2.0.3: métricas de la pauta, preparación (E1), título de series con la leyenda del RIR y récord (E3) */
 .ex-metricas{display:flex;align-items:stretch;margin:var(--space-2) 0 var(--space-3);border-radius:14px;background:var(--color-bg-secondary)}
 .ex-met{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:0;background:none;color:inherit;font:inherit;min-width:0}
@@ -1389,6 +1467,9 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
     <div class="rest-progress"><div class="rest-progress-fill" id="restProgFill" style="width:0"></div></div>
   </div>
 
+  <!-- Carga simple: el panel fijo de la serie que toca -->
+  <div class="cs-panel" id="panelCarga" hidden></div>
+
   <!-- MODAL HOST -->
   <div id="modalHost"></div>
 
@@ -1470,6 +1551,7 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 <script src="/js/reglas-guia.js"></script>
 <script src="/js/guia.js"></script>
 <script src="/js/reglas-entreno.js"></script>
+<script src="/js/carga-simple.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1616,6 +1698,30 @@ function fechaLocalDe(iso) {
 }
 
 let DATA = null;   // {cliente, rutina, dia, historico_por_ejercicio, _dias, _isDemo}
+
+/* La palanca de las novedades de la app 2.3.0 en la web (`web_230` en mypump_app_config). Apagada hasta que Mati la prenda;
+   sin la clave, sin red o sin la función queda lo último que se supo. En las previews va prendida (?web230=0 la apaga). */
+const _WEB230_KEY = 'mypump_palanca_web_230';
+const _hostDePrueba = () => /\.pages\.dev$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
+let _web230 = (() => {
+  try {
+    if (_hostDePrueba()) return new URLSearchParams(location.search).get('web230') !== '0';
+    return localStorage.getItem(_WEB230_KEY) === '1';
+  } catch (_) { return false; }
+})();
+function web230() { return _web230; }
+async function leerPalancaWeb230() {
+  if (_hostDePrueba() || !window.mypumpDB.getAppConfig) return;
+  const cfg = await window.mypumpDB.getAppConfig();
+  if (!cfg || typeof cfg !== 'object') return;
+  const v = cfg.web_230 === true;
+  if (v === _web230) return;
+  if (typeof _csVaciarDeshacer === 'function') _csVaciarDeshacer();
+  _web230 = v;
+  try { localStorage.setItem(_WEB230_KEY, v ? '1' : '0'); } catch (_) {}
+  if (typeof _csLeer === 'function') _csLeer();
+  if (typeof setScene === 'function' && STATE.scene) setScene(STATE.scene);
+}
 let DIET = null;   // {macros_target, comidas}
 /* Lo que le faltaba al plan publicado. Lo llena normalizarRutina/normalizarDieta
  * en el arranque y lo muestra avisarPlanIncompleto una sola vez. */
@@ -1866,10 +1972,9 @@ function lastSessionStr(exId) {
   if (!h.length) return null;
   const top = h.reduce((a,b) => (b.peso_kg||0) > (a.peso_kg||0) ? b : a, h[0]);
   const reps = top.reps_realizadas || top.reps;
-  const rir  = (top.rir_real != null) ? ` · RIR ${top.rir_real}` : '';
   // F4 — si el récord tiene variante (agarre/nivel en notas), mostrarla.
   const varTag = top.notas ? ` (${top.notas})` : '';
-  return `${top.peso_kg}kg × ${reps}${rir}${varTag}`;
+  return `${top.peso_kg}kg × ${reps}${varTag}`;
 }
 
 // Variante activa del ejercicio (F4): la elegida en el picker, o null si el
@@ -2036,7 +2141,7 @@ function computeProgresionNota(ej, semanaActual) {
   else if (seriesUp && repsSame)   parts.push(`Sumamos una serie: mismo peso, más volumen total esta semana.`);
   else if (repsUp && seriesSame)   parts.push(`Suben las reps con el mismo peso. Si las completás sobrado, subí la carga la próxima.`);
 
-  if (rirDown) parts.push(`Bajamos el RIR: acercate más al fallo en cada serie.`);
+  if (rirDown) parts.push(`Acercate más al fallo en cada serie.`);
 
   const cambia = parts.length > 0;
   if (!cambia) {
@@ -2976,6 +3081,7 @@ function hideSaveToast() {
 }
 
 const Outbox = (() => {
+  let demora = null;   // mientras hay un OK en curso, lo que se encola queda acá hasta que venza Deshacer
   const KEY = () => `mypump_outbox_${TOKEN || 'anon'}`;
   let queue = [];
   let flushing = false;
@@ -3114,6 +3220,7 @@ const Outbox = (() => {
   // dedupeKey: reemplaza una op pendiente del mismo target (último valor gana).
   function enqueue(kind, payload, dedupeKey) {
     if (!OUTBOX_ENABLED) return;
+    if (demora) { demora.push({ kind, payload, dedupeKey }); return; }
     // Defensivo: si alguien encola antes del load() del bootstrap, el save()
     // de abajo escribiría una cola de UNA op sobre lo que había en disco.
     load();
@@ -3257,6 +3364,7 @@ const Outbox = (() => {
   }
 
   return { load, enqueue, flush, flushSoon, pending: () => queue.length,
+    demorar: (a) => { demora = a; },
     // F8 — dedupeKeys pendientes (para que el hydrate no pise swaps aún no sincronizados)
     pendingKeys: () => new Set(queue.map(op => op.dedupeKey).filter(Boolean)),
     /* Lo pendiente CON su payload: en un arranque en frío la cola sobrevive
@@ -3306,7 +3414,10 @@ function writeSet(exId, setIdx) {
   // Si el cliente sustituyó el ejercicio, snapshotear el NOMBRE del sustituto
   // (lo que realmente hizo). El ejercicio_id se mantiene → no rompe histórico/progresión.
   const swap = STATE.exerciseSwaps[exId];
-  const ejercicioNombre = swap ? swap.current.nombre : (s.nombreRegistrado || ex.nombre);
+  // Una serie ya registrada conserva el nombre con que se hizo: corregirla después de sustituir no la pasa al sustituto.
+  const ejercicioNombre = s.nombreRegistrado || (swap ? swap.current.nombre : ex.nombre);
+  // La variante del ejercicio solo completa una serie de ESTE ejercicio y con el selector a la vista.
+  const _conSelector = !!getVariantesEntry(getEffectiveEx(ex));
   Outbox.enqueue('carga', {
     // F2 — capturar sesión/día/semana AL ENCOLAR: un drenado tardío (tras
     // cambiar de día) va a la sesión correcta, no a la del día abierto.
@@ -3337,13 +3448,14 @@ function writeSet(exId, setIdx) {
       // mandar una serie vieja —poner el RIR después de confirmarla— la
       // refilaba con la variante de ahora. El histórico filtra por esto, así
       // que el peso sugerido salía del agarre equivocado.
-      notas:          s.varianteRegistrada || (STATE.session[exId] && STATE.session[exId].variante) || null,
+      notas:          s.varianteRegistrada || (_conSelector && STATE.session[exId] && STATE.session[exId].variante) || null,
     },
   }, `carga_${DATA.dia.id}_${exId}_${setIdx}`);
 }
 
 async function writeFinish(notas) {
   if (!RUTINA_ID) return;
+  _csVaciarDeshacer();
   // Garantizar que exista la sesión antes de finalizar (defensivo: el cliente
   // podría cerrar sin haber confirmado ninguna serie).
   await ensureSesionIniciada();
@@ -3438,6 +3550,7 @@ async function doAvanzarSemana() {
 }
 
 async function confirmEmpezarBloqueNuevo() {
+  _csVaciarDeshacer();
   const ok = await MyPump.ui.showConfirmModal({
     title:        '¡Nuevo bloque!',
     body:         'Terminaste tu plan. Tu coach ya te dejó preparado el siguiente bloque. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo — tus cargas anteriores quedan guardadas.',
@@ -3475,6 +3588,7 @@ async function doEmpezarBloqueNuevo() {
 }
 
 async function confirmAvanzarSemana() {
+  _csVaciarDeshacer();
   const semana = DATA.rutina.semana_actual || 1;
   const total  = DATA.rutina.semanas_total || 12;
   if (semana >= total) return; // ya en la última semana
@@ -3864,6 +3978,8 @@ function renderDayPicker() {
 // serie confirmada ahí creaba una SEGUNDA sesión (iniciar_sesion no es
 // idempotente) con la duración del día anterior.
 async function cambiarDia(dia) {
+  _csVaciarDeshacer();
+  _csCorr = null;
   stopRest();
   // Podar ANTES de mover DATA.dia: _diaFinalizado todavía es el del día que
   // se deja, así que después de cambiar se estaría podando por el estado
@@ -3875,6 +3991,7 @@ async function cambiarDia(dia) {
   STATE.exerciseMeta = {};
   STATE.diaCompletadoMostrado = false;
   STATE.session = buildSession();
+  _csLeer();
   STATE.expandedId = null;
   persistLastDay(dia.id, RUTINA_ID);
   updateDayHeader();
@@ -3883,6 +4000,7 @@ async function cambiarDia(dia) {
   prefetchHistoricoDia();
   // Restaurar la sesión del nuevo día (estados/series/cerrado) y re-render.
   await restoreSesionDelDia();
+  aplicarPendientesEntreno();
   renderTrain();
 }
 
@@ -4066,6 +4184,8 @@ function renderTrain() {
   html += renderFuentesFooter('entreno');
   root.innerHTML = html;
   bindTrainEvents();
+  _csEventos();
+  csPintarPanel();
   syncCronoTick();   // F3 — arrancar/parar el tick del cronómetro según estado
 }
 
@@ -4172,7 +4292,9 @@ function _preparacionDe(ex) {
   const cat = window.MyPump && window.MyPump.exerciseSwap ? window.MyPump.exerciseSwap._resolve(ex) : null;
   const noKg = exNoKg(ex);
   const s0 = STATE.session[ex.id] && STATE.session[ex.id].sets[0];
-  const kg = ReglasEntreno.kgEfectivo(s0 ? s0.kg : '', noKg ? '' : suggestedKg(ex.id, 0));
+  const _cs = _csDe(ex.id);   // con la carga simple, sus kilos siguen a la carga en vivo
+  const _kg0 = _cs ? (_cs.series[0] && _cs.series[0].kg != null ? String(_cs.series[0].kg) : '') : (s0 ? s0.kg : '');
+  const kg = ReglasEntreno.kgEfectivo(_kg0, noKg ? '' : (_cs ? '' : suggestedKg(ex.id, 0)));
   return ReglasEntreno.preparacion(lista.map(_entradaPreparacion), i, ex.nombre, cat ? cat.equipment : null, noKg, kg,
     ReglasEntreno.aproximacionesDelPlan(ex.aproximaciones));
 }
@@ -4236,7 +4358,6 @@ function _metricasHtml(ex, prog) {
     if (prog.series != null && ex.tipo !== 'cardio') ms.push({ t: 'Series × reps', v: `${prog.series} × ${prog.reps}` });
     else ms.push({ t: 'Duración', v: prog.reps });
   }
-  if (prog.rir != null && prog.rir !== '') { const [v, d] = _partirPauta(prog.rir); ms.push({ t: 'RIR', v, d }); }
   const seg = _descansoDe(ex);
   if (seg > 0) ms.push({ t: 'Descanso', v: fmtTime(seg), d: _descansoPropio(ex.id) != null ? 'tuyo' : null, accion: true });
   if (!ms.length) return '';
@@ -4281,7 +4402,653 @@ function _mostrarRecord(exId, texto) {
     _avisoRecord = null;
     const el = document.querySelector(`.ex-record[data-record="${exId}"]`);
     if (el) el.remove();
+    csPintarPanel();
   }, 5000);
+}
+
+/* ---- Carga simple de la app 2.3.0: la carga una sola vez, el panel fijo con el dial y el OK que dice lo que registra.
+   Las reglas están en js/carga-simple.js (con los vectores de la app). Cada OK sale a registrar_carga serie por serie,
+   como siempre: esto no cambia nada del servidor. Sale apagado en producción hasta que Mati prenda `web_230`. ---- */
+const CS = window.CargaSimple || null;
+const _csGuardia = CS ? new CS.GuardiaOK() : null;
+let _csCargas = {};            // exId → estado de la carga del día abierto (se guarda en este navegador)
+let _csAumentos = new Set();   // "clave|semana": esta semana ya se aceptó o se dejó el aumento de ese ejercicio
+let _csFoto = null;            // el último OK, mientras todavía se puede deshacer
+let _csFotoTimer = null;
+let _csOkEnCurso = false;
+let _csCorr = null;            // {exId, idx, reps, kg, texto}: la serie que se está corrigiendo
+let _csAviso = null;           // lo que no se pudo registrar, en el panel
+let _csTeclado = false;
+let _csGuardiaTimer = null;
+const _CS_DESHACER_MS = 6000;
+const _csKey = () => `mypump_cargas_${TOKEN || 'anon'}_${RUTINA_ID || 'demo'}`;
+const _csKeyOK = () => `mypump_ok_demorado_${TOKEN || 'anon'}`;
+
+function _csOn() { return !!(CS && web230()); }
+function _csCardioPorTiempo(ex) {
+  return !!CS && !(ex.progresion && ex.progresion.length) && CS.esCardio(ex.nombre, ex.tipo, [ex.catalogo_slug, ex.matched_slug, ex._swapSlug]);
+}
+function _csLeer() {
+  _csCargas = {};
+  _csAumentos = new Set();
+  if (!_csOn() || !DATA || !DATA.dia) return;
+  const g = _leerLocal(_csKey(), null);
+  if (!g || g.semana !== (DATA.rutina.semana_actual || 1)) return;
+  _csCargas = (g.dias && g.dias[DATA.dia.id]) || {};
+  _csAumentos = new Set(g.aumentos || []);
+}
+function _csGuardar() {
+  if (!DATA || !DATA.dia) return;
+  const semana = DATA.rutina.semana_actual || 1;
+  let g = _leerLocal(_csKey(), null);
+  if (!g || g.semana !== semana) g = { semana, dias: {} };   // la semana que viene las referencias vuelven a salir del historial
+  g.dias[DATA.dia.id] = _csCargas;
+  g.aumentos = [..._csAumentos];
+  _guardarLocal(_csKey(), g);
+}
+function _csVariante(exId, ef) {
+  const s = STATE.session[exId];
+  if (!s || !s.variante) return { v: null, esDefault: false };
+  const ops = getVariantesEj(ef);
+  // Sustituido por un ejercicio sin ese selector: el agarre del plan no filtra su historial.
+  if (!ops && ef._isSwapped) return { v: null, esDefault: false };
+  return { v: s.variante, esDefault: !!(ops && ops[0] === s.variante) };
+}
+function _csEsDelActual(exId, x) {
+  if (!x.nombreRegistrado) return true;
+  const c = claveDeSlot(exId);
+  return !c || claveEjercicio(x.nombreRegistrado) === c;
+}
+function _csClaveAumento(exId) { return `${claveDeSlot(exId)}|${DATA.rutina.semana_actual || 1}`; }
+function _csArmar(exId, estado) {
+  const ses = STATE.session[exId];
+  const ef = getEffectiveEx(_exPorSlot(exId));
+  const { v, esDefault } = _csVariante(exId, ef);
+  const h = DATA.historico_por_ejercicio[exId] || [];
+  const cat = window.MyPump && window.MyPump.exerciseSwap ? window.MyPump.exerciseSwap._resolve(ef) : null;
+  const semana = DATA.rutina.semana_actual || 1;
+  const m = (DATA.rutina.mensajes_semana || []).find(x => x && x.n === semana);
+  const s = new CS.Carga(ef, semana, {
+    ultimaVez: CS.ultimaSesion(h, v, esDefault, hoyLocal(), fechaLocalDe),
+    equipo: ReglasEntreno.equipoDe(ef.nombre, cat ? cat.equipment : null),
+    sinKg: exNoKg(ef), recordKg: _recordKg(exId), mensajeSemana: m ? m.msg : null,
+    seriesLocales: ses.sets.map(x => ({ reps: x.reps, kg: x.kg, confirmada: x.confirmed, varianteRegistrada: x.varianteRegistrada })),
+    estado, yaAumentado: _csAumentos.has(_csClaveAumento(exId)),
+  });
+  s.varianteActual = getVariantesEntry(ef) ? (ses.variante || null) : null;
+  ses.sets.forEach((x, i) => { if (s.series[i] && !_csEsDelActual(exId, x)) s.series[i].ajena = true; });
+  return s;
+}
+// La carga del ejercicio como se ve ahora; null si la carga simple no aplica.
+function _csDe(exId) {
+  if (!_csOn() || !STATE.session[exId] || !_exPorSlot(exId)) return null;
+  if (_csCardioPorTiempo(getEffectiveEx(_exPorSlot(exId)))) return null;
+  let e = _csCargas[exId];
+  // La carga guardada de otro ejercicio (sustituido acá o republicado) no vale para este.
+  if (!e || (e.clave != null && e.clave !== claveDeSlot(exId))) return _csArmar(exId, null);
+  // Se tocó algo antes de que llegara el historial: cuando llega, la carga no puede quedar vacía.
+  if (e.carga == null && e.cargaUltimaVez == null && (!e.aumento || e.aumento.tipo === CS.MANO.NO)) {
+    const b = _csArmar(exId, null);
+    e = { ...e, carga: b.carga, cargaUltimaVez: b.cargaUltimaVez, aumento: b.aumento };
+  }
+  return _csArmar(exId, e);
+}
+function _csCambiar(exId, fn) {
+  const s = _csDe(exId);
+  if (!s) return null;
+  fn(s);
+  const nuevo = s.estado;
+  nuevo.clave = claveDeSlot(exId);
+  _csCargas[exId] = nuevo;
+  if (s.aumento.tipo === CS.MANO.ACE || s.aumento.tipo === CS.MANO.DES) _csAumentos.add(_csClaveAumento(exId));
+  _csGuardar();
+  return s;
+}
+
+/* ---- La tarjeta: la carga y sus series, adentro del ejercicio ---- */
+function _csKg(v) { return CS.kgTexto(v); }
+function _csBannersHtml(ex, s) {
+  const id = ex.id;
+  let h = '';
+  const a = s.aumento;
+  if (a.tipo === CS.MANO.SUG) {
+    h += `<div class="cs-aumento">
+      <div class="cs-aumento-t">Esta semana bajan las reps: toca subir</div>
+      <div class="cs-aumento-b">
+        <button class="cs-btn-marca" data-cs-a="aumento-subir" data-ex="${id}">Subir a ${_csKg(a.hasta)} kg</button>
+        <button class="cs-btn-sec" data-cs-a="aumento-dejar" data-ex="${id}">Dejar ${_csKg(a.desde)} kg</button>
+      </div>
+    </div>`;
+  } else if (a.tipo === CS.MANO.ACE) {
+    h += `<div class="cs-linea"><span>✓ ${s.confirmadas > 0 ? `Subiste a ${_csKg(a.hasta)} kg en las que faltan` : `Subiste a ${_csKg(a.hasta)} kg en todas las series`}</span>
+      ${s.confirmadas === 0 ? `<button class="cs-link" data-cs-a="aumento-volver" data-ex="${id}">Volver a ${_csKg(a.desde)}</button>` : ''}</div>`;
+  }
+  const n = s.hechasConOtraCarga;
+  if (n > 0) {
+    h += `<div class="cs-linea"><span class="cs-tenue">${n === 1 ? 'La serie hecha sigue con su peso.' : `Las ${n} hechas siguen con su peso.`}</span>
+      <button class="cs-link" data-cs-a="aplicar-hechas" data-ex="${id}">Cambiarlas también</button></div>`;
+  }
+  if (s.ultimaVezMixta && s.mismoPeso && s.confirmadas === 0) {
+    h += `<div class="cs-nota">La vez pasada una serie fue con otro peso. Si querés repetirlo, destildá abajo.</div>`;
+  }
+  return h;
+}
+function _csCargaHtml(ex, s) {
+  const id = ex.id;
+  return `<div class="cs-carga">
+    <div class="cs-carga-top"><span class="cs-ceja">Carga</span>${s.cargaUltimaVez != null ? `<span class="cs-tenue">La vez pasada ${_csKg(s.cargaUltimaVez)} kg</span>` : ''}</div>
+    ${s.mismoPeso ? `<div class="cs-carga-fila">
+      <button class="cs-redondo" data-cs-a="carga-menos" data-ex="${id}" aria-label="Bajar la carga"${s.carga == null ? ' disabled' : ''}>−</button>
+      <label class="cs-carga-campo"><input class="cs-carga-num" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Carga en kilos" value="${_csKg(s.carga)}" data-cs-carga="${id}"><span>kg</span></label>
+      <button class="cs-redondo" data-cs-a="carga-mas" data-ex="${id}" aria-label="Subir la carga"${s.carga == null ? ' disabled' : ''}>+</button>
+    </div>` : `<div class="cs-nota">Cada serie lleva su peso: ajustalo en la lista.</div>`}
+    <div class="cs-banners">${_csBannersHtml(ex, s)}</div>
+    <label class="cs-toggle"><span>Mismo peso en todas las series</span><input type="checkbox" role="switch" data-cs-mismo="${id}"${s.mismoPeso ? ' checked' : ''}><i></i></label>
+  </div>`;
+}
+function _csFilasHtml(ex, s) {
+  const corr = _csCorr && _csCorr.exId === ex.id ? _csCorr.idx : null;
+  return s.series.map((h, i) => {
+    const activa = s.activa === i && corr == null;
+    const reps = s.reps(i);
+    const izq = `<span class="cs-punto${h.confirmada ? ' is-hecha' : (activa ? ' is-activa' : '')}">${h.confirmada ? '✓' : i + 1}</span>
+      <span class="cs-fila-reps">${reps != null ? `${reps} reps` : '—'}</span>`;
+    if (h.confirmada) {
+      return `<button class="cs-fila is-hecha${corr === i ? ' is-corrigiendo' : ''}" data-cs-a="corregir" data-ex="${ex.id}" data-i="${i}" aria-label="Serie ${i + 1}, hecha: ${reps || 0} repeticiones${s.sinKg ? '' : `, ${_csKg(h.kg)} kilos`}. Tocá para corregirla">
+        ${izq}${s.sinKg ? '<span class="cs-fila-kg"></span>' : `<span class="cs-fila-kg">${h.kg != null ? `${_csKg(h.kg)} kg` : '—'}</span>`}<span class="cs-lapiz">${ICONS.edit}</span></button>`;
+    }
+    const kg = s.sinKg ? '' : (s.mismoPeso
+      ? `<span class="cs-fila-kg cs-tenue">${h.kg != null ? `${_csKg(h.kg)} kg` : '—'}</span>`
+      : `<span class="cs-kg-serie">
+          <button class="cs-mini" data-cs-a="kg-menos" data-ex="${ex.id}" data-i="${i}" aria-label="Bajar el peso de la serie ${i + 1}"${h.kg == null ? ' disabled' : ''}>−</button>
+          <input class="cs-kg-input" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Peso de la serie ${i + 1} en kilos" value="${_csKg(h.kg)}" data-cs-kg="${ex.id}|${i}">
+          <button class="cs-mini" data-cs-a="kg-mas" data-ex="${ex.id}" data-i="${i}" aria-label="Subir el peso de la serie ${i + 1}"${h.kg == null ? ' disabled' : ''}>+</button>
+        </span>`);
+    return `<div class="cs-fila${activa ? ' is-activa' : ''}">${izq}${kg}</div>`;
+  }).join('');
+}
+function _csPistaCalibracion(ex, s) {
+  const i = s.activa;
+  if (i == null || s.sinKg || s.carga != null || CS.repsDelPlan(s.repsPlan) == null || s.ultimaVez.length || s.series[i].kg != null) return '';
+  const plan = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'al fallo' : 'dejando 1–2 en reserva';
+  return `<div class="cs-nota">Primera vez con este ejercicio: elegí un peso con el que llegues a ${escapeHtml(String(s.repsPlan))} reps ${plan}. Queda de referencia para la próxima.</div>`;
+}
+function _csTarjetaHtml(ex, s, conPrep, leyenda, selector) {
+  return `<div class="cs" data-cs="${ex.id}">
+    ${selector}
+    ${!s.sinKg ? _csCargaHtml(ex, s) : ''}
+    <div class="series-tit"><b>${conPrep ? 'Series efectivas' : 'Series'}</b><span class="cs-cuenta ${s.confirmadas === s.series.length && s.series.length ? 'is-todas' : ''}">${s.confirmadas} de ${s.series.length}</span></div>
+    ${leyenda ? `<div class="series-leyenda">${leyenda}</div>` : ''}
+    <div class="cs-pista">${_csPistaCalibracion(ex, s)}</div>
+    <div class="cs-filas">${_csFilasHtml(ex, s)}</div>
+  </div>`;
+}
+// Repinta lo que depende de la carga sin tocar el campo donde se está escribiendo.
+function _csRepintarParcial(exId) {
+  const raiz = document.querySelector(`[data-cs="${exId}"]`);
+  const s = _csDe(exId);
+  if (!raiz || !s) return;
+  const ex = getEffectiveEx(_exPorSlot(exId));
+  const b = raiz.querySelector('.cs-banners'); if (b) b.innerHTML = _csBannersHtml(ex, s);
+  const p = raiz.querySelector('.cs-pista'); if (p) p.innerHTML = _csPistaCalibracion(ex, s);
+  const f = raiz.querySelector('.cs-filas');
+  if (f && !f.contains(document.activeElement)) f.innerHTML = _csFilasHtml(ex, s);
+  raiz.querySelectorAll('.cs-redondo').forEach(x => { x.disabled = s.carga == null; });
+  const pr = document.querySelector(`[data-cs-prep="${exId}"]`);
+  if (pr) pr.innerHTML = _preparacionHtml(ex, _preparacionDe(ex), exNoKg(ex));
+}
+
+/* ---- El panel fijo: la serie que toca, el dial y el OK. Absorbe la barra del descanso. ---- */
+function _csPanelEx() {
+  if (STATE.scene !== 'train' || !STATE.expandedId || !_csOn() || !DATA) return null;
+  const ex = _exPorSlot(STATE.expandedId);
+  return ex && DATA.dia.bloques.some(b => b.ejercicios.includes(ex)) ? STATE.expandedId : null;
+}
+const _CS_TERMINALES = new Set(['completo', 'completo_sin_datos', 'saltado']);
+function _csDebeVerse(exId, s) {
+  if (!s || _csTeclado) return false;
+  if ((_csCorr && _csCorr.exId === exId) || _csFoto) return true;
+  return !s.completo && !_CS_TERMINALES.has(getExStatus(exId));
+}
+function _csEtiquetaOK(s, i) {
+  if (_csGuardia.desde != null && _csGuardia.serie === i) return { t: '¿Ya hiciste la serie? Tocá de nuevo', guardia: true };
+  if (s.pideElegirReps && !s.series[i].tocada) return { t: 'Marcá tus reps' };
+  const kg = s.series[i].kg;
+  if (!s.sinKg && kg == null) return { t: 'Elegí la carga' };
+  const reps = s.reps(i) || 0;
+  return { ok: true, t: s.sinKg ? `${reps} reps` : `${reps} × ${_csKg(kg)} kg` };
+}
+function _csTextoRef(s, i) {
+  const b = s.base(i);
+  if (b.origen === 'ultimaVez') return b.reps != null ? `La vez pasada: ${b.reps}` : null;
+  if (b.origen === 'plan') return `Según el plan: ${s.repsPlan != null ? s.repsPlan : '—'}`;
+  return s.pideElegirReps ? 'Marcá las que hiciste' : null;
+}
+function _csDialHtml() {
+  return `<div class="cs-dial">
+    <button class="cs-redondo is-grande" data-cs-a="reps-menos" aria-label="Restar una repetición">−</button>
+    <div class="cs-rueda" data-cs-dial tabindex="0" role="slider" aria-label="Repeticiones" aria-valuemin="1" aria-valuemax="${CS.REPS_MAX}">
+      <div class="cs-rueda-num"><span class="cs-fantasma" data-cs-ant></span><span class="cs-n" data-cs-n></span><span class="cs-fantasma" data-cs-sig></span></div>
+      <span class="cs-dif" data-cs-dif hidden></span>
+      <div class="cs-ref" data-cs-ref></div>
+    </div>
+    <button class="cs-redondo is-grande" data-cs-a="reps-mas" aria-label="Sumar una repetición">+</button>
+  </div>`;
+}
+function _csFilaDeshacerHtml() {
+  return `<div class="cs-deshacer">${_csFoto
+    ? `<span>Serie ${_csFoto.idx + 1} anotada.</span><button class="cs-link" data-cs-a="deshacer">Deshacer</button>`
+    : '<span aria-hidden="true">&nbsp;</span>'}</div>`;
+}
+function _csAvisoHtml() {
+  return _csAviso ? `<div class="cs-aviso">${escapeHtml(_csAviso)}</div>` : '';
+}
+function _csAvisoPanel(msg) { _csAviso = msg || null; csPintarPanel(); }
+function _csMedirPanel(visible) {
+  document.body.classList.toggle('cs-con-panel', visible);
+  const h = document.getElementById('panelCarga');
+  document.documentElement.style.setProperty('--cs-alto', visible && h ? `${h.offsetHeight}px` : '0px');
+}
+function csPintarPanel() {
+  const host = document.getElementById('panelCarga');
+  if (!host) return;
+  const exId = _csPanelEx();
+  const s = exId ? _csDe(exId) : null;
+  if (!_csDebeVerse(exId, s)) { host.hidden = true; host.innerHTML = ''; _csMedirPanel(false); return; }
+  host.hidden = false;
+  let cuerpo;
+  host.dataset.ex = exId;
+  if (_csCorr && _csCorr.exId === exId && _csCorr.idx < s.series.length) {
+    const c = _csCorr;
+    cuerpo = `<div class="cs-p-top"><b>Corrigiendo la serie ${c.idx + 1}</b><button class="cs-link" data-cs-a="corr-cancelar">Cancelar</button></div>
+      ${_csDialHtml()}
+      ${s.sinKg ? '' : `<div class="cs-corr-kg">
+        <button class="cs-mini" data-cs-a="corr-kg-menos" aria-label="Bajar el peso">−</button>
+        <input class="cs-kg-input is-grande" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Peso de la serie en kilos" data-cs-corr-kg value="${_csKg(c.kg)}">
+        <button class="cs-mini" data-cs-a="corr-kg-mas" aria-label="Subir el peso">+</button>
+      </div>`}
+      ${_csAvisoHtml()}
+      <button class="cs-ok" data-cs-a="corr-guardar">Guardar corrección</button>`;
+  } else if (s.activa != null && !_CS_TERMINALES.has(getExStatus(exId))) {
+    cuerpo = `<div class="cs-p-top">
+        ${_avisoRecord && _avisoRecord.exId === exId ? `<b class="cs-record">${escapeHtml(_avisoRecord.texto)}</b>` : `<b>Serie ${s.activa + 1} de ${s.series.length}</b>`}
+        <div class="cs-descanso" id="csDescanso"><span data-t></span><button class="cs-link" data-cs-a="saltar-descanso" hidden>Saltar</button></div>
+      </div>
+      ${_csDialHtml()}
+      <button class="cs-ok" data-cs-a="ok"></button>
+      <div data-cs-aviso>${_csAvisoHtml()}</div>`;
+  } else {
+    cuerpo = `<div class="cs-terminado"><b>✓ Ejercicio completo</b><span>Tocá una serie si querés corregirla.</span></div>`;
+  }
+  host.innerHTML = `<div class="cs-p-inner">${cuerpo}${_csFilaDeshacerHtml()}</div>`;
+  _csPatchPanel();
+  _csPintarDescanso();
+  _csMedirPanel(true);
+}
+// Lo que cambia con el dial, sin rehacer el panel: el dedo sigue apoyado sobre el mismo elemento.
+function _csPatchPanel() {
+  const host = document.getElementById('panelCarga');
+  const exId = host && !host.hidden ? host.dataset.ex : null;
+  const dial = host && host.querySelector('[data-cs-dial]');
+  if (!exId) return;
+  const s = _csDe(exId);
+  if (!s) return;
+  const q = (x) => host.querySelector(x);
+  if (_csCorr && _csCorr.exId === exId && dial) {
+    _csPintarNumero(host, _csCorr.reps, null, 'Solo cambia esta serie');
+    return;
+  }
+  const i = s.activa;
+  if (i == null || !dial) return;
+  _csPintarNumero(host, s.reps(i), s.diferencia(i), _csTextoRef(s, i));
+  const ok = q('[data-cs-a="ok"]');
+  if (!ok) return;
+  const e = _csEtiquetaOK(s, i);
+  ok.classList.toggle('is-guardia', !!e.guardia);
+  ok.disabled = !s.puedeConfirmar(i);
+  ok.innerHTML = e.ok ? `<b>OK</b><span>${escapeHtml(e.t)}</span>` : escapeHtml(e.t);
+  const reps = s.reps(i) || 0;
+  ok.setAttribute('aria-label', e.guardia ? '¿Ya hiciste la serie? Tocá de nuevo para registrarla'
+    : !s.puedeConfirmar(i) ? 'Falta completar la serie'
+    : s.sinKg ? `OK, registrar ${reps} repeticiones` : `OK, registrar ${reps} repeticiones con ${_csKg(s.series[i].kg)} kilos`);
+}
+function _csPintarNumero(host, reps, dif, ref) {
+  const q = (x) => host.querySelector(x);
+  const n = q('[data-cs-n]'); if (!n) return;
+  n.textContent = reps != null ? reps : '—';
+  q('[data-cs-ant]').textContent = reps != null && reps > 1 ? reps - 1 : ' ';
+  q('[data-cs-sig]').textContent = reps != null ? reps + 1 : ' ';
+  const d = q('[data-cs-dif]');
+  d.hidden = dif == null;
+  if (dif != null) { d.textContent = dif > 0 ? `+${dif}` : `−${-dif}`; d.classList.toggle('is-mas', dif > 0); }
+  q('[data-cs-ref]').textContent = ref || ' ';
+  const dial = q('[data-cs-dial]');
+  if (reps != null) dial.setAttribute('aria-valuenow', reps);
+  dial.setAttribute('aria-valuetext', [reps != null ? `${reps}` : '—', ref].filter(Boolean).join(', '));
+}
+function _csPintarDescanso() {
+  const el = document.getElementById('csDescanso');
+  if (!el) return;
+  const t = el.querySelector('[data-t]'), b = el.querySelector('button');
+  if (!STATE.rest) { t.textContent = ''; b.hidden = true; return; }
+  const listo = STATE.rest.doneFired;
+  t.textContent = listo ? 'A la serie' : `Descanso ${fmtTime(Math.max(0, Math.ceil((STATE.rest.endsAt - Date.now()) / 1000)))}`;
+  t.classList.toggle('is-listo', !!listo);
+  b.hidden = !!listo;
+}
+function _csVibrar() { try { if (navigator.vibrate) navigator.vibrate(8); } catch (_) {} }
+function _csAjustarReps(d) {
+  const host = document.getElementById('panelCarga');
+  const exId = host && host.dataset.ex;
+  if (!exId || !d) return;
+  _csVibrar();
+  _csAviso = null;
+  if (_csCorr && _csCorr.exId === exId) {
+    _csCorr.reps = Math.min(CS.REPS_MAX, Math.max(1, _csCorr.reps + d));
+    _csPatchPanel();
+    return;
+  }
+  const s = _csDe(exId);
+  if (!s || s.activa == null) return;
+  const i = s.activa;
+  _csCambiar(exId, c => c.ajustarReps(i, d));
+  _csGuardia.limpiar();
+  const av = host.querySelector('[data-cs-aviso]'); if (av) av.innerHTML = '';
+  _csPatchPanel();
+  _csRepintarParcial(exId);
+}
+
+/* ---- El OK: guardia, confirmación por el camino de siempre y ventana de Deshacer. Hasta que vence, el servidor no sabe
+   nada (lo escrito queda demorado y con copia local, por si se cierra la pestaña): deshacer es volver atrás de verdad. ---- */
+async function csOK(exId, idx) {
+  const ahora = Date.now();
+  if (_csGuardia.esDobleToque(idx, ahora)) return;
+  const insistio = _csGuardia.esSegundoToque(idx, ahora);
+  const s = _csDe(exId);
+  if (!s) return;
+  const ev = s.evaluarOK(idx, ahora, insistio);
+  if (ev.res === 'faltanDatos') { _csAviso = 'Faltan datos para registrar esta serie.'; csPintarPanel(); return; }
+  if (ev.res === 'guardia') {
+    _csGuardia.levantar(idx, ahora);
+    clearTimeout(_csGuardiaTimer);
+    _csGuardiaTimer = setTimeout(() => { _csGuardia.limpiar(); _csPatchPanel(); }, CS.VENCE_EN);
+    _csPatchPanel();
+    return;
+  }
+  _csGuardia.limpiar();
+  clearTimeout(_csGuardiaTimer);
+  if (_csOkEnCurso) return;   // dos toques no pueden cruzarse: el segundo pisaría la ventana del primero
+  _csOkEnCurso = true;
+  try {
+    _csVaciarDeshacer();
+    _csAviso = null;
+    const ses = STATE.session[exId];
+    const setObj = ses.sets[idx];
+    const k = `${exId}|${idx}`;
+    const foto = {
+      exId, idx, sesion: JSON.parse(JSON.stringify(ses)), estado: STATE.exerciseStates[exId], meta: STATE.exerciseMeta[exId],
+      expandido: STATE.expandedId, carga: _csCargas[exId], record: _recordsAvisados[k], sinArranque: _sessionStart == null,
+      diferidos: [], diaCompleto: false,
+    };
+    const previo = { reps: setObj.reps, kg: setObj.kg };
+    setObj.reps = String(ev.reps);
+    setObj.kg = ev.kg == null ? '' : String(ev.kg);
+    await confirmarSerie(exId, idx, foto);
+    if (!setObj.confirmed) {   // imposible o «no» a «¿está bien cargado?»: lo que puso el OK no queda como tipeado
+      setObj.reps = previo.reps;
+      setObj.kg = previo.kg;
+      csPintarPanel();
+      return;
+    }
+    _csCambiar(exId, c => c.anotarOK(ahora));
+    _csAbrirVentana(foto);
+    renderTrain();
+  } finally {
+    _csOkEnCurso = false;
+  }
+}
+function _csAbrirVentana(foto) {
+  _csFoto = foto;
+  try {
+    if (foto.diferidos.length || foto.diaCompleto) localStorage.setItem(_csKeyOK(), JSON.stringify({ ops: foto.diferidos, diaCompleto: foto.diaCompleto }));
+  } catch (_) {}
+  clearTimeout(_csFotoTimer);
+  _csFotoTimer = setTimeout(() => { if (_csFoto === foto) { _csVaciarDeshacer(); csPintarPanel(); } }, _CS_DESHACER_MS);
+}
+function csDeshacer() {
+  const f = _csFoto;
+  if (!f) return;
+  clearTimeout(_csFotoTimer);
+  _csFoto = null;
+  try { localStorage.removeItem(_csKeyOK()); } catch (_) {}
+  STATE.session[f.exId] = f.sesion;
+  if (f.estado === undefined) delete STATE.exerciseStates[f.exId]; else STATE.exerciseStates[f.exId] = f.estado;
+  if (f.meta === undefined) delete STATE.exerciseMeta[f.exId]; else STATE.exerciseMeta[f.exId] = f.meta;
+  STATE.expandedId = f.expandido;
+  if (f.carga === undefined) delete _csCargas[f.exId]; else _csCargas[f.exId] = f.carga;
+  const k = `${f.exId}|${f.idx}`;
+  if (f.record === undefined) delete _recordsAvisados[k]; else _recordsAvisados[k] = f.record;
+  if (_avisoRecord && _avisoRecord.exId === f.exId) _avisoRecord = null;
+  if (f.sinArranque) {
+    _sessionStart = null;
+    try { localStorage.removeItem(`mypump_sesion_${TOKEN}_${DATA.dia.id}_start`); } catch (_) {}
+  }
+  stopRest();
+  _csGuardar();
+  renderTrain();
+}
+// Cierra la ventana: lo demorado sale a la cola. Al vencer, al próximo OK, al ocultarse la página y antes de todo lo que cambie el día.
+function _csVaciarDeshacer() {
+  const f = _csFoto;
+  if (!f) return;
+  clearTimeout(_csFotoTimer);
+  _csFoto = null;
+  if (f.diferidos.length && RUTINA_ID) ensureSesionIniciada().catch(() => {});
+  for (const op of f.diferidos) Outbox.enqueue(op.kind, op.payload, op.dedupeKey);
+  try { localStorage.removeItem(_csKeyOK()); } catch (_) {}
+  if (f.diaCompleto && !DATA._isDemo && checkIfDayCompleted()) setTimeout(() => showDayCompletedModal(), 500);
+}
+// La pestaña murió con un OK dentro de la ventana: esa serie se registró y no se pierde. Va a la cola antes de leer el servidor.
+function _csRecuperarDemorado() {
+  let g = null;
+  try { g = JSON.parse(localStorage.getItem(_csKeyOK()) || 'null'); } catch (_) {}
+  if (!g) return;
+  for (const op of g.ops || []) Outbox.enqueue(op.kind, op.payload, op.dedupeKey);
+  try { localStorage.removeItem(_csKeyOK()); } catch (_) {}
+}
+// Lo que está en la cola sin subir se ve como hecho: recargar sin señal no puede borrar una serie de la pantalla.
+function aplicarPendientesEntreno() {
+  if (!OUTBOX_ENABLED || !DATA || !DATA.dia || !Outbox.pendingByKey) return;
+  const semana = DATA.rutina.semana_actual || 1;
+  for (const [, op] of Outbox.pendingByKey()) {
+    const p = op.payload || {};
+    if (p.diaId !== DATA.dia.id || (p.semana != null && p.semana !== semana)) continue;
+    if (op.kind === 'carga' && p.datos) {
+      const ses = STATE.session[p.datos.ejercicioId];
+      const set = ses && ses.sets[p.datos.serie - 1];
+      if (!set) continue;
+      set.reps = String(p.datos.reps);
+      set.kg = p.datos.peso > 0 ? String(p.datos.peso) : '';
+      set.rir = p.datos.rir != null ? String(p.datos.rir) : '';
+      set.confirmed = true;
+      set.nombreRegistrado = p.datos.ejercicioNombre || set.nombreRegistrado || null;
+      set.varianteRegistrada = p.datos.notas || null;
+    } else if (op.kind === 'estado' && STATE.session[p.exId]) {
+      STATE.exerciseStates[p.exId] = p.status;
+      STATE.session[p.exId].status = p.status;
+    }
+  }
+}
+
+/* ---- Corregir una serie hecha: nunca se desconfirma. Reescribe esa serie con la misma clave de cola y, sin cambios, no escribe. ---- */
+function csAbrirCorreccion(exId, idx) {
+  const s = _csDe(exId);
+  if (!s || !s.series[idx] || !s.series[idx].confirmada) return;
+  _csVaciarDeshacer();
+  _csAviso = null;
+  _csCorr = { exId, idx, reps: s.reps(idx) || 1, kg: s.series[idx].kg };
+  renderTrain();
+}
+function csCerrarCorreccion() { _csCorr = null; _csAviso = null; renderTrain(); }
+async function csGuardarCorreccion() {
+  const c = _csCorr;
+  if (!c) return;
+  const setObj = STATE.session[c.exId].sets[c.idx];
+  const ef = getEffectiveEx(_exPorSlot(c.exId));
+  const propia = _csEsDelActual(c.exId, setObj);
+  const sinKg = exNoKg(ef) && (propia || setObj.kg === '');
+  if (!sinKg && c.kg == null) { _csAviso = 'Faltan datos para registrar esta serie.'; csPintarPanel(); return; }
+  const repsTexto = String(c.reps), kgTexto = sinKg ? '' : String(c.kg);
+  if (repsTexto === setObj.reps && (kgTexto === setObj.kg || Number(kgTexto) === Number(setObj.kg))) { csCerrarCorreccion(); return; }
+  _csAviso = null;
+  const prueba = { reps: repsTexto, kg: kgTexto };
+  if (!(await _serieVerosimil(c.exId, c.idx, prueba, sinKg, getProgresionActual(ef, DATA.rutina.semana_actual)))) {
+    if (!_csAviso) csCerrarCorreccion(); else csPintarPanel();
+    return;
+  }
+  setObj.reps = repsTexto;
+  setObj.kg = kgTexto;
+  writeSet(c.exId, c.idx);
+  csCerrarCorreccion();
+}
+// «Cambiarlas también»: las hechas pasan a la carga actual, de a una por el camino de la corrección.
+function csAplicarAHechas(exId) {
+  _csVaciarDeshacer();
+  let indices = [];
+  const s = _csCambiar(exId, c => { indices = c.aplicarCargaALasHechas(); });
+  if (!s || s.carga == null) return;
+  for (const i of indices) {
+    STATE.session[exId].sets[i].kg = String(s.carga);
+    writeSet(exId, i);
+  }
+  renderTrain();
+}
+
+/* ---- Eventos: delegados una sola vez (renderTrain rehace el HTML todo el tiempo) ---- */
+function _csTrasCarga(exId, fn) { _csCambiar(exId, fn); renderTrain(); }
+function _csAccion(a, b) {
+  const host = document.getElementById('panelCarga');
+  const exId = b.getAttribute('data-ex') || (host && host.dataset.ex);
+  const i = Number(b.getAttribute('data-i'));
+  switch (a) {
+    case 'carga-menos': return _csTrasCarga(exId, c => c.moverCarga(-1));
+    case 'carga-mas': return _csTrasCarga(exId, c => c.moverCarga(1));
+    case 'aumento-subir': return _csTrasCarga(exId, c => c.aceptarAumento());
+    case 'aumento-dejar': return _csTrasCarga(exId, c => c.descartarAumento());
+    case 'aumento-volver': return _csTrasCarga(exId, c => c.deshacerAumento());
+    case 'aplicar-hechas': return csAplicarAHechas(exId);
+    case 'kg-menos': return _csTrasCarga(exId, c => c.moverKg(i, -1));
+    case 'kg-mas': return _csTrasCarga(exId, c => c.moverKg(i, 1));
+    case 'corregir': return csAbrirCorreccion(exId, i);
+    case 'reps-menos': return _csAjustarReps(-1);
+    case 'reps-mas': return _csAjustarReps(1);
+    case 'ok': { unlockAudio(); const s = _csDe(exId); if (s && s.activa != null) csOK(exId, s.activa); return; }
+    case 'deshacer': return csDeshacer();
+    case 'saltar-descanso': return stopRest();
+    case 'corr-cancelar': return csCerrarCorreccion();
+    case 'corr-guardar': return csGuardarCorreccion();
+    case 'corr-kg-menos': case 'corr-kg-mas': {
+      const s = _csDe(exId);
+      if (!_csCorr || !s || _csCorr.kg == null) return;
+      _csCorr.kg = CS.mover(_csCorr.kg, a === 'corr-kg-mas' ? 1 : -1, s.equipo);
+      const inp = host.querySelector('[data-cs-corr-kg]'); if (inp) inp.value = _csKg(_csCorr.kg);
+      return;
+    }
+  }
+}
+function _csNumeroKg(texto) {
+  const n = normalizarCampoSerie('kg', texto);
+  return n === '' || n === '.' ? null : Number(n);
+}
+function _csEventos() {
+  const train = document.getElementById('scene-train');
+  const panel = document.getElementById('panelCarga');
+  if (!train || !panel || panel.dataset.ligado) return;
+  panel.dataset.ligado = '1';
+  const clic = (e) => { const b = e.target.closest('[data-cs-a]'); if (b && !b.disabled) _csAccion(b.getAttribute('data-cs-a'), b); };
+  train.addEventListener('click', clic);
+  panel.addEventListener('click', clic);
+  train.addEventListener('change', (e) => {
+    const t = e.target.closest('[data-cs-mismo]');
+    if (t) _csTrasCarga(t.getAttribute('data-cs-mismo'), c => c.usarMismoPeso(t.checked));
+  });
+  train.addEventListener('input', (e) => {
+    const c = e.target.closest('[data-cs-carga]');
+    if (c) {
+      const id = c.getAttribute('data-cs-carga');
+      _csCambiar(id, s => s.fijarCarga(_csNumeroKg(c.value)));
+      _csRepintarParcial(id);
+      _csPatchPanel();
+      return;
+    }
+    const k = e.target.closest('[data-cs-kg]');
+    if (k) {
+      const [id, i] = k.getAttribute('data-cs-kg').split('|');
+      _csCambiar(id, s => s.fijarKg(+i, _csNumeroKg(k.value)));
+      _csPatchPanel();
+    }
+  });
+  panel.addEventListener('input', (e) => {
+    const k = e.target.closest('[data-cs-corr-kg]');
+    if (k && _csCorr) _csCorr.kg = _csNumeroKg(k.value);
+  });
+  // Al enfocar se selecciona todo: lo que se escribe reemplaza lo anterior (en la base hubo "1214" por pegarse atrás).
+  const campo = 'input[data-cs-carga],input[data-cs-kg],input[data-cs-corr-kg]';
+  const alEnfocar = (e) => {
+    if (e.target.matches(campo)) setTimeout(() => { try { e.target.select(); } catch (_) {} }, 0);
+    if (e.target.matches('input,textarea') && window.matchMedia('(pointer: coarse)').matches && !panel.contains(e.target) && !_csTeclado) {
+      _csTeclado = true;   // con el teclado arriba se esconde: tapa el campo en un teléfono chico y se podría dar OK sin verlo
+      csPintarPanel();
+    }
+  };
+  const alSalir = (e) => {
+    const c = e.target.closest && e.target.closest('[data-cs-carga]');
+    if (c) { const s = _csDe(c.getAttribute('data-cs-carga')); if (s) c.value = _csKg(s.carga); }
+    const k = e.target.closest && e.target.closest('[data-cs-kg]');
+    if (k) { const [id, i] = k.getAttribute('data-cs-kg').split('|'); const s = _csDe(id); if (s) k.value = _csKg(s.series[+i].kg); }
+    if (_csTeclado) setTimeout(() => {
+      const a = document.activeElement;
+      if (a && a.matches && a.matches('input,textarea') && !panel.contains(a)) return;
+      _csTeclado = false;
+      csPintarPanel();
+    }, 60);
+  };
+  train.addEventListener('focusin', alEnfocar);
+  panel.addEventListener('focusin', alEnfocar);
+  train.addEventListener('focusout', alSalir);
+
+  // El dial: arrastrar hacia arriba suma y hacia abajo resta, un escalón cada 26 px. Con mouse, también la rueda; con teclado, las flechas.
+  const ESCALON = 26;
+  let arrastre = null;
+  panel.addEventListener('pointerdown', (e) => {
+    const d = e.target.closest('[data-cs-dial]');
+    if (!d || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    arrastre = { y: e.clientY, aplicados: 0, d };
+    try { d.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  panel.addEventListener('pointermove', (e) => {
+    if (!arrastre) return;
+    const pasos = Math.trunc(-(e.clientY - arrastre.y) / ESCALON);
+    if (pasos !== arrastre.aplicados) { _csAjustarReps(pasos - arrastre.aplicados); arrastre.aplicados = pasos; }
+  });
+  const soltar = () => { arrastre = null; };
+  panel.addEventListener('pointerup', soltar);
+  panel.addEventListener('pointercancel', soltar);
+  let rueda = 0;
+  panel.addEventListener('wheel', (e) => {
+    if (!e.target.closest('[data-cs-dial]')) return;
+    e.preventDefault();
+    rueda += e.deltaY;
+    const pasos = Math.trunc(-rueda / ESCALON);
+    if (pasos) { rueda += pasos * ESCALON; _csAjustarReps(pasos); }
+  }, { passive: false });
+  panel.addEventListener('keydown', (e) => {
+    if (!e.target.closest('[data-cs-dial]')) return;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); _csAjustarReps(1); }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); _csAjustarReps(-1); }
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && _csFoto) { _csVaciarDeshacer(); csPintarPanel(); } });
+  window.addEventListener('pagehide', () => _csVaciarDeshacer());
 }
 
 function renderExCard(ex, blockIdx) {
@@ -4357,7 +5124,9 @@ function renderExCard(ex, blockIdx) {
     const _varActual = (exState.variante || (_variantes ? _variantes[0] : ''));
     const _diaFin = _diaFinalizado;
     const _prep = _preparacionDe(ex);
-    const _leyendaRir = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? ReglasEntreno.leyendaRir(prog.rir) : null;
+    const _csPanelS = _csDe(ex.id);
+    const _porTiempo = _csOn() && _csCardioPorTiempo(ex);   // la cinta va por tiempo: sin series, kg ni RIR
+    const _leyendaRir = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'Al fallo' : null;   // 2.3.0: nunca «Dejando N en reserva»
     // Selector de NIVEL/variante para ejercicios que lo tienen (ej: rueda abdominal).
     const variantePicker = _variantes ? `
       <div class="ex-variante">
@@ -4374,8 +5143,9 @@ function renderExCard(ex, blockIdx) {
         <span class="ex-prog-nota-lbl">${_progNota.cambia ? 'Cambio de la semana' : (_progNota.calibracion ? 'Semana 1' : 'Esta semana')}</span>
         <span class="ex-prog-nota-txt">${_progNota.texto}</span>
       </div>` : ''}
-      ${_preparacionHtml(ex, _prep, _noKg)}
-      <div class="series-tit">
+      <div data-cs-prep="${ex.id}">${_preparacionHtml(ex, _prep, _noKg)}</div>
+      ${_avisoRecord && _avisoRecord.exId === ex.id && _csPanelS ? `<div class="ex-record" data-record="${ex.id}">${escapeHtml(_avisoRecord.texto)}</div>` : ''}
+      ${_csPanelS ? _csTarjetaHtml(ex, _csPanelS, _prep.length > 0, _leyendaRir, variantePicker) : (_porTiempo ? '' : `<div class="series-tit">
         <b>${_prep.length ? 'Series efectivas' : 'Series'}</b>
         <span class="${completedSets === exState.sets.length && exState.sets.length ? 'is-todas' : ''}">${completedSets} de ${exState.sets.length}</span>
       </div>
@@ -4387,7 +5157,7 @@ function renderExCard(ex, blockIdx) {
       </div>
       <div class="sets-list">
         ${exState.sets.map((s,i) => renderSetRow(ex, s, i, i===activeIdx)).join('')}
-      </div>
+      </div>`)}
       ${(() => {
         const prev = prevSessionStr(ex.id);
         const recordHtml = last ? `<div class="ex-historic" style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)"><span class="lbl">Récord a superar:</span><span class="val">${last}</span></div>` : '';
@@ -4453,9 +5223,9 @@ function renderExCard(ex, blockIdx) {
       <div class="ex-actions">
         ${isCompleted
           ? `<button class="mark-complete is-reopen" data-reopen="${ex.id}">${ICONS.edit} Reabrir ejercicio</button>`
-          : `<button class="mark-complete${allConfirmed?' is-ready':''}" data-mark="${ex.id}">
+          : `${(_csPanelS || _porTiempo) && !allConfirmed ? '' : `<button class="mark-complete${allConfirmed?' is-ready':''}" data-mark="${ex.id}">
                ${allConfirmed ? `${ICONS.check} Marcar ejercicio completo` : 'Confirmá las series para completar'}
-             </button>
+             </button>`}
              <button class="btn-finish-ex" data-finish="${ex.id}">
                Terminé este ejercicio
              </button>`
@@ -4540,7 +5310,7 @@ function renderSetRow(ex, s, i, isActive) {
   // guiar la elección del peso en vez de dejar el input mudo. No aplica a los
   // ejercicios sin peso (peso corporal).
   const calibHint = (!conf && isActive && !hasSug && !typed && !noKg && sugRepsPlan != null)
-    ? `<div class="set-sug-hint is-calib">Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps dejando 1–2 en reserva. Queda de referencia para la próxima.</div>`
+    ? `<div class="set-sug-hint is-calib">Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps ${ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'al fallo' : 'dejando 1–2 en reserva'}. Queda de referencia para la próxima.</div>`
     : '';
   return `
   <div class="${cls}" data-set="${ex.id}|${i}">
@@ -4596,7 +5366,7 @@ function _recordKg(exId) {
 
 function _marcarSerieDudosa(exId, idx, msg) {
   const row = document.querySelector(`[data-set="${exId}|${idx}"]`);
-  if (!row) return;
+  if (!row) { if (typeof _csAvisoPanel === 'function') _csAvisoPanel(msg); return; }   // la carga simple no tiene filas con campos: el aviso va en el panel
   row.classList.add('is-dudosa');
   let m = row.querySelector('.set-dudosa-msg');
   if (msg) {
@@ -4634,7 +5404,7 @@ async function _serieVerosimil(exId, idx, setObj, noKg, prog) {
   return true;
 }
 
-async function confirmarSerie(exId, idx) {
+async function confirmarSerie(exId, idx, foto) {   // foto: viene del OK de la carga simple (lo escrito se demora hasta que venza Deshacer)
   unlockAudio(); // primer user gesture confiable — habilita beeps en iOS
   const setObj = STATE.session[exId]?.sets?.[idx];
   if (!setObj || setObj.confirmed) return;
@@ -4665,7 +5435,7 @@ async function confirmarSerie(exId, idx) {
   // Lo que no lleva RIR (calentamiento, cardio, core, peso corporal) queda sin RIR.
   const exHecho = getEffectiveEx(ex);   // el sustituto, si lo hay (la app decide con el ejercicio que se hace)
   if (setObj.rir === '' && !setObj.nombreRegistrado && ReglasEntreno.llevaRir(exHecho.tipo, esSinPeso(exHecho))) {
-    setObj.rir = ReglasEntreno.rirAGuardar(getProgresionActual(exHecho, DATA.rutina.semana_actual).rir);
+    setObj.rir = '0';   // todo al fallo (2.3.0); nunca el RIR del plan
   }
   const editoManual = setObj.reps !== '' || setObj.kg !== '';
   if (!editoManual) {
@@ -4704,19 +5474,29 @@ async function confirmarSerie(exId, idx) {
   // serie fuera de la cola y cerrar la app la perdía. El Outbox resuelve la
   // sesión al drenar (resolveSesion → ensureSesionIniciada, misma promesa en
   // vuelo; y desde la 075 iniciar_sesion es idempotente).
-  ensureSesionIniciada().catch(() => {});
-  writeSet(exId, idx); // fire-and-forget
+  if (foto) {
+    if (_sessionStart == null) { _sessionStart = Date.now(); persistSessionStart(); }
+    const _ef = getEffectiveEx(ex);
+    if (!getVariantesEntry(_ef)) setObj.varianteRegistrada = null;
+    setObj.nombreRegistrado = setObj.nombreRegistrado || _ef.nombre;
+    Outbox.demorar(foto.diferidos);
+    try { writeSet(exId, idx); } finally { Outbox.demorar(null); }
+  } else {
+    ensureSesionIniciada().catch(() => {});
+    writeSet(exId, idx); // fire-and-forget
+  }
 
   if (!isWarmup) startRest(_descansoDe(ex));
   // E3: el récord, solo con una serie de este ejercicio (no una registrada con otro nombre).
-  if (!setObj.nombreRegistrado || setObj.nombreRegistrado === ex.nombre) {
+  if (foto ? setObj.nombreRegistrado === getEffectiveEx(ex).nombre : (!setObj.nombreRegistrado || setObj.nombreRegistrado === ex.nombre)) {
     const rec = _evaluarRecordSerie(ex, idx, setObj, verosimil);
     if (rec) _mostrarRecord(exId, rec.texto);
   }
 
   const allConfirmed = STATE.session[exId].sets.every(s => s.confirmed);
   if (allConfirmed && getExStatus(exId) === 'pendiente') {
-    setExStatus(exId, 'completo');
+    if (foto) Outbox.demorar(foto.diferidos);
+    try { setExStatus(exId, 'completo'); } finally { Outbox.demorar(null); }
     STATE.session[exId].completed = true;
     const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
     const i = all.findIndex(e => e.id === exId);
@@ -4730,6 +5510,7 @@ async function confirmarSerie(exId, idx) {
     }
   }
   renderTrain();
+  if (foto) { foto.diaCompleto = checkIfDayCompleted(); return; }
   if (!DATA._isDemo && checkIfDayCompleted()) {
     setTimeout(() => showDayCompletedModal(), 500);
   }
@@ -4758,6 +5539,9 @@ function bindTrainEvents() {
   $$('[data-toggle]').forEach(btn => btn.addEventListener('click', async () => {
     const id = btn.getAttribute('data-toggle');
     const wasExpanded = STATE.expandedId === id;
+    _csVaciarDeshacer();
+    _csCorr = null;
+    _csGuardia && _csGuardia.limpiar();
     STATE.expandedId = wasExpanded ? null : id;
     if (!wasExpanded) {
       if (DATA.historico_por_ejercicio[id] === undefined) await loadHistorico(id);
@@ -4822,7 +5606,11 @@ function bindTrainEvents() {
     const raw = btn.getAttribute('data-variante');
     const i = raw.indexOf('|');
     const exId = raw.slice(0, i), op = raw.slice(i + 1);
-    if (STATE.session[exId]) STATE.session[exId].variante = op;
+    _csVaciarDeshacer();
+    if (STATE.session[exId]) {
+      if (STATE.session[exId].variante !== op && _csCargas[exId]) { delete _csCargas[exId]; _csGuardar(); }   // un agarre, una carga: el otro trae su historia
+      STATE.session[exId].variante = op;
+    }
     renderTrain();
   }));
 
@@ -4845,6 +5633,7 @@ function bindTrainEvents() {
     const exState = STATE.session[id];
     const allConfirmed = exState.sets.every(s => s.confirmed);
     if (!allConfirmed) return; // sólo funciona si todas las series están confirmadas
+    _csVaciarDeshacer();
     setExStatus(id, 'completo');
     exState.completed = true;
     const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
@@ -4862,9 +5651,10 @@ function bindTrainEvents() {
   $$('[data-finish]').forEach(btn => btn.addEventListener('click', async () => {
     const id = btn.getAttribute('data-finish');
     const exState = STATE.session[id];
+    _csVaciarDeshacer();
     const confirmedCount = exState.sets.filter(s => s.confirmed).length;
     let confirmed = true;
-    if (confirmedCount === 0) {
+    if (confirmedCount === 0 && !(_csOn() && _csCardioPorTiempo(getEffectiveEx(_exPorSlot(id))))) {
       confirmed = await MyPump.ui.showConfirmModal({
         title: 'Terminaste sin cargar datos',
         body: 'No confirmaste ninguna serie. ¿Querés marcar este ejercicio como terminado de todas formas?',
@@ -4903,6 +5693,7 @@ function bindTrainEvents() {
   // Reabrir un ejercicio ya completado
   $$('[data-reopen]').forEach(btn => btn.addEventListener('click', () => {
     const id = btn.getAttribute('data-reopen');
+    _csVaciarDeshacer();
     setExStatus(id, 'pendiente');
     STATE.session[id].completed = false;
     renderTrain();
@@ -4928,6 +5719,7 @@ function bindTrainEvents() {
     e.stopPropagation();
     if (btn.disabled) return;
     const exId = btn.getAttribute('data-swap-ex');
+    _csVaciarDeshacer();
     const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
     if (ex) openExSwapModal(getEffectiveEx(ex));
   }));
@@ -4935,6 +5727,7 @@ function bindTrainEvents() {
   $$('[data-revert-ex]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
     const exId = btn.getAttribute('data-revert-ex');
+    _csVaciarDeshacer();
     delete STATE.exerciseSwaps[exId];
     persistExerciseSwaps();
     invalidarHistorico(exId);
@@ -5141,6 +5934,7 @@ function openRirPicker(exId, idx) {
 
 /* ---- FINISH MODAL ---- */
 function openFinishModal() {
+  _csVaciarDeshacer();
   let totalSets=0, tonnage=0, totalReps=0;
   for (const exId of Object.keys(STATE.session)) {
     for (const s of STATE.session[exId].sets) {
@@ -5176,6 +5970,7 @@ function openFinishModal() {
 
 /* ---- EARLY FINISH MODAL (cerrar sesión con ejercicios pendientes) ---- */
 async function openEarlyFinishModal() {
+  _csVaciarDeshacer();
   const allEx = DATA.dia.bloques.flatMap(b => b.ejercicios);
   const TERMINAL = new Set(['completo','completo_sin_datos','saltado']);
   const pending = allEx.filter(ex => !TERMINAL.has(getExStatus(ex.id)));
@@ -5515,10 +6310,12 @@ function stopRest() {
   $('#restBar').hidden = true;
   $('#restBar').classList.remove('is-done');
   persistRest();   // limpia el timer persistido
+  _csPintarDescanso();
 }
 
 function updateRestUI() {
   if (!STATE.rest) return;
+  _csPintarDescanso();
   const remainingSec = Math.max(0, Math.ceil((STATE.rest.endsAt - Date.now()) / 1000));
   $('#restTime').textContent = fmtTime(remainingSec);
   $('#restTarget').textContent = `/ ${fmtTime(STATE.rest.target)} objetivo`;
@@ -9884,6 +10681,7 @@ function renderMyday() {
 }
 
 function setScene(scene) {
+  if (scene !== 'train') { _csVaciarDeshacer(); _csCorr = null; }
   // El aviso de las fotos es de esta visita a Revisión: al irse, se va (como en la app).
   if (scene !== 'revision') STATE.fpMsg = null;
   STATE.scene = scene;
@@ -10235,6 +11033,7 @@ async function init() {
         semana_offset: Number(est.semana_offset) || 0,
         // Hay un bloque nuevo EN COLA (se activa al terminar el actual).
         tiene_siguiente: !!rutina.tiene_siguiente,
+        mensajes_semana: Array.isArray(est.mensajes_semana) ? est.mensajes_semana : [],
       },
       dia,
       historico_por_ejercicio: {},
@@ -10331,12 +11130,16 @@ async function init() {
   }
 
   STATE.session = buildSession();
+  _csLeer();
   prefetchHistoricoDia();
+  if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) { Outbox.load(); _csRecuperarDemorado(); }
 
   // Restaurar la sesión del día (estados + series + si el día ya fue cerrado).
   // Reconecta con la sesión real aunque localStorage esté vacío (cambio de
   // dispositivo, incógnito, cache limpio, retroceso de semana).
   await restoreSesionDelDia();
+  aplicarPendientesEntreno();
+  if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;

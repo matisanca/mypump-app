@@ -346,6 +346,11 @@ window.mypumpDB = {
   // Todas las sesiones de una semana (una por día, la de más actividad).
   // Filas: {dia_id, iniciada_en, finalizada_en}. Para marcar días completados
   // en el day picker.
+  // La palanca remota (mypump_get_app_config): null si no se pudo preguntar.
+  async getAppConfig() {
+    return await rpc('mypump_get_app_config', {});
+  },
+
   async getSesionesSemana(token, semana) {
     return await rpc('mypump_get_sesiones_semana', { p_token: token, p_semana: semana });
   },

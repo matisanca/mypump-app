@@ -124,7 +124,7 @@ console.log('\n3. saltos raros: se preguntan, no se bloquean');
 
 console.log('\n4. cableado en cliente.html');
 t('confirmarSerie llama a _serieVerosimil ANTES de confirmed = true', () => {
-  const i = HTML.indexOf('async function confirmarSerie(exId, idx)');
+  const i = HTML.indexOf('async function confirmarSerie(exId, idx, foto)');
   const c = HTML.slice(i, i + 4000);
   const a = c.indexOf('await _serieVerosimil(exId, idx, setObj, noKg, prog)'), b = c.indexOf('setObj.confirmed = true;');
   if (a < 0) throw new Error('no llama a _serieVerosimil');

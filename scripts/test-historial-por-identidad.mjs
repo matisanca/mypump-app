@@ -129,9 +129,9 @@ console.log('\n=== La app usa la clave en los lugares correctos ===\n');
 t('writeSet registra el nombre EFECTIVO (la fuente de la identidad)', () => {
   const i = HTML.indexOf('function writeSet(exId, setIdx)');
   const cuerpo = HTML.slice(i, i + 1500);
-  // El sustituto manda; si el swap ya expiró (día cerrado y reabierto) va el
-  // nombre con el que la serie se registró, y recién después el del slot.
-  if (!/ejercicioNombre\s*=\s*swap \? swap\.current\.nombre : \(s\.nombreRegistrado \|\| ex\.nombre\)/.test(cuerpo))
+  // Como la app 2.3.0: el nombre con que la serie se registró manda (corregir no la pasa al sustituto);
+  // si no hay, el del sustituto, y recién después el del slot.
+  if (!/ejercicioNombre\s*=\s*s\.nombreRegistrado \|\| \(swap \? swap\.current\.nombre : ex\.nombre\)/.test(cuerpo))
     throw new Error('writeSet ya no snapshotea el nombre del sustituto (ni el registrado): la clave dejaría de reflejar lo que se hizo');
   const j = HTML.indexOf('async function loadRegistrosCarga()');
   if (!HTML.slice(j, j + 2500).includes('setObj.nombreRegistrado = reg.ejercicio_nombre'))
