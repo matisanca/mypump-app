@@ -14,11 +14,11 @@
 	<!-- Los mismos textos de permisos que la app Capacitor (ios/App/App/Info.plist). La cámara suma el plato y la
 	     etiqueta, que la web también usa con la cámara. -->
 	<key>NSCameraUsageDescription</key>
-	<string>Pump Team usa la cámara para que puedas sacar tus fotos de progreso semanales y, si querés, fotos de tus platos o de etiquetas nutricionales, escanear el código de barras de un alimento, mostrar las máquinas de tu gimnasio para adaptar tu plan o grabar un video de tu técnica. Tus fotos de progreso las ve únicamente Mati.</string>
+	<string>Pump Team usa la cámara para que puedas sacar tus fotos de progreso semanales y, si querés, fotos de tus platos o de etiquetas nutricionales, escanear el código de barras de un alimento, mostrar las máquinas de tu gimnasio para adaptar tu plan, grabar un video de tu técnica o mandarle una foto a Mati por el chat. Tus fotos de progreso las ve únicamente Mati.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>MyPump usa el micrófono cuando grabás un audio con tus dudas para tu coach. Si grabás un video de tu técnica, iOS también lo pide, pero el sonido no se envía.</string>
+	<string>Pump Team usa el micrófono cuando grabás un audio para Mati, en el chat o con tus dudas de la guía. Si grabás un video de tu técnica, iOS también lo pide, pero el sonido no se envía.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Pump Team accede a tus fotos para que puedas elegir del carrete tus fotos de progreso semanales o las de tu gimnasio. Las de progreso las ve únicamente Mati.</string>
+	<string>Pump Team accede a tus fotos para que puedas elegir del carrete tus fotos de progreso semanales, las de tu gimnasio o una foto para mandarle a Mati por el chat. Las de progreso las ve únicamente Mati.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Pump Team lee tus pasos, actividad, sueño, frecuencia cardíaca en reposo, variabilidad cardíaca, frecuencia respiratoria, oxígeno en sangre y temperatura de muñeca para calcular tu recuperación diaria y que Mati ajuste tu plan.</string>
 	<key>NSHealthUpdateUsageDescription</key>

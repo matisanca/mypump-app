@@ -14,11 +14,40 @@ struct ChatView: View {
     @State private var texto = ""
     @FocusState private var escribiendo: Bool
     @State private var enviados = 0
+    /// El audio que suena (uno a la vez) y el micrófono de mantener apretado.
+    @State private var reproductor = ReproductorChat()
+    @State private var grabacion = GrabacionChat(grabador: Self.grabador)
+    @State private var fotoGrande: FotoParaVer?
+    @State private var anunciosVistos = 0
+    @Environment(\.scenePhase) private var fase
 
     private let limite = 1000
 
     /// El chat real, o nil en la demo y en los bocetos.
-    private var chat: ModeloChat? { modelo.conMuestras ? nil : modelo.chat }
+    private var chat: ModeloChat? {
+        #if DEBUG
+        if let m = ChatAdjuntosUI.modelo { return m }
+        #endif
+        return modelo.conMuestras ? nil : modelo.chat
+    }
+
+    /// Fotos y audios: con la palanca `chat_adjuntos` y el cliente habilitado (lo decide `ModeloChat`).
+    private var conAdjuntos: Bool { chat?.adjuntosActivos == true && !esDemo }
+
+    private var esDemo: Bool {
+        #if DEBUG
+        if ChatAdjuntosUI.activo { return false }
+        #endif
+        return modelo.esDemo
+    }
+
+    private static var grabador: any GrabadorAudio {
+        #if DEBUG
+        return ChatAdjuntosUI.grabador
+        #else
+        return GrabadorAV()
+        #endif
+    }
 
     private var burbujas: [BurbujaChat] {
         if let chat { return chat.hilo.mensajes }
@@ -47,13 +76,34 @@ struct ChatView: View {
                 }
         }
         // Con el chat a la vista el sondeo va cada 15 s y lo nuevo queda leído (CHA-04).
+        .fullScreenCover(item: $fotoGrande) { f in VisorFoto(foto: f) { fotoGrande = nil } }
+        .alert(ReglasChatAdjuntos.textoSinMicrofono, isPresented: $grabacion.sinPermiso) {
+            Button(ReglasChatAdjuntos.textoAbrirAjustes) {
+                if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
+            }
+            Button(ReglasChatAdjuntos.textoCancelar, role: .cancel) {}
+        }
+        .onChange(of: fase) { _, f in
+            // A segundo plano grabando: sale lo que se dijo (como cuando una llamada corta el micrófono).
+            if f != .active { grabacion.terminar(mandar: true); reproductor.pausar() }
+        }
+        .onChange(of: chat?.anuncios) { _, _ in
+            if let t = chat?.anuncio { UIAccessibility.post(notification: .announcement, argument: t) }
+        }
         .onAppear {
+            grabacion.alTerminar = { [chat] archivo, segundos in
+                Task { await chat?.enviarAudio(archivo: archivo, segundos: segundos) }
+            }
             chat?.abierto = true
             // Si el hilo no se trajo nunca (sin red al arrancar, o la cuenta todavía cargando), se trae ya; y lo de Mati
             // queda leído.
             Task { await chat?.alAbrir() }
         }
-        .onDisappear { chat?.abierto = false }
+        .onDisappear {
+            chat?.abierto = false
+            grabacion.terminar(mandar: true)
+            reproductor.soltar()
+        }
     }
 
     @ViewBuilder private var contenido: some View {
@@ -104,8 +154,10 @@ struct ChatView: View {
                         }
                         let iniciaGrupo = previo?.autor != m.autor
                         let cierraGrupo = siguiente?.autor != m.autor || FechaLocal.de(siguiente?.createdAt ?? "") != dia
-                        Burbuja(mensaje: m, conCola: cierraGrupo, hora: cierraGrupo ? hora(m.createdAt) : nil) {
-                            Task { await chat?.reintentar(m.id) }
+                        Burbuja(mensaje: m, conCola: cierraGrupo, hora: cierraGrupo ? hora(m.createdAt) : nil, chat: chat,
+                                reproductor: reproductor, verFoto: { fotoGrande = FotoParaVer(imagen: $0) },
+                                descartar: { if let a = m.adjunto { Task { await chat?.descartarAdjunto(a.id) } } }) {
+                            if let a = m.adjunto { Task { await chat?.reintentarAdjunto(a.id) } } else { Task { await chat?.reintentar(m.id) } }
                         }
                         .padding(.top, iniciaGrupo ? Espacio.s : 2)
                         .id(m.id)
@@ -196,13 +248,36 @@ struct ChatView: View {
 
     private var compositor: some View {
         VStack(spacing: 6) {
-            if modelo.esDemo {
+            if esDemo {
                 Label("En la demo los mensajes no se envían.", systemImage: "sparkles")
                     .labelStyle(EtiquetaCompacta())
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if let a = chat?.anuncio, conAdjuntos, chat?.anuncios ?? 0 > anunciosVistos {
+                        Label(a, systemImage: "exclamationmark.circle")
+                            .labelStyle(EtiquetaCompacta())
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .transition(.opacity)
+                            .task(id: chat?.anuncios) {
+                                try? await Task.sleep(for: .seconds(5))
+                                anunciosVistos = chat?.anuncios ?? 0
+                            }
+            } else if let a = grabacion.aviso {
+                Text(a).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    .task { try? await Task.sleep(for: .seconds(4)); grabacion.aviso = nil }
+            }
             HStack(alignment: .bottom, spacing: Espacio.xs) {
+                if conAdjuntos && grabacion.estado == .quieto {
+                    BotonFotoChat { jpeg in Task { await chat?.enviarFoto(jpeg) } }
+                        .transition(.scale.combined(with: .opacity))
+                }
+                if grabacion.estado == .grabando {
+                    BarraGrabando(grabacion: grabacion)
+                        .transition(.opacity)
+                } else {
                 HStack(alignment: .bottom) {
                     TextField("Escribile a Mati…", text: $texto, axis: .vertical)
                         .lineLimit(1...5)
@@ -229,7 +304,12 @@ struct ChatView: View {
                 .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .simultaneousGesture(TapGesture().onEnded { escribiendo = true })
                 .vidrio(RoundedRectangle(cornerRadius: 22, style: .continuous), interactivo: true)
+                }
 
+                if conAdjuntos && (texto.isEmpty || grabacion.estado == .grabando) {
+                    BotonMicrofono(grabacion: grabacion)
+                        .transition(.scale.combined(with: .opacity))
+                } else {
                 Button(action: enviar) {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 17, weight: .bold))
@@ -247,7 +327,11 @@ struct ChatView: View {
                 .sensoryFeedback(.impact(weight: .light), trigger: enviados)
                 .accessibilityLabel("Enviar")
                 .accessibilityIdentifier("chat-enviar")
+                }
             }
+            .animation(.snappy(duration: 0.22), value: grabacion.estado)
+            .animation(.snappy(duration: 0.22), value: texto.isEmpty)
+            .onChange(of: chat?.audioMaximo) { _, m in if let m { grabacion.maximo = m } }
         }
         .padding(.horizontal, Espacio.m)
         .padding(.top, Espacio.xs)
@@ -306,11 +390,33 @@ struct Burbuja: View {
     let mensaje: BurbujaChat
     var conCola = true
     var hora: String?
+    /// Para traer la foto o el audio (nil en la demo: ahí no hay adjuntos).
+    var chat: ModeloChat?
+    var reproductor: ReproductorChat?
+    var verFoto: (UIImage) -> Void = { _ in }
+    /// «Borrar» en una foto o un audio que no salió.
+    var descartar: () -> Void = {}
     var reintentar: () -> Void = {}
 
     var body: some View {
+        if let a = mensaje.adjunto, let reproductor {
+            let mio = !mensaje.esDelCoach
+            VStack(alignment: mio ? .trailing : .leading, spacing: 3) {
+                AdjuntoEnBurbuja(mensaje: mensaje, adjunto: a, chat: chat, reproductor: reproductor, conCola: conCola, verFoto: verFoto)
+                    .accessibilityValue(mensaje.fallo ? "No salió" : (mensaje.pendiente ? "Enviando" : ""))
+                estado
+            }
+            .frame(maxWidth: .infinity, alignment: mio ? .trailing : .leading)
+            .padding(mio ? .leading : .trailing, 56)
+            .accessibilityElement(children: .contain)
+        } else {
+            texto
+        }
+    }
+
+    private var texto: some View {
         let mio = !mensaje.esDelCoach
-        VStack(alignment: mio ? .trailing : .leading, spacing: 3) {
+        return VStack(alignment: mio ? .trailing : .leading, spacing: 3) {
             Text(mensaje.contenido)
                 .font(.body)
                 .foregroundStyle(mio ? Color.sobreMarca : Color.primary)
@@ -335,7 +441,31 @@ struct Burbuja: View {
     }
 
     @ViewBuilder private var estado: some View {
-        if mensaje.fallo {
+        if mensaje.fallo, mensaje.adjunto != nil {
+            // Una foto o un audio que no salió: por qué (el tope del día, el archivo que ya no está), y qué se puede hacer.
+            VStack(alignment: .trailing, spacing: 2) {
+                Label(mensaje.motivoFallo == nil ? "no salió" : ReglasChatAdjuntos.textoFallo(motivo: mensaje.motivoFallo),
+                      systemImage: "exclamationmark.circle.fill")
+                    .labelStyle(EtiquetaCompacta())
+                    .foregroundStyle(Color.peligro)
+                    .multilineTextAlignment(.trailing)
+                HStack(spacing: Espacio.m) {
+                    Button(ReglasChatAdjuntos.textoBorrar, action: descartar)
+                        .foregroundStyle(.secondary)
+                        .frame(minHeight: 32)
+                        .accessibilityIdentifier("chat-adjunto-borrar")
+                    if ReglasChatAdjuntos.sePuedeReintentar(motivo: mensaje.motivoFallo) {
+                        Button(ReglasChatAdjuntos.textoReintentar, action: reintentar)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Color.marcaTexto)
+                            .frame(minHeight: 32)
+                            .accessibilityIdentifier("chat-reintentar")
+                    }
+                }
+            }
+            .font(.caption)
+            .padding(.horizontal, 6)
+        } else if mensaje.fallo {
             HStack(spacing: 6) {
                 Label("no salió", systemImage: "exclamationmark.circle.fill")
                     .labelStyle(EtiquetaCompacta())
