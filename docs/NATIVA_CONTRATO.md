@@ -531,3 +531,13 @@ Mini-vision (`vision.mypumpteam.com`), POST:
 
 En las dos subidas, 4xx es definitivo para la cola y 429/5xx se reintenta. El servidor contesta el 4xx y sigue leyendo lo que falte
 del cuerpo, con tope de 15 s y de bytes, para que el navegador lo vea como rechazo y no como corte.
+
+## 13. Novedades de tu plan (2.3.0, palanca sin aplicar)
+
+Ninguna RPC nueva. La app compara la fila que trae `mypump_get_rutina_activa`, `mypump_get_dieta_activa` y
+`mypump_suplementacion` con la última que el alumno ya vio, guardada en el teléfono (`novedades_base.json` por cuenta; en la
+web `mypump_novedades_base_<token>`), porque publicar pisa la versión anterior en la base. Reglas en
+`MyPumpReglas/NovedadesPlan.swift`, `core/reglas/NovedadesPlan.kt` y `public/js/novedades-plan.js`, con los mismos casos
+(`apps/shared/fixtures/novedades/casos.json`). Palanca `novedades_plan` en `mypump_app_config`: sin la clave o distinta de
+`true`, apagada (`supabase/propuestas/nativa_novedades_plan.sql` la crea en `false`). La suplementación farmacológica no
+llega al teléfono (el RPC la filtra), así que un cambio solo ahí no se anuncia.
