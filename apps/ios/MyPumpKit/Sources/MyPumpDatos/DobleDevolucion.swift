@@ -20,20 +20,20 @@ public final class DobleDevolucion: Transporte, @unchecked Sendable {
     public var llamadasDevolucion: [String] { lock.withLock { llamadas.filter { $0.hasPrefix("mypump_devolucion") } } }
 
     public static let textoUltima = """
-    Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.
-    En sentadilla subiste dos kilos y mantuviste las repeticiones, eso es progreso real.
-    Esta semana enfocate en llegar a los pasos todos los días.
-    Seguí así que vas muy bien.
+    las 4 sesiones hechas, de lujo
+    sentadilla 2kg arriba con las mismas repes
+    y el peso 500g abajo
+    esta semana enfocate en llegar a los pasos todos los días
     """
     public static let textoAnterior = """
-    Semana firme, entrenaste las cinco veces.
-    La dieta la cumpliste casi entera, bien ahí.
-    Para esta, sumá una fruta en la merienda.
+    entrenaste las 5 veces, muy bien
+    la dieta casi entera
+    para esta sumale una fruta a la merienda
     """
     public static let textoVieja = """
-    Volviste después de una semana floja y se nota la intención.
-    El press inclinado subió una repetición en cada serie.
-    Enfocate en dormir un poco más.
+    bien que volviste después de la semana floja
+    el press inclinado una repe más en cada serie
+    como venis durmiendo?
     """
 
     /// `dos` (la última y dos anteriores), `una`, `vacio`, `apagado` (palanca), `noHabilitado`, `sinServidor` (PGRST202), `sinRed`.

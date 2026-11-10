@@ -39,14 +39,16 @@ class DobleDevolucion : Transporte {
     }
 
     companion object {
-        const val TEXTO_ULTIMA = "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\n" +
-            "En sentadilla subiste dos kilos y mantuviste las repeticiones, eso es progreso real.\n" +
-            "Esta semana enfocate en llegar a los pasos todos los días.\n" +
-            "Seguí así que vas muy bien."
-        const val TEXTO_ANTERIOR = "Semana firme, entrenaste las cinco veces.\nLa dieta la cumpliste casi entera, bien ahí.\n" +
-            "Para esta, sumá una fruta en la merienda."
-        const val TEXTO_VIEJA = "Volviste después de una semana floja y se nota la intención.\n" +
-            "El press inclinado subió una repetición en cada serie.\nEnfocate en dormir un poco más."
+        const val TEXTO_ULTIMA = "las 4 sesiones hechas, de lujo\n" +
+            "sentadilla 2kg arriba con las mismas repes\n" +
+            "y el peso 500g abajo\n" +
+            "esta semana enfocate en llegar a los pasos todos los días"
+        const val TEXTO_ANTERIOR = "entrenaste las 5 veces, muy bien\n" +
+            "la dieta casi entera\n" +
+            "para esta sumale una fruta a la merienda"
+        const val TEXTO_VIEJA = "bien que volviste después de la semana floja\n" +
+            "el press inclinado una repe más en cada serie\n" +
+            "como venis durmiendo?"
 
         /** `dos` (la última y dos anteriores), `una`, `vacio`, `apagado`, `noHabilitado`, `sinServidor`, `sinRed`. */
         fun escenario(nombre: String, hoy: LocalDate = LocalDate.now()): DobleDevolucion {

@@ -42,7 +42,7 @@ final class DevolucionUITests: XCTestCase {
         foto("claro-dos")
         XCTAssertTrue(e("devolucion-historial").exists)
         e("devolucion-anterior-d2").tap()
-        XCTAssertTrue(app.staticTexts["Para esta, sumá una fruta en la merienda."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["para esta sumale una fruta a la merienda"].waitForExistence(timeout: 3))
         foto("claro-historial-abierto")
     }
 

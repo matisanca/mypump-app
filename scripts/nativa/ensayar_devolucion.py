@@ -24,11 +24,11 @@ s.loader.exec_module(em)
 ch = em.chequear
 NADIE = "no-es-un-token-de-nadie-000000"
 LLAVE = "llave-de-ensayo-" + "x" * 40
-BUENO = ("Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\n"
-         "En sentadilla subiste dos kilos y mantuviste las repeticiones, eso es progreso real.\n"
-         "Esta semana enfocate en llegar a los pasos todos los días.\n"
-         "Seguí así que vas muy bien.")
-OTRO = BUENO.replace("medio kilo", "casi un kilo")
+BUENO = ("las 4 sesiones hechas, de lujo\n"
+         "sentadilla 2kg arriba con las mismas repes\n"
+         "y el peso 500g abajo\n"
+         "esta semana enfocate en llegar a los pasos todos los días")
+OTRO = BUENO.replace("500g", "casi 1kg")
 
 
 def sha(t):
@@ -109,8 +109,8 @@ def chequeos(cur, token, otro):
     malos = {
         "dos líneas": "Buena semana.\nSeguí así.",
         "seis líneas": "\n".join(["Bien."] * 6),
-        "dos puntos": BUENO.replace("Seguí así", "Ojo: seguí así"),
-        "guion": BUENO.replace("Seguí así", "- Seguí así"),
+        "dos puntos": BUENO.replace("esta semana", "ojo: esta semana"),
+        "guion": BUENO.replace("esta semana", "- esta semana"),
         "emoji": BUENO + " 💪",
         "fármaco": BUENO.replace("los pasos", "la testosterona"),
         "fármaco con tilde": BUENO.replace("los pasos", "los anabólicos"),
@@ -124,11 +124,11 @@ def chequeos(cur, token, otro):
         "reserva": BUENO.replace("los pasos", "dejar dos reps en reserva"),
         "lejos del fallo": BUENO.replace("los pasos", "no quedarte lejos del fallo"),
         "IA": BUENO.replace("los pasos", "lo que dice la IA"),
-        "tu coach": BUENO.replace("Seguí así", "Tu coach dice que sigas así"),
-        "tu entrenador": BUENO.replace("Seguí así", "Tu entrenador te felicita"),
-        "Mati": BUENO.replace("Seguí así", "Mati te felicita"),
-        "plural": BUENO.replace("Seguí así", "Ajustamos la carga y seguí así"),
-        "cambio de plan": BUENO.replace("Seguí así", "Te armo una rutina nueva"),
+        "tu coach": BUENO.replace("esta semana", "tu coach dice que esta semana"),
+        "tu entrenador": BUENO.replace("esta semana", "tu entrenador dice que esta semana"),
+        "Mati": BUENO.replace("esta semana", "Mati dice que esta semana"),
+        "plural": BUENO.replace("esta semana", "ajustamos la carga y esta semana"),
+        "cambio de plan": BUENO.replace("esta semana", "te armo una rutina nueva y esta semana"),
         "línea larga": BUENO + " " + "a" * 320,
     }
     for n, t in malos.items():
