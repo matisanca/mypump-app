@@ -187,6 +187,11 @@ extension ModeloChat {
         for op in mias {
             guard let id = op.payload["id"]?.comoTexto else { continue }
             let motivo = Self.motivoCorto(fallidos.last { $0.op.dedupeKey == op.dedupeKey }?.motivo)
+            // El id resultó ser de otro mensaje (dos UUID iguales): sale solo con uno nuevo, sin pasar por «no salió».
+            if motivo == ReglasChatAdjuntos.codigoId {
+                await reintentarAdjunto(id)
+                continue
+            }
             hilo.marcarAdjuntoFallido(id: id, motivo: motivo)
             if motivo == ReglasChatAdjuntos.codigoTope { avisar(ReglasChatAdjuntos.textoTope) }
         }

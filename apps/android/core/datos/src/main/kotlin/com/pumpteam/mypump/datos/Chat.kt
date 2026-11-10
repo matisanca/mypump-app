@@ -39,6 +39,8 @@ data class BurbujaChat(
     val adjunto: AdjuntoChat? = null,
     /** Por qué no salió un adjunto (el código con que lo dejó la cola): cambia el texto y si se ofrece «Reintentar». */
     val motivoFallo: String? = null,
+    /** Un adjunto que mini-vision confirmó y todavía no trajo el sondeo: no mueve el cursor (se perdería lo de Mati de antes). */
+    val confirmado: Boolean = false,
 ) {
     val esDelCoach: Boolean get() = autor == "coach"
 
@@ -74,6 +76,7 @@ data class HiloChat(
             f.leidoPorCliente?.let { lista[i] = lista[i].copy(leidoPorCliente = it) }
             // La retención borró el archivo después: la burbuja lo tiene que decir.
             f.adjunto?.let { lista[i] = lista[i].copy(adjunto = it) }
+            if (lista[i].confirmado) lista[i] = lista[i].copy(confirmado = false, createdAt = f.createdAt)
         }
         for (f in filas) {
             if (f.id in vistos) continue
@@ -89,7 +92,7 @@ data class HiloChat(
             entraron += 1
         }
         val ordenados = ordenar(lista)
-        return Mezcla(copy(mensajes = ordenados, cursor = ordenados.lastOrNull { !it.pendiente }?.createdAt ?: cursor), entraron)
+        return Mezcla(copy(mensajes = ordenados, cursor = ordenados.lastOrNull { !it.pendiente && !it.confirmado }?.createdAt ?: cursor), entraron)
     }
 
     fun agregarPendiente(b: BurbujaChat): HiloChat = copy(mensajes = ordenar(mensajes + b))
@@ -128,7 +131,7 @@ data class HiloChat(
             return copy(mensajes = lista)
         }
         val b = lista[i]
-        lista[i] = b.copy(id = comentarioId, createdAt = createdAt ?: b.createdAt, pendiente = false, fallo = false, motivoFallo = null)
+        lista[i] = b.copy(id = comentarioId, createdAt = createdAt ?: b.createdAt, pendiente = false, fallo = false, motivoFallo = null, confirmado = true)
         return copy(mensajes = ordenar(lista))
     }
 

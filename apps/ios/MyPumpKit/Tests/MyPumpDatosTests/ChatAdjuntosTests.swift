@@ -224,13 +224,14 @@ struct ChatAdjuntosTests {
         #expect(a.modelo.hilo.mensajes.last?.fallo == true)
     }
 
-    @Test func unIdDeOtroMensajeSeReintentaConOtro() async throws {
+    @Test func unIdDeOtroMensajeSaleSoloConOtro() async throws {
         let a = await armar(adjunto: { _ in (409, #"{"ok":false,"error":"id repetido"}"#) })
         #expect(await a.modelo.enviarFoto(fotoConGPS()))
+        let viejo = try #require(a.modelo.hilo.mensajes.last?.adjunto?.id)
         await a.cola.drenarAudios()
         await esperar()
-        let viejo = try #require(a.modelo.hilo.mensajes.last?.adjunto?.id)
-        await a.modelo.reintentarAdjunto(viejo)
+        // Sin tocar nada: vuelve a la cola con un id nuevo y la burbuja sigue «enviando…», nunca «no salió».
+        #expect(a.modelo.hilo.mensajes.last?.fallo == false)
         let op = try #require(await a.cola.operaciones.first)
         let nuevo = try #require(op.payload["id"]?.comoTexto)
         #expect(nuevo != viejo)
@@ -361,6 +362,18 @@ struct HiloAdjuntosTests {
         h.confirmarAdjunto(id: "a", comentarioId: "c1", createdAt: nil)
         #expect(h.mensajes.map(\.id) == ["c1"])
         #expect(h.mensajes.first?.adjunto?.duracion == 5)
+    }
+
+    @Test func laConfirmadaNoMueveElCursorHastaQueLlegaLaFila() throws {
+        var h = HiloChat()
+        h.mezclar([try fila(id: "m1", autor: "coach", contenido: "hola", hora: "2026-11-10T14:00:00+00:00")])
+        h.agregarPendiente(pendiente("a"))
+        h.confirmarAdjunto(id: "a", comentarioId: "c1", createdAt: "2026-11-10T15:00:00+00:00")
+        h.mezclar([])
+        #expect(h.cursor == "2026-11-10T14:00:00+00:00")
+        h.mezclar([try fila(id: "c1", contenido: "Foto", adjunto: #"{"id":"a","tipo":"foto"}"#, hora: "2026-11-10T15:00:00+00:00")])
+        #expect(h.cursor == "2026-11-10T15:00:00+00:00")
+        #expect(h.mensajes.allSatisfy { !$0.confirmado })
     }
 
     @Test func laRetencionBorroElArchivoYLaBurbujaLoDice() throws {

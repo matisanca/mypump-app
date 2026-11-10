@@ -238,6 +238,11 @@ suspend fun ModeloChat.alAbandonarAdjuntos(ops: List<Operacion>) {
     for (op in mias) {
         val id = op.payload["id"]?.comoTexto ?: continue
         val motivo = motivoCorto(fallidos.lastOrNull { it.op.dedupeKey == op.dedupeKey }?.motivo)
+        // El id resultó ser de otro mensaje (dos UUID iguales): sale solo con uno nuevo, sin pasar por «no salió».
+        if (motivo == ReglasChatAdjuntos.CODIGO_ID) {
+            reintentarAdjunto(id)
+            continue
+        }
         _hilo.update { it.marcarAdjuntoFallido(id, motivo) }
         if (motivo == ReglasChatAdjuntos.CODIGO_TOPE) avisar(ReglasChatAdjuntos.TEXTO_TOPE)
     }

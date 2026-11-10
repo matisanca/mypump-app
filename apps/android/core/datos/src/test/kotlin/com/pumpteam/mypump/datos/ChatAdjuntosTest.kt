@@ -202,13 +202,14 @@ class ChatAdjuntosTest {
     }
 
     @Test
-    fun unIdDeOtroMensajeSeReintentaConOtro() = enUnHilo { alcance ->
+    fun unIdDeOtroMensajeSaleSoloConOtro() = enUnHilo { alcance ->
         val e = entorno(alcance, Servidor { 409 to """{"ok":false,"error":"id repetido"}""" })
         assertTrue(e.m.enviarFoto(jpeg))
+        val viejo = e.m.hilo.value.mensajes.last().adjunto!!.id
         e.cola.drenar()
         asentar()
-        val viejo = e.m.hilo.value.mensajes.last().adjunto!!.id
-        e.m.reintentarAdjunto(viejo)
+        // Sin tocar nada: vuelve a la cola con un id nuevo y la burbuja sigue «enviando…», nunca «no salió».
+        assertFalse(e.m.hilo.value.mensajes.last().fallo)
         val op = e.cola.operaciones().single()
         val nuevo = op.payload["id"]?.comoTexto!!
         assertNotEquals(viejo, nuevo)
@@ -282,6 +283,18 @@ class ChatAdjuntosTest {
 
     private fun pendiente(id: String, tipo: AdjuntoChat.Tipo = AdjuntoChat.Tipo.FOTO) =
         burbujaPendiente(id, tipo, if (tipo == AdjuntoChat.Tipo.AUDIO) 5.0 else null, "2026-11-10T15:00:00.000Z")
+
+    @Test
+    fun laConfirmadaNoMueveElCursorHastaQueLlegaLaFila() {
+        val coach = MensajeChat.desde(ValorJson.parsear("""{"id":"m1","autor":"coach","contenido":"hola","created_at":"2026-11-10T14:00:00+00:00"}""").aJson())
+        var h = HiloChat().mezclar(listOf(coach)).hilo.agregarPendiente(pendiente("a"))
+            .confirmarAdjunto("a", "c1", "2026-11-10T15:00:00+00:00")
+        h = h.mezclar(emptyList()).hilo
+        assertEquals("2026-11-10T14:00:00+00:00", h.cursor)
+        h = h.mezclar(listOf(fila("c1", "Foto", """{"id":"a","tipo":"foto"}"""))).hilo
+        assertEquals("2026-11-10T15:00:00+00:00", h.cursor)
+        assertTrue(h.mensajes.none { it.confirmado })
+    }
 
     @Test
     fun dosFotosSeguidasSonDosMensajes() {

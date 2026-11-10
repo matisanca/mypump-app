@@ -10,7 +10,7 @@ public struct BurbujaChat: Identifiable, Equatable, Sendable {
     public let contenido: String
     public var leidoPorCliente: Bool?
     /// ISO, como lo manda el servidor (o la hora del teléfono para una optimista).
-    public let createdAt: String
+    public var createdAt: String
     /// `_tmp`: escrita en el teléfono, todavía sin fila en el servidor.
     public var pendiente: Bool
     /// `_fallo`: la cola se rindió con este mensaje; se ofrece reintentar (el texto nunca se pierde).
@@ -19,6 +19,8 @@ public struct BurbujaChat: Identifiable, Equatable, Sendable {
     public var adjunto: AdjuntoChat?
     /// Por qué no salió un adjunto (el código con que lo dejó la cola): cambia el texto y si se ofrece «Reintentar».
     public var motivoFallo: String?
+    /// Un adjunto que mini-vision confirmó y que el sondeo todavía no trajo: no mueve el cursor (se perdería lo de Mati de antes).
+    public var confirmado = false
 
     public var esDelCoach: Bool { autor == "coach" }
 
@@ -57,6 +59,7 @@ public struct HiloChat: Equatable, Sendable {
             if let l = f.leidoPorCliente { mensajes[i].leidoPorCliente = l }
             // La retención borró el archivo después: la burbuja lo tiene que decir.
             if let a = f.adjunto { mensajes[i].adjunto = a }
+            if mensajes[i].confirmado { mensajes[i].confirmado = false; mensajes[i].createdAt = f.createdAt }
         }
         for f in filas where !vistos.contains(f.id) {
             if let a = f.adjunto {
@@ -70,7 +73,7 @@ public struct HiloChat: Equatable, Sendable {
             entraron += 1
         }
         ordenar()
-        if let ultimo = mensajes.last(where: { !$0.pendiente }) { cursor = ultimo.createdAt }
+        if let ultimo = mensajes.last(where: { !$0.pendiente && !$0.confirmado }) { cursor = ultimo.createdAt }
         return entraron
     }
 
@@ -107,6 +110,7 @@ public struct HiloChat: Equatable, Sendable {
         let b = mensajes[i]
         mensajes[i] = BurbujaChat(id: comentarioId, autor: b.autor, contenido: b.contenido, leidoPorCliente: b.leidoPorCliente,
                                   createdAt: createdAt ?? b.createdAt, adjunto: b.adjunto)
+        mensajes[i].confirmado = true
         ordenar()
     }
 

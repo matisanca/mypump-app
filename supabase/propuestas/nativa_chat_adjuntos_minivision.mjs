@@ -83,7 +83,10 @@ function jpegSinMetadatos(buf) {
 }
 
 // ── Rechazos con el cuerpo pendiente ──
-const DRENAR_CHAT_MS = 15_000;
+// Se drena con el mismo plazo que una subida (un audio de 1 MB por datos lentos tarda más de 15 s): si se corta antes,
+// el teléfono ve un corte de red en vez del 429/403 y vuelve a mandar el archivo entero. Sin datos por 20 s, se corta.
+const DRENAR_CHAT_MS = ESPERA_CUERPO_CHAT_MS;
+const DRENAR_QUIETO_MS = 20_000;
 const MAX_DRENANDO_CHAT = 16;
 let drenandoChat = 0;
 function drenarOCortarChat(req) {
@@ -91,11 +94,19 @@ function drenarOCortarChat(req) {
   if (drenandoChat >= MAX_DRENANDO_CHAT) { req.destroy(); return; }
   drenandoChat++;
   let leidos = 0, listo = false;
-  const terminar = () => { if (!listo) { listo = true; drenandoChat--; clearTimeout(plazo); } };
+  const terminar = () => { if (!listo) { listo = true; drenandoChat--; clearTimeout(plazo); clearTimeout(quieto); } };
   const cortar = () => { terminar(); req.destroy(); };
   const plazo = setTimeout(cortar, DRENAR_CHAT_MS);
   plazo.unref?.();
-  req.on('data', (c) => { leidos += c.length; if (leidos > MAX_CHAT_FOTO_B + MAX_CHAT_AUDIO_B) cortar(); });
+  let quieto = setTimeout(cortar, DRENAR_QUIETO_MS);
+  quieto.unref?.();
+  req.on('data', (c) => {
+    leidos += c.length;
+    if (leidos > MAX_CHAT_FOTO_B + MAX_CHAT_AUDIO_B) return cortar();
+    clearTimeout(quieto);
+    quieto = setTimeout(cortar, DRENAR_QUIETO_MS);
+    quieto.unref?.();
+  });
   req.once('end', terminar);
   req.once('close', terminar);
   req.once('error', cortar);
