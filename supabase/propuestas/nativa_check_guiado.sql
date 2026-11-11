@@ -9,8 +9,8 @@
 --
 -- Lo nuevo es una sola cosa: lo que el alumno marca en «¿Notaste algo de esto?». Va en una tabla aparte, una fila por
 -- semana (lunes ISO, como el check). Hay dos listas:
---   · 'ciclo':   solo para quien `clientes_perfil` dice que está en ciclo (perfiles contiene 'ciclo');
---   · 'general': para todos los demás.
+--   · 'ciclo':   para quien `clientes_perfil` dice que usa algo: ciclo, TRT, péptidos (GLP-1 incluido) o posciclo;
+--   · 'general': para todos los demás (naturales, sin definir o sin perfil). A un natural nunca le sale la de efectos.
 -- La app pregunta cuál le toca con `mypump_check_guiado_get`; el servidor anota además qué decía el perfil al guardar.
 --
 -- Sale APAGADO: `check_guiado` en false. Apagado, las apps muestran la Revisión de siempre, `mypump_check_guiado_get`
@@ -50,8 +50,11 @@ INSERT INTO mypump_app_config (clave, valor, nota) VALUES
    'true: la Revisión de las apps muestra el check guiado (paso a paso). false: la Revisión de siempre')
 ON CONFLICT (clave) DO NOTHING;
 
--- ── ¿Está en ciclo? Un solo lugar para el criterio ──
--- Solo cuando el perfil lo dice explícitamente. Sin fila, sin_definir, natural, TRT o posciclo: no.
+-- ── ¿Le toca la lista de efectos? Un solo lugar para el criterio ──
+-- Decisión de Mati (11/11): a todo el que usa algo, es decir ciclo, TRT, péptidos (GLP-1 incluido) o posciclo. Sin fila,
+-- sin_definir o natural: no. El nombre `en_ciclo` (función, columna y clave del JSON) se mantiene por compatibilidad con
+-- las apps y con lo ya escrito; hoy quiere decir «usa algo».
+-- Los GLP-1 no tienen perfil propio: son el subperfil `peptidos.glp1`, así que entran por 'peptidos'.
 CREATE OR REPLACE FUNCTION mypump_check_guiado_en_ciclo(p_cliente_id TEXT)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -59,7 +62,8 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT COALESCE((SELECT 'ciclo' = ANY(perfiles) FROM clientes_perfil WHERE cliente_id = p_cliente_id), FALSE);
+  SELECT COALESCE((SELECT perfiles && ARRAY['ciclo', 'trt', 'peptidos', 'posciclo']
+                     FROM clientes_perfil WHERE cliente_id = p_cliente_id), FALSE);
 $$;
 
 REVOKE ALL ON FUNCTION mypump_check_guiado_en_ciclo(TEXT) FROM PUBLIC, anon, authenticated;

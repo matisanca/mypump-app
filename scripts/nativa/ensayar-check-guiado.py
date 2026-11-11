@@ -110,9 +110,13 @@ def chequeos(cur, token, otro):
     uno(cur, "SELECT mypump_check_guiado_guardar(%s, %s, %s::jsonb)", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": ["acne", "retencion"]})))
     cur.execute("SELECT catalogo, senales, en_ciclo FROM mypump_check_guiado WHERE cliente_id = %s", (CUENTA,))
     chequear("guarda catálogo ciclo y el perfil del momento", cur.fetchall() == [("ciclo", ["acne", "retencion"], True)])
-    for perfiles in (["trt"], ["posciclo", "peptidos"], ["natural"], ["sin_definir"]):
+    # Decisión de Mati (11/11): la lista de efectos es para todo el que usa algo; a un natural, nunca.
+    for perfiles, usa in ((["trt"], True), (["peptidos"], True), (["posciclo"], True), (["natural", "peptidos"], True),
+                          (["natural"], False), (["sin_definir"], False)):
         cur.execute("UPDATE clientes_perfil SET perfiles = %s WHERE cliente_id = %s", (perfiles, CUENTA))
-        chequear(f"{perfiles}: no es ciclo", uno(cur, "SELECT mypump_check_guiado_get(%s, %s)", (token, hoy)).get("en_ciclo") is False)
+        chequear(f"{perfiles}: lista de efectos {'sí' if usa else 'no'}", uno(cur, "SELECT mypump_check_guiado_get(%s, %s)", (token, hoy)).get("en_ciclo") is usa)
+    cur.execute("SELECT count(*) FROM clientes_perfil WHERE mypump_check_guiado_en_ciclo(cliente_id)")
+    print(f"  conteo real con el criterio nuevo: {cur.fetchone()[0]} clientes ven la lista de efectos")
 
     print("▸ Lo inválido")
     da_22023(cur, "sin catálogo", (token, hoy, json.dumps({"senales": ["dolor"]})))
