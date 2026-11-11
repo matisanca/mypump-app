@@ -93,6 +93,8 @@ class Navegacion(
     estudiosEnMisDatos: Boolean = false,
     fotosInicio: Boolean = false,
     fotosInicioEnMisDatos: Boolean = false,
+    presion: Boolean = false,
+    presionDirecta: Boolean = false,
 ) {
     var pestana by mutableStateOf(pestana)
     var misDatos by mutableStateOf(misDatos)
@@ -133,6 +135,26 @@ class Navegacion(
 
     /** «Mis fotos de inicio» abierto desde Mis datos. */
     var fotosInicioEnMisDatos by mutableStateOf(fotosInicioEnMisDatos)
+
+    /**
+     * «Presión arterial», a pantalla completa por encima de las pestañas (desde Mis datos, la tarjeta de arriba o un aviso).
+     * Solo se ve si la sección está habilitada. No cambia de pestaña ni toca Entreno.
+     */
+    var presion by mutableStateOf(presion)
+        private set
+
+    /** Abrir directo en lo que toca (la repetición, preparar o la toma de hoy), sin pasar por el inicio. Presión lo consume. */
+    var presionDirecta by mutableStateOf(presionDirecta)
+
+    fun abrirPresion(directo: Boolean) {
+        presionDirecta = directo
+        presion = true
+    }
+
+    fun cerrarPresion() {
+        presion = false
+        presionDirecta = false
+    }
 
     /**
      * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check), como `anclaRevision` de
@@ -190,6 +212,11 @@ class Navegacion(
             }
             // El aviso de un estudio pedido o una orden nueva y `?scene=estudios`: Mis datos → Estudios.
             DestinoAviso.ESTUDIOS -> irAEstudios()
+            // El aviso de presión: a Entreno (donde vive la tarjeta) y, si la sección está habilitada, directo a lo pendiente.
+            DestinoAviso.PRESION -> {
+                pestana = Pestana.ENTRENO
+                abrirPresion(directo = true)
+            }
         }
     }
 
@@ -263,7 +290,7 @@ class Navegacion(
 
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos, it.documentosEnMisDatos, it.estudiosEnMisDatos, it.fotosInicio, it.fotosInicioEnMisDatos) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos, it.documentosEnMisDatos, it.estudiosEnMisDatos, it.fotosInicio, it.fotosInicioEnMisDatos, it.presion, it.presionDirecta) },
             restore = {
                 Navegacion(
                     Pestana.entries.firstOrNull { p -> p.name == it[0] } ?: Pestana.ENTRENO,
@@ -279,6 +306,8 @@ class Navegacion(
                     it.getOrNull(10) as? Boolean ?: false,
                     it.getOrNull(11) as? Boolean ?: false,
                     it.getOrNull(12) as? Boolean ?: false,
+                    it.getOrNull(13) as? Boolean ?: false,
+                    it.getOrNull(14) as? Boolean ?: false,
                 )
             },
         )

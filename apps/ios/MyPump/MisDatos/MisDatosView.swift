@@ -28,6 +28,7 @@ struct MisDatosView: View {
     @State private var verTecnica = false
     /// `-abrir novedades` (capturas): la lista de novedades directo.
     @State private var verNovedades = DemoUI.abrir == "novedades"
+    @State private var verPresion = false
     @State private var pagina: Pagina?
     /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
     /// en el iPhone (para poder exportarlas o borrarlas aunque ya no haya reloj).
@@ -133,6 +134,15 @@ struct MisDatosView: View {
                     .accessibilityIdentifier("mis-datos-tecnica")
                     .sheet(isPresented: $verTecnica) {
                         MiTecnicaRaiz(modelo: t, alCerrar: { verTecnica = false }).presentationDragIndicator(.visible)
+                    }
+                }
+                if let p = modelo.presion, p.habilitado || verPresion {
+                    Button { verPresion = true } label: {
+                        fila(TextosPresion.N.entrada, icono: "heart.text.square.fill", color: .marcaTexto)
+                    }
+                    .accessibilityIdentifier("mis-datos-presion")
+                    .sheet(isPresented: $verPresion) {
+                        PresionRaiz(modelo: p, alCerrar: { verPresion = false }).presentationDragIndicator(.visible)
                     }
                 }
                 if let g = modelo.gimnasio, g.entradaVisible || verGimnasio {

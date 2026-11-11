@@ -40,6 +40,7 @@ struct EntrenoView: View {
                     ScrollView {
                         TarjetaFotosInicio(soloSiFaltan: true).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         TarjetaRecorrido().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                        TarjetaPresion().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         TarjetaGimnasio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
@@ -224,6 +225,8 @@ private struct ListaEntreno: View {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 // «Tu guía» mientras falte ver algo: verde y primera, arriba de todo (pedido de Mati, 4-nov). Abajo,
                 // el aviso de Revisión.
+                // «Tu presión», primera de todas mientras haya algo para hacer. Es una tarjeta más: no toca ni condiciona la rutina.
+                TarjetaPresion()
                 // 2.3.0: la videollamada fija arriba, desde que se agenda hasta que termina (aunque la tarjeta de la guía esté oculta).
                 if let g = GuiaUI.modelo {
                     TarjetaVideollamadaEntreno(modelo: g, listaPrevia: ListaPreviaUI.dentro(Proveedor.modelo, guia: g), abrirGuia: abrirGuia)

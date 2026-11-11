@@ -20,6 +20,8 @@ class AvisosTest {
         assertEquals(DestinoAviso.ESTUDIOS, DestinoAviso.deDestino("estudios"))
         assertEquals(DestinoAviso.FOTOS_INICIO, DestinoAviso.deDestino("fotos_inicio"))
         assertEquals(DestinoAviso.FOTOS_INICIO, DestinoAviso.deEscena("fotos_inicio"))
+        assertEquals(DestinoAviso.PRESION, DestinoAviso.deDestino("presion"))
+        assertEquals(DestinoAviso.PRESION, DestinoAviso.deEscena("presion"))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino("chat"))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino("comentarios"))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino(null))

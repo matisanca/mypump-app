@@ -25,6 +25,7 @@ class ReceptorAvisos : BroadcastReceiver() {
                 CentroAvisos.alSonarDescanso(c, intent.getLongExtra(CentroAvisos.EXTRA_FIN, 0), goAsync())
             }
             CentroAvisos.ACCION_VIDEOLLAMADA -> CentroAvisos.alSonarVideollamada(c, intent)
+            CentroAvisos.ACCION_REPETIR_PRESION -> CentroAvisos.mostrarRepetirPresion(c)
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIMEZONE_CHANGED,

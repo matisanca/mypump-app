@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generado por scripts/nativa/presion-dibujos.mjs. No editar a mano: cambiar el dibujo ahí y regenerar.
+     El negro es solo la máscara: se tiñe al usarlo (DibujoPresion.kt). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path
+        android:pathData="M54.19 22.33L55.21 22.52L56.15 22.97L56.95 23.65L57.54 24.51L57.89 25.49L57.97 26.53L56.98 45.51L56.79 46.53L56.34 47.48L55.66 48.27L54.8 48.86L53.81 49.21L52.77 49.29L21.81 47.67L20.79 47.48L19.85 47.03L19.05 46.35L18.46 45.49L18.11 44.51L18.03 43.47L19.02 24.49L19.21 23.47L19.66 22.52L20.34 21.73L21.2 21.14L22.19 20.79L23.23 20.71Z"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="3" />
+    <path
+        android:pathData="M20.5 42L56.5 44"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.8" />
+</vector>

@@ -58,6 +58,8 @@ public struct PalancaRemota: Equatable, Sendable {
     /// Documentos, contrato y consentimiento (`contrato_app`). Sin la clave, apagada: no se llama a `mypump_contrato_get`
     /// ni aparecen el aviso del contrato ni la fila de Mis datos.
     public var contratoApp = false
+    /// Presión arterial (`presion_app`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo.
+    public var presionApp = false
 
     public init() {}
 
@@ -93,6 +95,8 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveCheckGuiado = "mypump-palanca-check-guiado"
     /// El último valor leído de `contrato_app`: si la config no contesta, vale lo último que se supo (como en la web).
     static let claveContratoApp = "mypump-palanca-contrato-app"
+    /// El último valor leído de `presion_app`: prendida, una toma en la cola se sigue mandando aunque se arranque sin red.
+    static let clavePresionApp = "mypump-palanca-presion-app"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
@@ -122,6 +126,7 @@ public struct PalancaRemota: Equatable, Sendable {
         #if DEBUG
         if let v = defaults.string(forKey: "contratoApp") { p.contratoApp = v == "YES" }
         #endif
+        if defaults.bool(forKey: clavePresionApp) { p.presionApp = true }
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
@@ -141,6 +146,7 @@ public struct PalancaRemota: Equatable, Sendable {
         defaults.set(listaPrevia, forKey: Self.claveListaPrevia)
         defaults.set(checkGuiado, forKey: Self.claveCheckGuiado)
         defaults.set(contratoApp, forKey: Self.claveContratoApp)
+        defaults.set(presionApp, forKey: Self.clavePresionApp)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
@@ -167,6 +173,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["lista_previa"] { listaPrevia = b }
         if case .bool(let b)? = j["check_guiado"] { checkGuiado = b }
         if case .bool(let b)? = j["contrato_app"] { contratoApp = b }
+        if case .bool(let b)? = j["presion_app"] { presionApp = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

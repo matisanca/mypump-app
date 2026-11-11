@@ -30,6 +30,7 @@ import com.pumpteam.mypump.acceso.TokenEnKeystore
 import com.pumpteam.mypump.datos.AvisoDomingo
 import com.pumpteam.mypump.datos.ClienteRpc
 import com.pumpteam.mypump.datos.DestinoAviso
+import com.pumpteam.mypump.reglas.TextosPresion
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.RegistroPush
 import com.pumpteam.mypump.datos.TransporteOkHttp
@@ -128,6 +129,8 @@ object CentroAvisos {
     const val ACCION_AVISO = "com.pumpteam.mypump.AVISO"
     const val ACCION_DOMINGO = "com.pumpteam.mypump.AVISO_DOMINGO"
     const val ACCION_FIN_DESCANSO = "com.pumpteam.mypump.FIN_DESCANSO"
+    const val ACCION_REPETIR_PRESION = "com.pumpteam.mypump.REPETIR_PRESION"
+    const val ID_REPETIR_PRESION = 7_003
 
     /** Ya se le mostró la hoja del sistema (la clave de la web: la trae la migración). */
     const val CLAVE_PEDIDO = "mypump_notif_pedido"
@@ -709,6 +712,45 @@ object CentroAvisos {
         cancelarAlarmaDescanso(c)
         cancelarDescansoEnCurso(c)
         publicar(c, ETIQUETA, ID_DESCANSO, CANAL_DESCANSO, "Terminó el descanso", "Seguí con la próxima serie.", "train", Notification.CATEGORY_REMINDER, soloUnaVez = true)
+    }
+
+    // ── Presión arterial: el recordatorio de la repetición ──
+
+    private fun alarmaRepetirPresion(c: Context, crear: Boolean): PendingIntent? = PendingIntent.getBroadcast(
+        c,
+        ID_REPETIR_PRESION,
+        Intent(c, ReceptorAvisos::class.java).setAction(ACCION_REPETIR_PRESION),
+        PendingIntent.FLAG_IMMUTABLE or (if (crear) PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_NO_CREATE),
+    )
+
+    /**
+     * Quedó una repetición por hacer: un aviso local a los 10 minutos, por si no la hace. Alarma inexacta, como la del
+     * descanso. Solo con permiso: nunca lo pide. Tocarlo abre Presión directo en lo pendiente.
+     */
+    fun programarRepetirPresion(c: Context, cuandoMs: Long) {
+        if (!concedido(c) || cuandoMs - System.currentTimeMillis() <= 1_000) return
+        val pi = alarmaRepetirPresion(c.applicationContext, crear = true) ?: return
+        c.getSystemService(AlarmManager::class.java)?.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cuandoMs, pi)
+    }
+
+    /** Hizo la repetición, o ya no hace falta: ni la alarma ni el aviso. */
+    fun cancelarRepetirPresion(c: Context) {
+        alarmaRepetirPresion(c.applicationContext, crear = false)?.let {
+            c.getSystemService(AlarmManager::class.java)?.cancel(it)
+            it.cancel()
+        }
+        c.getSystemService(NotificationManager::class.java)?.cancel(ETIQUETA, ID_REPETIR_PRESION)
+    }
+
+    fun repetirPresionAgendado(c: Context): Boolean = alarmaRepetirPresion(c.applicationContext, crear = false) != null
+
+    /** El texto es el del protocolo, tal cual. */
+    fun mostrarRepetirPresion(c: Context) {
+        alarmaRepetirPresion(c, crear = false)?.cancel()
+        publicar(
+            c, ETIQUETA, ID_REPETIR_PRESION, CANAL_MENSAJES, TextosPresion.N.entrada, TextosPresion.T.repetirPendiente, "presion",
+            Notification.CATEGORY_REMINDER, soloUnaVez = true,
+        )
     }
 }
 

@@ -26,6 +26,10 @@ final class Navegacion {
     /// Abrir «Tus fotos de inicio» (el aviso `fotos_inicio`): la tarjeta de Revisión lo consume cuando la sección está a la
     /// vista. Si no está habilitada, queda en Revisión y se olvida al cambiar de pestaña.
     var fotosInicio = false
+    /// Presión arterial, en una hoja sobre la pestaña en la que se esté (la tarjeta de arriba en Entreno o un aviso). `presionDirecta`:
+    /// se abre en lo que toca (la repetición, preparar o la toma de hoy), sin pasar por su pantalla de inicio.
+    var presionAbierta = false
+    var presionDirecta = false
     /// Abrir «Tu guía» en Entreno (el «Ver mi guía» de la bienvenida); Entreno lo consume al llegar.
     var abrirGuia = false
 
@@ -46,6 +50,10 @@ final class Navegacion {
         case .misDatos:
             pestaña = .revision
             misDatos = true
+        case .presion:
+            // El aviso de presión: a Entreno (donde vive la tarjeta) y, si la sección está habilitada, directo a lo pendiente.
+            pestaña = .entreno
+            Task { @MainActor in self.abrirPresion(directo: true) }
         case .estudios: irAEstudios()
         case .fotosInicio:
             pestaña = .revision
@@ -65,6 +73,11 @@ final class Navegacion {
         pestaña = .revision
         misDatos = true
         estudios = true
+    }
+
+    func abrirPresion(directo: Bool) {
+        presionDirecta = directo
+        presionAbierta = true
     }
 
     /// Salud, en la hoja sobre Revisión (los avisos y `?scene=progress|myday` llegan acá). Primero la pestaña: cambiarla

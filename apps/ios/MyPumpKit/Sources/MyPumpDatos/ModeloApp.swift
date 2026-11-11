@@ -126,6 +126,9 @@ public final class ModeloApp {
     public private(set) var listaPrevia: ModeloListaPrevia?
     /// El historial inventado de la demo (2.3.0, `Demo.bundle/historial.json`). Solo con `esDemo`: nunca con una cuenta.
     public private(set) var demoHistorial: HistorialDemo?
+    /// Presión arterial: existe con cuenta, pero solo llama al servidor con la palanca `presion_app` prendida. No toca Entreno
+    /// ni la rutina: la presión nunca frena el entrenamiento.
+    public private(set) var presion: ModeloPresion?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
     /// El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada).
@@ -287,7 +290,7 @@ public final class ModeloApp {
         registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; fotosInicio = nil; tecnica = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; fotosInicio = nil; tecnica = nil; presion = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         wins = nil; listaPrevia = nil; demoHistorial = nil
         suplementacion = nil
         novedades = nil
@@ -377,7 +380,7 @@ public final class ModeloApp {
         registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; fotosInicio = nil; tecnica = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; fotosInicio = nil; tecnica = nil; presion = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         wins = nil; listaPrevia = nil; demoHistorial = nil
         suplementacion = nil
         novedades = nil
@@ -451,6 +454,7 @@ public final class ModeloApp {
         estudios = ModeloEstudios(cliente: cliente, token: t, disco: disco, cache: raizDisco?.appendingPathComponent("Caches", isDirectory: true))
         wins = ModeloWins(cliente: cliente, token: t, disco: disco, palanca: palanca.winsApp)
         listaPrevia = ModeloListaPrevia(cliente: cliente, token: t, disco: disco)
+        presion = ModeloPresion(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
@@ -715,6 +719,7 @@ public final class ModeloApp {
         await sincronizarEstudios()
         await sincronizarWins()
         await sincronizarListaPrevia()
+        await sincronizarPresion()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         anotarCargaCompleta()
@@ -814,6 +819,7 @@ public final class ModeloApp {
         await fotos?.drenar()
         if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
         if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
+        if palanca.presionApp { presion?.drenarEnFondo() }
         if palanca.fotosInicio { fotosInicio?.drenarEnFondo() }
         if let estudios, estudios.palanca == true, estudios.habilitado { estudios.drenarEnFondo() }
     }
@@ -885,6 +891,17 @@ public final class ModeloApp {
     public func sincronizarListaPrevia() async {
         guard !esDemo, let listaPrevia else { return }
         if palanca.listaPrevia { await listaPrevia.refrescar() } else { listaPrevia.apagar() }
+    }
+
+    /// Con la palanca apagada no se llama a nada de presión.
+    private func sincronizarPresion() async {
+        guard let presion else { return }
+        if palanca.presionApp {
+            await presion.refrescar()
+            presion.drenarEnFondo()
+        } else {
+            presion.apagar()
+        }
     }
 
     private func sincronizarGimnasio() async {
@@ -982,6 +999,7 @@ public final class ModeloApp {
         if toca(.salud) { await salud?.alVolver() }   // con Apple Health conectada: 7 días y retomar el historial
         await sincronizarWins()
         await sincronizarListaPrevia()
+        await sincronizarPresion()
         _ = await entreno?.alVolverAPrimerPlano()
     }
 

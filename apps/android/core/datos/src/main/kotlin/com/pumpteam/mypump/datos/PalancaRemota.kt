@@ -63,6 +63,8 @@ data class PalancaRemota(
      * ni aparecen el aviso del contrato ni la fila de Mis datos.
      */
     val contratoApp: Boolean = false,
+    /** Presión arterial (`presion_app`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. */
+    val presionApp: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -93,6 +95,7 @@ data class PalancaRemota(
             listaPrevia = (j["lista_previa"] as? ValorJson.Booleano)?.valor ?: false,
             checkGuiado = (j["check_guiado"] as? ValorJson.Booleano)?.valor ?: false,
             contratoApp = (j["contrato_app"] as? ValorJson.Booleano)?.valor ?: false,
+            presionApp = (j["presion_app"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

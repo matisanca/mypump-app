@@ -11,11 +11,13 @@ public enum DestinoAviso: String, Sendable, Equatable {
     case entreno, dieta, chat, revision, fuerza, recuperacion, misDatos, estudios
     /// `fotos_inicio`: el aviso de «subí tus fotos de inicio» (lo encola `mypump_fotos_inicio_pedir`); abre esa pantalla.
     case fotosInicio
+    /// Presión arterial, abierta directo en lo pendiente (la repetición o la toma de hoy). Apagada o sin habilitar, queda en Entreno.
+    case presion
 
     /// `?scene=<escena>` del link (ACC-09): solo una escena que existe; cualquier otra cosa no hace nada (en la web,
     /// una escena inexistente dejaba la app en blanco).
     public init?(escena: String?) {
-        guard let escena, ["train", "diet", "chat", "revision", "progress", "salud", "myday", Estudios.destino, "fotos_inicio"].contains(escena) else { return nil }
+        guard let escena, ["train", "diet", "chat", "revision", "progress", "salud", "myday", Estudios.destino, "fotos_inicio", "presion"].contains(escena) else { return nil }
         self.init(destino: escena)
     }
 
@@ -29,6 +31,7 @@ public enum DestinoAviso: String, Sendable, Equatable {
         case "salud": self = .misDatos
         case Estudios.destino: self = .estudios
         case "fotos_inicio": self = .fotosInicio
+        case "presion": self = .presion
         default: self = .chat
         }
     }

@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.entreno
 
+import com.pumpteam.mypump.presion.TarjetaPresionDe
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -206,6 +207,8 @@ fun ListaEntreno(
                     verticalArrangement = Arrangement.spacedBy(Espacio.l),
                 ) {
                     // «Tu guía» mientras falta ver algo: verde y primera, arriba de todo, como iOS (revisión del 4-nov, hallazgo 5).
+                    // «Tu presión», primer ítem del desplazamiento mientras haya algo para hacer: una tarjeta más, no frena ni condiciona nada.
+                    TarjetaPresionDe(modelo)
                     // La videollamada fija arriba (2.3.0), desde que se agenda hasta que termina (aunque la tarjeta de la
                     // guía esté oculta); con la palanca `elegir_horario`, «Agendá tu videollamada».
                     TarjetaVideollamadaEntreno(modelo)

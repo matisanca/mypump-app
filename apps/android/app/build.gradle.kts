@@ -228,6 +228,7 @@ android {
         getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleEstudios/kotlin"))
         getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleFotosInicio/kotlin"))
         getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleColaA/kotlin"))
+        getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/doblePresion/kotlin"))
     }
 
     packaging {

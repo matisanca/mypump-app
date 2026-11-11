@@ -184,6 +184,20 @@ struct Raiz: View {
             SaludView(datos: datos, alCerrar: { navegacion.saludAbierta = false })
                 .environment(navegacion)
         }
+        // Presión arterial, desde la tarjeta de arriba en Entreno o un aviso. Solo con la sección habilitada: apagada, no se abre nada.
+        .sheet(isPresented: Binding(get: { navegacion.presionAbierta && modelo.presion?.habilitado == true },
+                                    set: { if !$0 { navegacion.presionAbierta = false } })) {
+            if let p = modelo.presion {
+                PresionRaiz(modelo: p, directo: navegacion.presionDirecta, alCerrar: { navegacion.presionAbierta = false })
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        // Un aviso en un arranque en frío llega antes que el estado: se espera un rato y, si la sección no está, se olvida.
+        .task(id: navegacion.presionAbierta) {
+            guard navegacion.presionAbierta, modelo.presion?.habilitado != true else { return }
+            try? await Task.sleep(for: .seconds(20))
+            if !Task.isCancelled, modelo.presion?.habilitado != true { navegacion.presionAbierta = false }
+        }
         // `-pestana salud`: Revisión con la hoja de Salud abierta; el viejo `progreso`, en Fuerza.
         .onAppear {
             if navegacion.pestaña == .salud {
