@@ -14,7 +14,7 @@
 	<!-- Los mismos textos de permisos que la app Capacitor (ios/App/App/Info.plist). La cámara suma el plato y la
 	     etiqueta, que la web también usa con la cámara. -->
 	<key>NSCameraUsageDescription</key>
-	<string>Pump Team usa la cámara para que puedas sacar tus fotos de progreso semanales y, si querés, fotos de tus platos o de etiquetas nutricionales, escanear el código de barras de un alimento, mostrar las máquinas de tu gimnasio para adaptar tu plan, grabar un video de tu técnica o mandarle una foto a Mati por el chat. Tus fotos de progreso las ve únicamente Mati.</string>
+	<string>Pump Team usa la cámara para que puedas sacar tus fotos de progreso semanales y, si querés, fotos de tus platos o de etiquetas nutricionales, escanear el código de barras de un alimento, mostrar las máquinas de tu gimnasio para adaptar tu plan, grabar un video de tu técnica, sacarle una foto a tus estudios o mandarle una foto a Mati por el chat. Tus fotos de progreso las ve únicamente Mati.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Pump Team usa el micrófono cuando grabás un audio para Mati, en el chat o con tus dudas de la guía. Si grabás un video de tu técnica, iOS también lo pide, pero el sonido no se envía.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
