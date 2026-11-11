@@ -31,6 +31,12 @@ class DobleColaA : Transporte {
     @Volatile var registrarRechaza = false
     @Volatile var tokenCaido = false
 
+    /** `mypump_wins_registrar` contesta algo que no se entiende (200 con `[]`). */
+    @Volatile var registrarRaro = false
+
+    /** `mypump_wins_registrar` contesta 400. */
+    @Volatile var registrar400 = false
+
     /** Lo que contesta `mypump_lista_previa` (por defecto, la lista de la demo). */
     @Volatile var lista: String = LISTA_DEMO
     val llamadas = java.util.concurrent.CopyOnWriteArrayList<String>()
@@ -80,6 +86,8 @@ class DobleColaA : Transporte {
             "mypump_wins_registrar" -> when {
                 sinFuncion -> noExiste
                 registrarCaido -> 503 to """{"message":"caído"}"""
+                registrar400 -> 400 to """{"code":"22023","message":"no"}"""
+                registrarRaro -> 200 to "[]"
                 tokenCaido -> 200 to """{"ok":false,"motivo":"token"}"""
                 !palancaWins -> 200 to """{"ok":true,"guardado":false,"motivo":"apagada"}"""
                 !permiso -> 200 to """{"ok":true,"guardado":false,"motivo":"sin_permiso"}"""

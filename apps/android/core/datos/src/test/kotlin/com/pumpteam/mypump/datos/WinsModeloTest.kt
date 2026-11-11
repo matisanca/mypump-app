@@ -207,12 +207,98 @@ class WinsModeloTest {
         val m = armar(d)
         m.refrescar()
         m.encolar(records, "2026-11-10")
-        val primero = m.cola.first().id
-        m.encolar(records, "2026-11-10")
+        val ids = m.cola.map { it.id }
+        // Lo mismo otra vez (rotar la pantalla, reabrir el festejo): no se encola de nuevo ni cambian los ids.
+        assertTrue(m.encolar(records, "2026-11-10"))
+        assertEquals(ids, m.cola.map { it.id })
+        // Mejoró la marca del remo: reemplaza al que no salió, con id nuevo; el curl queda como estaba.
+        val mejor = ReglasWins.records(
+            listOf(ReglasWins.Ejercicio("remo con barra", "Remo con barra", listOf(RecordSerie.Marca(55.0, 8)), listOf(RecordSerie.Marca(60.0, 8)))),
+        )
+        m.encolar(mejor, "2026-11-10")
         assertEquals(2, m.cola.size)
-        assertNotEquals(primero, m.cola.first().id)
+        assertEquals(ids[1], m.cola.first().id)
+        assertNotEquals(ids[0], m.cola.last().id)
+        assertEquals(ValorJson.Numero(60.0), m.cola.last().datos["kg"])
+        // Otro día es otro logro.
         m.encolar(records, "2026-11-11")
         assertEquals(4, m.cola.size)
+        // La racha, igual.
+        assertTrue(m.encolarRacha(7, 9000, "2026-11-10"))
+        val racha = m.cola.last().id
+        assertTrue(m.encolarRacha(7, 9000, "2026-11-10"))
+        assertTrue(m.cola.size == 5 && m.cola.last().id == racha)
+    }
+
+    @Test fun loYaEnviadoEnEstaSesionNoSeMandaDeNuevo(): Unit = runBlocking {
+        val d = DobleColaA.escenario("conPermiso")
+        val m = armar(d)
+        m.refrescar()
+        m.encolar(records, "2026-11-10")
+        m.vaciar()
+        assertTrue(m.cola.isEmpty() && d.registrados.size == 2)
+        // El festejo vuelve a aparecer (rotar el teléfono): nada nuevo en la cola ni en el servidor.
+        assertTrue(m.encolar(records, "2026-11-10"))
+        m.vaciar()
+        assertTrue(m.cola.isEmpty())
+        assertEquals(2, d.registrados.size)
+        assertEquals(2, d.llamadasWins.count { it == "mypump_wins_registrar" })
+        // Con una marca mejor, sí.
+        m.encolar(
+            ReglasWins.records(
+                listOf(ReglasWins.Ejercicio("remo con barra", "Remo con barra", listOf(RecordSerie.Marca(55.0, 8)), listOf(RecordSerie.Marca(60.0, 8)))),
+            ),
+            "2026-11-10",
+        )
+        m.vaciar()
+        assertEquals(3, d.registrados.size)
+    }
+
+    @Test fun loQueElServidorNoEntiendeSaleAlTercerIntento(): Unit = runBlocking {
+        for (caso in listOf("token", "raro", "400")) {
+            val r = raiz()
+            val d = DobleColaA.escenario("conPermiso")
+            val m = armar(d, r)
+            m.refrescar()
+            when (caso) {
+                "token" -> d.tokenCaido = true
+                "raro" -> d.registrarRaro = true
+                else -> d.registrar400 = true
+            }
+            m.encolar(records, "2026-11-10")
+            val ids = m.cola.map { it.id }
+            m.vaciar()
+            assertEquals(listOf(1, 0), m.cola.map { it.intentos }, caso)
+            // Los intentos se guardan: otra vez la app, sigue la cuenta.
+            val m2 = armar(d, r, palanca = null)
+            assertEquals(listOf(1, 0), m2.cola.map { it.intentos }, caso)
+            m2.vaciar()
+            assertEquals(ids, m2.cola.map { it.id }, caso)
+            // Al tercero sale el primero y se sigue con el otro.
+            m2.vaciar()
+            assertEquals(listOf(ids[1]), m2.cola.map { it.id }, caso)
+            assertEquals(1, m2.cola.first().intentos, caso)
+            m2.vaciar()
+            m2.vaciar()
+            assertTrue(m2.cola.isEmpty(), caso)
+            assertTrue(d.registrados.isEmpty() && m2.permiso && m2.prendida, caso)
+            assertEquals(6, d.llamadasWins.count { it == "mypump_wins_registrar" }, caso)
+        }
+    }
+
+    @Test fun laRedCaidaOUn5xxNoCuentanIntentos(): Unit = runBlocking {
+        val d = DobleColaA.escenario("conPermiso").apply { registrarCaido = true }
+        val m = armar(d)
+        m.refrescar()
+        m.encolar(records, "2026-11-10")
+        repeat(5) { m.vaciar() }
+        d.registrarCaido = false
+        d.sinRed = true
+        repeat(5) { m.vaciar() }
+        assertEquals(listOf(0, 0), m.cola.map { it.intentos })
+        d.sinRed = false
+        m.vaciar()
+        assertTrue(m.cola.isEmpty() && d.registrados.size == 2)
     }
 
     @Test fun elServidorRechazaLosDatosYSeDescarta(): Unit = runBlocking {
@@ -232,6 +318,8 @@ class WinsModeloTest {
         m.refrescar()
         d.permiso = false   // lo sacó desde otro teléfono
         m.encolar(records)
+        m.encolarRacha(7, 9000)
+        assertEquals(3, m.cola.size)
         m.vaciar()
         assertTrue(!m.permiso && m.cola.isEmpty())
         assertEquals(1, d.llamadasWins.count { it == "mypump_wins_registrar" })
@@ -248,6 +336,10 @@ class WinsModeloTest {
         m.vaciar()
         m.refrescar()
         assertTrue(m.cola.size == 2 && m.permiso && m.prendida)
+        // Se recupera antes del tercer intento: sale todo.
+        d.tokenCaido = false
+        m.vaciar()
+        assertTrue(m.cola.isEmpty() && d.registrados.size == 2)
     }
 
     @Test fun sinLaFuncionDelServidorSeVaciaLaCola(): Unit = runBlocking {
@@ -261,6 +353,8 @@ class WinsModeloTest {
         d.sinFuncion = true
         m.vaciar()
         assertTrue(m.cola.isEmpty())
+        // PGRST202 al mandar: además deja de estar activa y el permiso se baja (nada que mostrar).
+        assertTrue(!m.prendida && !m.permiso && !m.estado.value.activa)
         // Y al preguntar el estado no queda nada prendido ni dado: no se muestra ni se encola nada.
         m.refrescar()
         assertTrue(!m.prendida && !m.permiso && !m.estado.value.visibleEnMisDatos)

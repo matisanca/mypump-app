@@ -259,7 +259,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
             // «Pump lleno» (2.3.0): la celebración del día, arriba de las pestañas.
             com.pumpteam.mypump.metas.CelebracionPumpRaiz(modelo)
             // «Récords y logros» (2.3.0): el festejo de los récords, después de cerrar la sesión.
-            com.pumpteam.mypump.logros.FestejoRaiz(modelo)
+            com.pumpteam.mypump.logros.FestejoRaiz(modelo, esperar = vm.preguntasEntreno.actual != null)
             // Salud: el diagnóstico que pidió un link con `?diag=health` (SAL-13), arriba de todo.
             DiagnosticoSaludDesdeLink(modelo)
         }

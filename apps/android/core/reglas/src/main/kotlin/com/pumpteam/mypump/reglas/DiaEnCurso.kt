@@ -426,6 +426,8 @@ class DiaEnCurso(
         val vistas = HashSet<String>()
         val entradas = mutableListOf<ReglasWins.Ejercicio>()
         for (ex in lista) {
+            // El calentamiento no hace récords: ni aporta series ni tapa al ejercicio de trabajo que se llama igual.
+            if (ex.tipo == "calentamiento") continue
             val ef = efectivo(ex)
             val nombre = nombreEfectivo(ex.id) ?: ef.nombre
             val clave = ClaveEjercicio.de(nombre)
@@ -435,7 +437,7 @@ class DiaEnCurso(
             val recordKg = anteriores.map { it.kg }.filter { it.isFinite() }.maxOrNull() ?: 0.0
             val marcas = mutableListOf<RecordSerie.Marca>()
             for (l in lista) {
-                if (ClaveEjercicio.de(nombreEfectivo(l.id)) != clave) continue
+                if (l.tipo == "calentamiento" || ClaveEjercicio.de(nombreEfectivo(l.id)) != clave) continue
                 val repsPlan = Progresiones.pauta(efectivo(l), semana).reps
                 ejercicios[l.id]?.series?.forEachIndexed { i, s ->
                     if (!s.confirmada || !esDelEjercicioActual(l.id, s)) return@forEachIndexed
@@ -447,7 +449,7 @@ class DiaEnCurso(
             }
             entradas += ReglasWins.Ejercicio(
                 clave, nombre, anteriores, marcas,
-                sinKg = ReglasEjercicio.sinKg(ef) || ReglasEjercicio.esCardio(ef) || ex.tipo == "calentamiento",
+                sinKg = ReglasEjercicio.sinKg(ef) || ReglasEjercicio.esCardio(ef),
                 suficiente = RecordSerie.historiaSuficiente(h, hoy, zona),
             )
         }

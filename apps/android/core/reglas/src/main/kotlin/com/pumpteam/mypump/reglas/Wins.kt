@@ -122,14 +122,14 @@ object ReglasWins {
     const val PERMISO_TITULO = "¿Compartir tus logros con Mati?"
     val PERMISO_CUERPO = listOf(
         "Cuando logres un récord o una racha de pasos, Mati lo va a ver y lo puede compartir con el equipo de Pump Team.",
-        "Se comparte tu nombre, el ejercicio y la marca. Nunca tus fotos, tu peso ni tus datos de salud.",
+        "Se comparte tu nombre y el logro: el ejercicio y la marca, o los días de tu racha. Nunca tus fotos, tu peso ni otros datos de salud.",
         "Lo podés desactivar cuando quieras en Mis datos. Lo ya compartido no se puede borrar.",
     )
     const val PERMISO_SI = "Sí, compartir"
     const val PERMISO_NO = "Ahora no"
     const val AJUSTE_SECCION = "Logros"
     const val AJUSTE_INTERRUPTOR = "Compartir mis logros con Mati"
-    const val AJUSTE_PIE = "Mati ve tus récords y tus rachas de pasos, y los puede compartir con el equipo de Pump Team. Nunca tus fotos, tu peso ni tus datos de salud."
+    const val AJUSTE_PIE = "Mati ve tus récords y tus rachas de pasos, y los puede compartir con el equipo de Pump Team. Nunca tus fotos, tu peso ni otros datos de salud."
     const val DESACTIVADO = "Listo, no se comparte nada más."
     const val SIN_RED = "No se pudo guardar. Probá de nuevo cuando tengas conexión."
     const val DEMO = "En la demo no se envía nada."

@@ -35,11 +35,17 @@ class ModeloWins(
         /** Fecha local YYYY-MM-DD. */
         val dia: String,
         val datos: ValorJson,
+        /** Las veces que el servidor contestó algo que no sirve (token caído, respuesta rara). A la tercera, sale de la cola. */
+        val intentos: Int = 0,
     ) {
         fun aValor(): ValorJson = ValorJson.objeto(
             "id" to ValorJson.Texto(id), "tipo" to ValorJson.Texto(tipo.valor), "clave" to ValorJson.Texto(clave),
-            "dia" to ValorJson.Texto(dia), "datos" to datos,
+            "dia" to ValorJson.Texto(dia), "datos" to datos, "intentos" to ValorJson.Numero(intentos.toDouble()),
         )
+
+        /** El mismo logro: tipo, clave, día y datos (el id no cuenta). */
+        fun igualA(tipo: ReglasWins.Tipo, clave: String, dia: String, datos: ValorJson): Boolean =
+            this.tipo == tipo && this.clave == clave && this.dia == dia && this.datos == datos
 
         companion object {
             /** Lo que no se entiende (un tipo de otra versión, un archivo tocado) se descarta. */
@@ -49,7 +55,8 @@ class ModeloWins(
                 val clave = j["clave"]?.comoTexto?.takeIf { it.isNotEmpty() } ?: return null
                 val dia = j["dia"]?.comoTexto?.takeIf { it.length == 10 } ?: return null
                 val datos = j["datos"] as? ValorJson.Objeto ?: return null
-                return Logro(id, tipo, clave, dia, datos)
+                val intentos = j["intentos"]?.comoNumero?.takeIf { it.isFinite() && it >= 0 && it < TOPE_INTENTOS }?.toInt() ?: 0
+                return Logro(id, tipo, clave, dia, datos, intentos)
             }
         }
     }
@@ -86,6 +93,9 @@ class ModeloWins(
     val palancaRecordada: Boolean get() = _estado.value.palanca
 
     private var vaciando = false
+
+    /** Lo que el servidor ya recibió en esta sesión de la app: reabrir el festejo no lo manda de nuevo. */
+    private val enviados = ArrayList<Logro>()
 
     private fun leer(): Estado {
         val j = disco?.leer(ARCHIVO)?.let(ValorJson::desde) ?: return Estado()
@@ -185,11 +195,17 @@ class ModeloWins(
         return true
     }
 
-    /** Uno por tipo, clave y día (como el servidor): el mismo logro otra vez reemplaza al que todavía no salió. */
-    private fun agregar(cola: List<Logro>, tipo: ReglasWins.Tipo, clave: String, dia: String, datos: ValorJson): List<Logro> =
+    /**
+     * Uno por tipo, clave y día (como el servidor). El mismo logro con los mismos datos, en la cola o ya enviado en esta
+     * sesión, no se encola otra vez (rotar la pantalla o reabrir el festejo no genera ids nuevos). Con datos distintos
+     * (mejoró la marca) reemplaza al que todavía no salió, con id nuevo.
+     */
+    private fun agregar(cola: List<Logro>, tipo: ReglasWins.Tipo, clave: String, dia: String, datos: ValorJson): List<Logro> {
+        if (cola.any { it.igualA(tipo, clave, dia, datos) } || enviados.any { it.igualA(tipo, clave, dia, datos) }) return cola
         // Tope: lo más viejo se descarta.
-        (cola.filterNot { it.tipo == tipo && it.clave == clave && it.dia == dia } + Logro(UUID.randomUUID().toString(), tipo, clave, dia, datos))
+        return (cola.filterNot { it.tipo == tipo && it.clave == clave && it.dia == dia } + Logro(UUID.randomUUID().toString(), tipo, clave, dia, datos))
             .takeLast(TOPE_COLA)
+    }
 
     /**
      * Manda lo que haya: al encolar, al abrir la app y al volver al frente. Lo que el servidor contesta (guardado o no) sale
@@ -210,23 +226,33 @@ class ModeloWins(
                 )
                 when (r) {
                     is Resultado.Ok -> {
+                        val ok = (r.valor["ok"] as? ValorJson.Booleano)?.valor
                         val motivo = r.valor["motivo"]?.comoTexto
                         when {
-                            r.valor["ok"] == ValorJson.Booleano(true) && motivo == "sin_permiso" -> {
+                            // Sin permiso (lo sacó desde otro lado): se recuerda y se vacía toda la cola.
+                            motivo == "sin_permiso" -> {
                                 fijarPermiso(false)
                                 return
                             }
                             // Guardado o no (`apagada`, `fecha`, `tope`): el servidor ya contestó, no se reintenta.
-                            r.valor["ok"] == ValorJson.Booleano(true) || motivo == "datos" -> quitar(l)
-                            else -> return   // token caído u otra respuesta: no se pierde nada, se verá en la próxima
+                            ok == true -> {
+                                recordarEnviado(l)
+                                quitar(l)
+                            }
+                            ok == false && motivo == "datos" -> quitar(l)
+                            // Token caído u otra respuesta que no se entiende: se reintenta, y a la tercera sale.
+                            else -> if (!fallo(l)) return
                         }
                     }
                     is Resultado.Falla -> when {
+                        // El servidor no tiene la función: nada que mandar ni que mostrar.
                         r.error.funcionInexistente -> {
-                            fijar(_estado.value.copy(cola = emptyList()))
+                            fijarPermiso(false, activa = false)
                             return
                         }
-                        r.error.clase == ErrorRpc.Clase.PERMANENTE -> quitar(l)   // el servidor lo rechazó: reintentar no lo arregla
+                        // Un rechazo que no es de red ni un 5xx: cuenta como intento fallido.
+                        r.error.clase == ErrorRpc.Clase.PERMANENTE -> if (!fallo(l)) return
+                        // Red caída o 5xx: queda para después, sin contar intentos.
                         else -> return
                     }
                 }
@@ -236,11 +262,27 @@ class ModeloWins(
         }
     }
 
+    /** Un intento fallido de [l]. true si con este se agotaron y salió de la cola (se sigue con el próximo). */
+    private fun fallo(l: Logro): Boolean {
+        if (l.intentos + 1 >= TOPE_INTENTOS) {
+            quitar(l)
+            return true
+        }
+        fijar(_estado.value.copy(cola = _estado.value.cola.map { if (it.id == l.id) it.copy(intentos = l.intentos + 1) else it }))
+        return false
+    }
+
+    private fun recordarEnviado(l: Logro) {
+        enviados += l
+        if (enviados.size > TOPE_COLA) enviados.removeAt(0)
+    }
+
     private fun quitar(l: Logro) = fijar(_estado.value.copy(cola = _estado.value.cola.filterNot { it.id == l.id }))
 
     companion object {
         const val ARCHIVO = "wins.json"
         const val TOPE_COLA = 50
+        const val TOPE_INTENTOS = 3
         const val PLATAFORMA = "android"
         const val CLAVE_PASOS = "pasos"
     }

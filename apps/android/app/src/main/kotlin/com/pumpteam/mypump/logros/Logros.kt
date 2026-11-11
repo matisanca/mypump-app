@@ -127,8 +127,13 @@ object WinsUI {
 
 /** En la raíz, arriba de las pestañas: presenta el festejo cuando hay uno. */
 @Composable
-fun FestejoRaiz(modelo: ModeloApp) {
+fun FestejoRaiz(modelo: ModeloApp, esperar: Boolean = false) {
     val records = EstadoFestejo.mostrando ?: return
+    // Con una pregunta de Entreno abierta («¡Día completado!», avanzar de semana) el festejo espera: sale cuando se
+    // contesta, sin taparla. Una vez abierto, ya no se esconde.
+    var abierto by remember(records) { mutableStateOf(false) }
+    LaunchedEffect(records, esperar) { if (!esperar) abierto = true }
+    if (!abierto) return
     // Con la palanca apagada (o la cuenta que cambió) no se festeja nada.
     if (!WinsUI.activo(modelo)) {
         LaunchedEffect(Unit) { EstadoFestejo.soltar() }

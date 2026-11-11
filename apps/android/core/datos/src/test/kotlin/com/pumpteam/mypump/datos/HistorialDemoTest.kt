@@ -160,6 +160,43 @@ class HistorialDemoTest {
         assertTrue(m.registroMetas.value.celebrados.isEmpty())
     }
 
+    @Test fun elCalentamientoQueSeLlamaIgualNoTapaAlEjercicioDeTrabajo() = enUnHilo { alcance ->
+        val m = ModeloApp(ClienteRpc(transporte = Espia()), TokenEnMemoria(null), carpetaTemporal("demo-cal"), PreferenciasEnMemoria(), alcance)
+        val rutina = Compartido.texto("demo/rutina.json")
+        val e0 = run {
+            m.entrarEnDemo(rutina, Compartido.texto("demo/dieta.json"), historial = Compartido.texto("demo/historial.json"))
+            m.entreno.value!!.also { it.cargar() }
+        }
+        val trabajo = e0.dia.value.lista.first { it.tipo != "calentamiento" }
+        val calentamiento = e0.dia.value.lista.first { it.tipo == "calentamiento" }
+        // La misma rutina, con el primer calentamiento llamado igual que el primer ejercicio de trabajo.
+        assertTrue(rutina.contains("\"${calentamiento.nombre}\""))
+        m.entrarEnDemo(
+            rutina.replace("\"${calentamiento.nombre}\"", "\"${trabajo.nombre}\""), Compartido.texto("demo/dieta.json"),
+            historial = Compartido.texto("demo/historial.json"),
+        )
+        val e = m.entreno.value!!
+        e.cargar()
+        e.precargarHistorial()
+        e.pedirHistorial(calentamiento.id)
+        e.pedirHistorial(trabajo.id)
+        assertEquals(trabajo.nombre, e.dia.value.lista.first { it.id == calentamiento.id }.nombre)
+        val tope = m.demoHistorial.value!!.porClave[ClaveEjercicio.de(trabajo.nombre)]!!.mapNotNull { it.pesoKg }.max()
+        // Una serie del calentamiento con más kg que el récord: no es un récord ni cuenta para el de trabajo.
+        e.escribir(calentamiento.id, 0, "kg", (tope + 20).toString())
+        e.escribir(calentamiento.id, 0, "reps", "10")
+        e.confirmarSerie(calentamiento.id, 0) { true }
+        assertTrue(e.recordsDeHoy().isEmpty(), e.recordsDeHoy().toString())
+        // Y el de trabajo sí festeja el suyo, con su marca.
+        e.escribir(trabajo.id, 0, "kg", (tope + 2.5).toString())
+        e.escribir(trabajo.id, 0, "reps", "8")
+        e.confirmarSerie(trabajo.id, 0) { true }
+        val records = e.recordsDeHoy()
+        assertEquals(1, records.size)
+        assertEquals("+2,5 kg", records.first().chip)
+        assertEquals(tope + 2.5, records.first().kg)
+    }
+
     @Test fun sinElHistorialLaDemoQuedaComoAntes() = enUnHilo { alcance ->
         val m = ModeloApp(ClienteRpc(transporte = Espia()), TokenEnMemoria(null), carpetaTemporal("demo-sin"), PreferenciasEnMemoria(), alcance)
         m.entrarEnDemo(Compartido.texto("demo/rutina.json"), Compartido.texto("demo/dieta.json"))
