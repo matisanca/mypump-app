@@ -3,7 +3,7 @@
 desde el archivo aprobado, y el md5 esperado se pasa a mano para que un archivo equivocado no entre.
 
 Uso (con el rol dueño, no con firma_srv):
-  FIRMA_DB_ADMIN_URL=postgresql://... python tools/cargar_plantillas.py servicio_ar v12 /ruta/A_v12.md <md5 esperado> [--ensayo]
+  FIRMA_DB_ADMIN_URL=postgresql://... python tools/cargar_plantillas.py servicio_ar v13 /ruta/A_v13.md <md5 esperado> [--ensayo]
 
 `--ensayo` hace todo y termina en ROLLBACK. Una versión ya cargada con el mismo texto no se vuelve a cargar."""
 import hashlib
@@ -23,7 +23,10 @@ TIPOS = ("servicio_ar", "servicio_ext", "consentimiento_ar")
 #   - exterior: cláusula 9 sin «garantía» ni extinción automática; cláusula 14 con el criterio de Argentina fuera de
 #     Europa y, para la UE, el EEE y el Reino Unido, pago solo de lo ya prestado; teléfono del Prestador en la 10.2;
 #   - «no grabar la videollamada» (ya no «las sesiones»).
-# Las frases se comparan sin distinguir mayúsculas ni saltos de línea. Vigentes: servicio_ar v12, servicio_ext v7.
+# Las frases se comparan sin distinguir mayúsculas ni saltos de línea. Vigentes: servicio_ar v13, servicio_ext v8.
+#   - (v13/v8) el plazo del Programa corre desde el envío de la planificación, no desde la videollamada ni por el mero
+#     paso del tiempo; exterior: falta de pago con aviso y fecha de corte, y revocación con inicio anticipado que
+#     descuenta planificación más días.
 #   - (v12/v7) compromiso de continuidad con tope de un mes; caducidad por falta de inicio (AR 8.4) con tope del 40 %;
 #     exterior con Anexo I (plan, objetivo, precio y su composición), diez días de revocación para todos, sin reclamo
 #     de diferencia al europeo, y cláusulas 6 y 8.1 equilibradas.
@@ -34,7 +37,10 @@ RETIRADAS = {
                     "14.2. desistimiento del cliente",
                     "ni difundir las sesiones",
                     "por un máximo de tres (3) meses adicionales",
-                    "hasta el tope del treinta por ciento (30 %) del precio total del anexo i, y devuelve el excedente, si lo hubiera"),
+                    "hasta el tope del treinta por ciento (30 %) del precio total del anexo i, y devuelve el excedente, si lo hubiera",
+                    "hasta la llamada de entrega no corre el plazo del programa",
+                    "su entrega por escrito y en la llamada de entrega",
+                    "si usted no inicia el programa dentro de"),
     "servicio_ext": ("sesiones de coaching individual",
                      "la asistencia a la totalidad de las sesiones de coaching",
                      "con devolución de lo abonado cuando la prestación del servicio no hubiera comenzado. a modo de referencia",
@@ -46,6 +52,10 @@ RETIRADAS = {
                      "no libera al cliente de las cuotas vencidas e impagas",
                      "por un máximo de tres (3) meses adicionales",
                      "que el cliente acepta como prueba suficiente",
+                     "el programa se tendrá por iniciado a todos los efectos",
+                     "el servicio comienza al vencer ese plazo",
+                     "podrá resolver el contrato de pleno derecho",
+                     "el precio de esa planificación (anexo i, punto i), y nada más",
                      "el cliente adeuda solo la diferencia",
                      "dentro del plazo que le reconozca la normativa de defensa del consumidor de su país de residencia, que este contrato no reduce"),
 }
@@ -60,6 +70,7 @@ EXIGIDAS = {
                     "botón de revocación",
                     "por un máximo de un (1) mes adicional",
                     "hasta el tope del cuarenta por ciento (40 %) del precio total del anexo i",
+                    "hasta el envío de la planificación inicial no corre el plazo del programa",
                     "si la terminación se comunica antes de la entrega de la planificación inicial (cláusula 10.3 c), el prestador conserva lo abonado solo hasta el tope del treinta por ciento (30 %)",
                     "si la resolución ocurre antes de la entrega de la planificación inicial (cláusula 10.3 c), el prestador conserva lo abonado solo hasta el tope del treinta por ciento (30 %)",
                     "ni difundir la videollamada"),
@@ -80,6 +91,8 @@ EXIGIDAS = {
                      "no se aplican a la muerte ni a los daños personales",
                      "acreditan los pagos y no modifican lo pactado",
                      "anexo ii — modelo de formulario de desistimiento",
+                     "el programa se inicia el día en que el prestador envía por escrito al cliente su planificación inicial",
+                     "la fecha de corte no puede ser anterior",
                      "las sumas abonadas hasta esa comunicación no se reembolsan",
                      "a estos clientes no se les aplica la cláusula 14.2",
                      "abona únicamente el precio de lo ya prestado",

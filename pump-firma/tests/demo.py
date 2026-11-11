@@ -42,7 +42,7 @@ db, puerto = sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 8799
 DATOS = tempfile.mkdtemp(prefix="pump-firma-demo-")
 os.makedirs(os.path.join(DATOS, "privado"))
 fuentes = os.environ.get("PUMP_FIRMA_FUENTES")
-archivos = ({"servicio_ar": "A_v12.md", "servicio_ext": "E_v7.md", "consentimiento_ar": "B_consentimiento_medico.md"} if fuentes
+archivos = ({"servicio_ar": "A_v13.md", "servicio_ext": "E_v8.md", "consentimiento_ar": "B_consentimiento_medico.md"} if fuentes
             else {t: t + ".md" for t in cargar_plantillas.TIPOS})
 with psycopg.connect(db, prepare_threshold=None) as c:
     for tipo, nombre in archivos.items():
