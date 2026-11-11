@@ -515,6 +515,11 @@ class ModeloApp(
         // Lo médico tampoco se queda: ni los estudios que esperaban salir, ni lo elegido, ni lo que se bajó para ver.
         _estudios.value?.borrarTodo()
         raizCache?.let { ColaEstudios.limpiarCache(it) }
+        // Presión, fotos de inicio y molestias, como el outbox: lo que se ve se borra; lo que espera salir queda en la carpeta
+        // de esta cuenta y sale al volver a entrar con el mismo link.
+        _presion.value?.olvidarAlSalir()
+        _fotosInicio.value?.olvidarAlSalir()
+        _feedback.value?.olvidarAlSalir()
         soltarCuentaEnMemoria()
         _entreno.value = null
         _rutina.value = null

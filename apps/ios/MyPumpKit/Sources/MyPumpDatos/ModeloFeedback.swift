@@ -21,6 +21,8 @@ public final class ModeloFeedback {
     @ObservationIgnored private var esMuestra = false
     /// Cuenta las escrituras: una lectura que salió antes de una escritura no pisa lo que esa escritura dejó.
     @ObservationIgnored private var escrituras = 0
+    /// Se cerró sesión: no se vuelve a pedir ni a guardar nada de esta cuenta.
+    @ObservationIgnored private var cerrada = false
 
     static let archivo = "feedback-estado.json"
 
@@ -43,10 +45,10 @@ public final class ModeloFeedback {
     // MARK: Servidor
 
     public func refrescar() async {
-        if esMuestra { return }
+        if esMuestra || cerrada { return }
         let antes = escrituras
         let r = await cliente.llamar("mypump_feedback_get", ["p_token": .texto(token)])
-        if escrituras != antes || !marcando.isEmpty { return }   // la próxima lectura trae lo nuevo
+        if cerrada || escrituras != antes || !marcando.isEmpty { return }   // la próxima lectura trae lo nuevo
         switch r {
         case .success(.null):
             estado = nil
@@ -64,6 +66,14 @@ public final class ModeloFeedback {
     }
 
     public func apagar() { estado = nil; marcando = [] }
+
+    /// Cerrar sesión: las molestias avisadas y las marcas de suplementos (lo que se ve) se borran del teléfono. No hay nada
+    /// pendiente que conservar: «Me duele» y las marcas salen directo, sin cola (si no salen, se avisa en la pantalla).
+    public func olvidarAlSalir() {
+        cerrada = true
+        apagar()
+        disco?.borrar(Self.archivo)
+    }
 
     /// Avisa una molestia. `id` lo pone quien llama y lo repite en cada reintento: el servidor no duplica.
     public func avisar(id: String, ejercicioId: String, ejercicioNombre: String, diaId: String?, _ b: ReglasMolestia.Borrador, version: String?) async -> Resultado {

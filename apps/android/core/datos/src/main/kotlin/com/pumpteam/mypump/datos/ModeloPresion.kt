@@ -275,6 +275,8 @@ class ModeloPresion(
 
     private val drenando = Mutex()
     @Volatile private var apagado = false
+    /** Se cerró sesión: no se vuelve a pedir, mostrar, mandar ni guardar el estado de esta cuenta. */
+    @Volatile private var cerrada = false
 
     init {
         var c = _local.value
@@ -378,7 +380,10 @@ class ModeloPresion(
     private val zona: String get() = ZoneId.systemDefault().id
 
     suspend fun refrescar() {
-        when (val r = cliente.llamar("mypump_presion_get", mapOf("p_token" to ValorJson.Texto(token), "p_zona" to ValorJson.Texto(zona)))) {
+        if (cerrada) return
+        val r = cliente.llamar("mypump_presion_get", mapOf("p_token" to ValorJson.Texto(token), "p_zona" to ValorJson.Texto(zona)))
+        if (cerrada) return
+        when (r) {
             is Resultado.Ok -> if (r.valor == ValorJson.Nulo) _estado.value = null else aplicar(r.valor)
             is Resultado.Falla -> {
                 if (r.error.funcionInexistente || r.error.status == 404 || r.error.clase == ErrorRpc.Clase.PERMANENTE) {
@@ -394,6 +399,7 @@ class ModeloPresion(
 
     /** El estado que devuelve el servidor (en `get` y en cada escritura). */
     private fun aplicar(j: ValorJson) {
+        if (cerrada) return
         val e = EstadoPresion.desde(j)
         if (e == null) {
             apagar()
@@ -408,6 +414,20 @@ class ModeloPresion(
     fun apagar() {
         _estado.value = null
         apagado = true
+    }
+
+    /**
+     * Cerrar sesión, con el mismo criterio que el outbox: lo que se ve (el estado del servidor, la sesión en curso con su
+     * temporizador) se borra del teléfono; lo anotado que todavía no salió queda en `presion-cola.json` de la carpeta de esa
+     * cuenta y sale al volver a entrar con el mismo link. Con otro link es otra carpeta: no se ve ni se manda. Una pasada en
+     * curso se corta en el próximo paso. Gemelo de `olvidarAlSalir` en ModeloPresion.swift.
+     */
+    fun olvidarAlSalir() {
+        cerrada = true
+        apagar()
+        _local.update { it.copy(enCurso = null) }
+        guardar()
+        disco?.borrar(ARCHIVO_ESTADO)
     }
 
     private suspend fun escribir(funcion: String, parametros: Map<String, ValorJson>): Salida {
@@ -620,10 +640,10 @@ class ModeloPresion(
 
     /** En orden y de a uno. Sin red, 5xx o 429: corta y queda para después. 4xx u `ok: false`: se descarta y se refresca el estado. */
     suspend fun drenar() {
-        if (_estado.value == null || !drenando.tryLock()) return
+        if (cerrada || _estado.value == null || !drenando.tryLock()) return
         try {
             var refrescarAlFinal = false
-            while (_estado.value != null) {
+            while (_estado.value != null && !cerrada) {
                 val envio = _local.value.envios.firstOrNull() ?: break
                 val r = when {
                     envio.sesion != null -> cliente.llamar(
@@ -673,7 +693,15 @@ class ModeloPresion(
         guardar()
     }
 
-    private fun guardar(): Boolean = disco?.guardar(ColaPresion.ARCHIVO, _local.value.aValor()) ?: false
+    private fun guardar(): Boolean {
+        val d = disco ?: return false
+        // Al cerrar sesión no queda un archivo vacío: solo lo que espera salir.
+        if (cerrada && _local.value.envios.isEmpty()) {
+            d.borrar(ColaPresion.ARCHIVO)
+            return true
+        }
+        return d.guardar(ColaPresion.ARCHIVO, _local.value.aValor())
+    }
 
     companion object {
         private const val ARCHIVO_ESTADO = "presion-estado.json"

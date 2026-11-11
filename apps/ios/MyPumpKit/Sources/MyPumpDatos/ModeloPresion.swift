@@ -206,6 +206,8 @@ public final class ModeloPresion {
     @ObservationIgnored private let ahora: @Sendable () -> Date
     @ObservationIgnored private var drenando = false
     @ObservationIgnored private var apagado = false
+    /// Se cerró sesión: no se vuelve a pedir, mostrar, mandar ni guardar el estado de esta cuenta.
+    @ObservationIgnored private var cerrada = false
 
     static let archivoEstado = "presion-estado.json"
     /// Un envío se conserva 30 días (también sin el servidor nuevo: un 404 o PGRST202 no borra la cola).
@@ -294,7 +296,10 @@ public final class ModeloPresion {
     private var zona: String { TimeZone.current.identifier }
 
     public func refrescar() async {
-        switch await cliente.llamar("mypump_presion_get", ["p_token": .texto(token), "p_zona": .texto(zona)]) {
+        if cerrada { return }
+        let r = await cliente.llamar("mypump_presion_get", ["p_token": .texto(token), "p_zona": .texto(zona)])
+        if cerrada { return }
+        switch r {
         case .success(.null):
             estado = nil
         case .success(let j):
@@ -311,6 +316,7 @@ public final class ModeloPresion {
 
     /// El estado que devuelve el servidor (en `get` y en cada escritura).
     private func aplicar(_ j: JSONValue) {
+        if cerrada { return }
         guard let e = EstadoPresion(j) else { apagar(); disco?.borrar(Self.archivoEstado); return }
         apagado = false
         estado = e
@@ -318,6 +324,19 @@ public final class ModeloPresion {
     }
 
     public func apagar() { estado = nil; apagado = true }
+
+    /// Cerrar sesión, con el mismo criterio que el outbox: lo que se ve (el estado del servidor, la sesión en curso con su
+    /// temporizador) se borra del teléfono; lo anotado que todavía no salió queda en `presion-cola.json` de la carpeta de esa
+    /// cuenta y sale al volver a entrar con el mismo link. Con otro link es otra carpeta: no se ve ni se manda. Una pasada en
+    /// curso se corta en el próximo paso.
+    public func olvidarAlSalir() {
+        cerrada = true
+        estado = nil
+        apagado = true
+        local.enCurso = nil
+        guardar()
+        disco?.borrar(Self.archivoEstado)
+    }
 
     private func escribir(_ funcion: String, _ parametros: [String: JSONValue]) async -> Resultado {
         guard estado != nil else { return .error }
@@ -523,11 +542,11 @@ public final class ModeloPresion {
 
     /// En orden y de a uno. Sin red, 5xx o 429: corta y queda para después. 4xx u `ok: false`: se descarta y se refresca el estado.
     public func drenar() async {
-        guard !drenando, estado != nil else { return }
+        guard !drenando, !cerrada, estado != nil else { return }
         drenando = true
         defer { drenando = false }
         var refrescarAlFinal = false
-        while let envio = local.envios.first, estado != nil {
+        while let envio = local.envios.first, estado != nil, !cerrada {
             let r: Result<JSONValue, ErrorRPC>
             if let s = envio.sesion {
                 r = await cliente.llamar("mypump_presion_sesion", ["p_token": .texto(token), "p_sesion": Self.json(s, texto: envio.textoAlumno ?? "ninguno", retomada: envio.retomada == true)])
@@ -566,6 +585,8 @@ public final class ModeloPresion {
 
     @discardableResult private func guardar() -> Bool {
         guard let disco else { return false }
+        // Al cerrar sesión no queda un archivo vacío: solo lo que espera salir.
+        if cerrada, local.envios.isEmpty { disco.borrar(ColaPresion.archivo); return true }
         return disco.guardar(local, ColaPresion.archivo)
     }
 

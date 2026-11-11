@@ -291,6 +291,11 @@ public final class ModeloApp {
         borrarCodigosDelDisco()
         // Lo médico tampoco se queda: ni los estudios que esperaban salir, ni lo elegido, ni lo que se bajó para ver.
         estudios?.borrarTodo()
+        // Presión, fotos de inicio y molestias, como el outbox: lo que se ve se borra; lo que espera salir queda en la carpeta
+        // de esta cuenta y sale al volver a entrar con el mismo link.
+        presion?.olvidarAlSalir()
+        fotosInicio?.olvidarAlSalir()
+        feedback?.olvidarAlSalir()
         token = nil
         disco = nil
         registroMetas = PumpDelDia.Registro()
