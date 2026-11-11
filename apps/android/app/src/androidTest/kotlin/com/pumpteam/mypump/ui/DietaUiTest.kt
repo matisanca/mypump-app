@@ -47,7 +47,10 @@ class DietaUiTest : PruebaUi() {
         assertEquals(listOf("Pan integral", "Cantidad de Pan integral: 80 g", "200 kcal", "P 8  ·  C 38  ·  G 2"), p.textosBajo(etiqueta("alimento-c1-0")))
         assertEquals(listOf("Cantidad de Palta: 0,5 u", "160 kcal"), p.textosBajo(etiqueta("alimento-c1-2")).subList(1, 3))
         p.nodo(texto("468"))
-        p.nodo(texto("Con las opciones elegidas: 2.203 kcal (-10 %)"))
+        // Con lo que dice de verdad en el mensaje si no coincide.
+        p.nodo(etiqueta("opciones-elegidas"))
+        p.quieto(600)
+        assertEquals(listOf("Con las opciones elegidas: 2.203 kcal (-10 %)"), p.textosBajo(etiqueta("opciones-elegidas")))
         // La elegida sigue al ir a otra pestaña y volver (vive en memoria, como en la web).
         p.tocar(etiqueta("pestana-entreno"))
         p.esperarQueNoEste(etiqueta("dieta-cabecera"))

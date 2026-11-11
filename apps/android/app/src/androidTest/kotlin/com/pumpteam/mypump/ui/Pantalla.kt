@@ -255,8 +255,15 @@ class Pantalla(private val esperaMs: Long = 15_000) {
 
     fun habilitado(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsProperties.Disabled) == null }
 
-    /** Si el nodo mismo se toca (tiene acción de toque): una fila que «no se abre» no la tiene. [tocar] busca también en los padres. */
-    fun tocable(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsActions.OnClick) != null }
+    /**
+     * Si tocarlo hace algo: el nodo o alguno de sus padres tiene acción de toque habilitada, lo mismo que busca [tocar]. Una
+     * fila que «no se abre» no la tiene en ningún lado.
+     */
+    fun tocable(s: Selector): Boolean = leer(s) { n ->
+        generateSequence(n) { it.parent }.any {
+            it.config.getOrNull(SemanticsActions.OnClick) != null && it.config.getOrNull(SemanticsProperties.Disabled) == null
+        }
+    }
 
     fun prendido(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsProperties.ToggleableState) == ToggleableState.On }
 

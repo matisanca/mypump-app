@@ -584,9 +584,12 @@ class CheckGuiadoUiTest : PruebaUi() {
         }
         val (tarjeta, boton, recuperacion, progreso, fotos) = m
         val lista = m[5]
-        assertTrue("arriba de Recuperación", tarjeta.bottom <= recuperacion.top)
-        assertTrue("arriba de Tu progreso", tarjeta.bottom <= progreso.top)
-        assertTrue("arriba de las fotos", tarjeta.bottom <= fotos.top)
+        // Lo que la lista perezosa compuso por adelantado y todavía no ubicó (más abajo de la pantalla) tiene bordes vacíos:
+        // con la lista sin desplazar, eso también queda debajo de la tarjeta («Cómo vengo» va después de fotos y check).
+        fun debajo(r: androidx.compose.ui.geometry.Rect) = r.isEmpty || tarjeta.bottom <= r.top
+        assertTrue("arriba de Recuperación: tarjeta $tarjeta, recuperación $recuperacion", debajo(recuperacion))
+        assertTrue("arriba de Tu progreso: $progreso", debajo(progreso))
+        assertTrue("arriba de las fotos: $fotos", debajo(fotos))
         assertTrue("entera a la vista sin deslizar", tarjeta.top >= lista.top && tarjeta.bottom <= lista.bottom)
         val densidad = InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density
         assertTrue("el botón mide al menos 58 de alto", boton.height >= 58f * densidad - 1f)
