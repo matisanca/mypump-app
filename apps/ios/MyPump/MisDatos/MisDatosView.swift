@@ -125,9 +125,10 @@ struct MisDatosView: View {
                     .accessibilityIdentifier("mis-datos-guia")
                 }
                 if let est = modelo.estudios, est.habilitado {
-                    // Con el punto de «Novedad», la fila lleva directo a lo nuevo (como el aviso y la tarjeta de Entreno).
+                    // Como en Android, la fila siempre enfoca: lo nuevo si hay (como el aviso y la tarjeta de Entreno) o, si no,
+                    // lo primero que falta (`Estudios.ancla`). Siempre igual, no según cómo se abrió antes.
                     FilaEstudiosMisDatos(modelo: est) {
-                        if est.hayNovedad { enfocarEstudios += 1 }
+                        enfocarEstudios += 1
                         verEstudios = true
                     }
                 }

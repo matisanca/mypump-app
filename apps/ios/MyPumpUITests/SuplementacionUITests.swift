@@ -53,7 +53,9 @@ final class SuplementacionUITests: XCTestCase {
         let progreso = app.buttons["tarjeta-progreso-revision"]
         XCTAssertTrue(progreso.exists, "Falta la tarjeta Tu progreso")
         // La demo con historial (cola A) ya trae récords de la semana.
-        XCTAssertTrue(progreso.label.contains("Tu progreso"), "La tarjeta de progreso dice otra cosa: \(progreso.label)")
+        XCTAssertFalse(progreso.label.contains("Tu fuerza y tus récords, ejercicio por ejercicio"),
+                       "Con historial no va el texto genérico: \(progreso.label)")
+        XCTAssertTrue(progreso.label.contains("esta semana"), "La tarjeta no dice la semana: \(progreso.label)")
         tarjeta.tap()
         XCTAssertTrue(app.descendants(matching: .any)["segmento-salud"].waitForExistence(timeout: 5), "No abrió Salud")
         captura("suplementacion-salud-desde-revision")
