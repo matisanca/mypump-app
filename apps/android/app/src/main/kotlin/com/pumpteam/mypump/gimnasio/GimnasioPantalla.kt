@@ -134,13 +134,14 @@ fun TarjetaGimnasioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     // Con un borrador de casa la tarjeta no habla de zonas ni de fotos.
     val casa by modelo.casa.collectAsStateWithLifecycle()
     val estadoCasa = casa?.estado?.collectAsStateWithLifecycle()?.value
-    if (!m.tarjetaVisible) return
+    // «¿Entrenás en casa? Tocá acá»: mientras no entrene en casa y se pueda cambiar, un botón grande que lleva al interruptor.
+    // Va también con el gimnasio ya cargado (sin la tarjeta): nadie queda a tres toques.
+    val ofrecerCasa = estadoCasa?.let { Casa.interruptor(it) }?.let { !it.prendido && it.sePuedeMover } == true
+    if (!m.tarjetaVisible && !ofrecerCasa) return
     val c = MyPump.colores
     val navegacion = LocalNavegacion.current
-    // «¿Entrenás en casa? Tocá acá»: mientras no entrene en casa y se pueda cambiar, un botón grande que lleva al interruptor.
-    val ofrecerCasa = estadoCasa?.let { Casa.interruptor(it) }?.let { !it.prendido && it.sePuedeMover } == true
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-    Row(
+    if (m.tarjetaVisible) Row(
         Modifier
             .fillMaxWidth()
             .superficieTarjeta()

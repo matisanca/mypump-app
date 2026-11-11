@@ -14,7 +14,10 @@ struct TarjetaGimnasio: View {
 
     var body: some View {
         // Si está abierta queda en pie aunque deje de hacer falta: si no, la hoja se cierra antes de ver «Recibido».
-        if let m = app.gimnasio, m.tarjetaVisible || abierta {
+        if let m = app.gimnasio, m.tarjetaVisible || abierta || ofrecerCasa {
+            VStack(spacing: Espacio.xs) {
+            // Con el gimnasio ya cargado la tarjeta no va, pero el botón de casa sí: nadie queda a tres toques.
+            if m.tarjetaVisible || (abierta && !ofrecerCasa) {
             Button { abierta = true } label: {
                 HStack(spacing: Espacio.s) {
                     Image(systemName: "dumbbell.fill")
@@ -37,11 +40,26 @@ struct TarjetaGimnasio: View {
             .buttonStyle(FilaPresionable())
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("gimnasio-tarjeta")
+            }
+            // «¿Entrenás en casa? Tocá acá» (2.3.0): mientras no entrene en casa y se pueda cambiar, un botón grande que
+            // abre Tu gimnasio con el interruptor arriba de todo. Así queda a dos toques.
+            if ofrecerCasa {
+                Button(TextosColaB.Casa.tarjeta) { abierta = true }
+                    .buttonStyle(BotonSecundario(tono: .marcaTexto))
+                    .accessibilityIdentifier("casa-tarjeta")
+            }
+            }
             .sheet(isPresented: $abierta) {
                 GimnasioRaiz(modelo: m, alCerrar: { abierta = false })
                     .presentationDragIndicator(.visible)
             }
         }
+    }
+
+    /// Palanca `casa` prendida, habilitado para la cuenta, y el interruptor apagado y libre.
+    private var ofrecerCasa: Bool {
+        guard app.palanca.casa, app.gimnasio?.estado != nil, let c = app.casa, c.visible else { return false }
+        return !c.prendido && !c.fijo
     }
 
     private func detalle(_ m: ModeloGimnasio) -> String {
