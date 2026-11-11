@@ -8,14 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -27,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,9 +52,11 @@ import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.Tarjeta
+import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.raiz.Navegacion
 import com.pumpteam.mypump.reglas.Presion
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Un círculo por toma, lleno o vacío. Sin promedios ni colores de riesgo. */
 @Composable
@@ -98,6 +97,7 @@ internal fun PresionRaiz(modelo: ModeloPresion, directo: Boolean, alDirectoHecho
     val estado by modelo.estado.collectAsStateWithLifecycle()
     val local by modelo.local.collectAsStateWithLifecycle()
     val foco = LocalFocusManager.current
+    val alcance = rememberCoroutineScope()
     var flujo by rememberSaveable { mutableStateOf(false) }
     var sintoma by rememberSaveable { mutableStateOf(false) }
     var guardia by rememberSaveable { mutableStateOf(false) }
@@ -133,10 +133,13 @@ internal fun PresionRaiz(modelo: ModeloPresion, directo: Boolean, alDirectoHecho
                 val f = it.finTemporizador
                 if (f != null && f > System.currentTimeMillis()) it.copy(etapa = EtapaPresion.ESPERA) else it.copy(etapa = EtapaPresion.ANOTAR, finTemporizador = null)
             }
+            flujo = true
         } else {
-            modelo.retomar(p, EtapaPresion.ANOTAR)
+            // Sin la sesión guardada se refresca antes de dejar anotar; si sigue sin estar, una toma nueva normal.
+            alcance.launch {
+                if (modelo.retomar(p, EtapaPresion.ANOTAR) != null) flujo = true else empezar()
+            }
         }
-        flujo = true
     }
 
     /** La lista del recordatorio viaja como síntoma. Con un Sí, guardia por síntomas en el acto. Sin contestar todo no cuenta como «no». */
@@ -179,7 +182,9 @@ internal fun PresionRaiz(modelo: ModeloPresion, directo: Boolean, alDirectoHecho
         }
     }
     // Una sesión en curso se cerró (o era de otro día): se vuelve al inicio.
-    LaunchedEffect(flujo, local.enCurso == null) { if (flujo && local.enCurso == null) flujo = false }
+    // Se mira el modelo y no `local`: recién empezada, la sesión ya está en el modelo pero `local` todavía no se enteró, y con
+    // `local` el recorrido se cerraba solo al tocar «Hacer la toma de hoy» (volvía al inicio).
+    LaunchedEffect(flujo, local.enCurso == null) { if (flujo && modelo.enCurso == null) flujo = false }
     // Con algo abierto no se cierra sola: el texto de guardia se queda aunque el servidor apague la sección.
     LaunchedEffect(estado == null, flujo, guardia, sintoma) { if (estado == null && !flujo && !guardia && !sintoma) alCerrar() }
     BackHandler(onBack = alCerrar)
@@ -208,7 +213,18 @@ internal fun PresionRaiz(modelo: ModeloPresion, directo: Boolean, alDirectoHecho
                 )
             }
         }
-        if (sintoma) MarcarSintomaPresion(modelo) { sintoma = false }
+        if (sintoma) {
+            MarcarSintomaPresion(
+                modelo, enSesion = true,
+                // La sesión en curso (una repetición que quedó esperando) pasó a guardia por lo que marcó: se abre en su guardia.
+                alGuardiaDeLaSesion = {
+                    sintoma = false
+                    modelo.cambiar { it.copy(etapa = EtapaPresion.GUARDIA_SINTOMAS, finTemporizador = null) }
+                    flujo = true
+                },
+                alCerrar = { sintoma = false },
+            )
+        }
         if (guardia) {
             BackHandler { guardia = false }
             GuardiaPresion(porSintomas = true, alCerrar = { guardia = false })
@@ -298,7 +314,7 @@ private fun InicioPresion(
 
 /** «Marcar un síntoma»: siempre a mano, haya o no una sesión en curso. Medir nunca es condición para marcarlo. */
 @Composable
-internal fun MarcarSintomaPresion(modelo: ModeloPresion, alCerrar: () -> Unit) {
+internal fun MarcarSintomaPresion(modelo: ModeloPresion, enSesion: Boolean, alGuardiaDeLaSesion: () -> Unit, alCerrar: () -> Unit) {
     var seleccion by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var nota by rememberSaveable { mutableStateOf("") }
     // 0: eligiendo; 1: anotado; 2: guardia.
@@ -320,7 +336,9 @@ internal fun MarcarSintomaPresion(modelo: ModeloPresion, alCerrar: () -> Unit) {
                     foco.clearFocus()
                     // En el orden de las listas, no en el que los tocó.
                     val codigos = (Presion.alarma + Presion.otros).filter { it in seleccion }
-                    resultado = if (modelo.marcarSintoma(codigos, nota, sesionId = modelo.enCurso?.sesion?.id)) 2 else 1
+                    // Con una sesión con tomas también se suma a ella y la regla decide el paso (la guardia va en la sesión).
+                    val r = modelo.marcarSintomaBoton(codigos, nota, enSesion)
+                    if (r.evaluacion?.paso == Presion.Paso.GUARDIA_SINTOMAS) alGuardiaDeLaSesion() else resultado = if (r.alarma) 2 else 1
                 }
             },
         ) {
@@ -334,11 +352,18 @@ internal fun MarcarSintomaPresion(modelo: ModeloPresion, alCerrar: () -> Unit) {
  * «Tu presión», arriba de todo en la pantalla con la que abre la app mientras haya algo para hacer (`presion/CONTRATO_APP.md`):
  * la repetición pendiente, preparar (medir el brazo y anotar el tensiómetro), la toma de hoy o el avance.
  *
- * Es una tarjeta más: no tapa, no frena ni condiciona la rutina. La presión nunca frena el entrenamiento. Con la palanca
- * apagada, sin el servidor nuevo o sin la sección habilitada, no existe. Devuelve si se mostró.
+ * Es una tarjeta más: va como primer ítem del desplazamiento de Entreno (como iOS), así con letra grande se corre junto con la
+ * rutina. No tapa, no frena ni condiciona la rutina. La presión nunca frena el entrenamiento. Con la palanca apagada, sin el
+ * servidor nuevo o sin la sección habilitada, no existe.
  */
 @Composable
-fun TarjetaPresion(app: ModeloApp, navegacion: Navegacion, bajoLaBarraDeEstado: Boolean): Boolean {
+fun TarjetaPresionDe(app: ModeloApp, modifier: Modifier = Modifier) {
+    val navegacion = LocalNavegacion.current ?: return
+    TarjetaPresion(app, navegacion, modifier)
+}
+
+@Composable
+private fun TarjetaPresion(app: ModeloApp, navegacion: Navegacion, modifier: Modifier): Boolean {
     val modelo = app.presion.collectAsStateWithLifecycle().value ?: return false
     // Leerlos hace que la tarjeta siga a lo que cambia en el servidor y en el teléfono.
     val estado by modelo.estado.collectAsStateWithLifecycle()
@@ -347,10 +372,7 @@ fun TarjetaPresion(app: ModeloApp, navegacion: Navegacion, bajoLaBarraDeEstado: 
     val c = MyPump.colores
     val forma = RoundedCornerShape(Radio.tarjeta)
     val abrir = { directo: Boolean -> navegacion.abrirPresion(directo) }
-    Box(
-        Modifier.fillMaxWidth().then(if (bajoLaBarraDeEstado) Modifier.windowInsetsPadding(WindowInsets.statusBars) else Modifier).padding(horizontal = Espacio.m, vertical = Espacio.xs),
-        contentAlignment = Alignment.TopCenter,
-    ) {
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         Tarjeta(
             Modifier
                 .widthIn(max = AnchoLectura)

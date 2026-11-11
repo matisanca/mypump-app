@@ -45,22 +45,33 @@ class PresionUiTest : PruebaUi() {
         p.tocar(etiqueta("presion-anotar"))
     }
 
+    /** Claro, oscuro o letra grande (fontScale 2.0). */
+    private fun tema(tema: String) {
+        if (tema == "oscuro") Telefono.modoNoche(true)
+        if (tema == "grande") Telefono.shell("settings put system font_scale 2.0")
+    }
+
+    private fun captura(tema: String?, pantalla: String) {
+        tema?.let { Telefono.captura("android-$it-$pantalla") }
+    }
+
     /** De la tarjeta de arriba a la toma anotada: un paso por pantalla. */
     private fun hastaAnotar(tema: String?) {
         p.nodo(etiqueta("tarjeta-presion"), 20_000)
-        tema?.let { Telefono.captura("android-1-tarjeta-$it") }
+        captura(tema, "tarjeta")
         p.tocar(etiqueta("tarjeta-presion-boton"))
         p.nodo(etiqueta("presion-cuando"))
-        tema?.let { Telefono.captura("android-2-cuando-$it") }
+        captura(tema, "cuando")
         p.tocar(etiqueta("presion-cuando-seguir"))
         p.nodo(etiqueta("presion-como"))
-        tema?.let { Telefono.captura("android-3-como-$it") }
+        captura(tema, "como")
         p.tocar(etiqueta("presion-empezar"))
         assertFalse("sin contestar no se sigue", p.habilitado(etiqueta("presion-previa-seguir")))
         for (k in listOf("cafeina", "fumo", "comida", "ejercicio")) p.tocar(etiqueta("presion-previa-$k-no"))
-        tema?.let { Telefono.captura("android-4-previa-$it") }
+        captura(tema, "previa")
         p.tocar(etiqueta("presion-previa-seguir"))
         p.nodo(etiqueta("presion-reposo"))
+        captura(tema, "reposo")
     }
 
     private fun recorrido(tema: String) {
@@ -70,14 +81,14 @@ class PresionUiTest : PruebaUi() {
         p.escribir(etiqueta("presion-alta"), "124")
         p.escribir(etiqueta("presion-baja"), "78")
         p.escribir(etiqueta("presion-pulso"), "62")
-        Telefono.captura("android-5-anotar-$tema")
+        captura(tema, "anotar")
         p.tocar(etiqueta("presion-anotar"))
         p.nodo(etiqueta("presion-listo"))
-        Telefono.captura("android-6-listo-$tema")
+        captura(tema, "listo")
         p.tocar(etiqueta("presion-cerrar"))
         p.nodo(etiqueta("presion-inicio"))
         p.nodo(etiqueta("presion-hoy-listo"))
-        Telefono.captura("android-7-inicio-$tema")
+        captura(tema, "inicio")
         p.esperar("la toma en el servidor") { (d.recibidas.size == 1).takeIf { it } }
         assertEquals("android", d.recibidas.last()["plataforma"]?.comoTexto)
     }
@@ -85,14 +96,94 @@ class PresionUiTest : PruebaUi() {
     @Test fun recorridoClaro() = recorrido("claro")
 
     @Test fun recorridoOscuro() {
-        Telefono.modoNoche(true)
+        tema("oscuro")
         recorrido("oscuro")
     }
 
     @Test fun recorridoLetraGrande() {
-        Telefono.shell("settings put system font_scale 2.0")
+        tema("grande")
         recorrido("grande")
     }
+
+    /** 180/120 o más: la espera con la lista de alarma y, con un Sí, la guardia. */
+    private fun esperaYGuardia(t: String) {
+        tema(t)
+        lanzar("serie0")
+        hastaAnotar(null)
+        anotar("184", "121", "88")
+        p.tocar(etiqueta("presion-confirmar"))
+        p.nodo(etiqueta("presion-espera-sintomas"))
+        captura(t, "espera-lista")
+        p.tocar(etiqueta("presion-alarma-dolor_pecho-si"))
+        p.nodo(etiqueta("presion-guardia-sintomas"))
+        captura(t, "guardia")
+    }
+
+    @Test fun esperaYGuardiaClaro() = esperaYGuardia("claro")
+    @Test fun esperaYGuardiaOscuro() = esperaYGuardia("oscuro")
+    @Test fun esperaYGuardiaLetraGrande() = esperaYGuardia("grande")
+
+    /** «Marcar un síntoma» desde el inicio, sin medir: la hoja y el recibido. */
+    private fun marcarSintoma(t: String) {
+        tema(t)
+        val d = lanzar("serie2")
+        p.nodo(etiqueta("tarjeta-presion"), 20_000)
+        p.tocar(etiqueta("pestana-revision"))
+        p.tocar(etiqueta("mis-datos"))
+        p.tocar(etiqueta("mis-datos-presion"))
+        p.nodo(etiqueta("presion-inicio"))
+        p.tocar(etiqueta("presion-marcar-sintoma"))
+        p.nodo(etiqueta("presion-sintoma-pantalla"))
+        p.tocar(etiqueta("presion-sintoma-palpitaciones"))
+        captura(t, "marcar-sintoma")
+        p.tocar(etiqueta("presion-sintoma-enviar"))
+        p.nodo(etiqueta("presion-sintoma-recibido"))
+        captura(t, "sintoma-recibido")
+        p.esperar("el síntoma en el servidor") { (d.sintomas.size == 1).takeIf { it } }
+    }
+
+    @Test fun marcarSintomaClaro() = marcarSintoma("claro")
+    @Test fun marcarSintomaOscuro() = marcarSintoma("oscuro")
+    @Test fun marcarSintomaLetraGrande() = marcarSintoma("grande")
+
+    /** Pulso de 120 o más: la toma se guarda primero y después se pregunta por síntomas; con palpitaciones, guardia. */
+    private fun pulsoAltoGuardaYPregunta(t: String) {
+        tema(t)
+        val d = lanzar("serie0")
+        hastaAnotar(null)
+        anotar("124", "78", "125")
+        // Un pulso fuera de lo común pide confirmar primero.
+        p.quieto(500)
+        if (p.existe(etiqueta("presion-confirmar"))) p.tocar(etiqueta("presion-confirmar"))
+        p.nodo(etiqueta("presion-sintomas-hoja"))
+        p.esperar("la toma sale antes de contestar la hoja") { (d.recibidas.size == 1).takeIf { it } }
+        p.tocar(etiqueta("presion-sintoma-palpitaciones"))
+        captura(t, "sintomas-tras-toma")
+        p.tocar(etiqueta("presion-sintomas-seguir"))
+        p.nodo(etiqueta("presion-guardia-sintomas"))
+    }
+
+    @Test fun pulsoAltoGuardaYPreguntaClaro() = pulsoAltoGuardaYPregunta("claro")
+    @Test fun pulsoAltoGuardaYPreguntaOscuro() = pulsoAltoGuardaYPregunta("oscuro")
+    @Test fun pulsoAltoGuardaYPreguntaLetraGrande() = pulsoAltoGuardaYPregunta("grande")
+
+    /** Antes de la primera serie: medir el brazo y anotar el tensiómetro. */
+    private fun aparato(t: String) {
+        tema(t)
+        lanzar("serie0") { it.aparato = null }
+        p.nodo(etiqueta("tarjeta-presion"), 20_000)
+        p.tocar(etiqueta("tarjeta-presion-boton"))
+        p.nodo(etiqueta("presion-antes"))
+        captura(t, "aparato")
+        p.escribir(etiqueta("presion-medida"), "35")
+        p.tocar(etiqueta("presion-tipo-brazo"))
+        captura(t, "aparato-lleno")
+        p.tocar(etiqueta("presion-guardar"))
+        p.nodo(etiqueta("presion-inicio"))
+    }
+
+    @Test fun aparatoOscuro() = aparato("oscuro")
+    @Test fun aparatoLetraGrande() = aparato("grande")
 
     @Test fun palancaApagadaNoMuestraNiLlamaNada() {
         val d = lanzar("apagado")
@@ -137,10 +228,8 @@ class PresionUiTest : PruebaUi() {
         p.nodo(etiqueta("presion-revisar"))
         p.tocar(etiqueta("presion-confirmar"))
         p.nodo(etiqueta("presion-espera-sintomas"))
-        Telefono.captura("android-8-espera-lista")
         p.tocar(etiqueta("presion-alarma-dolor_pecho-si"))
         p.nodo(etiqueta("presion-guardia-sintomas"))
-        Telefono.captura("android-9-guardia")
     }
 
     @Test fun tomaAltaPideRepetirYLaTarjetaLoRecuerda() {
@@ -165,7 +254,7 @@ class PresionUiTest : PruebaUi() {
         p.nodo(etiqueta("tarjeta-presion"), 20_000)
         p.tocar(etiqueta("tarjeta-presion-boton"))
         p.nodo(etiqueta("presion-antes"))
-        Telefono.captura("android-10-aparato")
+        captura("claro", "aparato")
         assertFalse(p.habilitado(etiqueta("presion-guardar")))
         p.escribir(etiqueta("presion-medida"), "35")
         p.tocar(etiqueta("presion-tipo-reloj_anillo_otro"))

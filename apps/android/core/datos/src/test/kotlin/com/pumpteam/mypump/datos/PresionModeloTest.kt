@@ -483,6 +483,176 @@ class PresionModeloTest {
         assertEquals(si(false), d2.recibidas.last()["previo"]?.get("cafeina"))
     }
 
+    // ── Revisión del 11-nov ──
+
+    /** Punto 1: un síntoma antes de la primera toma no lleva el id de una sesión que nunca viajó (el servidor lo rechaza). */
+    @Test fun sintomaAntesDeLaPrimeraTomaViajaSinSesion(): Unit = runBlocking {
+        val d = DoblePresion.escenario("serie0")
+        val a = armar(d)
+        a.m.refrescar()
+        a.m.empezar("estandar", DoblePresion.ID_SERIE, null, "reposo")
+        assertNull(a.m.sesionParaSintoma)
+        val r = a.m.marcarSintomaBoton(listOf("palpitaciones"), null)
+        assertNull(r.evaluacion)
+        assertFalse(r.alarma)
+        // «Me mareé» en la ortostática sin ninguna toma: también suelto.
+        a.m.empezar("ortostatica", DoblePresion.ID_SERIE, "izq", "guiaEspera", variante = "sentado_parado")
+        assertEquals(Presion.Paso.LISTO, a.m.meMaree()?.paso)
+        a.asentar()
+        assertEquals(2, d.sintomas.size)
+        assertTrue(d.sintomas.all { (it["sesion_id"] ?: ValorJson.Nulo) == ValorJson.Nulo })
+        assertEquals("mareo_al_pararse", (d.sintomas.last()["codigos"] as ValorJson.Lista).elementos.single().comoTexto)
+        assertEquals(0, d.cuantas("mypump_presion_sesion"))
+        // Con una toma ya anotada, sí lleva el id.
+        a.m.empezar("estandar", DoblePresion.ID_SERIE, null, "anotar")
+        a.m.anotarToma(124, 78, 62, false)
+        val id = a.m.enCurso!!.sesion.id
+        assertEquals(id, a.m.sesionParaSintoma)
+        a.m.marcarSintomaBoton(listOf("vomitos_diarrea"), null)
+        a.asentar()
+        assertEquals(id, d.sintomas.last()["sesion_id"]?.comoTexto)
+    }
+
+    /** Punto 2: la toma con el pulso o la alta fuera de lo esperado se guarda antes de la hoja de síntomas. */
+    @Test fun tomaFueraDeLoEsperadoSeGuardaAntesDeLaHoja(): Unit = runBlocking {
+        assertTrue(ModeloPresion.pideSintomas(130, 120))
+        assertTrue(ModeloPresion.pideSintomas(130, 40))
+        assertTrue(ModeloPresion.pideSintomas(89, 70))
+        assertFalse(ModeloPresion.pideSintomas(90, 41))
+        assertFalse(ModeloPresion.pideSintomas(150, 119))
+        val d = DoblePresion.escenario("serie0")
+        val a = armar(d)
+        a.m.refrescar()
+        a.m.empezar("estandar", DoblePresion.ID_SERIE, null, "anotar")
+        a.m.cambiar { it.copy(sesion = it.sesion.copy(reposoCumplido = true, temporizadorSalteado = false)) }
+        assertNotNull(a.m.anotarToma(118, 76, 125, false))
+        // Ya está en disco y en la cola antes de abrir la hoja: si cierra la app, la toma quedó.
+        a.m.cambiar { it.copy(etapa = "sintomas") }
+        val reabierto = armar(d, a.raiz).m
+        assertEquals(1, reabierto.enCola)
+        assertEquals(1, reabierto.enCurso?.sesion?.tomas?.size)
+        assertEquals("sintomas", reabierto.enCurso?.etapa)
+        // Al contestar, se suman a la sesión y la regla decide: pulso de 120 o más con palpitaciones es guardia.
+        assertEquals(Presion.Paso.GUARDIA_SINTOMAS, a.m.sumarSintomas(listOf("palpitaciones"))?.paso)
+        a.asentar()
+        assertEquals(1, d.sesiones.size)
+        assertEquals(listOf("palpitaciones"), (d.recibidas.last()["sintomas"] as ValorJson.Lista).elementos.map { it.comoTexto })
+        assertEquals("guardia_sintomas", d.recibidas.last()["texto_alumno"]?.comoTexto)
+        // Sin síntomas marcados, sigue lo que dice la toma.
+        a.m.empezar("estandar", DoblePresion.ID_SERIE, null, "anotar")
+        a.m.anotarToma(118, 76, 125, false)
+        assertEquals(Presion.Paso.LISTO, a.m.sumarSintomas(emptyList())?.paso)
+    }
+
+    /** Punto 3: «Me mareé» con pulso de 120 o más es guardia por síntomas, no la pantalla de mareo. */
+    @Test fun meMareeConPulsoAltoEsGuardia(): Unit = runBlocking {
+        val d = DoblePresion.escenario("serie0")
+        val a = armar(d)
+        a.m.refrescar()
+        a.m.empezar("ortostatica", DoblePresion.ID_SERIE, "izq", "guiaAnotar", variante = "sentado_parado")
+        a.m.anotarToma(124, 78, 125, false, posicion = "sentado")
+        assertEquals(Presion.Paso.GUARDIA_SINTOMAS, a.m.meMaree()?.paso)
+        a.asentar()
+        assertEquals(listOf("mareo_al_pararse"), (d.recibidas.last()["sintomas"] as ValorJson.Lista).elementos.map { it.comoTexto })
+        // Con el pulso común, la pantalla de mareo de siempre.
+        a.m.empezar("ortostatica", DoblePresion.ID_SERIE, "izq", "guiaAnotar", variante = "sentado_parado")
+        a.m.anotarToma(124, 78, 70, false, posicion = "sentado")
+        assertTrue(a.m.meMaree()?.paso != Presion.Paso.GUARDIA_SINTOMAS)
+    }
+
+    /** Punto 4: «Marcar un síntoma» con una sesión con tomas lo suma a la sesión y la regla decide el paso. */
+    @Test fun marcarSintomaConSesionEnCursoLoSumaYRutea(): Unit = runBlocking {
+        val d = DoblePresion.escenario("serie0")
+        val a = armar(d)
+        val m = a.m
+        m.refrescar()
+        m.empezar("estandar", DoblePresion.ID_SERIE, null, "espera")
+        m.cambiar { it.copy(sesion = it.sesion.copy(reposoCumplido = true)) }
+        assertEquals(Presion.Paso.REPETIR, m.anotarToma(160, 100, 70, false, confirmada = true)?.paso)
+        val id = m.enCurso!!.sesion.id
+        val r = m.marcarSintomaBoton(listOf("palpitaciones"), " me late fuerte ")
+        assertFalse(r.alarma)
+        assertEquals(Presion.Paso.REPETIR, r.evaluacion?.paso)
+        assertEquals(listOf("palpitaciones"), m.enCurso?.sesion?.sintomas)
+        assertEquals("me late fuerte", m.enCurso?.sesion?.nota)
+        val g = m.marcarSintomaBoton(listOf("dolor_pecho"), null)
+        assertTrue(g.alarma)
+        assertEquals(Presion.Paso.GUARDIA_SINTOMAS, g.evaluacion?.paso)
+        a.asentar()
+        assertEquals(2, d.sintomas.size)
+        assertTrue(d.sintomas.all { it["sesion_id"]?.comoTexto == id })
+        assertEquals(listOf("palpitaciones", "dolor_pecho"), (d.recibidas.last()["sintomas"] as ValorJson.Lista).elementos.map { it.comoTexto })
+        // Con la sesión ya en guardia o cerrada (la pantalla dice que no está abierta), viaja suelto y no se suma.
+        val suelto = m.marcarSintomaBoton(listOf("vomitos_diarrea"), null, enSesion = false)
+        assertNull(suelto.evaluacion)
+        a.asentar()
+        assertEquals(ValorJson.Nulo, d.sintomas.last()["sesion_id"] ?: ValorJson.Nulo)
+        assertFalse("vomitos_diarrea" in (m.enCurso?.sesion?.sintomas ?: emptyList()))
+    }
+
+    /** Punto 6: una repetición retomada no dice «Esta no cuenta» ni lo manda en texto_alumno. */
+    @Test fun laRepeticionRetomadaNoDiceQueNoCuenta(): Unit = runBlocking {
+        val d = DoblePresion.escenario("pendienteAlta")
+        val a = armar(d)
+        val m = a.m
+        m.refrescar()
+        m.retomar(m.pendiente!!, "anotar")
+        val ev = m.anotarToma(150, 90, 70, false)
+        assertEquals(Presion.Paso.LISTO, ev?.paso)
+        assertEquals("toma_no_cuenta", ev?.texto)
+        assertFalse(m.noCuenta(ev))
+        a.asentar()
+        assertEquals("ninguno", d.recibidas.last()["texto_alumno"]?.comoTexto)
+        // Una sesión común con el reposo salteado sí lo dice.
+        val d2 = DoblePresion.escenario("serie0")
+        val a2 = armar(d2)
+        a2.m.refrescar()
+        a2.m.empezar("estandar", DoblePresion.ID_SERIE, null, "anotar")
+        a2.m.cambiar { it.copy(sesion = it.sesion.copy(reposoCumplido = false, temporizadorSalteado = true)) }
+        val ev2 = a2.m.anotarToma(124, 78, 62, false)
+        assertTrue(a2.m.noCuenta(ev2))
+        a2.asentar()
+        assertEquals("toma_no_cuenta", d2.recibidas.last()["texto_alumno"]?.comoTexto)
+    }
+
+    /** Punto 7: sin la sesión guardada se refresca antes de anotar; si sigue sin estar, no se retoma (toma nueva normal). */
+    @Test fun retomarSinLaSesionGuardadaRefrescaAntes(): Unit = runBlocking {
+        val d = DoblePresion.escenario("pendienteAlta")
+        val a = armar(d)
+        a.m.refrescar()
+        val p = a.m.estado.value!!.pendiente!!
+        // Lo que se guardó sin la lista de sesiones (por ejemplo, de un arranque sin red).
+        val disco = Disco(a.raiz, token)
+        val guardado = ValorJson.desde(disco.leer("presion-estado.json")!!) as ValorJson.Objeto
+        disco.guardar("presion-estado.json", ValorJson.Objeto(guardado.campos + ("sesiones" to ValorJson.Lista(emptyList()))))
+        d.sinRed = true
+        val b = armar(d, a.raiz)
+        b.m.refrescar()
+        assertNull(b.m.sesionGuardada(p.sesionId))
+        d.sinRed = false
+        val antes = d.cuantas("mypump_presion_get")
+        val e = b.m.retomar(p, "anotar")
+        assertEquals(antes + 1, d.cuantas("mypump_presion_get"))
+        assertEquals(1, e?.sesion?.tomas?.size)
+        b.m.anotarToma(150, 90, 70, false)
+        assertEquals(2, b.m.enCurso?.sesion?.tomas?.last()?.orden)
+        // Una sesión que el servidor tampoco tiene: no se retoma con tomas vacías.
+        val c = armar(DoblePresion.escenario("pendienteAlta"))
+        c.m.refrescar()
+        assertNull(c.m.retomar(PendientePresion("no-esta", "alta", null), "anotar"))
+        assertNull(c.m.enCurso)
+    }
+
+    /** Punto 8: marca, modelo y código se cortan a 80 caracteres. */
+    @Test fun marcaModeloYCodigoA80(): Unit = runBlocking {
+        val d = DoblePresion.escenario("vacio")
+        val m = armar(d).m
+        m.refrescar()
+        val largo = "x".repeat(120)
+        assertEquals(ModeloPresion.Salida.OK, m.guardarAparato(Presion.Aparato(tipo = "brazo", marca = largo, modelo = largo, modeloCodigo = largo)))
+        for (k in listOf("marca", "modelo", "modelo_codigo")) assertEquals(80, d.aparato?.get(k)?.comoTexto?.length)
+    }
+
     // ── Decodificación ──
 
     @Test fun decodificacionTolerante() {

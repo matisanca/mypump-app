@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.entreno
 
+import com.pumpteam.mypump.presion.TarjetaPresionDe
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -207,6 +208,7 @@ private fun SinRutina(modelo: ModeloApp) {
             modifier = Modifier.padding(relleno).fillMaxSize(),
         ) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                TarjetaPresionDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
                 TarjetaGimnasioDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
                 Spacer(Modifier.height(80.dp))
                 EstadoVacio(

@@ -321,7 +321,7 @@ struct PresionModeloTests {
         let p = m.estado?.pendiente
         #expect(p?.nivel == "urgencia")
         guard let p else { return }
-        m.retomar(p, etapa: "anotar")
+        await m.retomar(p, etapa: "anotar")
         #expect(m.enCurso?.sesion.tomas.count == 1)
         #expect(m.enCurso?.sesion.id == p.sesionId)
         #expect(m.anotarToma(sis: 150, dia: 90, pulso: 70, latidoIrregular: false)?.paso == .listo)
@@ -432,7 +432,7 @@ struct PresionModeloTests {
         let (m, _) = armar(d)
         await m.refrescar()
         guard let p = m.pendiente else { Issue.record("sin pendiente"); return }
-        m.retomar(p, etapa: "anotar")
+        await m.retomar(p, etapa: "anotar")
         #expect(m.anotarToma(sis: 150, dia: 90, pulso: 70, latidoIrregular: false)?.paso == .listo)
         await asentar(m)
         guard let enviada = d.recibidas.last else { Issue.record("no viajó"); return }
@@ -449,6 +449,150 @@ struct PresionModeloTests {
         m2.anotarToma(sis: 124, dia: 78, pulso: 62, latidoIrregular: false)
         await asentar(m2)
         #expect(d2.recibidas.last?["previo"]?["cafeina"] == .bool(false))
+    }
+
+
+    // MARK: Revisión 11/11
+
+    /// 1. Un síntoma marcado antes de la primera toma no lleva el id de una sesión que el servidor no conoce.
+    @Test func sintomaAntesDeLaPrimeraTomaVaSinSesion() async {
+        let d = DoblePresion.escenario("serie0")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        m.empezar(tipo: "estandar", serieId: DoblePresion.idSerie, brazo: nil, etapa: "reposo")
+        #expect(m.marcarSintomaBoton(codigos: ["palpitaciones"], nota: nil) == false)
+        await asentar(m)
+        #expect(d.sintomas.count == 1)
+        #expect(d.sintomas.first?["sesion_id"] == .null)
+        // Lo marcado no viaja como sesión: sin tomas no hay nada que mandar.
+        #expect(d.cuantas("mypump_presion_sesion") == 0)
+        // Con una toma ya anotada, sí lleva el id.
+        m.anotarToma(sis: 124, dia: 78, pulso: 62, latidoIrregular: false)
+        let id = m.enCurso?.sesion.id
+        m.marcarSintomaBoton(codigos: ["vomitos_diarrea"], nota: nil)
+        await asentar(m)
+        #expect(d.sintomas.count == 2)
+        #expect(d.sintomas.last?["sesion_id"]?.comoTexto == id)
+        // «Me mareé» sin tomas tampoco lleva el id.
+        m.empezar(tipo: "ortostatica", serieId: DoblePresion.idSerie, brazo: nil, etapa: "guiaEspera")
+        m.meMaree()
+        await asentar(m)
+        #expect(d.sintomas.last?["codigos"] == .lista([.texto("mareo_al_pararse")]))
+        #expect(d.sintomas.last?["sesion_id"] == .null)
+    }
+
+    /// 2. Con el pulso fuera de lo esperado la toma se guarda antes de la hoja de síntomas; lo que conteste se suma y decide.
+    @Test func laTomaSeGuardaAntesDeLaHojaDeSintomas() async {
+        let d = DoblePresion.escenario("serie0")
+        let (m, raiz) = armar(d)
+        await m.refrescar()
+        d.sinRed = true
+        m.empezar(tipo: "estandar", serieId: DoblePresion.idSerie, brazo: nil, etapa: "anotar")
+        #expect(m.anotarToma(sis: 128, dia: 80, pulso: 125, latidoIrregular: false) != nil)
+        #expect(m.enCola == 1)
+        // Si cierra la app con la hoja abierta, la toma sigue en disco.
+        let (m2, _) = armar(d, raiz: raiz)
+        #expect(m2.enCurso?.sesion.tomas.count == 1)
+        #expect(m2.enCola == 1)
+        let ev = m.sumarSintomas(["palpitaciones"])
+        #expect(ev?.paso == .guardiaSintomas)
+        #expect(m.enCola == 1)
+        d.sinRed = false
+        await asentar(m)
+        #expect(d.recibidas.last?["texto_alumno"]?.comoTexto == "guardia_sintomas")
+        if case .lista(let t)? = d.recibidas.last?["tomas"] { #expect(t.count == 1) } else { Issue.record("sin tomas") }
+    }
+
+    /// 3. «Me mareé» con un pulso de urgencia es guardia por síntomas; sin eso, la pantalla de mareo.
+    @Test func meMareeUsaLaEvaluacion() async {
+        let d = DoblePresion.escenario("ortostatica")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        m.empezar(tipo: "ortostatica", serieId: DoblePresion.idSerie, brazo: nil, etapa: "guiaAnotar", variante: "sentado_parado")
+        m.anotarToma(sis: 120, dia: 78, pulso: 125, latidoIrregular: false, posicion: "sentado")
+        #expect(m.meMaree()?.paso == .guardiaSintomas)
+        m.empezar(tipo: "ortostatica", serieId: DoblePresion.idSerie, brazo: nil, etapa: "guiaAnotar", variante: "acostado_parado")
+        m.anotarToma(sis: 120, dia: 78, pulso: 70, latidoIrregular: false, posicion: "acostado")
+        let ev = m.meMaree()
+        #expect(ev?.paso == .listo)
+        #expect(ev?.texto == "quedate_sentado_ortostatica")
+    }
+
+    /// 4. «Marcar un síntoma» con una sesión con tomas también se suma a ella y decide la guardia.
+    @Test func sintomaDelBotonSeSumaALaSesion() async {
+        let d = DoblePresion.escenario("serie0")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        m.empezar(tipo: "estandar", serieId: DoblePresion.idSerie, brazo: nil, etapa: "anotar")
+        m.anotarToma(sis: 128, dia: 80, pulso: 125, latidoIrregular: false)
+        // Palpitaciones no es de alarma, pero con el pulso de 125 es guardia.
+        #expect(m.marcarSintomaBoton(codigos: ["palpitaciones"], nota: nil) == true)
+        #expect(m.enCurso?.sesion.sintomas == ["palpitaciones"])
+        #expect(m.evaluar()?.paso == .guardiaSintomas)
+        await asentar(m)
+        #expect(d.recibidas.last?["sintomas"] == .lista([.texto("palpitaciones")]))
+        #expect(d.recibidas.last?["texto_alumno"]?.comoTexto == "guardia_sintomas")
+        // Con `sumarASesion: false` (la sesión ya terminó en pantalla) solo viaja el aviso.
+        let antes = d.recibidas.count
+        m.marcarSintomaBoton(codigos: ["vomitos_diarrea"], nota: nil, sumarASesion: false)
+        await asentar(m)
+        #expect(d.recibidas.count == antes)
+        #expect(m.enCurso?.sesion.sintomas == ["palpitaciones"])
+    }
+
+    /// 5. Una repetición retomada nunca dice ni manda «Esta no cuenta».
+    @Test func laRetomadaNoDiceQueNoCuenta() async {
+        let d = DoblePresion.escenario("pendienteAlta")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        guard let p = m.pendiente else { Issue.record("sin pendiente"); return }
+        await m.retomar(p, etapa: "anotar")
+        let ev = m.anotarToma(sis: 150, dia: 90, pulso: 70, latidoIrregular: false)
+        #expect(ev?.paso == .listo)
+        #expect(ev?.texto != "toma_no_cuenta")
+        #expect(m.evaluar()?.texto != "toma_no_cuenta")
+        await asentar(m)
+        #expect(d.recibidas.last?["texto_alumno"]?.comoTexto == "ninguno")
+        // Una sesión común que se salteó el reposo sí lo dice.
+        let d2 = DoblePresion.escenario("serie0")
+        let (m2, _) = armar(d2)
+        await m2.refrescar()
+        m2.empezar(tipo: "estandar", serieId: DoblePresion.idSerie, brazo: nil, etapa: "anotar")
+        m2.cambiar { $0.sesion.reposoCumplido = false; $0.sesion.temporizadorSalteado = true }
+        #expect(m2.anotarToma(sis: 124, dia: 78, pulso: 62, latidoIrregular: false)?.texto == "toma_no_cuenta")
+    }
+
+    /// 6. Sin la sesión en lo último que se supo, se refresca antes de retomar; si sigue sin estar, no se retoma.
+    @Test func retomarSinLaSesionRefrescaONoRetoma() async {
+        let d = DoblePresion.escenario("serie0")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        // La sesión llegó al servidor desde otro teléfono después del último refresco.
+        let otro = DoblePresion.escenario("pendienteAlta")
+        d.sesiones = otro.sesiones
+        guard let id = otro.sesiones.first?["id"]?.comoTexto else { Issue.record("sin sesión"); return }
+        #expect(m.sesionGuardada(id) == nil)
+        let e = await m.retomar(PendientePresion(sesionId: id, nivel: "alta", desde: nil), etapa: "anotar")
+        #expect(e?.sesion.tomas.count == 1)
+        m.anotarToma(sis: 150, dia: 90, pulso: 70, latidoIrregular: false)
+        #expect(m.enCurso?.sesion.tomas.map(\.orden) == [1, 2])
+        // Una que no está en ningún lado: no se retoma.
+        m.terminar()
+        let n = await m.retomar(PendientePresion(sesionId: "no-existe", nivel: "alta", desde: nil), etapa: "anotar")
+        #expect(n == nil)
+        #expect(m.enCurso == nil)
+    }
+
+    /// 7. Marca, modelo y código: 80 caracteres como mucho.
+    @Test func aparatoCortaA80() async {
+        let d = DoblePresion.escenario("vacio")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        let largo = String(repeating: "a", count: 100)
+        #expect(await m.guardarAparato(Presion.Aparato(tipo: "brazo", marca: largo, modelo: largo, modeloCodigo: largo, manguitoMinCm: 22, manguitoMaxCm: 42)) == .ok)
+        #expect(m.estado?.aparato?.marca?.count == 80)
+        #expect(m.estado?.aparato?.modelo?.count == 80)
+        #expect(m.estado?.aparato?.modeloCodigo?.count == 80)
     }
 
     // MARK: Decodificación

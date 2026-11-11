@@ -21,6 +21,16 @@ enum EtapaPresion {
     static let guiaEspera = "guiaEspera"
     static let guiaAnotar = "guiaAnotar"
     static let mareo = "mareo"
+    /// La hoja de síntomas que se abre después de una toma con el pulso o la alta fuera de lo esperado. La toma ya quedó guardada.
+    static let sintomas = "sintomas"
+}
+
+extension EnCursoPresion {
+    /// La sesión sigue abierta en pantalla: un síntoma del botón también se suma a ella. Cerrada (el cierre, el mareo de la
+    /// ortostática o la guardia), solo viaja el aviso.
+    var abiertaASintomas: Bool {
+        ![EtapaPresion.listo, EtapaPresion.mareo, EtapaPresion.guardiaPresion, EtapaPresion.guardiaSintomas].contains(etapa)
+    }
 }
 
 /// Las listas de síntomas para marcar: las 8 de alarma y las otras 3.
@@ -92,9 +102,10 @@ struct QueEvitarPresion: View {
 private struct AnotarPresion: View {
     let titulo: String?
     let conFoto: Bool
-    /// Solo sentado: con el pulso o la alta fuera de lo esperado se abre la hoja de síntomas antes de evaluar.
+    /// Solo sentado: con el pulso o la alta fuera de lo esperado, después de guardar la toma se abre la hoja de síntomas.
     let preguntaSintomas: Bool
-    let registrar: (_ sis: Int, _ dia: Int, _ pulso: Int, _ irregular: Bool, _ confirmada: Bool, _ sintomas: [String]) -> Void
+    /// `conHoja`: la toma se guarda y sigue la hoja de síntomas; recién con lo que conteste se decide el paso.
+    let registrar: (_ sis: Int, _ dia: Int, _ pulso: Int, _ irregular: Bool, _ confirmada: Bool, _ conHoja: Bool) -> Void
 
     private enum Aviso { case imposible, confirmar }
     @State private var sis = ""
@@ -102,11 +113,13 @@ private struct AnotarPresion: View {
     @State private var pulso = ""
     @State private var irregular = false
     @State private var aviso: Aviso?
-    @State private var hoja = false
     @State private var confirmada = false
-    @State private var sintomas: Set<String> = []
+    /// Sube cada vez que hay que traer el tilde de latido irregular a la vista (con el teclado abierto en el pulso).
+    @State private var alTilde = 0
     @FocusState private var foco: Int?
     @Environment(\.dynamicTypeSize) private var letra
+    @Environment(\.marcarSintomaFlujoPresion) private var marcarSintomaFlujo
+    @Environment(\.cerrarFlujoPresion) private var cerrarFlujo
 
     private var numeros: (Int, Int, Int)? {
         guard let s = Int(sis), let d = Int(dia), let p = Int(pulso) else { return nil }
@@ -131,7 +144,7 @@ private struct AnotarPresion: View {
     var body: some View {
         // Con letra grande los tres campos van uno debajo del otro.
         let campos = letra.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.m)) : AnyLayout(HStackLayout(alignment: .top, spacing: Espacio.s))
-        PantallaPresion {
+        PantallaPresion(ancla: "presion-irregular-ancla", vez: alTilde) {
             if let titulo { TituloPresion(titulo).accessibilityIdentifier("presion-anotar-titulo") }
             campos {
                 CampoPresion(rotulo: NP.alta, texto: $sis, teclado: .numberPad, grande: true, id: "presion-alta").focused($foco, equals: 0)
@@ -153,6 +166,7 @@ private struct AnotarPresion: View {
             .tarjeta()
             .accessibilityAddTraits(irregular ? .isSelected : [])
             .accessibilityIdentifier("presion-irregular")
+            .id("presion-irregular-ancla")
             if aviso != nil {
                 TextoPresion(conFoto ? TP.revisarNumero : TP.revisarNumeroSinFoto, fuente: .headline).tarjeta().accessibilityIdentifier("presion-revisar")
             }
@@ -171,19 +185,11 @@ private struct AnotarPresion: View {
         .onChange(of: sis) { _, v in escrito(0, v, tope: Presion.Lim.sisMax) { sis = $0 } }
         .onChange(of: dia) { _, v in escrito(1, v, tope: Presion.Lim.diaMax) { dia = $0 } }
         .onChange(of: pulso) { _, v in escrito(2, v, tope: Presion.Lim.pulMax) { pulso = $0 } }
-        .sheet(isPresented: $hoja) {
-            NavigationStack {
-                PantallaPresion {
-                    SelectorSintomasPresion(seleccion: $sintomas)
-                } pie: {
-                    Button(NP.seguir) { hoja = false; enviar() }.buttonStyle(BotonPresion()).accessibilityIdentifier("presion-sintomas-seguir")
-                }
-                .background(Color.fondo)
-                .navigationTitle(TP.marcarSintoma)
-                .navigationBarTitleDisplayMode(.inline)
-            }
-            .interactiveDismissDisabled()
-        }
+        // Con el teclado en el pulso, el tilde de abajo se trae a la vista (con letra grande quedaba tapado).
+        .onChange(of: foco) { _, f in if f == 2 { alTilde += 1 } }
+        // Con el teclado arriba solo queda «Anotar la toma» sobre el teclado; los del recorrido vuelven al bajarlo.
+        .environment(\.marcarSintomaFlujoPresion, foco == nil ? marcarSintomaFlujo : nil)
+        .environment(\.cerrarFlujoPresion, foco == nil ? cerrarFlujo : nil)
     }
 
     private func limpiar() { aviso = nil; confirmada = false }
@@ -203,14 +209,10 @@ private struct AnotarPresion: View {
         }
     }
 
+    /// La toma se guarda primero (queda en disco y en la cola); la hoja de síntomas, si toca, va después.
     private func seguir() {
-        guard let (s, _, p) = numeros else { return }
-        if preguntaSintomas && (p >= 120 || p <= 40 || s < 90) { hoja = true } else { enviar() }
-    }
-
-    private func enviar() {
         guard let (s, d, p) = numeros else { return }
-        registrar(s, d, p, irregular, confirmada, Array(sintomas))
+        registrar(s, d, p, irregular, confirmada, preguntaSintomas && (p >= 120 || p <= 40 || s < 90))
     }
 }
 
@@ -227,6 +229,8 @@ struct TomaPresionView: View {
     @State private var queEvitar = false
     @State private var esperaTerminada = false
     @State private var sintoma = false
+    /// Lo marcado en la hoja de síntomas de después de la toma.
+    @State private var sintomasHoja: Set<String> = []
 
     private var enCurso: EnCursoPresion? { modelo.enCurso }
     private var tipo: String { enCurso?.sesion.tipo ?? "estandar" }
@@ -260,26 +264,45 @@ struct TomaPresionView: View {
                         .id(enCurso?.paso ?? 0)
                         .safeAreaInset(edge: .bottom) { if tipo == "ortostatica" { botonMareo.padding(Espacio.m).background(.bar) } }
                 case EtapaPresion.mareo: mareo
+                case EtapaPresion.sintomas: hojaSintomas
                 default: Color.fondo
                 }
             }
             .background(Color.fondo)
             .navigationTitle(NP.titulo)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(NP.cerrar, action: cerrar).accessibilityIdentifier("presion-flujo-cerrar") }
-                // «Marcar un síntoma», siempre a mano. En la guardia ya no hace falta.
-                if let e = enCurso?.etapa, e != EtapaPresion.guardiaPresion, e != EtapaPresion.guardiaSintomas {
-                    ToolbarItem(placement: .primaryAction) {
-                        // Con palabras, nunca solo un ícono.
-                        Button(TP.marcarSintoma) { sintoma = true }
-                            .accessibilityIdentifier("presion-flujo-sintoma")
-                    }
-                }
+            // «Marcar un síntoma» siempre a mano y «Cerrar»: botones de ancho completo con texto, debajo del principal.
+            .environment(\.marcarSintomaFlujoPresion, accionMarcarSintoma)
+            .environment(\.cerrarFlujoPresion, accionCerrar)
+            .sheet(isPresented: $sintoma) {
+                MarcarSintomaPresion(modelo: modelo, alCerrar: { sintoma = false }).presentationDragIndicator(.visible).sinBotonesFlujoPresion()
             }
-            .sheet(isPresented: $sintoma) { MarcarSintomaPresion(modelo: modelo, alCerrar: { sintoma = false }).presentationDragIndicator(.visible) }
         }
         .onChange(of: enCurso == nil) { _, sin in if sin { alCerrar() } }
+    }
+
+    /// En la guardia ya no hace falta, y en la hoja de síntomas ya se está marcando.
+    private var conMarcarSintoma: Bool {
+        guard let e = enCurso?.etapa else { return false }
+        return ![EtapaPresion.guardiaPresion, EtapaPresion.guardiaSintomas, EtapaPresion.sintomas].contains(e)
+    }
+
+    /// Donde el botón principal ya es «Cerrar» (la guardia, el mareo y el cierre sin nada que siga) no se repite.
+    private var conCerrar: Bool {
+        guard let e = enCurso?.etapa else { return true }
+        if [EtapaPresion.guardiaPresion, EtapaPresion.guardiaSintomas, EtapaPresion.mareo].contains(e) { return false }
+        if e == EtapaPresion.listo { return siguiente != nil }
+        return true
+    }
+
+    private var accionMarcarSintoma: (@MainActor () -> Void)? {
+        guard conMarcarSintoma else { return nil }
+        return { sintoma = true }
+    }
+
+    private var accionCerrar: (@MainActor () -> Void)? {
+        guard conCerrar else { return nil }
+        return { cerrar() }
     }
 
     // MARK: Pasos
@@ -290,7 +313,7 @@ struct TomaPresionView: View {
 
     /// Al salir: una repetición que quedó pendiente se guarda para retomarla; lo demás se cierra (lo anotado ya está en la cola).
     private func cerrar() {
-        if let e = enCurso, !guiada, !e.sesion.tomas.isEmpty, e.etapa == EtapaPresion.espera || e.etapa == EtapaPresion.anotar,
+        if let e = enCurso, !guiada, !e.sesion.tomas.isEmpty, [EtapaPresion.espera, EtapaPresion.anotar, EtapaPresion.sintomas].contains(e.etapa),
            let ev = modelo.evaluar(), ev.paso == .repetir || ev.paso == .repetirConLista {
             alCerrar()
             return
@@ -312,11 +335,29 @@ struct TomaPresionView: View {
         }
     }
 
-    private func registrar(_ sis: Int, _ dia: Int, _ pulso: Int, _ irregular: Bool, _ confirmada: Bool, _ sintomas: [String]) {
+    private func registrar(_ sis: Int, _ dia: Int, _ pulso: Int, _ irregular: Bool, _ confirmada: Bool, _ conHoja: Bool) {
         CentroAvisos.shared.cancelarRepetirPresion()
         let p = guiada ? pasoActual : nil
+        // La toma queda guardada (en disco y en la cola) antes de cualquier pregunta: si cierra la app en la hoja, no se pierde.
         guard let ev = modelo.anotarToma(sis: sis, dia: dia, pulso: pulso, latidoIrregular: irregular, posicion: p?.posicion ?? "sentado", minutosDePie: p?.minutosDePie,
-                                         brazo: p?.brazo, confirmada: confirmada, sintomas: sintomas) else { return }
+                                         brazo: p?.brazo, confirmada: confirmada) else { return }
+        if conHoja {
+            sintomasHoja = []
+            ir(EtapaPresion.sintomas)
+            return
+        }
+        trasToma(ev)
+    }
+
+    /// Lo marcado en la hoja de síntomas se suma a la sesión y, con eso, se decide el paso.
+    private func responderHoja() {
+        let codigos = (Presion.alarma + Presion.otros).filter(sintomasHoja.contains)
+        guard let ev = codigos.isEmpty ? modelo.evaluar() : modelo.sumarSintomas(codigos) else { return }
+        trasToma(ev)
+    }
+
+    /// Con la toma anotada: el paso que sigue de la ortostática o la comparación de brazos, o lo que diga la regla.
+    private func trasToma(_ ev: Presion.Evaluacion) {
         if guiada, ev.paso == .listo, let e = enCurso, e.paso + 1 < pasos.count {
             let sigue = pasos[e.paso + 1]
             modelo.cambiar { $0.paso += 1; $0.etapa = EtapaPresion.guiaEspera; $0.finTemporizador = Date().addingTimeInterval(TiemposPresion.segundos(sigue.esperaS)) }
@@ -461,6 +502,7 @@ struct TomaPresionView: View {
                 }
                 .buttonStyle(BotonPresion(secundario: true))
                 .accessibilityIdentifier("presion-saltear")
+                BotonesFlujoPresion()
             }
             .padding(Espacio.m)
             .anchoLectura()
@@ -496,6 +538,7 @@ struct TomaPresionView: View {
                     .tarjeta()
                     .accessibilityIdentifier("presion-espera-sintomas")
                 }
+                BotonesFlujoPresion()
             }
             .padding(Espacio.m)
             .anchoLectura()
@@ -561,6 +604,7 @@ struct TomaPresionView: View {
                 } else {
                     Button(NP.cerrar, action: cerrar).buttonStyle(BotonPresion()).accessibilityIdentifier("presion-cerrar")
                 }
+                BotonesFlujoPresion()
             }
             .padding(Espacio.m)
             .anchoLectura()
@@ -603,6 +647,7 @@ struct TomaPresionView: View {
                 }
                 .buttonStyle(BotonPresion())
                 .accessibilityIdentifier("presion-empezar")
+                BotonesFlujoPresion()
             }
             .padding(Espacio.m)
             .anchoLectura()
@@ -622,6 +667,7 @@ struct TomaPresionView: View {
                     .tarjeta()
                 }
                 if tipo == "ortostatica" { botonMareo }
+                BotonesFlujoPresion()
             }
             .padding(Espacio.m)
             .anchoLectura()
@@ -630,16 +676,22 @@ struct TomaPresionView: View {
 
     private var botonMareo: some View {
         Button(NP.meMaree) {
-            // Marcarlo nunca depende de haber medido: sin ninguna toma viaja como síntoma suelto.
-            if enCurso?.sesion.tomas.isEmpty == true {
-                modelo.marcarSintoma(codigos: ["mareo_al_pararse"], nota: nil, sesionId: enCurso?.sesion.id)
-            } else {
-                modelo.sumarSintomas(["mareo_al_pararse"])
-            }
-            ir(EtapaPresion.mareo)
+            // Marcarlo nunca depende de haber medido: sin ninguna toma viaja además como síntoma suelto. La regla decide: con
+            // un pulso de urgencia, guardia.
+            if modelo.meMaree()?.paso == .guardiaSintomas { ir(EtapaPresion.guardiaSintomas) } else { ir(EtapaPresion.mareo) }
         }
         .buttonStyle(BotonPresion(secundario: true))
         .accessibilityIdentifier("presion-me-maree")
+    }
+
+    /// La hoja de síntomas de después de la toma: la toma ya está guardada.
+    private var hojaSintomas: some View {
+        PantallaPresion {
+            TituloPresion(TP.marcarSintoma).accessibilityIdentifier("presion-sintomas-hoja")
+            SelectorSintomasPresion(seleccion: $sintomasHoja)
+        } pie: {
+            Button(NP.seguir) { responderHoja() }.buttonStyle(BotonPresion()).accessibilityIdentifier("presion-sintomas-seguir")
+        }
     }
 
     private var mareo: some View {

@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.entreno
 
+import com.pumpteam.mypump.presion.TarjetaPresionDe
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -198,6 +199,8 @@ fun ListaEntreno(
                 ) {
                     // «Tu guía» mientras falta ver algo: verde y primera, arriba de todo, como iOS (revisión del 4-nov, hallazgo 5).
                     // «Tu entrega empieza a las 10:00 · Entrar» (2.2.0): desde 30 min antes hasta el fin de la franja.
+                    // «Tu presión», primer ítem del desplazamiento mientras haya algo para hacer: una tarjeta más, no frena ni condiciona nada.
+                    TarjetaPresionDe(modelo)
                     EntregaAhoraDe(modelo)
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
                     TarjetaGimnasioDe(modelo)

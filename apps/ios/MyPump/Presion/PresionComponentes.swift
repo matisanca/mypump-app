@@ -65,18 +65,40 @@ private struct CuerpoBotonPresion: View {
 /// Una pantalla de un paso: lo que hay que leer scrollea y los botones quedan siempre a la vista abajo (también por encima del
 /// teclado), el principal primero.
 struct PantallaPresion<Contenido: View, Pie: View>: View {
+    /// Cada vez que cambia `vez`, se trae `ancla` (un `.id` del contenido) a la vista, pegada abajo: con el teclado abierto y
+    /// letra grande, lo que quedaba tapado debajo del campo.
+    var ancla: String? = nil
+    var vez = 0
     @ViewBuilder var contenido: Contenido
     @ViewBuilder var pie: Pie
+    @Environment(\.dynamicTypeSize) private var letra
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Espacio.m) { contenido }
-                .padding(Espacio.m)
-                .anchoLectura()
+            ScrollViewReader { lector in
+                VStack(alignment: .leading, spacing: Espacio.m) {
+                    contenido
+                    // Con letra grande la barra de abajo se comería la pantalla: los del recorrido van al final, scrolleando.
+                    if letra.isAccessibilitySize { BotonesFlujoPresion() }
+                }
+                    .padding(Espacio.m)
+                    .anchoLectura()
+                    .onChange(of: vez) { _, _ in
+                        guard let ancla else { return }
+                        // Que el teclado termine de subir: recién ahí se sabe cuánto lugar queda.
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(400))
+                            withAnimation { lector.scrollTo(ancla, anchor: .bottom) }
+                        }
+                    }
+            }
         }
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: Espacio.xs) { pie }
+            VStack(spacing: Espacio.xs) {
+                pie
+                if !letra.isAccessibilitySize { BotonesFlujoPresion() }
+            }
                 .padding(.horizontal, Espacio.m)
                 .padding(.vertical, Espacio.xs)
                 .anchoLectura()
@@ -337,5 +359,40 @@ enum NumeroPresion {
     static func diaCorto(_ fecha: String) -> String {
         let p = fecha.prefix(10).split(separator: "-").compactMap { Int($0) }
         return p.count == 3 ? "\(p[2])/\(p[1])" : fecha
+    }
+}
+
+/// «Marcar un síntoma» y «Cerrar» del recorrido de una toma: botones secundarios de ancho completo, con texto, debajo del
+/// principal (nunca ítems chicos de la barra de arriba). Los pone `TomaPresionView` por el entorno; nil donde no van.
+private struct MarcarSintomaFlujoPresion: EnvironmentKey { static let defaultValue: (@MainActor () -> Void)? = nil }
+private struct CerrarFlujoPresion: EnvironmentKey { static let defaultValue: (@MainActor () -> Void)? = nil }
+
+extension EnvironmentValues {
+    var marcarSintomaFlujoPresion: (@MainActor () -> Void)? {
+        get { self[MarcarSintomaFlujoPresion.self] }
+        set { self[MarcarSintomaFlujoPresion.self] = newValue }
+    }
+    var cerrarFlujoPresion: (@MainActor () -> Void)? {
+        get { self[CerrarFlujoPresion.self] }
+        set { self[CerrarFlujoPresion.self] = newValue }
+    }
+}
+
+extension View {
+    /// Sin los botones del recorrido (en las hojas que se abren encima y mientras el teclado está arriba).
+    func sinBotonesFlujoPresion() -> some View { environment(\.marcarSintomaFlujoPresion, nil).environment(\.cerrarFlujoPresion, nil) }
+}
+
+struct BotonesFlujoPresion: View {
+    @Environment(\.marcarSintomaFlujoPresion) private var marcarSintoma
+    @Environment(\.cerrarFlujoPresion) private var cerrar
+
+    var body: some View {
+        if let marcarSintoma {
+            Button(TP.marcarSintoma) { marcarSintoma() }.buttonStyle(BotonPresion(secundario: true)).accessibilityIdentifier("presion-flujo-sintoma")
+        }
+        if let cerrar {
+            Button(NP.cerrar) { cerrar() }.buttonStyle(BotonPresion(secundario: true)).accessibilityIdentifier("presion-flujo-cerrar")
+        }
     }
 }

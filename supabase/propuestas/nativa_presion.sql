@@ -635,7 +635,10 @@ BEGIN
 
   v_hoy := (p_ahora AT TIME ZONE mypump_presion_zona(v.zona_horaria))::DATE;
   v_estado := CASE WHEN v.estado NOT IN ('pendiente', 'en_curso') THEN v.estado
-                   WHEN (r->>'serie_valida')::BOOLEAN THEN 'completa'
+                   WHEN (r->>'serie_valida')::BOOLEAN
+                        AND NOT (v.incluye_ortostatica AND NOT EXISTS (SELECT 1 FROM mypump_presion_sesiones x WHERE x.serie_id = v.id AND x.tipo = 'ortostatica'))
+                        AND NOT (v.comparar_brazos AND NOT EXISTS (SELECT 1 FROM mypump_presion_sesiones x WHERE x.serie_id = v.id AND x.tipo = 'comparacion_brazos'))
+                        THEN 'completa'
                    WHEN v.fecha_limite IS NOT NULL AND v_hoy > v.fecha_limite THEN 'incompleta' ELSE v.estado END;
   UPDATE mypump_presion_series SET resumen = v_resumen, resumen_calculado_en = p_ahora, estado = v_estado, actualizado_en = p_ahora WHERE id = v.id;
 END;
@@ -645,7 +648,7 @@ $$;
 CREATE OR REPLACE FUNCTION mypump_presion_recalcular(p_sesion_id UUID, p_ahora TIMESTAMPTZ DEFAULT NOW())
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-  s mypump_presion_sesiones%ROWTYPE; ev JSONB; v_regla TEXT; v_tipo_ap TEXT;
+  s mypump_presion_sesiones%ROWTYPE; ev JSONB; v_regla TEXT; v_tipo_ap TEXT; v_ya_suelta BOOLEAN;
 BEGIN
   SELECT * INTO s FROM mypump_presion_sesiones WHERE id = p_sesion_id FOR UPDATE;
   IF NOT FOUND THEN RETURN NULL; END IF;
@@ -655,6 +658,7 @@ BEGIN
          valida_bajo_efecto = CASE WHEN s.tipo = 'bajo_efecto' THEN (ev->>'valida_bajo_efecto')::BOOLEAN END, evaluacion = ev, actualizado_en = p_ahora WHERE id = s.id;
   UPDATE mypump_presion_tomas SET valida_para_promedio = (ev->>'cuenta')::BOOLEAN AND posicion = 'sentado',
          motivo_exclusion = CASE WHEN (ev->>'cuenta')::BOOLEAN THEN NULL ELSE ev->>'motivo_exclusion' END WHERE sesion_id = s.id;
+  v_ya_suelta := EXISTS (SELECT 1 FROM mypump_presion_avisos WHERE origen_tipo = 'sesion' AND origen_id = s.id AND regla = 'suelta_135_85');
   FOR v_regla IN SELECT jsonb_array_elements_text(ev->'reglas') LOOP
     PERFORM mypump_presion_aviso_nuevo(s.cliente_id, v_regla, 'sesion', s.id,
       jsonb_build_object('valor', ev->'valor', 'tipo', s.tipo, 'fecha', to_char(s.fecha, 'YYYY-MM-DD'), 'sintomas', to_jsonb(s.sintomas), 'muneca', v_tipo_ap = 'muneca',
@@ -662,7 +666,7 @@ BEGIN
       COALESCE(s.texto_alumno, ev->>'texto'), cardinality(s.sintomas) > 0, (SELECT count(*)::INTEGER - 1 FROM mypump_presion_tomas t WHERE t.sesion_id = s.id));
   END LOOP;
   -- Una toma suelta de 135/85 o más pide una serie de 3 tomas, si no hay una abierta.
-  IF ev->'reglas' ? 'suelta_135_85' AND NOT EXISTS (SELECT 1 FROM mypump_presion_series WHERE cliente_id = s.cliente_id AND estado IN ('pendiente', 'en_curso')) THEN
+  IF ev->'reglas' ? 'suelta_135_85' AND NOT v_ya_suelta AND NOT EXISTS (SELECT 1 FROM mypump_presion_series WHERE cliente_id = s.cliente_id AND estado IN ('pendiente', 'en_curso')) THEN
     INSERT INTO mypump_presion_series (cliente_id, motivo, pedida_por, regla_codigo, zona_horaria) VALUES (s.cliente_id, 'control_toma_alta', 'regla', 'suelta_135_85', s.zona_horaria);
   END IF;
   IF s.serie_id IS NOT NULL THEN PERFORM mypump_presion_recalcular_serie(s.serie_id, p_ahora); END IF;
@@ -757,6 +761,7 @@ BEGIN
   v_cliente_id := mypump_get_cliente_id_from_token(p_token);
   IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
   IF NOT mypump_presion_habilitado(v_cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_habilitado'); END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('mypump_presion:' || v_cliente_id));
   IF v_tipo IS NULL OR v_tipo NOT IN ('brazo', 'muneca', 'reloj_anillo_otro') THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'datos'); END IF;
   IF char_length(COALESCE(p_aparato->>'marca', '')) > 80 OR char_length(COALESCE(p_aparato->>'modelo', '')) > 80 OR char_length(COALESCE(p_aparato->>'modelo_codigo', '')) > 80 THEN
     RETURN jsonb_build_object('ok', FALSE, 'error', 'datos');
@@ -781,6 +786,7 @@ BEGIN
   v_cliente_id := mypump_get_cliente_id_from_token(p_token);
   IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
   IF NOT mypump_presion_habilitado(v_cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_habilitado'); END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('mypump_presion:' || v_cliente_id));
   IF v_cm IS NULL OR v_cm < 20 OR v_cm > 70 THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'datos'); END IF;
   INSERT INTO mypump_presion_brazo (cliente_id, cm) VALUES (v_cliente_id, v_cm)
   ON CONFLICT (cliente_id) DO UPDATE SET cm = EXCLUDED.cm, medida_en = NOW();
@@ -806,21 +812,24 @@ BEGIN
   v_cliente_id := mypump_get_cliente_id_from_token(p_token);
   IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
   IF NOT mypump_presion_habilitado(v_cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_habilitado'); END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('mypump_presion:' || v_cliente_id));
   BEGIN
     v_id := (p_sesion->>'id')::UUID; v_serie_id := (p_sesion->>'serie_id')::UUID; v_inicio := (p_sesion->>'inicio')::TIMESTAMPTZ;
   EXCEPTION WHEN OTHERS THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'datos'); END;
   IF v_id IS NULL OR v_inicio IS NULL OR v_tipo IS NULL OR v_tipo NOT IN ('estandar', 'comparacion_brazos', 'ortostatica', 'bajo_efecto', 'suelta')
-     OR jsonb_typeof(p_sesion->'tomas') IS DISTINCT FROM 'array' OR jsonb_array_length(p_sesion->'tomas') NOT BETWEEN 1 AND 4
-     OR v_inicio > NOW() + INTERVAL '15 minutes' OR v_inicio < NOW() - INTERVAL '30 days' THEN
+     OR jsonb_typeof(p_sesion->'tomas') IS DISTINCT FROM 'array' OR jsonb_array_length(p_sesion->'tomas') NOT BETWEEN 1 AND 4 THEN
     RETURN jsonb_build_object('ok', FALSE, 'error', 'datos');
   END IF;
+  -- Un reloj adelantado o una toma que quedó días en la cola no se rechazan: una urgencia no se puede perder por eso.
+  v_inicio := LEAST(NOW(), v_inicio);
   FOR t IN SELECT * FROM jsonb_array_elements(p_sesion->'tomas') LOOP
     IF jsonb_typeof(t->'sis') IS DISTINCT FROM 'number' OR jsonb_typeof(t->'dia') IS DISTINCT FROM 'number' OR jsonb_typeof(t->'pulso') IS DISTINCT FROM 'number'
        OR mypump_presion_validar((t->>'sis')::NUMERIC, (t->>'dia')::NUMERIC, (t->>'pulso')::NUMERIC) = 'imposible' THEN
       RETURN jsonb_build_object('ok', FALSE, 'error', 'imposible');
     END IF;
     IF jsonb_typeof(t->'orden') IS DISTINCT FROM 'number' OR (t->>'orden')::NUMERIC NOT IN (1, 2, 3, 4) OR COALESCE(t->>'posicion', 'sentado') NOT IN ('sentado', 'acostado', 'de_pie')
-       OR COALESCE(t->>'brazo', 'izq') NOT IN ('izq', 'der') OR (t->>'minutos_de_pie') IS NOT NULL AND (t->>'minutos_de_pie') NOT IN ('1', '3') THEN
+       OR COALESCE(t->>'brazo', 'izq') NOT IN ('izq', 'der') OR (jsonb_typeof(t->'minutos_de_pie') = 'number' AND (t->>'minutos_de_pie')::NUMERIC NOT IN (1, 3))
+       OR jsonb_typeof(COALESCE(t->'minutos_de_pie', 'null'::JSONB)) NOT IN ('number', 'null') THEN
       RETURN jsonb_build_object('ok', FALSE, 'error', 'datos');
     END IF;
   END LOOP;
@@ -838,14 +847,18 @@ BEGIN
     SELECT * INTO a FROM mypump_presion_aparatos WHERE cliente_id = v_cliente_id AND activo;
     IF a.id IS NULL OR a.tipo = 'reloj_anillo_otro' THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'aparato'); END IF;
     IF v_serie_id IS NOT NULL THEN
-      SELECT * INTO v FROM mypump_presion_series WHERE id = v_serie_id AND cliente_id = v_cliente_id AND estado IN ('pendiente', 'en_curso') FOR UPDATE;
-      IF NOT FOUND THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'serie'); END IF;
-      IF v.estado = 'pendiente' AND EXISTS (SELECT 1 FROM mypump_presion_series WHERE cliente_id = v_cliente_id AND estado = 'en_curso') THEN
-        RETURN jsonb_build_object('ok', FALSE, 'error', 'serie');
+      IF NOT EXISTS (SELECT 1 FROM mypump_presion_series WHERE id = v_serie_id AND cliente_id = v_cliente_id) THEN
+        RETURN jsonb_build_object('ok', FALSE, 'error', 'serie');   -- la serie no es suya
       END IF;
-    ELSIF v_tipo <> 'suelta' THEN
-      RETURN jsonb_build_object('ok', FALSE, 'error', 'serie');
+      SELECT * INTO v FROM mypump_presion_series WHERE id = v_serie_id AND cliente_id = v_cliente_id FOR UPDATE;
+      -- Las guiadas (ortostática y comparación) entran también con la serie ya completa. Cualquier otra toma sobre una serie
+      -- que cerró, venció o no puede abrirse queda como suelta: se guarda, se evalúa y deja sus avisos. Nunca se pierde.
+      IF NOT (v.estado IN ('pendiente', 'en_curso') OR (v.estado = 'completa' AND v_tipo IN ('ortostatica', 'comparacion_brazos')))
+         OR (v.estado = 'pendiente' AND EXISTS (SELECT 1 FROM mypump_presion_series WHERE cliente_id = v_cliente_id AND estado = 'en_curso')) THEN
+        v := NULL; v_serie_id := NULL;
+      END IF;
     END IF;
+    IF v_serie_id IS NULL AND v_tipo = 'estandar' THEN v_tipo := 'suelta'; END IF;
     v_zona := mypump_presion_zona(p_sesion->>'zona_horaria');
     v_fecha := (v_inicio AT TIME ZONE v_zona)::DATE;
     BEGIN
@@ -857,7 +870,7 @@ BEGIN
         (p_sesion->'previo'->>'ejercicio')::BOOLEAN, (p_sesion->>'reposo_cumplido')::BOOLEAN, (p_sesion->>'temporizador_salteado')::BOOLEAN,
         (p_sesion->>'dosis_estimulante_hora')::TIME, (p_sesion->>'entreno_entre_dosis_y_toma')::BOOLEAN, NULLIF(btrim(p_sesion->>'nota'), ''),
         left(p_sesion->>'app_version', 40), p_sesion->>'plataforma', v_sint, p_sesion->>'lista_espera', left(p_sesion->>'texto_alumno', 60));
-    EXCEPTION WHEN invalid_text_representation OR invalid_datetime_format OR datetime_field_overflow THEN
+    EXCEPTION WHEN data_exception OR check_violation THEN
       RETURN jsonb_build_object('ok', FALSE, 'error', 'datos');
     END;
     IF v.id IS NOT NULL AND v.estado = 'pendiente' THEN
@@ -874,19 +887,21 @@ BEGIN
   FOR t IN SELECT * FROM jsonb_array_elements(p_sesion->'tomas') LOOP
     BEGIN v_medido := LEAST(NOW(), (t->>'medido_en')::TIMESTAMPTZ); EXCEPTION WHEN OTHERS THEN v_medido := NULL; END;
     INSERT INTO mypump_presion_tomas (sesion_id, orden, posicion, minutos_de_pie, brazo, sistolica, diastolica, pulso, latido_irregular, medido_en, confirmada_por_alumno)
-    VALUES (v_id, (t->>'orden')::INTEGER, COALESCE(t->>'posicion', 'sentado'), (t->>'minutos_de_pie')::INTEGER, t->>'brazo', (t->>'sis')::INTEGER, (t->>'dia')::INTEGER, (t->>'pulso')::INTEGER,
-            (t->>'latido_irregular')::BOOLEAN IS TRUE, COALESCE(v_medido, NOW()), (t->>'confirmada_por_alumno')::BOOLEAN IS TRUE)
+    VALUES (v_id, (t->>'orden')::NUMERIC::INTEGER, COALESCE(t->>'posicion', 'sentado'), (t->>'minutos_de_pie')::NUMERIC::INTEGER, t->>'brazo',
+            (t->>'sis')::NUMERIC::INTEGER, (t->>'dia')::NUMERIC::INTEGER, (t->>'pulso')::NUMERIC::INTEGER,
+            t->'latido_irregular' = 'true'::JSONB, COALESCE(v_medido, NOW()), t->'confirmada_por_alumno' = 'true'::JSONB)
     ON CONFLICT (sesion_id, orden) DO NOTHING;
   END LOOP;
   IF cardinality(v_sint) > 0 OR p_sesion->>'lista_espera' IS NOT NULL THEN
     INSERT INTO mypump_presion_sintomas (id, cliente_id, marcado_en, zona_horaria, sesion_id, contexto, sin_sintomas_en_lista, codigos, de_alarma)
-    VALUES (v_id, v_cliente_id, NOW(), p_sesion->>'zona_horaria', v_id,
+    VALUES (v_id, v_cliente_id, NOW(), left(p_sesion->>'zona_horaria', 64), v_id,
             CASE WHEN p_sesion->>'lista_espera' IS NOT NULL THEN 'espera_180_120' WHEN v_tipo = 'ortostatica' THEN 'ortostatica' ELSE 'en_toma' END,
             CASE WHEN p_sesion->>'lista_espera' IS NOT NULL THEN p_sesion->>'lista_espera' = 'no' AND cardinality(v_sint) = 0 END, v_sint,
             v_sint && ARRAY['dolor_pecho','falta_aire','cefalea_fuerte_nueva','cambios_vista','debilidad_un_lado','dificultad_hablar','confusion','desmayo','desmayo_en_esfuerzo'])
     ON CONFLICT (id) DO UPDATE SET codigos = ARRAY(SELECT DISTINCT x FROM unnest(mypump_presion_sintomas.codigos || EXCLUDED.codigos) x ORDER BY 1),
       de_alarma = mypump_presion_sintomas.de_alarma OR EXCLUDED.de_alarma, contexto = EXCLUDED.contexto,
-      sin_sintomas_en_lista = EXCLUDED.sin_sintomas_en_lista AND NOT (mypump_presion_sintomas.de_alarma OR EXCLUDED.de_alarma);
+      sin_sintomas_en_lista = EXCLUDED.sin_sintomas_en_lista AND NOT (mypump_presion_sintomas.de_alarma OR EXCLUDED.de_alarma)
+      WHERE mypump_presion_sintomas.cliente_id = EXCLUDED.cliente_id;
   END IF;
   PERFORM mypump_presion_recalcular(v_id);
   -- La comparación de brazos deja la diferencia en la serie (izquierda menos derecha, promedio de cada lado).
@@ -903,28 +918,34 @@ CREATE OR REPLACE FUNCTION mypump_presion_sintoma(p_token TEXT, p_sintoma JSONB)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_cliente_id TEXT; v_id UUID; v_sesion UUID; v_cod TEXT[]; v_ctx TEXT := COALESCE(p_sintoma->>'contexto', 'boton'); v_alarma BOOLEAN; v_nuevo BOOLEAN;
+  v_marcado TIMESTAMPTZ;
 BEGIN
   v_cliente_id := mypump_get_cliente_id_from_token(p_token);
   IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
   IF NOT mypump_presion_habilitado(v_cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_habilitado'); END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('mypump_presion:' || v_cliente_id));
   BEGIN v_id := (p_sintoma->>'id')::UUID; v_sesion := (p_sintoma->>'sesion_id')::UUID;
   EXCEPTION WHEN OTHERS THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'datos'); END;
   v_cod := ARRAY(SELECT jsonb_array_elements_text(CASE WHEN jsonb_typeof(p_sintoma->'codigos') = 'array' THEN p_sintoma->'codigos' ELSE '[]'::JSONB END));
   IF v_id IS NULL OR v_ctx NOT IN ('boton', 'recordatorio_180_120') OR char_length(COALESCE(p_sintoma->>'nota', '')) > 500
      OR NOT v_cod <@ ARRAY['dolor_pecho','falta_aire','cefalea_fuerte_nueva','cambios_vista','debilidad_un_lado','dificultad_hablar','confusion','desmayo','desmayo_en_esfuerzo',
                            'palpitaciones','mareo_al_pararse','vomitos_diarrea','otro']
-     OR (v_sesion IS NOT NULL AND NOT EXISTS (SELECT 1 FROM mypump_presion_sesiones WHERE id = v_sesion AND cliente_id = v_cliente_id)) THEN
+     THEN
     RETURN jsonb_build_object('ok', FALSE, 'error', 'datos');
   END IF;
+  -- La sesión puede no haber llegado nunca (marcó el síntoma antes de la primera toma): el síntoma se guarda igual, suelto.
+  IF v_sesion IS NOT NULL AND NOT EXISTS (SELECT 1 FROM mypump_presion_sesiones WHERE id = v_sesion AND cliente_id = v_cliente_id) THEN v_sesion := NULL; END IF;
+  -- La hora es la del teléfono (pudo quedar horas sin señal), nunca del futuro.
+  BEGIN v_marcado := LEAST(NOW(), (p_sintoma->>'marcado_en')::TIMESTAMPTZ); EXCEPTION WHEN OTHERS THEN v_marcado := NULL; END;
   v_alarma := v_cod && ARRAY['dolor_pecho','falta_aire','cefalea_fuerte_nueva','cambios_vista','debilidad_un_lado','dificultad_hablar','confusion','desmayo','desmayo_en_esfuerzo'];
   INSERT INTO mypump_presion_sintomas (id, cliente_id, marcado_en, zona_horaria, sesion_id, contexto, sin_sintomas_en_lista, codigos, de_alarma, nota)
-  VALUES (v_id, v_cliente_id, NOW(), p_sintoma->>'zona_horaria', v_sesion, v_ctx,
-          CASE WHEN v_ctx = 'recordatorio_180_120' THEN (p_sintoma->>'sin_sintomas_en_lista')::BOOLEAN IS TRUE AND cardinality(v_cod) = 0 END, v_cod, v_alarma, NULLIF(btrim(p_sintoma->>'nota'), ''))
+  VALUES (v_id, v_cliente_id, COALESCE(v_marcado, NOW()), left(p_sintoma->>'zona_horaria', 64), v_sesion, v_ctx,
+          CASE WHEN v_ctx = 'recordatorio_180_120' THEN p_sintoma->'sin_sintomas_en_lista' = 'true'::JSONB AND cardinality(v_cod) = 0 END, v_cod, v_alarma, NULLIF(btrim(p_sintoma->>'nota'), ''))
   ON CONFLICT (id) DO NOTHING;
   GET DIAGNOSTICS v_nuevo = ROW_COUNT;
   IF NOT v_nuevo AND NOT EXISTS (SELECT 1 FROM mypump_presion_sintomas WHERE id = v_id AND cliente_id = v_cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'datos'); END IF;
   IF v_nuevo THEN
-    IF v_alarma THEN PERFORM mypump_presion_aviso_nuevo(v_cliente_id, 'sintoma_alarma', 'sintoma', v_id, jsonb_build_object('codigos', to_jsonb(v_cod), 'contexto', v_ctx), 'guardia_sintomas', TRUE, NULL); END IF;
+    IF v_alarma THEN PERFORM mypump_presion_aviso_nuevo(v_cliente_id, 'sintoma_alarma', 'sintoma', v_id, jsonb_build_object('codigos', to_jsonb(v_cod), 'contexto', v_ctx, 'marcado_en', COALESCE(v_marcado, NOW())), 'guardia_sintomas', TRUE, NULL); END IF;
     IF v_cod && ARRAY['desmayo', 'desmayo_en_esfuerzo'] THEN PERFORM mypump_presion_aviso_nuevo(v_cliente_id, 'desmayo', 'sintoma', v_id, jsonb_build_object('codigos', to_jsonb(v_cod)), 'guardia_sintomas', TRUE, NULL); END IF;
     IF 'mareo_al_pararse' = ANY (v_cod) THEN PERFORM mypump_presion_aviso_nuevo(v_cliente_id, 'sintomas_al_pararse', 'sintoma', v_id, jsonb_build_object('codigos', to_jsonb(v_cod)), 'ninguno', TRUE, NULL); END IF;
     IF v_cod && ARRAY['vomitos_diarrea', 'palpitaciones', 'otro'] AND NOT v_alarma THEN PERFORM mypump_presion_aviso_nuevo(v_cliente_id, 'sintoma_marcado', 'sintoma', v_id, jsonb_build_object('codigos', to_jsonb(v_cod)), 'ninguno', TRUE, NULL); END IF;

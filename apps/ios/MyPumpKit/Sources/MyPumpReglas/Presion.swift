@@ -534,3 +534,13 @@ public enum Presion {
             reglas: unicas.sorted())
     }
 }
+
+extension Presion.Evaluacion {
+    /// La misma evaluación sin «Esta no cuenta» (queda «ninguno»): para una repetición retomada, donde la condición que falta
+    /// (las preguntas previas, el reposo) no se sabe.
+    public var sinNoCuenta: Presion.Evaluacion {
+        guard texto == "toma_no_cuenta" else { return self }
+        return Presion.Evaluacion(paso: paso, texto: "ninguno", cuenta: cuenta, motivoExclusion: motivoExclusion, valor: valor, validaBajoEfecto: validaBajoEfecto,
+                                  urgencia: urgencia, ortostatica: ortostatica, reglas: reglas)
+    }
+}

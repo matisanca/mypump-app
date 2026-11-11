@@ -339,7 +339,8 @@ public final class ModeloPresion {
         func n(_ x: Double?) -> JSONValue { x.map(JSONValue.numero) ?? .null }
         func t(_ s: String?) -> JSONValue {
             let v = (s ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            return v.isEmpty ? .null : .texto(String(v.prefix(120)))
+            // El servidor rechaza más de 80.
+            return v.isEmpty ? .null : .texto(String(v.prefix(80)))
         }
         return await escribir("mypump_presion_aparato", ["p_aparato": .objeto([
             "tipo": t(a.tipo), "marca": t(a.marca), "modelo": t(a.modelo), "modelo_codigo": t(a.modeloCodigo),
@@ -370,13 +371,17 @@ public final class ModeloPresion {
     }
 
     /// Retoma la repetición que pide el servidor (`pendiente`) cuando el teléfono no tiene la sesión: con las tomas que ya están
-    /// guardadas, para que la regla vea las dos. Lo que no viene en `sesiones` (las preguntas previas, el reposo) queda sin dato.
+    /// guardadas, para que la regla vea las dos y la nueva salga con el orden que sigue. Lo que no viene en `sesiones` (las
+    /// preguntas previas, el reposo) queda sin dato. Si la sesión no está en lo último que se supo, se refresca; si sigue sin
+    /// estar, no se retoma (nil): sin sus tomas la nueva saldría con orden 1 y el servidor la ignoraría.
     @discardableResult
-    public func retomar(_ p: PendientePresion, etapa: String) -> EnCursoPresion {
+    public func retomar(_ p: PendientePresion, etapa: String) async -> EnCursoPresion? {
         if let e = local.enCurso, e.sesion.id == p.sesionId { return e }
-        let g = sesionGuardada(p.sesionId)
-        var s = Presion.Sesion(id: p.sesionId, serieId: g?.serieId, tipo: g?.tipo ?? "suelta", inicio: p.desde, zonaHoraria: zona, brazo: g?.tomas.first?.brazo ?? estado?.serie?.brazo ?? "izq")
-        s.tomas = g?.tomas ?? []
+        if sesionGuardada(p.sesionId) == nil { await refrescar() }
+        if let e = local.enCurso, e.sesion.id == p.sesionId { return e }
+        guard let g = sesionGuardada(p.sesionId), !g.tomas.isEmpty else { return nil }
+        var s = Presion.Sesion(id: p.sesionId, serieId: g.serieId, tipo: g.tipo, inicio: p.desde, zonaHoraria: zona, brazo: g.tomas.first?.brazo ?? estado?.serie?.brazo ?? "izq")
+        s.tomas = g.tomas
         var e = EnCursoPresion(sesion: s, etapa: etapa, dia: FechaLocal.hoy(ahora()))
         e.retomada = true
         local.enCurso = e
@@ -400,7 +405,14 @@ public final class ModeloPresion {
     }
 
     /// Qué toca ahora, con lo anotado hasta acá. nil sin sesión en curso.
-    public func evaluar() -> Presion.Evaluacion? { local.enCurso.map { Presion.evaluarSesion(conMinutos($0)) } }
+    public func evaluar() -> Presion.Evaluacion? { local.enCurso.map(evaluar) }
+
+    /// En una repetición retomada no se saben las preguntas previas ni el reposo: «Esta no cuenta» saldría por falta de datos,
+    /// así que ni se muestra ni viaja.
+    private func evaluar(_ e: EnCursoPresion) -> Presion.Evaluacion {
+        let ev = Presion.evaluarSesion(conMinutos(e))
+        return e.retomada == true ? ev.sinNoCuenta : ev
+    }
 
     /// Anota una toma ya validada, la deja en la cola con la sesión entera y devuelve qué toca. Se decide acá, sin esperar al servidor.
     @discardableResult
@@ -452,7 +464,7 @@ public final class ModeloPresion {
 
     private func encolarSesion() -> Presion.Evaluacion? {
         guard let e = local.enCurso else { return nil }
-        let ev = Presion.evaluarSesion(conMinutos(e))
+        let ev = evaluar(e)
         var envio = EnvioPresion(sesion: e.sesion, textoAlumno: ev.texto, sintoma: nil, creado: ahora(), retomada: e.retomada)
         if let i = local.envios.firstIndex(where: { $0.sesion != nil && $0.id == envio.id }) {
             envio.creado = local.envios[i].creado ?? envio.creado
@@ -482,6 +494,27 @@ public final class ModeloPresion {
         guardar()
         drenarEnFondo()
         return Presion.deAlarma(codigos)
+    }
+
+    /// El botón «Marcar un síntoma». Viaja como síntoma suelto; con una sesión en curso que ya tiene alguna toma (ya viajó o
+    /// está en la cola) lleva su id y, si `sumarASesion`, también se suma a ella: la regla decide con los dos (un pulso de
+    /// urgencia con palpitaciones también es guardia). Sin tomas todavía, `sesion_id` va en null: el servidor no conoce esa
+    /// sesión y rechazaría el aviso. Devuelve si toca la guardia por síntomas.
+    @discardableResult
+    public func marcarSintomaBoton(codigos: [String], nota: String?, sumarASesion: Bool = true) -> Bool {
+        let conToma = local.enCurso.map { !$0.sesion.tomas.isEmpty } == true
+        let alarma = marcarSintoma(codigos: codigos, nota: nota, sesionId: conToma ? local.enCurso?.sesion.id : nil)
+        guard conToma, sumarASesion, let ev = sumarSintomas(codigos) else { return alarma }
+        return alarma || ev.paso == .guardiaSintomas
+    }
+
+    /// «Me mareé» en la ortostática: se suma a la sesión y, sin ninguna toma todavía, viaja además como síntoma suelto (sin
+    /// `sesion_id`). Devuelve la evaluación: con `guardiaSintomas`, a la guardia.
+    @discardableResult
+    public func meMaree() -> Presion.Evaluacion? {
+        guard let e = local.enCurso else { return nil }
+        if e.sesion.tomas.isEmpty { marcarSintoma(codigos: ["mareo_al_pararse"], nota: nil, sesionId: nil) }
+        return sumarSintomas(["mareo_al_pararse"])
     }
 
     // MARK: Cola

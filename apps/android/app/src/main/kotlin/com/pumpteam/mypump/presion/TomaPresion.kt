@@ -66,6 +66,8 @@ internal object EtapaPresion {
     const val ESPERAR_MEJOR = "esperarMejor"
     const val REPOSO = "reposo"
     const val ANOTAR = "anotar"
+    /** La hoja de síntomas después de guardar una toma con el pulso o la alta fuera de lo esperado (la toma ya está en la cola). */
+    const val SINTOMAS = "sintomas"
     const val ESPERA = "espera"
     const val GUARDIA_PRESION = "guardiaPresion"
     const val GUARDIA_SINTOMAS = "guardiaSintomas"
@@ -146,15 +148,15 @@ private fun numeroEntero(v: String, tope: Int): Boolean = v.length >= 3 || (v.le
 
 /**
  * La alta, la baja, el pulso y el símbolo de latido irregular. Un valor imposible no pasa; uno fuera de lo común pide confirmar.
- * Con el pulso o la alta fuera de lo esperado ([preguntaSintomas], solo sentado) se abre la lista de síntomas antes de evaluar.
+ * Anotar guarda la toma en el acto; con el pulso o la alta fuera de lo esperado la pantalla de la toma abre después la lista de
+ * síntomas (la toma ya quedó guardada aunque cierre la app).
  */
 @Composable
 private fun AnotarPresion(
     titulo: String?,
     conFoto: Boolean,
-    preguntaSintomas: Boolean,
     alSalir: () -> Unit,
-    registrar: (sis: Int, dia: Int, pulso: Int, irregular: Boolean, confirmada: Boolean, sintomas: List<String>) -> Unit,
+    registrar: (sis: Int, dia: Int, pulso: Int, irregular: Boolean, confirmada: Boolean) -> Unit,
     extra: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     var sis by rememberSaveable { mutableStateOf("") }
@@ -164,8 +166,6 @@ private fun AnotarPresion(
     // 0: nada; 1: imposible; 2: pide confirmar.
     var aviso by rememberSaveable { mutableStateOf(0) }
     var confirmada by rememberSaveable { mutableStateOf(false) }
-    var hoja by rememberSaveable { mutableStateOf(false) }
-    var sintomas by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val focos = remember { List(3) { FocusRequester() } }
     val foco = LocalFocusManager.current
     val anunciar = rememberAnuncio()
@@ -179,15 +179,9 @@ private fun AnotarPresion(
         return Triple(s, d, p)
     }
 
-    fun enviar() {
-        val (s, d, p) = numeros() ?: return
-        // En el orden de las listas, no en el que los tocó.
-        registrar(s, d, p, irregular, confirmada, (Presion.alarma + Presion.otros).filter { it in sintomas })
-    }
-
     fun seguir() {
-        val (s, _, p) = numeros() ?: return
-        if (preguntaSintomas && (p >= 120 || p <= 40 || s < 90)) hoja = true else enviar()
+        val (s, d, p) = numeros() ?: return
+        registrar(s, d, p, irregular, confirmada)
     }
 
     fun anotar() {
@@ -215,7 +209,7 @@ private fun AnotarPresion(
     }
 
     Box(Modifier.fillMaxSize()) {
-        Box(if (hoja) Modifier.fillMaxSize().clearAndSetSemantics { } else Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize()) {
             MarcoPresion(
                 NP.titulo, NP.cerrar, alSalir, etiqueta = "presion-anotar-pantalla", etiquetaSalir = "presion-flujo-cerrar",
                 pie = {
@@ -270,20 +264,6 @@ private fun AnotarPresion(
                 extra?.invoke(this)
             }
         }
-        if (hoja) {
-            BackHandler { hoja = false }
-            MarcoPresion(
-                TP.marcarSintoma, NP.volver, { hoja = false }, etiqueta = "presion-sintomas-hoja", etiquetaSalir = "presion-sintomas-volver",
-                pie = {
-                    BotonPresion(NP.seguir, "presion-sintomas-seguir") {
-                        hoja = false
-                        enviar()
-                    }
-                },
-            ) {
-                SelectorSintomasPresion(sintomas.toSet()) { sintomas = it.toList() }
-            }
-        }
     }
 }
 
@@ -323,7 +303,7 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
     /** Al salir: una repetición que quedó pendiente se guarda para retomarla; lo demás se cierra (lo anotado ya está en la cola). */
     fun cerrar() {
         val e = modelo.enCurso
-        if (e != null && !guiada && e.sesion.tomas.isNotEmpty() && (e.etapa == EtapaPresion.ESPERA || e.etapa == EtapaPresion.ANOTAR)) {
+        if (e != null && !guiada && e.sesion.tomas.isNotEmpty() && (e.etapa == EtapaPresion.ESPERA || e.etapa == EtapaPresion.ANOTAR || e.etapa == EtapaPresion.SINTOMAS)) {
             val ev = modelo.evaluar()
             if (ev != null && (ev.paso == Presion.Paso.REPETIR || ev.paso == Presion.Paso.REPETIR_CON_LISTA)) {
                 alCerrar()
@@ -361,10 +341,8 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
         }
     }
 
-    fun registrar(sis: Int, dia: Int, pulso: Int, irregular: Boolean, confirmada: Boolean, sintomas: List<String>) {
-        CentroAvisos.cancelarRepetirPresion(contexto)
-        val p = if (guiada) pasoActual else null
-        val ev = modelo.anotarToma(sis, dia, pulso, irregular, p?.posicion ?: "sentado", p?.minutosDePie, p?.brazo, confirmada, sintomas) ?: return
+    /** Lo que sigue a una toma ya guardada: el paso siguiente de la secuencia guiada o lo que diga la regla. */
+    fun seguirTras(ev: Presion.Evaluacion) {
         val e = modelo.enCurso
         if (guiada && ev.paso == Presion.Paso.LISTO && e != null && e.paso + 1 < pasos.size) {
             val sigue = pasos[e.paso + 1]
@@ -374,14 +352,31 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
         rutear(ev)
     }
 
-    fun marcarMareo() {
-        // Marcarlo nunca depende de haber medido: sin ninguna toma viaja como síntoma suelto.
-        if (modelo.enCurso?.sesion?.tomas.isNullOrEmpty()) {
-            modelo.marcarSintoma(listOf("mareo_al_pararse"), null, sesionId = modelo.enCurso?.sesion?.id)
-        } else {
-            modelo.sumarSintomas(listOf("mareo_al_pararse"))
+    /**
+     * Primero se guarda la toma (disco y cola). Con el pulso o la alta fuera de lo esperado (solo sentado), después se abre la
+     * hoja de síntomas: si cierra la app o vuelve, la toma ya quedó.
+     */
+    fun registrar(sis: Int, dia: Int, pulso: Int, irregular: Boolean, confirmada: Boolean) {
+        CentroAvisos.cancelarRepetirPresion(contexto)
+        val p = if (guiada) pasoActual else null
+        val pregunta = (!guiada || (tipo == "ortostatica" && p?.posicion == "sentado")) && ModeloPresion.pideSintomas(sis, pulso)
+        val ev = modelo.anotarToma(sis, dia, pulso, irregular, p?.posicion ?: "sentado", p?.minutosDePie, p?.brazo, confirmada) ?: return
+        if (pregunta) {
+            ir(EtapaPresion.SINTOMAS)
+            return
         }
-        ir(EtapaPresion.MAREO)
+        seguirTras(ev)
+    }
+
+    /** La hoja después de la toma: se suman los síntomas a la sesión, se reevalúa y se sigue según la regla. */
+    fun responderSintomas(codigos: List<String>) {
+        val ev = modelo.sumarSintomas(codigos) ?: return
+        seguirTras(ev)
+    }
+
+    fun marcarMareo() {
+        // Marcarlo nunca depende de haber medido: sin ninguna toma viaja como síntoma suelto. Con pulso de 120 o más es guardia.
+        if (modelo.meMaree()?.paso == Presion.Paso.GUARDIA_SINTOMAS) ir(EtapaPresion.GUARDIA_SINTOMAS) else ir(EtapaPresion.MAREO)
     }
 
     fun tituloPaso(anotando: Boolean): String {
@@ -535,8 +530,21 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
                 }
 
                 EtapaPresion.ANOTAR -> key(enCurso.sesion.tomas.size) {
-                    AnotarPresion(null, conFoto, preguntaSintomas = true, alSalir = { cerrar() }, registrar = ::registrar) {
+                    AnotarPresion(null, conFoto, alSalir = { cerrar() }, registrar = ::registrar) {
                         BotonPresionSecundario(TP.marcarSintoma, "presion-flujo-sintoma", alTocar = abrirSintoma)
+                    }
+                }
+
+                EtapaPresion.SINTOMAS -> {
+                    var marcados by rememberSaveable { mutableStateOf(emptyList<String>()) }
+                    MarcoPresion(
+                        TP.marcarSintoma, NP.cerrar, { cerrar() }, etiqueta = "presion-sintomas-hoja", etiquetaSalir = "presion-sintomas-cerrar",
+                        pie = {
+                            // En el orden de las listas, no en el que los tocó.
+                            BotonPresion(NP.seguir, "presion-sintomas-seguir") { responderSintomas((Presion.alarma + Presion.otros).filter { it in marcados }) }
+                        },
+                    ) {
+                        SelectorSintomasPresion(marcados.toSet()) { marcados = it.toList() }
                     }
                 }
 
@@ -603,7 +611,9 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
                         },
                     ) {
                         Tarjeta {
-                            if (ev?.texto == "toma_no_cuenta") TextoPresion(TP.noCuenta, Modifier.testTag("presion-no-cuenta"))
+                            // Una repetición retomada no sabe el reposo ni las previas: no se le dice que no cuenta.
+                            val noCuenta = modelo.noCuenta(ev)
+                            if (noCuenta) TextoPresion(TP.noCuenta, Modifier.testTag("presion-no-cuenta"))
                             if (ev?.texto == "sentate_agua") TextoPresion(TP.sentateAgua, Modifier.testTag("presion-sentate-agua"))
                             if (e.sesion.tomas.any { it.latidoIrregular }) TextoPresion(TP.latidoIrregular, Modifier.testTag("presion-latido-irregular"))
                             val titular = MaterialTheme.typography.titleMedium
@@ -612,7 +622,7 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
                                 when {
                                     tipo == "suelta" -> TextoPresion(NP.sintomaRecibido, Modifier.testTag("presion-listo"), estilo = titular, fuerte = true)
                                     completo -> TextoPresion(TP.listoSerie, Modifier.testTag("presion-listo"), estilo = titular, fuerte = true)
-                                    ev?.texto != "toma_no_cuenta" -> TextoPresion(TP.como(brazo).last(), Modifier.testTag("presion-listo"), estilo = titular, fuerte = true)
+                                    !noCuenta -> TextoPresion(TP.como(brazo).last(), Modifier.testTag("presion-listo"), estilo = titular, fuerte = true)
                                 }
                             } else {
                                 e.sesion.tomas.lastOrNull()?.let { u ->
@@ -662,10 +672,7 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
                 }
 
                 EtapaPresion.GUIA_ANOTAR -> key(enCurso.paso) {
-                    AnotarPresion(
-                        tituloPaso(anotando = true), conFoto, preguntaSintomas = pasoActual?.posicion == "sentado" && tipo == "ortostatica", alSalir = { cerrar() },
-                        registrar = ::registrar,
-                    ) {
+                    AnotarPresion(tituloPaso(anotando = true), conFoto, alSalir = { cerrar() }, registrar = ::registrar) {
                         if (tipo == "ortostatica") BotonPresionSecundario(NP.meMaree, "presion-me-maree") { marcarMareo() }
                         BotonPresionSecundario(TP.marcarSintoma, "presion-flujo-sintoma", alTocar = abrirSintoma)
                     }
@@ -679,6 +686,17 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
             }
         }
         if (queEvitar) QueEvitarPresion { queEvitar = false }
-        if (sintoma) MarcarSintomaPresion(modelo) { sintoma = false }
+        if (sintoma) {
+            // En guardia, cerrada o tras «Me mareé» la sesión ya no suma síntomas: viajan sueltos.
+            val abierta = enCurso.etapa !in setOf(EtapaPresion.GUARDIA_PRESION, EtapaPresion.GUARDIA_SINTOMAS, EtapaPresion.LISTO, EtapaPresion.MAREO)
+            MarcarSintomaPresion(
+                modelo, enSesion = abierta,
+                alGuardiaDeLaSesion = {
+                    sintoma = false
+                    ir(EtapaPresion.GUARDIA_SINTOMAS)
+                },
+                alCerrar = { sintoma = false },
+            )
+        }
     }
 }

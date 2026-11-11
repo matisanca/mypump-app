@@ -71,7 +71,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.ModeloAppViewModel
 import com.pumpteam.mypump.chat.ChatPantalla
 import com.pumpteam.mypump.datos.DestinoAviso
-import com.pumpteam.mypump.presion.TarjetaPresion
 import com.pumpteam.mypump.presion.CapaPresion
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.pumpteam.mypump.datos.EstadoGuardado
@@ -188,11 +187,8 @@ private fun CuerpoConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp, navegac
                     } else if (desdeCache) {
                         BannerSinConexion()
                     }
-                    // «Tu presión», arriba de todo en la pantalla con la que abre la app, mientras haya algo para hacer. Es una
-                    // tarjeta más: Entreno queda igual debajo y nada de la rutina depende de ella.
-                    val conTarjetaPresion = navegacion.pestana == Pestana.ENTRENO && !navegacion.guia && !navegacion.gimnasio &&
-                        TarjetaPresion(modelo, navegacion, bajoLaBarraDeEstado = !conBanner)
-                    Box(Modifier.weight(1f).then(if (conBanner || conTarjetaPresion) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier)) {
+                    // «Tu presión» va como primer ítem del desplazamiento de Entreno (ListaEntreno): una tarjeta más.
+                    Box(Modifier.weight(1f).then(if (conBanner) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier)) {
                         estadosPestanas.SaveableStateProvider(navegacion.pestana.name) {
                             when (navegacion.pestana) {
                                 Pestana.ENTRENO -> {

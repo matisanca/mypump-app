@@ -48,8 +48,17 @@ final class PresionUITests: XCTestCase {
         var n = 0
         while !e(id).waitForExistence(timeout: 2.5) && n < veces { app.swipeUp(velocity: .slow); n += 1 }
     }
-    private func escribir(_ id: String, _ texto: String) {
+    /// Para lo que está en el contenido (no en la barra de abajo): si quedó debajo de los botones fijos de abajo da «hittable»
+    /// pero el toque cae en la barra, así que se sube antes.
+    private func tocarArriba(_ id: String) {
+        esperar(id)
+        var n = 0
+        while e(id).frame.maxY > app.frame.height * 0.62 && n < 6 { app.swipeUp(velocity: .slow); n += 1 }
+        if n > 0 { RunLoop.current.run(until: Date().addingTimeInterval(1.5)) }
         tocar(id)
+    }
+    private func escribir(_ id: String, _ texto: String) {
+        tocarArriba(id)
         e(id).typeText(texto)
     }
     private func foto(_ nombre: String) {
@@ -76,7 +85,7 @@ final class PresionUITests: XCTestCase {
         tocar("presion-cuando-seguir")
         esperar("presion-como")
         tocar("presion-empezar")
-        for k in ["cafeina", "fumo", "comida", "ejercicio"] { tocar("presion-previa-\(k)-no") }
+        for k in ["cafeina", "fumo", "comida", "ejercicio"] { tocarArriba("presion-previa-\(k)-no") }
         tocar("presion-previa-seguir")
         esperar("presion-reposo")
         if !esperando { tocar("presion-saltear") }
@@ -205,6 +214,26 @@ final class PresionUITests: XCTestCase {
         esperar("presion-sin-tomas")
     }
 
+    /// Con el pulso de 120 o más la toma se guarda y después se abre la hoja de síntomas; lo marcado decide el paso.
+    func testPulsoAltoGuardaLaTomaYDespuesPreguntaSintomas() {
+        abrir("serie0", segundos: 30)
+        hastaAnotar()
+        anotar("128", "80", "125")
+        // El pulso de 125 pide confirmar el número.
+        tocar("presion-confirmar")
+        esperar("presion-sintomas-hoja")
+        // «Marcar un síntoma» y «Cerrar» son botones con texto debajo del principal, no ítems de la barra.
+        XCTAssertFalse(app.navigationBars.buttons["presion-flujo-cerrar"].exists)
+        XCTAssertTrue(e("presion-flujo-cerrar").isHittable)
+        // «Palpitaciones» está en la segunda lista: se sube para que no quede debajo de los botones de abajo.
+        app.swipeUp(velocity: .slow)
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        tocar("presion-sintoma-palpitaciones")
+        tocar("presion-sintomas-seguir")
+        esperar("presion-guardia-sintomas")
+        XCTAssertTrue(app.staticTexts[Self.guardiaSintomas].exists)
+    }
+
     func testMarcarSintomaDeAlarmaDesdeElBoton() {
         abrir("sinSerie")
         tocar("presion-marcar-sintoma")
@@ -266,9 +295,9 @@ final class PresionUITests: XCTestCase {
         e("tarjeta-presion-boton").tap()
         esperar("presion-alta", 30)
         anotar("150", "90", "68")
-        // La repetición retomada no trae las previas ni el reposo: el servidor puede cerrarla como «no cuenta».
-        let cerro = e("presion-listo").waitForExistence(timeout: 60) || e("presion-no-cuenta").waitForExistence(timeout: 10)
-        XCTAssertTrue(cerro, "la repetición se anota y la toma se cierra")
+        // La repetición retomada no trae las previas ni el reposo: por eso nunca dice «Esta no cuenta».
+        esperar("presion-listo")
+        XCTAssertFalse(e("presion-no-cuenta").exists, "una repetición retomada no dice que no cuenta")
         tocar("presion-cerrar")
         esperar("presion-inicio")
         XCTAssertFalse(e("presion-pendiente").exists)
@@ -375,7 +404,7 @@ final class PresionUITests: XCTestCase {
         tocar("presion-empezar")
         esperar("presion-previa-cafeina")
         foto("previa")
-        for k in ["cafeina", "fumo", "comida", "ejercicio"] { tocar("presion-previa-\(k)-no") }
+        for k in ["cafeina", "fumo", "comida", "ejercicio"] { tocarArriba("presion-previa-\(k)-no") }
         tocar("presion-previa-seguir")
         esperar("presion-reposo")
         foto("reposo")
@@ -388,6 +417,12 @@ final class PresionUITests: XCTestCase {
         // Con el teclado abierto: el botón sigue a la vista y el tilde de latido irregular se alcanza.
         tocar("presion-alta")
         foto("anotar-teclado")
+        XCTAssertTrue(e("presion-anotar").isHittable)
+        // En el pulso, con el teclado arriba, el tilde de latido irregular se trae a la vista.
+        tocar("presion-pulso")
+        RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+        foto("anotar-teclado-pulso")
+        XCTAssertTrue(e("presion-irregular").isHittable, "el tilde de latido irregular no puede quedar tapado por el teclado")
         XCTAssertTrue(e("presion-anotar").isHittable)
         tocar("presion-anotar")
         esperar("presion-revisar")

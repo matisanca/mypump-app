@@ -228,10 +228,14 @@ struct PresionRaiz: View {
             modelo.cambiar {
                 if let f = $0.finTemporizador, f > Date() { $0.etapa = EtapaPresion.espera } else { $0.etapa = EtapaPresion.anotar; $0.finTemporizador = nil }
             }
+            flujo = true
         } else {
-            modelo.retomar(p, etapa: EtapaPresion.anotar)
+            // Sin la sesión guardada se refresca primero; si el servidor tampoco la tiene, es una toma nueva normal.
+            Task {
+                if await modelo.retomar(p, etapa: EtapaPresion.anotar) != nil { flujo = true }
+                else if let e = modelo.estado, !flujo { empezar(e) }
+            }
         }
-        flujo = true
     }
 
     /// La lista del recordatorio viaja como síntoma. Con un Sí, guardia por síntomas en el acto. Sin contestar todo no cuenta como «no».
@@ -296,7 +300,13 @@ struct MarcarSintomaPresion: View {
     private func enviar() {
         // En el orden de las listas, no en el que los tocó.
         let codigos = (Presion.alarma + Presion.otros).filter(seleccion.contains)
-        let alarma = modelo.marcarSintoma(codigos: codigos, nota: nota, sesionId: modelo.enCurso?.sesion.id)
-        resultado = alarma ? .guardia : .anotado
+        // Con una sesión abierta que ya tiene tomas, el síntoma también se suma a ella y la regla decide (`marcarSintomaBoton`).
+        let abierta = modelo.enCurso?.abiertaASintomas == true
+        let guardia = modelo.marcarSintomaBoton(codigos: codigos, nota: nota, sumarASesion: abierta)
+        if guardia, abierta, modelo.enCurso?.sesion.tomas.isEmpty == false, modelo.evaluar()?.paso == .guardiaSintomas {
+            // La toma en curso también pasa a la guardia.
+            modelo.cambiar { $0.etapa = EtapaPresion.guardiaSintomas; $0.finTemporizador = nil }
+        }
+        resultado = guardia ? .guardia : .anotado
     }
 }

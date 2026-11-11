@@ -127,21 +127,24 @@ def chequeos(cur, token, otro):
     print("▸ Serie de 3 tomas en 3 días")
     ch("toma imposible", sesion([toma(1, 300, 80)], S, dias=2)[1].get("error") == "imposible" and sesion([toma(1, 120, 115)], S, dias=2)[1].get("error") == "imposible")
     ch("serie ajena: no", sesion([toma(1, 120, 80)], S, t=otro)[1] in ({"ok": False, "error": "no_habilitado"}, {"ok": False, "error": "serie"}))
-    ch("estándar sin serie: no", sesion([toma(1, 120, 80)])[1].get("error") == "serie")
+    sx, r = sesion([toma(1, 120.0, 80, latido_irregular="quizás")], dias=5, inicio=(ahora + dt.timedelta(hours=3)).isoformat())
+    ch("estándar sin serie, con el reloj adelantado y tipos raros: se guarda como suelta, no se pierde", r.get("ok") is True
+       and uno(cur, "SELECT tipo || '/' || (serie_id IS NULL) || '/' || (inicio <= NOW()) FROM mypump_presion_sesiones WHERE id=%s::uuid", sx) == "suelta/true/true", str(r)[:200])
+    ch("serie de otro: no", sesion([toma(1, 120, 80)], str(uuid.uuid4()))[1].get("error") == "serie")
     s1, r = sesion([toma(1, 138, 88)], S, dias=2)
     e = r["estado"]
     ch("día 1: cuenta, serie en curso, faltan 2", r.get("ok") is True and e["serie"]["estado"] == "en_curso" and e["serie"]["faltan"] == 2 and len(e["serie"]["dias"]) == 1
-       and e["sesiones"][0]["cuenta"] is True and e["sesiones"][0]["tomas"][0]["sis"] == 138, str(e["serie"]))
+       and [x for x in e["sesiones"] if x["id"] == s1][0]["cuenta"] is True and [x for x in e["sesiones"] if x["id"] == s1][0]["tomas"][0]["sis"] == 138, str(e["serie"]))
     ch("plazo de 7 días desde la primera", uno(cur, "SELECT fecha_limite - fecha_inicio FROM mypump_presion_series WHERE id=%s::uuid", S) == 6)
     _, r = sesion([toma(1, 111, 71)], S, dias=2, sid=s1)
     ch("reenviar no duplica ni pisa la toma", r["estado"]["serie"]["faltan"] == 2 and uno(cur, "SELECT count(*) || '-' || max(sistolica) FROM mypump_presion_tomas WHERE sesion_id=%s::uuid", s1) == "1-138")
     _, r = sesion([toma(1, 120, 80)], S, dias=2)
     ch("otra toma el mismo día no suma", r["estado"]["serie"]["faltan"] == 2)
-    _, r = sesion([toma(1, 136, 86)], S, dias=1, previo={"cafeina": True, "fumo": False, "comida": False, "ejercicio": False})
-    ch("con café antes: se guarda y no cuenta", r["estado"]["serie"]["faltan"] == 2 and r["estado"]["sesiones"][0]["cuenta"] is False)
+    sc, r = sesion([toma(1, 136, 86)], S, dias=1, previo={"cafeina": True, "fumo": False, "comida": False, "ejercicio": False})
+    ch("con café antes: se guarda y no cuenta", r["estado"]["serie"]["faltan"] == 2 and [x for x in r["estado"]["sesiones"] if x["id"] == sc][0]["cuenta"] is False)
     _, r = sesion([toma(1, 136, 86)], S, dias=1)
     ch("día 2: faltan 1", r["estado"]["serie"]["faltan"] == 1)
-    ch("una pendiente no se abre con otra en curso", pedir("control_ciclo").get("ok") is True and sesion([toma(1, 120, 80)], pedir("control_ciclo")["id"])[1].get("error") == "serie")
+    ch("una pendiente no se abre con otra en curso", pedir("control_ciclo").get("ok") is True and sesion([toma(1, 120, 80)], pedir("control_ciclo")["id"])[1].get("ok") is True and uno(cur, "SELECT estado FROM mypump_presion_series WHERE id=%s::uuid", pedir("control_ciclo")["id"]) == "pendiente")
     _, r = sesion([toma(1, 137, 87, 64)], S, dias=0)
     fila = lambda: (cur.execute("SELECT estado, resumen FROM mypump_presion_series WHERE id=%s::uuid", (S,)) or cur.fetchone())
     est, res = fila()
@@ -183,8 +186,11 @@ def chequeos(cur, token, otro):
 
     print("▸ Toma suelta de 135/85 y síntomas")
     cur.execute("UPDATE mypump_presion_series SET estado='cancelada' WHERE cliente_id=%s AND estado IN ('pendiente','en_curso')", (C,))
-    sesion([toma(1, 141, 84)], None, tipo="suelta", dias=3)
+    s5, _ = sesion([toma(1, 141, 84)], None, tipo="suelta", dias=3)
     ch("suelta de 135/85 o más: pide una serie de 3", uno(cur, "SELECT motivo || '/' || pedida_por || '/' || tomas_objetivo FROM mypump_presion_series WHERE cliente_id=%s AND estado='pendiente'", C) == "control_toma_alta/regla/3")
+    cur.execute("UPDATE mypump_presion_series SET estado='cancelada' WHERE cliente_id=%s AND estado='pendiente'", (C,))
+    sesion([toma(1, 141, 84)], None, tipo="suelta", dias=3, sid=s5)
+    ch("reenviar esa suelta no pide otra serie", uno(cur, "SELECT count(*) FROM mypump_presion_series WHERE cliente_id=%s AND estado='pendiente'", C) == 0)
     sint = lambda p, t=token: uno(cur, "SELECT mypump_presion_sintoma(%s,%s::jsonb)", t, J(p))
     i = str(uuid.uuid4())
     ch("síntoma de alarma por el botón", sint({"id": i, "contexto": "boton", "codigos": ["falta_aire"], "zona_horaria": ZONA}) == {"ok": True}
@@ -192,6 +198,23 @@ def chequeos(cur, token, otro):
     ch("reenviado no duplica", sint({"id": i, "contexto": "boton", "codigos": ["falta_aire"]}) == {"ok": True} and uno(cur, "SELECT count(*) FROM mypump_presion_avisos WHERE origen_id=%s::uuid", i) == 1)
     ch("código inventado: datos", sint({"id": str(uuid.uuid4()), "codigos": ["me_duele_todo"]}).get("error") == "datos")
     ch("síntoma con el id de otro: datos", sint({"id": i, "codigos": []}, otro) in ({"ok": False, "error": "datos"}, {"ok": False, "error": "no_habilitado"}))
+
+    j = str(uuid.uuid4())
+    ch("síntoma con una sesión que nunca llegó: se guarda suelto, con la hora del teléfono", sint({"id": j, "contexto": "boton", "codigos": ["dolor_pecho"], "sesion_id": str(uuid.uuid4()),
+       "marcado_en": (ahora - dt.timedelta(hours=8)).isoformat(), "sin_sintomas_en_lista": "x"}) == {"ok": True}
+       and uno(cur, "SELECT (sesion_id IS NULL) AND marcado_en < NOW() - INTERVAL '7 hours' FROM mypump_presion_sintomas WHERE id=%s::uuid", j) is True
+       and uno(cur, "SELECT nivel FROM mypump_presion_avisos WHERE origen_id=%s::uuid AND regla='sintoma_alarma'", j) == "urgencia")
+
+    print("▸ Ortostática")
+    cur.execute("UPDATE mypump_presion_series SET estado='cancelada' WHERE cliente_id=%s AND estado IN ('pendiente','en_curso')", (C,))
+    O = pedir("ortostatica_suelta", op={"motivos_ortostatica": ["sintomas_al_pararse"]})["id"]
+    _, r = sesion([toma(1, 121, 79)], O, dias=4)
+    ch("la toma sentado no cierra la serie si falta la ortostática", r["estado"]["serie"] and r["estado"]["serie"]["id"] == O and r["estado"]["serie"]["ortostatica"] == "acostado_parado"
+       and r["estado"]["serie"]["faltan"] == 0, str(r["estado"]["serie"]))
+    o1, r = sesion([toma(1, 120, 80, posicion="acostado"), toma(2, 96, 72, 80, posicion="de_pie", minutos_de_pie=1), toma(3, 99, 70, 78, posicion="de_pie", minutos_de_pie=3)], O, tipo="ortostatica", dias=4)
+    est, res = (cur.execute("SELECT estado, resumen FROM mypump_presion_series WHERE id=%s::uuid", (O,)) or cur.fetchone())
+    ch("con la ortostática hecha, completa y con la caída en el resumen", r.get("ok") is True and est == "completa" and res["ortostatica"]["hecha"] is True and res["ortostatica"]["caida_sis_max"] == 24
+       and res["ortostatica"]["hipotension"] is True and "ortostatica_positiva" in avisos(), str(r)[:120] + J(res.get("ortostatica")))
 
     print("▸ Mensajes, pausa y consultorio")
     cola = uno(cur, "SELECT mypump_presion_avisos_pendientes(50)")

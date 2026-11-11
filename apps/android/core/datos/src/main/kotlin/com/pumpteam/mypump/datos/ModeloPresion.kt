@@ -432,7 +432,7 @@ class ModeloPresion(
 
     /** Cambiar aparato o manguito crea uno nuevo en el servidor (el anterior queda inactivo). */
     suspend fun guardarAparato(a: Presion.Aparato): Salida {
-        fun t(s: String?): ValorJson = s?.trim()?.takeIf { it.isNotEmpty() }?.let { ValorJson.Texto(it.take(120)) } ?: ValorJson.Nulo
+        fun t(s: String?): ValorJson = s?.trim()?.takeIf { it.isNotEmpty() }?.let { ValorJson.Texto(it.take(80)) } ?: ValorJson.Nulo
         return escribir(
             "mypump_presion_aparato",
             mapOf(
@@ -466,13 +466,16 @@ class ModeloPresion(
     /**
      * Retoma la repetición que pide el servidor (`pendiente`) cuando el teléfono no tiene la sesión: con las tomas que ya están
      * guardadas, para que la regla vea las dos. Lo que no viene en `sesiones` (las preguntas previas, el reposo) queda sin dato.
+     * Si la sesión no está entre las guardadas se refresca antes de dejar anotar: sin sus tomas la nueva saldría con orden 1 y el
+     * servidor la ignoraría. Si sigue sin estar, devuelve null y la pantalla empieza una toma nueva normal.
      */
-    fun retomar(p: PendientePresion, etapa: String): EnCursoPresion {
+    suspend fun retomar(p: PendientePresion, etapa: String): EnCursoPresion? {
         enCurso?.let { if (it.sesion.id == p.sesionId) return it }
-        val g = sesionGuardada(p.sesionId)
+        if (sesionGuardada(p.sesionId) == null) refrescar()
+        val g = sesionGuardada(p.sesionId) ?: return null
         val s = Presion.Sesion(
-            id = p.sesionId, serieId = g?.serieId, tipo = g?.tipo ?: "suelta", inicio = p.desde, zonaHoraria = zona,
-            brazo = g?.tomas?.firstOrNull()?.brazo ?: _estado.value?.serie?.brazo ?: "izq", tomas = g?.tomas ?: emptyList(),
+            id = p.sesionId, serieId = g.serieId, tipo = g.tipo ?: "suelta", inicio = p.desde, zonaHoraria = zona,
+            brazo = g.tomas.firstOrNull()?.brazo ?: _estado.value?.serie?.brazo ?: "izq", tomas = g.tomas,
         )
         val e = EnCursoPresion(sesion = s, etapa = etapa, dia = FechaLocal.hoy(ahora()), retomada = true)
         _local.update { it.copy(enCurso = e) }
@@ -538,9 +541,10 @@ class ModeloPresion(
     }
 
     /** Síntomas marcados dentro de la sesión (la hoja que se abre con el pulso o la alta fuera de lo esperado, o «Me mareé»). */
-    fun sumarSintomas(codigos: List<String>): Presion.Evaluacion? {
+    fun sumarSintomas(codigos: List<String>, nota: String? = null): Presion.Evaluacion? {
         val e = enCurso ?: return null
-        val s = e.sesion.copy(sintomas = e.sesion.sintomas + codigos.filter { it !in e.sesion.sintomas }.distinct())
+        val n = (nota ?: "").trim().take(500).ifEmpty { null }
+        val s = e.sesion.copy(sintomas = e.sesion.sintomas + codigos.filter { it !in e.sesion.sintomas }.distinct(), nota = n ?: e.sesion.nota)
         _local.update { it.copy(enCurso = e.copy(sesion = s)) }
         // Sin ninguna toma todavía no hay nada que mandar: viaja con la primera.
         if (s.tomas.isEmpty()) {
@@ -553,7 +557,9 @@ class ModeloPresion(
     private fun encolarSesion(): Presion.Evaluacion? {
         val e = enCurso ?: return null
         val ev = Presion.evaluarSesion(conMinutos(e))
-        val envio = EnvioPresion(sesion = e.sesion, textoAlumno = ev.texto, sinPrevio = e.retomada, creadoMs = ahora().toEpochMilli())
+        // Una repetición retomada no sabe el reposo ni las previas: eso no la hace «no cuenta».
+        val texto = if (e.retomada && ev.texto == "toma_no_cuenta") "ninguno" else ev.texto
+        val envio = EnvioPresion(sesion = e.sesion, textoAlumno = texto, sinPrevio = e.retomada, creadoMs = ahora().toEpochMilli())
         _local.update { c ->
             val i = c.envios.indexOfFirst { it.sesion != null && it.id == envio.id }
             c.copy(envios = if (i >= 0) c.envios.toMutableList().also { it[i] = envio.copy(creadoMs = c.envios[i].creadoMs) } else c.envios + envio)
@@ -561,6 +567,32 @@ class ModeloPresion(
         guardar()
         drenarEnFondo()
         return ev
+    }
+
+    /** «Esta no cuenta» al alumno: nunca en una repetición retomada (reposo y previas sin dato no son una condición incumplida). */
+    fun noCuenta(ev: Presion.Evaluacion?): Boolean = ev?.texto == "toma_no_cuenta" && enCurso?.retomada != true
+
+    /** El id de la sesión en curso para un síntoma: solo si ya tiene alguna toma (ya viajó o espera en la cola), si no el servidor lo rechaza. */
+    val sesionParaSintoma: String? get() = enCurso?.takeIf { it.sesion.tomas.isNotEmpty() }?.sesion?.id
+
+    /** Lo que dejó «Marcar un síntoma»: si hay alguno de alarma y, si se sumó a la sesión en curso, su evaluación nueva. */
+    data class SintomaMarcado(val alarma: Boolean, val evaluacion: Presion.Evaluacion?)
+
+    /**
+     * El botón «Marcar un síntoma». Con una sesión en curso que ya tiene tomas ([enSesion]: la pantalla dice si la sesión sigue
+     * abierta, no en guardia ni cerrada), además de viajar como síntoma se suma a la sesión y la regla decide el paso.
+     */
+    fun marcarSintomaBoton(codigos: List<String>, nota: String?, enSesion: Boolean = true): SintomaMarcado {
+        val id = if (enSesion) sesionParaSintoma else null
+        val alarma = marcarSintoma(codigos, nota, sesionId = id)
+        return SintomaMarcado(alarma, if (id != null) sumarSintomas(codigos, nota) else null)
+    }
+
+    /** «Me mareé» en la ortostática. Sin ninguna toma viaja como síntoma suelto (sin id de sesión). Devuelve lo que decide la regla. */
+    fun meMaree(): Presion.Evaluacion? {
+        val e = enCurso ?: return null
+        if (e.sesion.tomas.isEmpty()) marcarSintoma(listOf(MAREO), null)
+        return sumarSintomas(listOf(MAREO))
     }
 
     /** Cierra la sesión en curso. Lo anotado ya está en la cola. */
@@ -647,6 +679,10 @@ class ModeloPresion(
         private const val ARCHIVO_ESTADO = "presion-estado.json"
         private const val ARCHIVO_PALANCA = "presion-palanca.json"
         private const val DIAS_EN_COLA = 30L
+        private const val MAREO = "mareo_al_pararse"
+
+        /** Pulso de 120 o más, de 40 o menos, o alta menor de 90: después de guardar la toma se pregunta por síntomas. */
+        fun pideSintomas(sis: Int, pulso: Int): Boolean = pulso >= 120 || pulso <= 40 || sis < 90
 
         /** Lo que viaja en `p_sesion`. */
         fun json(s: Presion.Sesion, textoAlumno: String, version: String, sinPrevio: Boolean = false): ValorJson = ValorJson.objeto(
