@@ -61,6 +61,10 @@ const SHELL = [
   '/js/feedback.js',
   '/js/feedback-ui.js',
   '/css/feedback.css',
+  '/js/estudios.js',
+  '/js/estudios-cola.js',
+  '/js/estudios-ui.js',
+  '/css/estudios.css',
   '/js/healthkit-bridge.js',
   '/js/notificaciones.js',
   '/js/app.js',
@@ -101,6 +105,8 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/tecnica/')) return;
   // Fotos y audios del chat: privados, nunca en un cache (la subida es POST y lo firmado vence en una hora).
   if (url.pathname.startsWith('/chat/') || url.pathname.includes('/storage/v1/object/sign/chat-adjuntos/')) return;
+  // Estudios y órdenes: datos médicos. Sus llamadas son POST y los archivos firmados, de otro origen; nada de eso se guarda.
+  if (url.pathname.startsWith('/estudios/')) return;
   // Lib de Supabase (vendorizada, mismo origen) → cache-first: cambia solo
   // cuando se reemplaza el archivo (y con él, VERSION).
   if (url.origin === location.origin && url.pathname === SUPABASE_LIB) {

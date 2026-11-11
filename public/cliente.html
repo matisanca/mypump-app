@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="/css/tecnica.css">
 <link rel="stylesheet" href="/css/devolucion.css">
 <link rel="stylesheet" href="/css/feedback.css">
+<link rel="stylesheet" href="/css/estudios.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--font-size-base);line-height:var(--line-height-normal);-webkit-font-smoothing:antialiased}
@@ -1881,6 +1882,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
         <div class="hdr-title" id="hdrTitle">Cargando…</div>
       </div>
       <button class="icon-btn" id="misDatosBtn" aria-label="Mis datos" hidden>
+        <span class="est-punto est-punto-flota" id="estPuntoMisDatos" role="img" aria-label="Novedad" hidden></span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg><span>Mis datos</span>
       </button>
       <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema" hidden>
@@ -1912,6 +1914,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
     <section class="scene" id="scene-misdatos"></section>
     <section class="scene" id="scene-gimnasio"></section>
     <section class="scene" id="scene-tecnica"></section>
+    <section class="scene" id="scene-estudios"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -1971,6 +1974,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
       <span>Revisión</span>
       <span class="tab-badge" id="tabBadgeRevision" hidden></span>
+      <span class="est-punto est-punto-flota" id="estPuntoTab" role="img" aria-label="Novedad" hidden></span>
       <span class="tab-dot"></span>
     </button>
   </nav>
@@ -2029,6 +2033,9 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/feedback.js"></script>
 <script src="/js/feedback-ui.js"></script>
 <script src="/js/documentos.js"></script>
+<script src="/js/estudios.js"></script>
+<script src="/js/estudios-cola.js"></script>
+<script src="/js/estudios-ui.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -2306,6 +2313,30 @@ function _elegirHorarioPalanca(cfg) {
   if (!window.MyPumpGuia || !window.MyPumpGuia.aplicarPalanca || !TOKEN || DEMO) return;
   window.MyPumpGuia.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.elegir_horario === true : null);
 }
+/* «Estudios y órdenes» (js/estudios*.js), detrás de `estudios_app`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada. */
+function _estPalanca(cfg) {
+  if (!window.EstudiosUI || !TOKEN || DEMO) return;
+  window.EstudiosUI.configurar({
+    token: TOKEN,
+    visionUrl: (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '',
+    rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
+    irA: (escena) => setScene(escena),
+    escena: () => STATE.scene,
+    alCambiarEntrada: () => { _estPuntos(); if (STATE.scene === 'misdatos') renderMisDatos(); },
+  });
+  window.EstudiosUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.estudios_app === true : null);
+}
+/* El punto «Novedad» en la pestaña que lleva a Mis datos y en el botón de Mis datos, mientras haya un estudio o una orden sin ver.
+   En la cuenta con el plan de ejemplo no hay Mis datos: ahí avisa la tarjeta de arriba. */
+function _estPuntos() {
+  const hay = !!(window.EstudiosUI && window.EstudiosUI.novedad()) && !(DATA && DATA._isDemo);
+  for (const id of ['estPuntoTab', 'estPuntoMisDatos']) { const p = document.getElementById(id); if (p) p.hidden = !hay; }
+}
+/* El aviso de Estudios va primero en Entreno, arriba de todo. renderTrain rehace la pantalla: se vuelve a poner. */
+function _estArriba() {
+  const r = document.getElementById('scene-train');
+  if (r && window.EstudiosUI) window.EstudiosUI.montarTarjeta(r);
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
@@ -2317,6 +2348,7 @@ async function leerPalancaWeb230() {
   if (typeof chatAdjPalanca === 'function') chatAdjPalanca(cfg).catch(() => {});
   _fbPalanca(cfg);
   _elegirHorarioPalanca(cfg);
+  _estPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -11514,7 +11546,7 @@ function renderRecordatorio() {
   }
 
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
-  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica') return;
+  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica' || STATE.scene === 'estudios') return;
 
   const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan tu check y tus fotos de la semana'
               : p.faltaCheck ? 'Te falta tu check de la semana'
@@ -11532,7 +11564,7 @@ function renderRecordatorio() {
     const destino = (p.faltaCheck && !p.faltanFotos) ? 'myday-checkin' : 'myday-fotos';
     setTimeout(() => { const el = document.getElementById(destino); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
   });
-  const guia = host.querySelector(':scope > #guiaHost');
+  const guia = host.querySelector(':scope > #guiaHost') || host.querySelector(':scope > #estHost');
   host.insertBefore(div, guia ? guia.nextSibling : host.firstChild);
 }
 
@@ -12518,6 +12550,7 @@ function renderMisDatos() {
       ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
       ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? fila('mdTecnica', window.Tecnica.T.titulo) : ''}
       ${docs.length ? fila('mdDocumentos', D.T.entradaMisDatos, D.hayContratoPendiente(docs) ? `<span class="md-det">${D.T.pendiente}</span>` : '') : ''}
+      ${window.EstudiosUI && window.EstudiosUI.entradaVisible() ? `<button class="md-fila" id="mdEstudios"><span class="gim-zona-txt"><span>${window.Estudios.T.entradaMisDatos}</span><small>${window.EstudiosUI.subtitulo()}</small></span>${window.EstudiosUI.novedad() ? `<span class="est-punto" role="img" aria-label="${window.Estudios.T.novedad}"></span>` : ''}<span class="md-chev">${_CHEV_DER}</span></button>` : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
@@ -12532,6 +12565,8 @@ function renderMisDatos() {
   if (tec) tec.onclick = () => window.TecnicaUI.abrir('misdatos');
   const md = document.getElementById('mdDocumentos');
   if (md) md.onclick = () => { STATE.mdDocs = true; STATE.docError = false; renderMisDatos(); window.scrollTo(0, 0); };
+  const est = document.getElementById('mdEstudios');
+  if (est) est.onclick = () => window.EstudiosUI.abrir({ desde: 'misdatos' });
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
   const sw = document.getElementById('mdOscuro');
@@ -12795,6 +12830,7 @@ function setScene(scene) {
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
     const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision'
+      : scene === 'estudios' ? (window.EstudiosUI.origen === 'train' ? 'train' : 'revision')
       : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train')
       : scene === 'tecnica' ? (window.TecnicaUI.origen === 'train' ? 'train' : 'revision') : scene;
     const active = t.getAttribute('data-scene') === tabDe;
@@ -12868,6 +12904,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = window.TecnicaUI.titulo();
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'estudios') {
+    $('#hdrEyebrow').textContent = window.EstudiosUI.origen === 'train' ? 'ENTRENAMIENTO' : 'REVISIÓN';
+    $('#hdrTitle').textContent = window.EstudiosUI.titulo();
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   }
 
   if (scene === 'train') renderTrain();
@@ -12881,11 +12922,13 @@ function setScene(scene) {
   if (scene === 'misdatos') renderMisDatos();
   if (scene === 'gimnasio') window.GimnasioUI.renderEscena();
   if (scene === 'tecnica') window.TecnicaUI.renderEscena();
+  if (scene === 'estudios') window.EstudiosUI.renderEscena();
   if (scene === 'supl') { STATE.suplAbierto = null; renderSupl(); }
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
   // render lo borraba y solo reaparecia cuando terminaba alguna carga async.
   try { renderRecordatorio(); } catch (_) {}
+  if (scene === 'train') _estArriba();
   window.scrollTo(0, 0);
 }
 
@@ -12901,6 +12944,7 @@ function arrancarGuia() {
   _guiaHost.dataset.montado = '1';
   const r = document.getElementById('scene-train');
   if (r) r.insertBefore(_guiaHost, r.firstChild);
+  _estArriba();
   window.MyPumpGuia.montarTarjeta(_guiaHost, TOKEN).catch(() => {});
   window.MyPumpGuia.alCambiar(() => { if (STATE.scene === 'misdatos') renderMisDatos(); });
   document.addEventListener('visibilitychange', _bienvenidaGuia);
@@ -12934,6 +12978,7 @@ function _bienvenidaGuia() {
     if (r && window.GimnasioUI) window.GimnasioUI.montarTarjeta(r, _guiaHost);
     if (r && window.NovedadesUI) window.NovedadesUI.montarTarjeta(r, document.getElementById('gimHost') || _guiaHost);
     try { renderAvisoContrato(); } catch (_) {}
+    _estArriba();
   };
   renderProgress = function () {
     _rp.apply(this, arguments);
@@ -12986,7 +13031,19 @@ function _aplicarSceneDeURL() {
     const s = new URLSearchParams(location.search).get('scene');
     if (!s) return;
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
-    if (validas.indexOf(s) !== -1 && s !== 'gimnasio' && s !== 'tecnica') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
+    if (validas.indexOf(s) === -1) return;
+    // Destino `estudios` (el clic del aviso al teléfono llega así, también al abrir en frío): la escena no se prende
+    // acá, porque todavía no se sabe si la cuenta tiene la sección y quedaría en blanco. Se abre Mis datos, que es la
+    // caída segura, y EstudiosUI pasa a Estudios en cuanto el servidor contesta que sí. En la cuenta con el plan de
+    // ejemplo no hay Mis datos: espera en Entreno.
+    if (s === 'estudios') {
+      if (!window.EstudiosUI || !TOKEN || DEMO) return;
+      const caida = (DATA && DATA._isDemo) ? STATE.scene : 'misdatos';
+      if (caida !== STATE.scene) setScene(caida);
+      window.EstudiosUI.destino(caida);
+      return;
+    }
+    if (s !== 'gimnasio' && s !== 'tecnica') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
   } catch (e) {}
 }
 
@@ -13280,8 +13337,8 @@ async function init() {
   await restoreSesionDelDia();
   aplicarPendientesEntreno();
   if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {}).finally(() => _novResolver(null));
-  // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio también va, como en la app.
-  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _metasPalanca(c); _elegirHorarioPalanca(c); }).catch(() => {});
+  // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio y los estudios también van, como en la app.
+  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _metasPalanca(c); _elegirHorarioPalanca(c); _estPalanca(c); }).catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;

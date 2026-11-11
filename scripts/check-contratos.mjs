@@ -69,6 +69,12 @@ firmas.set('mypump_feedback_get', new Set(['p_token']));
 firmas.set('mypump_molestia_registrar', new Set(['p_token', 'p_id', 'p_ejercicio_id', 'p_ejercicio_nombre', 'p_dia_id', 'p_zona', 'p_lado',
   'p_desde', 'p_cuando', 'p_tipo', 'p_intensidad', 'p_nota', 'p_plataforma', 'p_version']));
 firmas.set('mypump_suple_marcar', new Set(['p_token', 'p_item', 'p_estado', 'p_nota']));
+// Estudios y órdenes: propuesta sin aplicar (supabase/propuestas/nativa_estudios.sql, rama nativa-estudios). Si no existe, la web no muestra nada.
+firmas.set('mypump_estudios_get', new Set(['p_token']));
+firmas.set('mypump_estudios_envio_nuevo', new Set(['p_token', 'p_id', 'p_pedido_id']));
+firmas.set('mypump_estudios_enviar', new Set(['p_token', 'p_id', 'p_archivos']));
+firmas.set('mypump_estudios_hecho', new Set(['p_token', 'p_pedido_id', 'p_fecha']));
+firmas.set('mypump_estudios_novedades_vistas', new Set(['p_token', 'p_ids']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.
@@ -117,6 +123,8 @@ const PATRONES = [
   /\.rpc\(\s*['"]([a-z_0-9]+)['"]\s*,\s*\{([^}]*)\}/g,
   /\brpc(?:Mutation)?\(\s*(?:env\s*,\s*)?['"]([a-z_0-9]+)['"]\s*,\s*\{([^}]*)\}/g,
   /rpc\/([a-z_0-9]+)["'][^{]{0,80}\{([^}]*)\}/g,
+  // this._rpc('fn', { p_x: ... }): los modelos de la web (el `p_token` lo suma el propio _rpc)
+  /\._rpc\(\s*['"]([a-z_0-9]+)['"]\s*,\s*\{([^}]*)\}/g,
 ];
 
 const problemas = [];
