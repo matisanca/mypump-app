@@ -1262,6 +1262,106 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .ck-nota:focus{border-color:color-mix(in oklab,var(--color-brand) 55%,var(--color-border));background:var(--color-bg-primary)}
 .ck-save{margin-top:var(--space-3)}
 
+/* ── Check guiado (2.3.0): tarjeta en Revisión y check a pantalla completa. Todo lo de adentro va en em: si la letra
+   crece, crece todo junto; el contenido desliza y el botón principal queda fijo abajo. ── */
+.cg-tarjeta{padding:18px 18px 20px}
+.cg-t-tit{font-family:var(--font-display);font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.15;margin:0 0 6px;color:var(--color-text-primary)}
+.cg-t-txt{font-size:15px;line-height:1.4;color:var(--color-text-secondary);margin:0 0 14px}
+.cg-tarjeta .cg-seg{margin-bottom:16px}
+.cg-seg{flex:1;display:flex;gap:5px;min-width:0}
+.cg-seg i{flex:1;height:5px;border-radius:99px;background:var(--color-bg-tertiary)}
+[data-theme="dark"] .cg-seg i{background:rgba(255,255,255,.14)}
+.cg-seg i.is-on,[data-theme="dark"] .cg-seg i.is-on{background:var(--color-brand)}
+.cg-btn{position:relative;width:100%;min-height:58px;border:0;border-radius:999px;padding:8px 22px;background:var(--color-brand) linear-gradient(to bottom,rgba(255,255,255,.12),transparent 55%);color:var(--color-on-brand);font-family:var(--font-display);font-size:19px;font-weight:700;line-height:1.15;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;box-shadow:0 10px 22px -10px color-mix(in oklab,var(--color-brand) 75%,transparent);transition:transform .12s,background-color .2s,box-shadow .2s}
+.cg-btn:active:not(:disabled){transform:scale(.975)}
+.cg-btn:disabled{background:var(--color-bg-tertiary);color:var(--color-text-muted);box-shadow:none;cursor:default}
+.cg-btn.is-suave{background:var(--color-bg-tertiary);color:var(--color-text-primary);box-shadow:none}
+[data-theme="dark"] .cg-btn:disabled{background:#2c2c2e;color:#8a8a8e}
+.cg-tarjeta .cg-btn{min-height:58px;font-size:19px}
+.cg-btn:focus-visible,.cg-ov :focus-visible:not(.cg-peso-num):not(.cg-nota):not(.cg-titulo){outline:3px solid color-mix(in oklab,var(--color-brand) 65%,var(--color-text-primary));outline-offset:2px}
+html.cg-abierto,html.cg-abierto body{overflow:hidden}
+
+.cg-ov{position:fixed;inset:0;z-index:55;font-size:16px;color:var(--color-text-primary);background:var(--cg-fondo);--cg-fondo:var(--color-bg-primary);--cg-sup:var(--color-bg-secondary);--cg-borde:var(--color-border-strong)}
+[data-theme="dark"] .cg-ov{--cg-fondo:#000;--cg-sup:#1c1c1e;--cg-borde:rgba(255,255,255,.24)}
+/* En el iPhone la letra sigue el tamaño de texto del sistema. */
+@supports (-webkit-touch-callout:none){.cg-ov{font:-apple-system-body;font-family:var(--font-sans)}.cg-in{font-size:.9412em}}
+.cg-in{height:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column}
+.cg-cab{flex:0 0 auto;display:flex;align-items:center;gap:.75em;padding:calc(.5em + env(safe-area-inset-top,0px)) 1em .25em}
+.cg-cab[hidden]{display:none}
+.cg-x{flex:0 0 auto;min-height:48px;padding:.4em 1em .4em .75em;border:0;border-radius:999px;background:var(--cg-sup);color:var(--color-text-primary);font:inherit;font-size:1em;font-weight:600;display:flex;align-items:center;gap:.4em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cg-avance{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:.4em}
+.cg-cuenta{font-family:var(--font-num);font-size:.9375em;font-weight:700;line-height:1.2;color:var(--color-text-primary);text-align:right}
+.cg-avance .cg-seg{flex:0 0 auto}
+.cg-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:1.25em 1.25em 1.5em}
+.cg-cuerpo>*{animation:cg-entra .22s ease-out both}
+@keyframes cg-entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.cg-titulo{font-family:var(--font-display);font-size:2.125em;font-weight:800;line-height:1.08;letter-spacing:-.02em;margin:0 0 .3em;outline:none;text-wrap:balance}
+.cg-apoyo{font-size:1em;line-height:1.4;color:var(--color-text-secondary);margin:0 0 1.5em}
+.cg-pie{flex:0 0 auto;padding:.75em 1.25em calc(.6em + env(safe-area-inset-bottom,0px));background:var(--cg-fondo)}
+.cg-ov .cg-btn{font-size:1.1875em;min-height:3.05em}
+.cg-sec{width:100%;min-height:52px;margin-top:.6em;padding:.5em 1em;border:0;border-radius:999px;background:var(--cg-sup);color:var(--color-text-primary);font:inherit;font-size:1.0625em;font-weight:600;line-height:1.2;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.cg-txt{width:100%;min-height:48px;margin-top:.15em;padding:.4em .5em;border:0;background:transparent;color:var(--color-text-primary);font:inherit;font-size:1em;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.3em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cg-aviso{min-height:1.4em;margin:.9em 0 0;font-size:.9375em;font-weight:600;color:var(--color-danger);text-align:center}
+.cg-falta{margin:.9em 0 0;font-size:.9375em;font-weight:600;line-height:1.3;color:var(--color-alerta)}
+.cg-pie .cg-falta{margin:0 0 .6em;text-align:center}
+.cg-pie .cg-falta:empty{display:none}
+
+.cg-peso{display:flex;align-items:baseline;justify-content:center;gap:.5em;margin:1.75em 0 .6em}
+.cg-peso-num{width:4.6ch;max-width:calc(100% - 2.5rem);padding:0 0 .04em;border:0;border-bottom:3px solid var(--color-bg-tertiary);border-radius:0;background:transparent;color:var(--color-text-primary);font-family:var(--font-num);font-size:4.125em;font-weight:800;line-height:1.1;letter-spacing:-.02em;text-align:center;caret-color:var(--color-brand);outline:none;font-variant-numeric:tabular-nums}
+[data-theme="dark"] .cg-peso-num{border-bottom-color:rgba(255,255,255,.14)}
+.cg-peso-num:focus,[data-theme="dark"] .cg-peso-num:focus{border-bottom-color:var(--color-brand)}
+.cg-peso-num::placeholder{color:var(--color-text-muted);font-size:.42em;font-weight:700;letter-spacing:0;opacity:1}
+.cg-peso-kg{font-family:var(--font-num);font-size:1.5em;font-weight:700;color:var(--color-text-secondary)}
+.cg-peso-media{margin:0;text-align:center;font-size:.9375em;color:var(--color-text-secondary)}
+
+.cg-esc{margin-bottom:1.05em}
+.cg-esc:last-of-type{margin-bottom:0}
+.cg-esc-et{font-size:1.0625em;font-weight:700;margin-bottom:.4em}
+.cg-esc-fila{display:grid;grid-template-columns:repeat(5,minmax(44px,3.25em));justify-content:space-between;gap:4px}
+.cg-punto{aspect-ratio:1;width:100%;padding:0;border-radius:50%;border:1.5px solid var(--cg-borde);background:transparent;color:var(--color-text-primary);font-family:var(--font-num);font-size:1.125em;font-weight:700;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background-color .12s,border-color .12s,color .12s,transform .1s}
+.cg-punto:active{transform:scale(.93)}
+.cg-punto.is-on{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
+.cg-esc-ext{display:flex;justify-content:space-between;gap:1em;margin-top:.3em;font-size:.8125em;color:var(--color-text-secondary)}
+
+.cg-fotos .fp-slot{min-height:9.5em}
+.cg-foto-ico{width:2.25em;height:2.25em;border-radius:50%;display:grid;place-items:center;color:var(--color-text-secondary)}
+.cg-foto-ico.is-on{background:var(--color-brand);color:var(--color-on-brand)}
+.cg-fotos .fp-slot-lbl{font-size:.8125em}
+.cg-fotos .fp-slot-sub{font-size:.6875em}
+.cg-fotos-cuenta{margin:.9em 0 0;text-align:center;font-family:var(--font-num);font-size:.9375em;font-weight:600;color:var(--color-text-secondary)}
+.cg-fp-msg{font-size:.875em;text-align:center}
+
+.cg-ops{display:flex;flex-direction:column;gap:.6em}
+.cg-op{width:100%;min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:.75em;padding:.8em 1em;border:1.5px solid transparent;border-radius:16px;background:var(--cg-sup);color:var(--color-text-primary);font:inherit;font-size:1.0625em;font-weight:600;line-height:1.25;text-align:left;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background-color .12s,border-color .12s}
+.cg-op.is-on{background:var(--color-brand-subtle);border-color:var(--color-brand)}
+.cg-tilde{flex:0 0 auto;width:1.5em;height:1.5em;border-radius:50%;border:1.5px solid var(--cg-borde);display:grid;place-items:center;color:transparent}
+.cg-op.is-on .cg-tilde{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
+
+.cg-nota{display:block;width:100%;min-height:9em;padding:1em;border:1.5px solid transparent;border-radius:16px;background:var(--cg-sup);color:var(--color-text-primary);font:inherit;font-size:1.0625em;line-height:1.4;resize:none;outline:none}
+.cg-nota:focus{border-color:var(--color-brand)}
+.cg-nota::placeholder{color:var(--color-text-muted);opacity:1}
+
+.cg-res{border-radius:16px;background:var(--cg-sup);overflow:hidden}
+.cg-res-fila{width:100%;min-height:3.25em;display:flex;align-items:center;gap:.75em;padding:.7em 1em;border:0;border-top:1px solid var(--color-border);background:transparent;color:var(--color-text-primary);font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+button.cg-res-fila{cursor:pointer;min-height:48px}
+.cg-res-fila:first-child{border-top:0}
+.cg-res-par{flex:1 1 0;min-width:0;display:flex;align-items:baseline;justify-content:space-between;gap:.75em}
+.cg-res-et{flex:0 0 auto;color:var(--color-text-secondary)}
+.cg-res-val{min-width:0;text-align:right;font-weight:700;overflow-wrap:anywhere}
+.cg-res-fila.is-larga .cg-res-par{flex-direction:column;align-items:stretch;gap:.15em}
+.cg-res-fila.is-larga .cg-res-et{font-size:.875em}
+.cg-res-fila.is-larga .cg-res-val{text-align:left;font-weight:600;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.cg-res-val.is-falta{color:var(--color-alerta)}
+.cg-res-va{flex:0 0 auto;display:grid;place-items:center;color:var(--color-text-muted)}
+.cg-salud{margin-top:1.25em}
+
+.cg-cuerpo.is-listo{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.cg-listo-ico{width:5em;height:5em;border-radius:50%;margin-bottom:1.5em;background:var(--color-brand);color:var(--color-on-brand);display:grid;place-items:center}
+.cg-listo-ico svg{width:2.4em;height:2.4em}
+.cg-cuerpo.is-listo .cg-apoyo{margin-bottom:0}
+@media (max-height:700px){.cg-cuerpo{padding-top:.75em}.cg-titulo{font-size:1.875em}.cg-apoyo{margin-bottom:1.1em}.cg-esc{margin-bottom:1em}.cg-peso{margin-top:1em}}
+@media (prefers-reduced-motion:reduce){.cg-cuerpo>*{animation:none}.cg-btn,.cg-punto,.cg-op{transition:none}.cg-btn:active:not(:disabled),.cg-punto:active{transform:none}}
+
 /* ── Accesibilidad: sin animaciones decorativas si el sistema lo pide ── */
 @media (prefers-reduced-motion:reduce){
   .ex-status,.set-confirm,.pip,.rest-bar,.hb,.track-btn,.sc-dot{animation:none!important}
@@ -2223,6 +2323,11 @@ let _web230 = (() => {
   } catch (_) { return false; }
 })();
 function web230() { return _web230; }
+/* El check guiado (2.3.0), detrás de `check_guiado`. Apagada o sin la clave: el check de siempre, sin una llamada nueva.
+   Sin red queda lo último que se supo. En la demo no va: no hay a quién mandarle nada. */
+const _CG_PALANCA_KEY = 'mypump_palanca_check_guiado';
+let _cgPalanca = (() => { try { return localStorage.getItem(_CG_PALANCA_KEY) === '1'; } catch (_) { return false; } })();
+function checkGuiadoPrendido() { return _cgPalanca && !!TOKEN && !DEMO && !(DATA && DATA._isDemo); }
 /* «Gimnasio por fotos» (js/gimnasio*.js), detrás de `gimnasio_fotos`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada. */
 function _gimPalanca(cfg) {
   if (!window.GimnasioUI || !TOKEN || DEMO) return;
@@ -2578,6 +2683,7 @@ async function leerPalancaWeb230() {
   _listaPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
+  _cgAplicarPalanca(cfg.check_guiado === true);
   if (_hostDePrueba()) return;
   const v = cfg.web_230 === true;
   if (v === _web230) return;
@@ -4441,6 +4547,15 @@ const Outbox = (() => {
     async checkin(p) {
       // Upsert del check semanal (mig 035). p.fecha = hoy local; el server ancla al lunes ISO.
       return window.mypumpDB.guardarCheckin(TOKEN, p.fecha, p.datos);
+    },
+    async check_guiado(p) {
+      // Lo marcado en «¿Notaste algo?» del check guiado. TRUE = guardado; FALSE = palanca apagada en el servidor; sin
+      // la función (PGRST202: la propuesta sin aplicar) no hay dónde guardarlo. En los tres casos está hecho y no
+      // traba la cola: las escalas, la nota y el peso no dependen de esto. Solo red o servidor caído se reintenta.
+      const l = CheckGuiado.rpcGuardar(TOKEN, p);
+      const r = await window.mypumpDB.gimnasioRpc(l.funcion, l.parametros);
+      if (r && (r.ok || r.codigo === 'PGRST202' || r.status === 404)) return { success: true, data: 'ok' };
+      return { success: false, transitorio: !r || r.clase !== 'permanente' };
     },
     async chat(p) {
       const r = await window.mypumpDB.enviarChat(TOKEN, p.contenido);
@@ -10096,6 +10211,7 @@ async function loadMyday() {
 async function loadRevision() {
   if (!TOKEN || DEMO) return;
   loadCheckin();
+  if (checkGuiadoPrendido()) loadCheckGuiado().catch(() => {});
   loadFotos().then(() => { if (STATE.scene === 'revision') renderMydayFotos(); if (STATE.scene === 'cuerpo') renderCuerpo(); flushFotos(); });
 }
 
@@ -11276,6 +11392,215 @@ const CHECKIN_METRICAS = [
   { k: 'adherencia', icon: '🎯', label: 'Adherencia', lo: 'me costó', hi: 'la seguí' },
 ];
 
+/* ═══ CHECK GUIADO · REGLAS (inicio) ═══
+   El check guiado (2.3.0): el check de la semana, un paso por pantalla. Guarda lo mismo que el check de siempre (las
+   cuatro escalas y la nota por `checkin`, el peso por `peso`, las fotos por su cola) y suma una sola cosa: lo que el
+   alumno marca en «¿Notaste algo de esto?» (`check_guiado`). Son las reglas de la app (CheckGuiado.swift y
+   CheckGuiado.kt), tal cual; los casos compartidos están en apps/shared/vectores/check_guiado.json y los corre
+   scripts/test-check-guiado.mjs. Sin DOM ni red: solo datos. */
+const CheckGuiado = (() => {
+  const PASOS = ['peso', 'escalas', 'fotos', 'senales', 'nota', 'resumen'];
+  // «Nada de esto»: se guarda para distinguir «no pasó nada» de «no contestó». No convive con otra.
+  const NINGUNO = 'ninguno';
+  const CATALOGOS = {
+    general: [
+      ['dolor', 'Dolor o molestia al entrenar'],
+      ['digestion', 'Digestión pesada o malestar'],
+      ['animo', 'Ánimo bajo'],
+      ['enfermo', 'Estuve enfermo'],
+      [NINGUNO, 'Nada de esto'],
+    ],
+    ciclo: [
+      ['acne', 'Acné o piel grasa'],
+      ['retencion', 'Retención de líquido o hinchazón'],
+      ['pecho', 'Sensibilidad en el pecho'],
+      ['cabeza', 'Dolor de cabeza o presión alta'],
+      ['animo', 'Irritabilidad o cambios de ánimo'],
+      ['libido', 'Cambios en el deseo sexual'],
+      ['sueno', 'Insomnio o sudor de noche'],
+      ['aplicacion', 'Dolor en la zona de aplicación'],
+      [NINGUNO, 'Nada de esto'],
+    ],
+  };
+  const AVISO_RANGO = 'Revisá el peso: tiene que estar entre 30 y 300 kg.';
+
+  // Qué lista le toca: la de ciclo solo si el servidor dice explícitamente que está en ciclo.
+  const catalogoDe = (enCiclo) => (enCiclo === true ? 'ciclo' : 'general');
+  const esCatalogo = (c) => c === 'general' || c === 'ciclo';
+  const opciones = (c) => (CATALOGOS[c] || CATALOGOS.general).map(([clave, etiqueta]) => ({ clave, etiqueta }));
+
+  function titulo(p, catalogo = 'general') {
+    switch (p) {
+      case 'peso': return '¿Cuánto pesaste hoy?';
+      case 'escalas': return '¿Cómo venís esta semana?';
+      case 'fotos': return 'Tus fotos de la semana';
+      case 'senales': return catalogo === 'ciclo' ? '¿Notaste algo de esto?' : '¿Algo de esto esta semana?';
+      case 'nota': return '¿Algo que quieras contarme?';
+      default: return 'Así va tu check';
+    }
+  }
+  function apoyo(p, catalogo = 'general') {
+    switch (p) {
+      case 'peso': return 'En ayunas, al despertar.';
+      case 'escalas': return 'Del 1 al 5. Mati lo ve antes de tu devolución.';
+      case 'fotos': return 'Frente, perfil y espalda. Mismo lugar y misma luz que siempre. Las ve solo Mati.';
+      case 'senales': return catalogo === 'ciclo'
+        ? 'Marcá lo que haya aparecido esta semana. Mati lo mira antes de tu devolución.'
+        : 'Marcá lo que te haya pasado. Si no hubo nada, mejor.';
+      case 'nota': return 'Es opcional. Lo lee Mati.';
+      default: return 'Tocá una fila si querés cambiar algo.';
+    }
+  }
+  // La salida discreta de cada paso (lo que deja seguir sin contestar). null = no se puede saltear.
+  const omitir = (p) => (p === 'peso' ? 'Hoy no me pesé' : p === 'fotos' ? 'Las subo después' : null);
+
+  // Los pasos de esta vez. Las fotos entran solo si al abrir faltaba alguna de las tres de la semana (y no se van al
+  // subir la última: la lista se arma una vez, al abrir).
+  const pasos = (faltanFotos) => PASOS.filter(p => p !== 'fotos' || faltanFotos);
+
+  // Tocar una opción: se marca o se desmarca. «Nada de esto» borra las demás, y cualquiera de las demás la borra.
+  function alternar(senales, clave) {
+    if (senales.includes(clave)) return senales.filter(s => s !== clave);
+    if (clave === NINGUNO) return [NINGUNO];
+    return senales.filter(s => s !== NINGUNO).concat([clave]);
+  }
+  // Lo que se manda: solo claves del catálogo, sin repetir, en el orden del catálogo y sin «ninguno» mezclado.
+  function normalizar(senales, c) {
+    const validas = opciones(c).map(o => o.clave).filter(k => (senales || []).includes(k));
+    return validas.length > 1 ? validas.filter(k => k !== NINGUNO) : validas;
+  }
+
+  // «Faltan: Energía, Hambre» (el mismo texto del check de siempre), o null si están las cuatro escalas.
+  function faltan(valores) {
+    const f = CHECKIN_METRICAS.filter(m => !((valores || {})[m.k] > 0));
+    return f.length ? `Faltan: ${f.map(m => m.label).join(', ')}` : null;
+  }
+
+  // El peso que escribió: coma o punto, entre 30 y 300, a un decimal. null = no es un peso válido.
+  function leerPeso(texto) {
+    const t = String(texto == null ? '' : texto).trim().replace(',', '.');
+    if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(t)) return null;
+    const v = Number(t);
+    if (!isFinite(v) || v < 30 || v > 300) return null;
+    return Math.round(v * 10) / 10;
+  }
+
+  /* El borrador de la semana: lo que el alumno lleva contestado. Vive en el teléfono hasta que manda el check.
+     `semana` es el lunes de la semana del borrador: el de otra semana no sirve. */
+  function borrador(o) {
+    o = o && typeof o === 'object' ? o : {};
+    const valores = {};
+    if (o.valores && typeof o.valores === 'object') {
+      for (const k of Object.keys(o.valores)) { const n = Number(o.valores[k]); if (Number.isInteger(n)) valores[k] = n; }
+    }
+    return {
+      semana: String(o.semana || ''),
+      paso: PASOS.includes(o.paso) ? o.paso : 'peso',
+      peso: typeof o.peso === 'string' ? o.peso : '',
+      valores,
+      catalogo: esCatalogo(o.catalogo) ? o.catalogo : 'general',
+      senales: Array.isArray(o.senales) ? o.senales.filter(s => typeof s === 'string') : [],
+      nota: typeof o.nota === 'string' ? o.nota : '',
+    };
+  }
+  // ¿Contestó algo? Un borrador sin nada no cuenta como «a medias».
+  function empezado(b) {
+    return !!b && (b.peso.trim() !== '' || Object.values(b.valores).some(v => v > 0) || b.senales.length > 0 || b.nota.trim() !== '');
+  }
+
+  /* El borrador con el que se abre: el guardado si es de esta semana; si no, uno nuevo con lo que ya está enviado.
+     Si el perfil cambió (otro catálogo), lo marcado con la lista anterior no vale. */
+  function abrir({ guardado, semana, catalogo, enviado, senalesEnviadas, catalogoEnviado }) {
+    if (guardado && guardado.semana === semana) {
+      const b = borrador(guardado);
+      if (b.catalogo !== catalogo) { b.catalogo = catalogo; b.senales = []; }
+      return b;
+    }
+    const b = borrador({ semana, catalogo });
+    if (enviado) {
+      b.valores = borrador({ valores: enviado.valores }).valores;
+      b.nota = typeof enviado.nota === 'string' ? enviado.nota : '';
+      b.paso = 'resumen';
+    }
+    if (Array.isArray(senalesEnviadas) && catalogoEnviado === catalogo) b.senales = normalizar(senalesEnviadas, catalogo);
+    return b;
+  }
+
+  // En qué paso se abre: donde lo dejó, si ese paso sigue estando; si no, el primero.
+  const retomar = (b, ps) => (ps.includes(b.paso) ? b.paso : (ps[0] || 'peso'));
+
+  /* ¿Se puede seguir desde este paso? El peso vacío no sigue (para eso está «Hoy no me pesé»); con algo escrito
+     sigue, y si no es un peso válido lo dice la pantalla. Las fotos, con las tres. */
+  function puedeSeguir(p, b, fotosHechas = 0) {
+    switch (p) {
+      case 'peso': return b.peso.trim() !== '';
+      case 'escalas': return faltan(b.valores) === null;
+      case 'fotos': return fotosHechas >= 3;
+      case 'senales': return normalizar(b.senales, b.catalogo).length > 0;
+      default: return true;
+    }
+  }
+  // Lo que falta para poder mandar (el resumen lo dice en vez de dejar el botón gris sin explicación).
+  function faltaParaEnviar(b) {
+    const f = faltan(b.valores);
+    if (f) return f;
+    if (!normalizar(b.senales, b.catalogo).length) return `Falta: ${titulo('senales', b.catalogo)}`;
+    return null;
+  }
+  // El primer paso al que hay que volver para completar lo que falta.
+  function pasoQueFalta(b) {
+    if (faltan(b.valores) !== null) return 'escalas';
+    if (!normalizar(b.senales, b.catalogo).length) return 'senales';
+    return null;
+  }
+  // «Acné o piel grasa, Retención de líquido o hinchazón» para la fila del resumen.
+  function textoSenales(senales, c) {
+    const n = normalizar(senales, c);
+    return opciones(c).filter(o => n.includes(o.clave)).map(o => o.etiqueta).join(', ');
+  }
+
+  // La tarjeta de Revisión.
+  function estado({ enviado, borrador: b, semana, faltanFotos }) {
+    // Un borrador de esta semana posterior al envío («Cambiar algo» sin terminar) no lo vuelve a «a medias».
+    if (enviado) return faltanFotos ? 'enviadoSinFotos' : 'enviado';
+    if (b && b.semana === semana && empezado(borrador(b))) return 'aMedias';
+    return 'sinEmpezar';
+  }
+  const TARJETA = {
+    sinEmpezar: ['Un minuto: tu peso, cómo venís y tus fotos. Mati lo ve antes de tu devolución.', 'Empezar'],
+    aMedias: ['Lo dejaste por la mitad. Seguís donde quedaste.', 'Seguir'],
+    enviado: ['Enviado. Mati lo ve antes de tu devolución.', 'Cambiar algo'],
+    enviadoSinFotos: ['Enviado. Te faltan las fotos de la semana.', 'Subir fotos'],
+  };
+  const textoTarjeta = (e) => (TARJETA[e] || TARJETA.sinEmpezar)[0];
+  const botonTarjeta = (e) => (TARJETA[e] || TARJETA.sinEmpezar)[1];
+
+  /* Lo que sale por la cola al enviar, en orden. `checkin` y `peso` son los de siempre, sin un campo más; lo único
+     nuevo es `check_guiado`. `pesoDeHoy`: el peso manual que ya está cargado hoy (o esperando en la cola): si es el
+     mismo, no se manda de nuevo. Con algo que falte, o un peso que no es válido, no sale nada. */
+  function opsDeEnvio(b, fecha, pesoDeHoy = null) {
+    if (faltaParaEnviar(b)) return [];
+    const kilos = b.peso.trim();
+    const valor = kilos ? leerPeso(kilos) : null;
+    if (kilos && valor === null) return [];
+    const datos = { nota: b.nota.trim() };
+    for (const m of CHECKIN_METRICAS) datos[m.k] = b.valores[m.k];
+    const ops = [{ kind: 'checkin', dedupeKey: `checkin_${fecha}`, payload: { fecha, datos } }];
+    if (valor !== null && valor !== pesoDeHoy) ops.push({ kind: 'peso', dedupeKey: `peso_${fecha}`, payload: { fecha, valor } });
+    ops.push({ kind: 'check_guiado', dedupeKey: `check_guiado_${fecha}`,
+      payload: { fecha, respuestas: { catalogo: b.catalogo, senales: normalizar(b.senales, b.catalogo) } } });
+    return ops;
+  }
+  // La llamada que guarda lo marcado (el ejecutor `check_guiado` de la cola).
+  const rpcGuardar = (token, p) => ({ funcion: 'mypump_check_guiado_guardar',
+    parametros: { p_token: token, p_fecha: (p && p.fecha) || null, p_respuestas: (p && p.respuestas) || {} } });
+
+  return { PASOS, NINGUNO, AVISO_RANGO, catalogoDe, esCatalogo, opciones, titulo, apoyo, omitir, pasos, alternar, normalizar, faltan,
+    leerPeso, borrador, empezado, abrir, retomar, puedeSeguir, faltaParaEnviar, pasoQueFalta, textoSenales, estado,
+    textoTarjeta, botonTarjeta, opsDeEnvio, rpcGuardar };
+})();
+/* ═══ CHECK GUIADO · REGLAS (fin) ═══ */
+
 /* ═══════ FOTOS DE PROGRESO (P2/P3) ═══════
    Se suben al servicio de la Mini (bucket privado). El Blob NO puede ir al
    Outbox (se serializa a localStorage con JSON.stringify y no sobrevive), asi
@@ -11397,6 +11722,7 @@ function _fpMsg(t, cls = '', cola = null) {
   _fpPintarMsg();
 }
 function _fpPintarMsg() {
+  if (typeof _cgFotosCambio === 'function') _cgFotosCambio();   // el paso de fotos del check guiado usa esta misma subida
   const el = document.getElementById('fpMsg');
   if (!el) return;
   const m = STATE.fpMsg;
@@ -11515,7 +11841,8 @@ async function fotosFirmadas() {
    Entreno y Dieta. Reusa los patrones .tab-badge y .prog-banner. */
 function _pendientesSemana() {
   const sem = _lunesISO(hoyLocal());
-  const faltaCheck = !(STATE.checkin && STATE.checkin.energia);
+  // Con el check guiado, el check que espera en la cola ya está enviado (como en su tarjeta). Apagado, lo de siempre.
+  const faltaCheck = checkGuiadoPrendido() ? !_cgCheckin() : !(STATE.checkin && STATE.checkin.energia);
   let faltanFotos = false;
   if (FOTOS_URL()) {
     const puestas = new Set((STATE.fotos || []).filter(f => f.semana_lunes === sem).map(f => f.pose));
@@ -11813,6 +12140,8 @@ function renderRecordatorio() {
   // Mismo texto que la app 2.1.0 (BannerRevision): sin emoji ni guion.
   div.innerHTML = `<span class="rs-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 2 2 4-4"/><path d="m3 17 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span><span class="rs-txt"><span class="rs-tit">${texto}</span><span class="rs-sub">Entrá a Revisión: es un minuto y Mati lo ve antes de tu devolución.</span></span><span class="rs-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span>`;
   div.addEventListener('click', () => {
+    // Con el check guiado, si falta el check el aviso lo abre directo en el paso que toca (las fotos son uno de sus pasos).
+    if (checkGuiadoPrendido() && p.faltaCheck) { _cgIrAlCheck(); return; }
     setScene('revision');
     // Como la app: si solo falta el check, al check; si no, a las fotos.
     const destino = (p.faltaCheck && !p.faltanFotos) ? 'myday-checkin' : 'myday-fotos';
@@ -12125,6 +12454,7 @@ async function loadCheckin() {
 function renderMydayCheckin() {
   const el = document.getElementById('myday-checkin');
   if (!el) return;
+  if (checkGuiadoPrendido()) return _cgRenderTarjeta(el);   // palanca `check_guiado`: la tarjeta del check guiado
   const ck = STATE.checkinDraft || STATE.checkin || {};
   const yaGuardado = !!(STATE.checkin && STATE.checkin.energia);
 
@@ -12211,6 +12541,528 @@ function renderMydayCheckin() {
   });
 }
 
+/* ═══════ CHECK GUIADO (2.3.0) · modelo y pantalla ═══════
+   Detrás de la palanca `check_guiado` (apagada o sin la clave: el check de siempre, sin una llamada nueva). Prendida,
+   la sección «Check de la semana» pasa a ser una tarjeta que abre el check a pantalla completa, un paso por pantalla.
+   Escribe lo mismo que el check de siempre por donde siempre (`checkin`, `peso`, la cola de fotos) y suma lo marcado
+   en «¿Notaste algo?» (`check_guiado`). Las reglas están en `CheckGuiado`; acá va lo que toca la página. */
+const _CG_SRV_KEY = () => `mypump_cg_servidor_${TOKEN}`;
+const _CG_BORRADOR_KEY = () => `mypump_cg_borrador_${TOKEN}`;
+let _cg = null;            // el check abierto: { b, pasos, paso, listo, tocado, yaEnviado, aviso, foco }
+let _cgSrvLeido = false;
+
+function _cgAplicarPalanca(v) {
+  if (v === _cgPalanca) return;
+  _cgPalanca = v;
+  try { localStorage.setItem(_CG_PALANCA_KEY, v ? '1' : '0'); } catch (_) {}
+  if (!v && _cg) _cgCerrar();
+  if (v) loadCheckGuiado().catch(() => {});
+  if (STATE.scene === 'revision') renderRevision();   // la tarjeta va primera: cambia el orden de la pantalla
+  try { renderRecordatorio(); } catch (_) {}
+}
+
+/* Lo último que dijo `mypump_check_guiado_get` ({enCiclo, semana, catalogo, senales}). Queda en el navegador: sin
+   señal, la lista de «¿Notaste algo?» no cambia. */
+function _cgSrv() {
+  if (!_cgSrvLeido) {
+    _cgSrvLeido = true;
+    try { STATE.cgServidor = JSON.parse(localStorage.getItem(_CG_SRV_KEY()) || 'null'); } catch (_) { STATE.cgServidor = null; }
+  }
+  const s = STATE.cgServidor;
+  return s && typeof s === 'object' ? s : null;
+}
+function _cgSrvGuardar(v) {
+  _cgSrvLeido = true;
+  STATE.cgServidor = v;
+  try { if (v) localStorage.setItem(_CG_SRV_KEY(), JSON.stringify(v)); else localStorage.removeItem(_CG_SRV_KEY()); } catch (_) {}
+}
+const _cgSemana = () => _lunesISO(hoyLocal());
+
+/* Solo con la palanca prendida. Sin red o con un error pasajero queda lo último que se supo; sin la función en la
+   base, o con `activo:false`, nadie está en ciclo: la lista general. */
+async function loadCheckGuiado() {
+  if (!checkGuiadoPrendido() || !window.mypumpDB.gimnasioRpc) return;
+  const r = await window.mypumpDB.gimnasioRpc('mypump_check_guiado_get', { p_token: TOKEN, p_fecha: hoyLocal() });
+  if (r && r.ok) {
+    const j = r.data;
+    _cgSrvGuardar(j && typeof j === 'object' && j.activo === true ? {
+      enCiclo: j.en_ciclo === true,
+      semana: typeof j.semana === 'string' ? j.semana.slice(0, 10) : null,
+      catalogo: CheckGuiado.esCatalogo(j.catalogo) ? j.catalogo : null,
+      senales: Array.isArray(j.senales) ? j.senales.filter(s => typeof s === 'string') : null,
+    } : null);
+  } else if (r && (r.codigo === 'PGRST202' || r.status === 404)) {
+    _cgSrvGuardar(null);
+  }
+  _cgAplicarPendiente();
+  if (STATE.scene === 'revision' && !_cg) renderMydayCheckin();
+}
+
+// La op de esta semana que todavía no salió (la más nueva), o null.
+function _cgPendiente(prefijo) {
+  const sem = _cgSemana();
+  let op = null;
+  try {
+    Outbox.pendingByKey().forEach((o, k) => {
+      if (k.startsWith(prefijo) && o.payload && o.payload.fecha && _lunesISO(o.payload.fecha) === sem && (!op || o.ts > op.ts)) op = o;
+    });
+  } catch (_) {}
+  return op;
+}
+// Lo marcado que todavía no salió gana sobre lo que trae el servidor, como el check.
+function _cgAplicarPendiente() {
+  const op = _cgPendiente('check_guiado_');
+  const r = op && op.payload.respuestas;
+  if (!r || !Array.isArray(r.senales)) return;
+  const s = _cgSrv();
+  STATE.cgServidor = { enCiclo: !!(s && s.enCiclo), semana: _cgSemana(),
+    catalogo: CheckGuiado.esCatalogo(r.catalogo) ? r.catalogo : null, senales: r.senales.filter(x => typeof x === 'string') };
+}
+// El check enviado de esta semana (el que espera en la cola gana), o null.
+function _cgCheckin() {
+  const op = _cgPendiente('checkin_');
+  const c = (op && op.payload.datos) || STATE.checkin;
+  return c && c.energia ? c : null;
+}
+// El peso manual de hoy: el cargado o el que espera en la cola. null si no hay.
+function _cgPesoDeHoy() {
+  const hoy = hoyLocal();
+  const f = (STATE.salud || []).find(r => r.tipo === 'peso_kg' && r.fecha === hoy && r.fuente === 'manual');
+  if (f && isFinite(Number(f.valor))) return Number(f.valor);
+  try { const op = Outbox.pendingByKey().get('peso_' + hoy); if (op && isFinite(Number(op.payload.valor))) return Number(op.payload.valor); } catch (_) {}
+  return null;
+}
+// El peso de hoy sale por la misma vía que la tarjeta de Peso corporal.
+function _cgPonerPeso(valor) {
+  const hoy = hoyLocal();
+  STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === hoy && r.fuente === 'manual'));
+  STATE.salud.push({ fecha: hoy, tipo: 'peso_kg', valor, fuente: 'manual' });
+}
+// El paso del peso lo guarda en el momento. Si es el que ya está cargado hoy, no lo manda de nuevo.
+function _cgGuardarPeso(valor) {
+  if (_cgPesoDeHoy() === valor) return;
+  _cgPonerPeso(valor);
+  Outbox.enqueue('peso', { fecha: hoyLocal(), valor }, 'peso_' + hoyLocal());
+}
+const _cgKg = (v) => Number(v).toFixed(1).replace('.', ',');
+
+// El borrador guardado (por cuenta); el de otra semana se descarta.
+function _cgBorrador() {
+  let b = null;
+  try { b = JSON.parse(localStorage.getItem(_CG_BORRADOR_KEY()) || 'null'); } catch (_) {}
+  if (!b || typeof b !== 'object') return null;
+  if (b.semana !== _cgSemana()) { _cgBorrarBorrador(); return null; }
+  return CheckGuiado.borrador(b);
+}
+function _cgGuardarBorrador() {
+  if (!_cg || _cg.listo || !_cg.tocado) return;
+  _cg.b.paso = _cg.paso;
+  try { localStorage.setItem(_CG_BORRADOR_KEY(), JSON.stringify(_cg.b)); } catch (_) {}
+}
+function _cgBorrarBorrador() { try { localStorage.removeItem(_CG_BORRADOR_KEY()); } catch (_) {} }
+
+// Las poses de esta semana que ya están (subidas o esperando subir).
+function _cgFotos() {
+  const sem = _cgSemana();
+  const puestas = new Set((STATE.fotos || []).filter(f => f.semana_lunes === sem).map(f => f.pose));
+  const subiendo = new Set();
+  Object.values(_fotoqLeer()).forEach(p => { if (_lunesISO(p.fecha) === sem) { puestas.add(p.pose); subiendo.add(p.pose); } });
+  return { sem, puestas, subiendo };
+}
+
+const _CG_ICO = {
+  x: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  tilde: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+  va: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>',
+  atras: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>',
+  mas: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+};
+const _cgSegmentos = (total, hechos) => Array.from({ length: total }, (_, i) => `<i${i < hechos ? ' class="is-on"' : ''}></i>`).join('');
+
+/* La tarjeta de Revisión (reemplaza la sección «Check de la semana»). Vive en #myday-checkin: el ancla de los avisos
+   sigue apuntando acá. */
+function _cgRenderTarjeta(el) {
+  const sem = _cgSemana();
+  const faltanFotos = _pendientesSemana().faltanFotos;
+  const b = _cgBorrador();
+  const e = CheckGuiado.estado({ enviado: !!_cgCheckin(), borrador: b, semana: sem, faltanFotos });
+  const pasos = CheckGuiado.pasos(faltanFotos);
+  const hechos = e === 'sinEmpezar' ? 0
+    : e === 'aMedias' ? pasos.indexOf(CheckGuiado.retomar(b, pasos))
+    : e === 'enviado' ? pasos.length : pasos.length - 1;
+  el.innerHTML = `
+    <section class="myday-section cg-tarjeta" data-testid="check-guiado-tarjeta" data-estado="${e}" aria-labelledby="cgTarjetaTit">
+      <h3 class="cg-t-tit" id="cgTarjetaTit">Check de la semana</h3>
+      <p class="cg-t-txt">${escapeHtml(CheckGuiado.textoTarjeta(e))}</p>
+      <div class="cg-seg" aria-hidden="true">${_cgSegmentos(pasos.length, hechos)}</div>
+      <button type="button" class="cg-btn${e === 'enviado' ? ' is-suave' : ''}" id="cgAbrir" data-testid="check-guiado-abrir">${escapeHtml(CheckGuiado.botonTarjeta(e))}</button>
+    </section>`;
+  _repintarSaludSemana();
+  el.querySelector('#cgAbrir').addEventListener('click', () => _cgAbrir(e === 'enviadoSinFotos' ? 'fotos' : null));
+}
+
+/* A dónde llevan los avisos de «te falta tu check»: a Revisión y, si todavía no lo mandó, directo al check abierto en el
+   paso que toca. Con el check ya enviado, solo muestra la tarjeta. */
+function _cgIrAlCheck() {
+  setScene('revision');
+  const el = document.getElementById('myday-checkin');
+  if (el) el.scrollIntoView({ block: 'start' });
+  if (!_cgCheckin()) _cgAbrir(null);
+}
+
+// Abre el check: donde lo dejó, en el resumen si ya lo mandó, o en el paso que se pide («Subir fotos»).
+function _cgAbrir(pasoPedido) {
+  if (_cg || !checkGuiadoPrendido()) return;
+  const sem = _cgSemana();
+  const srv = _cgSrv();
+  const deEstaSemana = !!srv && srv.semana === sem;
+  const ck = _cgCheckin();
+  const valores = {};
+  if (ck) CHECKIN_METRICAS.forEach(m => { valores[m.k] = Number(ck[m.k]) || 0; });
+  const guardado = _cgBorrador();
+  const b = CheckGuiado.abrir({
+    guardado, semana: sem, catalogo: CheckGuiado.catalogoDe(!!srv && srv.enCiclo === true),
+    enviado: ck ? { valores, nota: ck.nota || '' } : null,
+    senalesEnviadas: deEstaSemana ? srv.senales : null,
+    catalogoEnviado: deEstaSemana ? srv.catalogo : null,
+  });
+  // Si hoy ya hay peso cargado, viene puesto.
+  const pesoHoy = _cgPesoDeHoy();
+  // El peso del borrador vale solo si es el de hoy: uno de otro día no se manda con la fecha de hoy.
+  if (b.peso.trim() && CheckGuiado.leerPeso(b.peso) !== pesoHoy) b.peso = '';
+  if (!b.peso.trim() && pesoHoy != null) b.peso = _cgKg(pesoHoy);
+  const pasos = CheckGuiado.pasos(_pendientesSemana().faltanFotos);
+  _cg = { b, pasos, listo: false, tocado: !!guardado, yaEnviado: !!ck, aviso: '', foco: document.activeElement,
+    paso: pasoPedido && pasos.includes(pasoPedido) ? pasoPedido : CheckGuiado.retomar(b, pasos) };
+
+  const ov = document.createElement('div');
+  ov.className = 'cg-ov';
+  ov.id = 'cgOv';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-modal', 'true');
+  ov.setAttribute('aria-labelledby', 'cgTitulo');
+  ov.innerHTML = `
+    <div class="cg-in">
+      <div class="cg-cab" id="cgCab">
+        <button type="button" class="cg-x" data-cg="cerrar" data-testid="cg-cerrar" aria-label="Salir. Lo que llevás queda guardado">${_CG_ICO.x}<span>Salir</span></button>
+        <div class="cg-avance" id="cgAvance" data-testid="cg-avance" role="progressbar" aria-label="Avance del check" aria-valuemin="1">
+          <span class="cg-cuenta" id="cgCuenta"></span>
+          <div class="cg-seg" id="cgSeg" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="cg-cuerpo" id="cgCuerpo"></div>
+      <div class="cg-pie" id="cgPie"></div>
+    </div>`;
+  ov.addEventListener('click', _cgAlTocar);
+  ov.addEventListener('input', _cgAlEscribir);
+  document.body.appendChild(ov);
+  document.documentElement.classList.add('cg-abierto');
+  const app = document.getElementById('appRoot');
+  if (app) app.inert = true;
+  document.addEventListener('keydown', _cgAlTeclear, true);
+  if (window.visualViewport) { window.visualViewport.addEventListener('resize', _cgAjustarAlto); window.visualViewport.addEventListener('scroll', _cgAjustarAlto); }
+  _cgAjustarAlto();
+  _cgPintar();
+}
+
+// Con el teclado abierto el botón principal queda arriba del teclado, no tapado.
+function _cgAjustarAlto() {
+  const ov = document.getElementById('cgOv');
+  const vv = window.visualViewport;
+  if (!ov || !vv) return;
+  const tapado = window.innerHeight - vv.height - vv.offsetTop;
+  ov.style.bottom = tapado > 40 ? `${Math.round(tapado)}px` : '';
+}
+
+// Cerrar guarda el borrador y sale, sin preguntar.
+function _cgCerrar() {
+  if (!_cg) return;
+  _cgGuardarBorrador();
+  const foco = _cg.foco;
+  _cg = null;
+  document.removeEventListener('keydown', _cgAlTeclear, true);
+  if (window.visualViewport) { window.visualViewport.removeEventListener('resize', _cgAjustarAlto); window.visualViewport.removeEventListener('scroll', _cgAjustarAlto); }
+  const ov = document.getElementById('cgOv');
+  if (ov) ov.remove();
+  document.documentElement.classList.remove('cg-abierto');
+  const app = document.getElementById('appRoot');
+  if (app) app.inert = false;
+  if (STATE.scene === 'revision') renderMydayCheckin();
+  try { renderRecordatorio(); } catch (_) {}
+  const volver = document.getElementById('cgAbrir') || foco;
+  try { if (volver && volver.focus) volver.focus({ preventScroll: true }); } catch (_) {}
+}
+
+function _cgAlTeclear(e) {
+  if (!_cg) return;
+  const ov = document.getElementById('cgOv');
+  if (!ov) return;
+  // Con el selector de foto abierto encima, las teclas no son del check.
+  if (document.querySelector('.fp-pick')) return;
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _cgCerrar(); return; }
+  if (e.key === 'Enter' && e.target && e.target.id === 'cgPeso') { e.preventDefault(); _cgSeguir(); return; }
+  if (e.key !== 'Tab') return;
+  // El foco no sale del check mientras está abierto.
+  const f = [...ov.querySelectorAll('button:not([disabled]), input, textarea')].filter(x => x.offsetParent !== null);
+  if (!f.length) return;
+  const primero = f[0], ultimo = f[f.length - 1];
+  if (!ov.contains(document.activeElement)) { e.preventDefault(); primero.focus(); }
+  else if (e.shiftKey && (document.activeElement === primero || document.activeElement.id === 'cgTitulo')) { e.preventDefault(); ultimo.focus(); }
+  else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+}
+
+function _cgIr(paso) {
+  if (!_cg || !_cg.pasos.includes(paso)) return;
+  _cg.paso = paso;
+  _cg.aviso = '';
+  _cgGuardarBorrador();
+  _cgPintar();
+}
+function _cgMover(d) {
+  const i = _cg.pasos.indexOf(_cg.paso) + d;
+  if (i >= 0 && i < _cg.pasos.length) _cgIr(_cg.pasos[i]);
+}
+
+function _cgSeguir() {
+  if (!_cg || _cg.listo) return;
+  const { b, paso } = _cg;
+  if (!CheckGuiado.puedeSeguir(paso, b, _cgFotos().puestas.size)) return;
+  if (paso === 'peso') {
+    const valor = CheckGuiado.leerPeso(b.peso);
+    if (valor === null) { _cg.aviso = CheckGuiado.AVISO_RANGO; _cgRefrescar(); return; }
+    _cgGuardarPeso(valor);
+  }
+  _cg.tocado = true;
+  _cgMover(1);
+}
+
+// «Enviar mi check»: lo de siempre por donde siempre y, aparte, lo marcado. Si falta algo, lleva al paso que falta.
+function _cgEnviar() {
+  if (!_cg || _cg.listo) return;
+  const b = _cg.b;
+  // Quedó abierto de la semana pasada: no se manda con la fecha de esta. Se cierra y se empieza de nuevo.
+  if (b.semana !== _cgSemana()) { _cg.tocado = false; _cgCerrar(); _cgBorrarBorrador(); return; }
+  const falta = CheckGuiado.pasoQueFalta(b);
+  if (falta) { _cgIr(falta); return; }
+  const hoy = hoyLocal();
+  const ops = CheckGuiado.opsDeEnvio(b, hoy, _cgPesoDeHoy());
+  if (!ops.length) {   // lo único que puede frenarlo acá es un peso que no es válido
+    if (_cg.pasos.includes('peso')) { _cgIr('peso'); _cg.aviso = CheckGuiado.AVISO_RANGO; _cgRefrescar(); }
+    return;
+  }
+  for (const op of ops) {
+    if (op.kind === 'checkin') { STATE.checkin = { ...op.payload.datos }; STATE.checkinDraft = null; STATE.checkinPeso = ''; }
+    else if (op.kind === 'peso') _cgPonerPeso(op.payload.valor);
+    else if (op.kind === 'check_guiado') {
+      const s = _cgSrv();
+      _cgSrvGuardar({ enCiclo: !!(s && s.enCiclo), semana: _lunesISO(hoy), catalogo: op.payload.respuestas.catalogo, senales: op.payload.respuestas.senales });
+    }
+    Outbox.enqueue(op.kind, op.payload, op.dedupeKey);
+  }
+  _cgBorrarBorrador();
+  _cg.listo = true;
+  _cgPintar();
+}
+
+function _cgAlTocar(e) {
+  const t = e.target.closest('[data-cg]');
+  if (!t || !_cg) return;
+  const b = _cg.b;
+  switch (t.dataset.cg) {
+    case 'cerrar': _cgCerrar(); break;
+    case 'atras': _cgMover(-1); break;
+    case 'seguir': _cgSeguir(); break;
+    case 'enviar': _cgEnviar(); break;
+    case 'omitir':
+      if (_cg.paso === 'peso') b.peso = '';
+      _cg.tocado = true;
+      _cgMover(1);
+      break;
+    case 'escala':
+      // Tocar la elegida la desmarca, como en las apps.
+      b.valores[t.dataset.k] = b.valores[t.dataset.k] === Number(t.dataset.v) ? 0 : Number(t.dataset.v);
+      _cg.tocado = true; _cgGuardarBorrador(); _cgRefrescar();
+      break;
+    case 'senal':
+      b.senales = CheckGuiado.alternar(b.senales, t.dataset.k);
+      _cg.tocado = true; _cgGuardarBorrador(); _cgRefrescar();
+      break;
+    case 'fila': _cgIr(t.dataset.paso); break;
+    case 'foto': _pedirFoto(t.dataset.pose); break;
+  }
+}
+function _cgAlEscribir(e) {
+  if (!_cg) return;
+  if (e.target.id === 'cgPeso') { _cg.b.peso = e.target.value; _cg.aviso = ''; }
+  else if (e.target.id === 'cgNota') _cg.b.nota = e.target.value;
+  else return;
+  _cg.tocado = true;
+  _cgGuardarBorrador();
+  _cgRefrescar();
+}
+
+// El número ocupa lo que mide: así «kg» queda pegado al lado.
+function _cgAnchoPeso(inp) { inp.style.width = inp.value ? `${Math.max(2, inp.value.length) + 0.4}ch` : ''; }
+
+function _cgFotosHtml() {
+  const { sem, puestas, subiendo } = _cgFotos();
+  const urls = (STATE.fotosUrls && STATE.fotosUrls.mapa) || {};
+  const m = STATE.fpMsg;
+  return `
+    <div class="fp-slots cg-fotos">${POSES.map(p => {
+      const lista = puestas.has(p.k);
+      const thumb = urls[`${sem}|${p.k}`];
+      return `<button type="button" class="fp-slot${lista ? ' is-done' : ''}${thumb ? ' has-thumb' : ''}" data-cg="foto" data-pose="${p.k}" data-testid="cg-foto-${p.k}" aria-label="${p.label}: ${lista ? 'lista, tocá para cambiarla' : 'falta, tocá para subirla'}">
+        ${thumb ? `<img class="fp-slot-img" src="${thumb}" alt="">` : `<span class="cg-foto-ico${lista ? ' is-on' : ''}">${lista ? _CG_ICO.tilde : _CG_ICO.mas}</span>`}
+        <span class="fp-slot-lbl">${p.label}</span>
+        ${subiendo.has(p.k) ? '<span class="fp-slot-sub">subiendo…</span>' : ''}
+      </button>`;
+    }).join('')}</div>
+    <p class="cg-fotos-cuenta">${puestas.size} de 3</p>
+    <div class="fp-msg cg-fp-msg${m && m.cls ? ' ' + m.cls : ''}" role="status">${m ? escapeHtml(m.t) : ''}</div>`;
+}
+// La subida de fotos es la de siempre: cuando cambia algo (se subió, quedó en cola, la rechazaron), el paso se repinta.
+function _cgFotosCambio() {
+  if (!_cg || _cg.listo) return;
+  if (_cg.paso === 'fotos') { const h = document.getElementById('cgFotosHost'); if (h) h.innerHTML = _cgFotosHtml(); _cgRefrescar(); }
+  else if (_cg.paso === 'resumen') { const v = document.getElementById('cgResFotos'); if (v) v.textContent = `${_cgFotos().puestas.size} de 3`; }
+}
+
+function _cgCuerpoHtml() {
+  const { b, paso } = _cg;
+  switch (paso) {
+    case 'peso': {
+      const m7 = _pesoMedia(_pesoSerie(), hoyLocal(), 7);
+      return `
+        <div class="cg-peso">
+          <input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next" maxlength="6" class="cg-peso-num" id="cgPeso" data-testid="cg-peso" placeholder="Ej: 78,4" aria-label="Tu peso de hoy, en kilos" aria-describedby="cgAviso">
+          <span class="cg-peso-kg" aria-hidden="true">kg</span>
+        </div>
+        ${m7 != null ? `<p class="cg-peso-media">Media de 7 días: ${_cgKg(m7)} kg</p>` : ''}
+        <p class="cg-aviso" id="cgAviso" role="alert"></p>`;
+    }
+    case 'escalas':
+      return CHECKIN_METRICAS.map(m => `
+        <div class="cg-esc">
+          <div class="cg-esc-et" id="cgEsc-${m.k}">${m.label}</div>
+          <div class="cg-esc-fila" role="radiogroup" aria-labelledby="cgEsc-${m.k}">
+            ${[1, 2, 3, 4, 5].map(n => `<button type="button" class="cg-punto" role="radio" data-cg="escala" data-k="${m.k}" data-v="${n}" data-testid="cg-escala-${m.k}-${n}" aria-label="${m.label}: ${n} de 5${n === 1 ? `, ${m.lo}` : n === 5 ? `, ${m.hi}` : ''}">${n}</button>`).join('')}
+          </div>
+          <div class="cg-esc-ext" aria-hidden="true"><span>${m.lo}</span><span>${m.hi}</span></div>
+        </div>`).join('');
+    case 'fotos':
+      return `<div id="cgFotosHost">${_cgFotosHtml()}</div>`;
+    case 'senales':
+      return `<div class="cg-ops" role="group" aria-labelledby="cgTitulo">${CheckGuiado.opciones(b.catalogo).map(o => `
+        <button type="button" class="cg-op" role="checkbox" data-cg="senal" data-k="${o.clave}" data-testid="cg-senal-${o.clave}">
+          <span>${escapeHtml(o.etiqueta)}</span><span class="cg-tilde">${_CG_ICO.tilde}</span>
+        </button>`).join('')}</div>`;
+    case 'nota':
+      return `<textarea class="cg-nota" id="cgNota" data-testid="cg-nota" rows="5" maxlength="2000" placeholder="Escribí acá (opcional)" aria-labelledby="cgTitulo"></textarea>`;
+    default: {
+      // `larga`: el valor es una frase (lo marcado, la nota) y va debajo de la etiqueta, no al costado.
+      const fila = (p, etq, val, falta, { id = '', testid = `cg-fila-${p}`, larga = false } = {}) => {
+        const dentro = `<span class="cg-res-par"><span class="cg-res-et">${etq}</span><span class="cg-res-val${falta ? ' is-falta' : ''}"${id ? ` id="${id}"` : ''}>${val}</span></span>`;
+        const cls = `cg-res-fila${larga ? ' is-larga' : ''}`;
+        return _cg.pasos.includes(p)
+          ? `<button type="button" class="${cls}" data-cg="fila" data-paso="${p}" data-testid="${testid}">${dentro}<span class="cg-res-va">${_CG_ICO.va}</span></button>`
+          : `<div class="${cls}" data-testid="${testid}">${dentro}</div>`;
+      };
+      const kilos = b.peso.trim();
+      const kg = kilos ? CheckGuiado.leerPeso(kilos) : null;
+      const senales = CheckGuiado.textoSenales(b.senales, b.catalogo);
+      const nota = b.nota.trim();
+      const falta = CheckGuiado.faltaParaEnviar(b);
+      const salud = _saludSemanaHtml();
+      return `
+        <div class="cg-res">
+          ${fila('peso', 'Peso', kilos ? (kg != null ? `${_cgKg(kg)} kg` : escapeHtml(kilos)) : 'Sin cargar', !!kilos && kg == null)}
+          ${CHECKIN_METRICAS.map((m, i) => fila('escalas', m.label, b.valores[m.k] > 0 ? `${b.valores[m.k]} de 5` : 'Falta', !(b.valores[m.k] > 0), { testid: i === 0 ? 'cg-fila-escalas' : `cg-fila-escalas-${m.k}` })).join('')}
+          ${FOTOS_URL() ? fila('fotos', 'Fotos', `${_cgFotos().puestas.size} de 3`, false, { id: 'cgResFotos' }) : ''}
+          ${fila('senales', escapeHtml(CheckGuiado.titulo('senales', b.catalogo)), senales ? escapeHtml(senales) : 'Falta', !senales, { larga: !!senales })}
+          ${fila('nota', 'Nota', nota ? escapeHtml(nota) : 'Sin nota', false, { larga: !!nota })}
+        </div>
+        ${falta ? `<p class="cg-falta" data-testid="cg-falta" role="status">${escapeHtml(falta)}</p>` : ''}
+        ${salud ? `<div class="cg-salud">${salud}</div>` : ''}`;
+    }
+  }
+}
+
+// Pinta el paso entero (al entrar a un paso). Lo que cambia adentro de un paso lo actualiza _cgRefrescar, sin rehacerlo.
+function _cgPintar() {
+  const ov = document.getElementById('cgOv');
+  if (!ov || !_cg) return;
+  const cuerpo = ov.querySelector('#cgCuerpo'), pie = ov.querySelector('#cgPie'), cab = ov.querySelector('#cgCab');
+  if (_cg.listo) {
+    cab.hidden = true;
+    cuerpo.className = 'cg-cuerpo is-listo';
+    cuerpo.innerHTML = `
+      <div class="cg-listo-ico" aria-hidden="true">${_CG_ICO.tilde}</div>
+      <h2 class="cg-titulo" id="cgTitulo" data-testid="cg-listo" tabindex="-1">Listo</h2>
+      <p class="cg-apoyo">Mati lo ve antes de tu devolución.</p>`;
+    pie.innerHTML = '<button type="button" class="cg-btn" data-cg="cerrar" data-testid="cg-cerrar-listo">Cerrar</button>';
+    cuerpo.querySelector('#cgTitulo').focus({ preventScroll: true });
+    if (STATE.scene === 'revision') renderMydayCheckin();
+    try { renderRecordatorio(); } catch (_) {}
+    return;
+  }
+  const { b, paso, pasos } = _cg;
+  const i = pasos.indexOf(paso);
+  const av = ov.querySelector('#cgAvance');
+  ov.querySelector('#cgSeg').innerHTML = _cgSegmentos(pasos.length, i + 1);
+  av.setAttribute('aria-valuemax', pasos.length);
+  av.setAttribute('aria-valuenow', i + 1);
+  av.setAttribute('aria-valuetext', `Paso ${i + 1} de ${pasos.length}`);
+  ov.querySelector('#cgCuenta').textContent = `Paso ${i + 1} de ${pasos.length}`;
+  cuerpo.className = 'cg-cuerpo';
+  cuerpo.innerHTML = `
+    <h2 class="cg-titulo" id="cgTitulo" data-testid="cg-titulo" tabindex="-1">${escapeHtml(CheckGuiado.titulo(paso, b.catalogo))}</h2>
+    <p class="cg-apoyo">${escapeHtml(CheckGuiado.apoyo(paso, b.catalogo))}</p>
+    ${_cgCuerpoHtml()}`;
+  const omitir = CheckGuiado.omitir(paso);
+  pie.innerHTML = `
+    ${paso === 'escalas' ? '<p class="cg-falta" id="cgFalta" data-testid="cg-falta" role="status"></p>' : ''}
+    ${paso === 'resumen'
+      ? `<button type="button" class="cg-btn" data-cg="enviar" data-testid="cg-enviar">${_cg.yaEnviado ? 'Actualizar mi check' : 'Enviar mi check'}</button>`
+      : '<button type="button" class="cg-btn" data-cg="seguir" data-testid="cg-seguir">Seguir</button>'}
+    ${omitir ? `<button type="button" class="cg-sec" data-cg="omitir" data-testid="cg-omitir">${omitir}</button>` : ''}
+    ${i > 0 ? `<button type="button" class="cg-txt" data-cg="atras" data-testid="cg-atras">${_CG_ICO.atras}<span>Atrás</span></button>` : ''}`;
+  const peso = cuerpo.querySelector('#cgPeso');
+  if (peso) peso.value = b.peso;
+  const nota = cuerpo.querySelector('#cgNota');
+  if (nota) nota.value = b.nota;
+  _cgRefrescar();
+  cuerpo.scrollTop = 0;
+  cuerpo.querySelector('#cgTitulo').focus({ preventScroll: true });
+}
+
+function _cgRefrescar() {
+  const ov = document.getElementById('cgOv');
+  if (!ov || !_cg || _cg.listo) return;
+  const { b, paso } = _cg;
+  ov.querySelectorAll('[data-cg="escala"]').forEach(x => {
+    const on = b.valores[x.dataset.k] === Number(x.dataset.v);
+    x.classList.toggle('is-on', on);
+    x.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  ov.querySelectorAll('[data-cg="senal"]').forEach(x => {
+    const on = b.senales.includes(x.dataset.k);
+    x.classList.toggle('is-on', on);
+    x.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  const peso = ov.querySelector('#cgPeso');
+  if (peso) _cgAnchoPeso(peso);
+  const aviso = ov.querySelector('#cgAviso');
+  if (aviso) aviso.textContent = _cg.aviso || '';
+  if (paso === 'escalas') {
+    const f = ov.querySelector('#cgFalta');
+    // Recién cuando empezó a contestar: de entrada no hace falta decirle que faltan las cuatro.
+    if (f) f.textContent = Object.values(b.valores).some(v => v > 0) ? (CheckGuiado.faltan(b.valores) || '') : '';
+  }
+  const seguir = ov.querySelector('[data-cg="seguir"]');
+  if (seguir) seguir.disabled = !CheckGuiado.puedeSeguir(paso, b, _cgFotos().puestas.size);
+}
+
 /* ══════════ ESCENA REVISIÓN (R) — lo SEMANAL ══════════
    Peso, check y fotos vivian dentro de Mi Día, mezclados con lo diario
    (habitos, agua, entrenamiento). Dos problemas: para el cliente era ruido,
@@ -12234,15 +13086,18 @@ function renderRevision() {
   // Mismo orden que la app 2.1.0 (RevisionView): Recuperación, Tu progreso,
   // fotos y check. El peso, el reloj y la salud del día viven en Salud
   // (se entra por la tarjeta Recuperación); el peso de la semana va en el check.
+  // Con el check guiado, su tarjeta va primera, arriba de todo; «Tu salud, últimos 7 días» queda al final, donde estaba.
+  const guiado = checkGuiadoPrendido();
   root.innerHTML = `
     <div id="rv-devolucion" hidden></div>
+    ${guiado ? '<div id="myday-checkin"></div>' : ''}
     ${web230() ? '<p class="rv-nota" id="rv-semanal">La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días.</p>' : ''}
     <div id="rv-dia" class="rv-nota" hidden></div>
     <div id="rv-tarjetas" class="rv-tarjetas"></div>
     ${_avisoPlanHtml()}
     <div id="myday-fotos"></div>
     <div id="fpGaleria" class="fp-galeria"></div>
-    <div id="myday-checkin"></div>`;
+    ${guiado ? '<div id="ss-host"></div>' : '<div id="myday-checkin"></div>'}`;
 
   _pintarDevolucion();
   _renderRevTarjetas();
