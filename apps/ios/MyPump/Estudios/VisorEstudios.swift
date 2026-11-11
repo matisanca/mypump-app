@@ -19,6 +19,8 @@ final class AbridorEstudios {
     private(set) var abriendo: String?
     /// El id de lo último que no se pudo abrir.
     private(set) var errorEn: String?
+    /// El id del estudio que llegó pero todavía no se puede abrir (`todavia_no`): no es un error.
+    private(set) var todaviaNoEn: String?
     var abierto: Abierto?
 
     @ObservationIgnored private var vuelta = 0
@@ -27,6 +29,7 @@ final class AbridorEstudios {
         guard abriendo == nil else { return }
         abriendo = id
         errorEn = nil
+        todaviaNoEn = nil
         vuelta += 1
         let esta = vuelta
         Task {
@@ -36,6 +39,7 @@ final class AbridorEstudios {
             abriendo = nil
             switch r {
             case .archivos(let a): abierto = Abierto(titulo: titulo, archivos: a)
+            case .todaviaNo: todaviaNoEn = id
             case .error: errorEn = id
             }
         }

@@ -58,8 +58,9 @@ struct EstudiosView: View {
         .background(Color.fondo)
         .navigationTitle(T.titulo)
         .navigationBarTitleDisplayMode(.large)
-        .refreshable { await modelo.refrescar(); modelo.drenarEnFondo() }
-        .task { await modelo.refrescar(); modelo.drenarEnFondo() }
+        // Respetan la palanca: apagada, ni el `get` ni la cola llaman a nada.
+        .refreshable { await modelo.sincronizar() }
+        .task { await modelo.sincronizar() }
         .onDisappear { modelo.limpiarAviso(); abridor.cancelar(modelo) }
         // Al cerrarse la hoja, como sea, lo elegido y no enviado se borra (tras «Enviar» ya no queda nada).
         .sheet(item: $subida, onDismiss: { modelo.descartarBorrador() }) { s in
@@ -130,7 +131,8 @@ struct EstudiosView: View {
                     }
                     ForEach(Array(e.estudios.enumerated()), id: \.element.id) { i, estudio in
                         if i > 0 || !envios.isEmpty { Divider().padding(.leading, Espacio.m) }
-                        FilaEstudio(estudio: estudio, abriendo: abridor.abriendo == estudio.id, error: abridor.errorEn == estudio.id) {
+                        FilaEstudio(estudio: estudio, abriendo: abridor.abriendo == estudio.id, error: abridor.errorEn == estudio.id,
+                                    todaviaNo: abridor.todaviaNoEn == estudio.id) {
                             abridor.abrir(clase: "estudio", id: estudio.id, titulo: estudio.titulo, modelo: modelo)
                         }
                     }
@@ -300,25 +302,37 @@ private struct EstadoSubidaEstudios: View {
 
     var body: some View {
         if let p = modelo.progreso {
-            VStack(alignment: .leading, spacing: Espacio.xs) {
-                HStack(spacing: Espacio.s) {
-                    if modelo.sinSenal {
-                        Image(systemName: "wifi.slash").foregroundStyle(.secondary).accessibilityHidden(true)
-                    } else if modelo.subiendo {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "clock").foregroundStyle(.secondary).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Espacio.s) {
+                VStack(alignment: .leading, spacing: Espacio.xs) {
+                    HStack(spacing: Espacio.s) {
+                        if modelo.sinSenal {
+                            Image(systemName: "wifi.slash").foregroundStyle(.secondary).accessibilityHidden(true)
+                        } else if modelo.detenida {
+                            Image(systemName: "exclamationmark.circle").foregroundStyle(Color.ambarEstudios).accessibilityHidden(true)
+                        } else if modelo.subiendo {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "clock").foregroundStyle(.secondary).accessibilityHidden(true)
+                        }
+                        // Detenida por algo que no es la red (el link, el servidor): no está «subiendo», se dice qué pasó.
+                        Text(modelo.detenida ? T.noSePudoEnviar : p).font(.subheadline.weight(.semibold)).monospacedDigit()
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(p).font(.subheadline.weight(.semibold)).monospacedDigit()
+                    if modelo.sinSenal {
+                        Text(T.sinSenal).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("estudios-sin-senal")
+                    }
                 }
-                if modelo.sinSenal {
-                    Text(T.sinSenal).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("estudios-sin-senal")
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier(modelo.detenida ? "estudios-detenida" : "estudios-subiendo")
+                .onChange(of: modelo.detenida) { _, d in if d { AccessibilityNotification.Announcement(T.noSePudoEnviar).post() } }
+                if modelo.detenida {
+                    Button { Task { await modelo.reintentar() } } label: { Text(T.probarDeNuevo).multilineTextAlignment(.center) }
+                        .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
+                        .accessibilityIdentifier("estudios-reintentar")
                 }
             }
             .tarjeta()
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("estudios-subiendo")
         } else if let a = modelo.aviso {
             VStack(alignment: .leading, spacing: Espacio.xs) {
                 switch a {
@@ -417,6 +431,8 @@ private struct FilaEstudio: View {
     let estudio: EstudioRecibido
     let abriendo: Bool
     let error: Bool
+    /// Llegó pero todavía no se puede abrir: se dice lo mismo que la web, sin tono de error.
+    let todaviaNo: Bool
     let ver: () -> Void
     @Environment(\.dynamicTypeSize) private var letra
 
@@ -446,6 +462,10 @@ private struct FilaEstudio: View {
                 }
             }
             if error { NotaEstudios(texto: T.noSePudoAbrir, icono: "exclamationmark.circle", tono: .ambarEstudios, anunciar: true) }
+            if todaviaNo {
+                NotaEstudios(texto: T.envioRecibido, icono: "checkmark.circle", tono: .secondary, anunciar: true)
+                    .accessibilityIdentifier("estudios-todavia-no-\(estudio.id)")
+            }
         }
         .padding(Espacio.m)
         .frame(maxWidth: .infinity, alignment: .leading)
