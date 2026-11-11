@@ -195,7 +195,7 @@ t('403: descarta y refresca (sección cerrada → se esconde)', async () => {
   await m.agregar('frente', foto());
   d.cerrada = true; d.habilitado = false;
   await m.drenar();
-  eq(m.cola.length, 0); si(!m.visibleSeccion); eq(d.llamadas.filter((x) => x === 'mypump_fotos_inicio_get').length, 2);
+  eq(m.cola.length, 1, 'con 403 la foto no se borra'); si(!m.visibleSeccion); eq(d.llamadas.filter((x) => x === 'mypump_fotos_inicio_get').length, 2);
 });
 t('403 con el token caído: se esconde', async () => {
   const d = doble(); const m = await listo(modelo(d));

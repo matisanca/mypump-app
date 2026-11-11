@@ -21,7 +21,7 @@
     tarjetaSeguir: 'Seguir',
     tarjetaLista: 'Listas. Mati ya las tiene',
     entradaMisDatos: 'Mis fotos de inicio',
-    privacidad: 'Las ve solo Mati. No se publican ni salen de la app',
+    privacidad: 'Las ve solo Mati. No se publican',
     // Consejos
     consejosTitulo: 'Antes de sacarlas',
     consejoLuz: 'De frente a una ventana o con la luz prendida. Sin contraluz',
@@ -75,6 +75,8 @@
     motivacionTope: 'Hasta 4 fotos',
     borrarFoto: 'Borrar foto',
     notaSinSenal: 'Sin señal: la nota queda guardada y se manda sola',
+    notaError: 'No se pudo guardar la nota. Probá de nuevo',
+    borrarSinSenal: 'Sin señal: no se pudo borrar. Probá de nuevo',
     // Botones
     cerrar: 'Cerrar',
     siguiente: 'Siguiente',

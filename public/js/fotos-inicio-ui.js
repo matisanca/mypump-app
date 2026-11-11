@@ -184,6 +184,7 @@
     const puede = m.puedeAgregarMotivacion && !ui.procesando;
     const valor = ui.notaBorrador !== null ? ui.notaBorrador : m.nota;
     const msg = ui.notaMsg === 'ok' ? nota(T.motivacionGuardada, false, 'fiNotaMsg')
+      : ui.notaMsg === 'error' ? nota(T.notaError, true, 'fiNotaMsg')
       : ui.notaMsg === 'sinSenal' || (ui.notaMsg === null && m.notaPendiente) ? nota(T.notaSinSenal, false, 'fiNotaMsg') : '';
     return `<section class="fi-seccion" aria-labelledby="fiMotTit">
       <div class="fi-sec-cab"><h3 class="fi-h3" id="fiMotTit">${e(T.motivacionTitulo)}</h3><span class="fi-chip">${e(T.opcional)}</span></div>
@@ -340,7 +341,10 @@
     if (!ui.modelo || !ui.modelo.estado) return;
     ui.origen = origen;
     for (const d of ui.pila) soltarVista(d);
-    ui.pila = [];
+    // Desde la tarjeta abre ya en la pose que falta, con el resumen atrás: el segundo toque es la foto (regla de Mati: nada a
+    // más de dos toques). Desde Mis datos, el resumen.
+    const falta = origen !== 'misdatos' ? ui.modelo.faltan[0] : null;
+    ui.pila = falta ? [{ t: 'pose', clave: falta }] : [];
     ui.error = null;
     ui.notaMsg = null;
     ui.notaBorrador = null;
@@ -389,7 +393,7 @@
     },
     async borrar(b) {
       const r = await ui.modelo.borrarMotivacion(b.dataset.id);
-      ui.error = r === 'sinSenal' ? T.sinSenal.split(':')[0] : null;
+      ui.error = r === 'sinSenal' ? T.borrarSinSenal : null;
       renderEscena(true);
     },
     async guardarNota() {
@@ -400,6 +404,7 @@
       let r;
       try { r = await m.guardarNota(valor); } finally { ui.guardandoNota = false; }
       if (r === 'ok' || r === 'sinSenal') { ui.notaMsg = r; ui.notaBorrador = null; }
+      else if (r === 'error') ui.notaMsg = 'error';
       renderEscena(true);
     },
   };

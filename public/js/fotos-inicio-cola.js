@@ -463,6 +463,14 @@
       }
     }
 
+    /* Una foto del cuerpo que tiene otra más nueva de su pose en la cola ya no se sube (quedó de cuando la nueva se encoló
+       mientras esta subía): si se reintentara después, pisaría en el servidor a la que el alumno eligió. */
+    async _sacarReemplazadas() {
+      const ultima = new Map();
+      for (const c of this.cola) if (c.pose !== F.MOTIVACION) ultima.set(c.pose, c.id);
+      for (const c of this.cola.slice()) if (c.pose !== F.MOTIVACION && ultima.get(c.pose) !== c.id) await this._sacarDeLaCola(c.id);
+    }
+
     _siguiente() {
       const vivos = this.cola.filter((c) => !this._borrarAlSubir.has(c.id));
       return vivos.find((c) => !this._conError.has(c.id)) || vivos[0] || null;
@@ -474,7 +482,9 @@
       let refrescarAlFinal = false;
       let seguidas = 0;
       let item;
-      while (this.estado && (item = this._siguiente())) {
+      while (this.estado) {
+        await this._sacarReemplazadas();
+        if (!(item = this._siguiente())) break;
         this.subiendo = item.id;
         this._avisar();
         const r = await this._subir(item);
@@ -494,7 +504,8 @@
         } else if (r.tipo === 'perdida') {
           await this._sacarDeLaCola(item.id);
         } else if (r.tipo === 'descartar') {
-          refrescarAlFinal = refrescarAlFinal || !!r.s.refrescar;
+          // 403: el link ya no sirve o se cerró la sección. Lo demás tampoco va a entrar, y la foto NO se borra.
+          if (r.s.refrescar) { refrescarAlFinal = true; cortada = true; break; }
           if (r.s.aviso) this.aviso = r.s.aviso;
           this._borrarAlSubir.delete(item.id);
           await this._sacarDeLaCola(item.id);
