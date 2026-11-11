@@ -1,0 +1,6220 @@
+{
+ "_": "Presión arterial: lo que comparten la web, el kit de iOS, el de Android y el servidor (presion/PROTOCOLO.md y CAMPOS.md). Lo arma scripts/vectores-presion.mjs de la rama web; no se edita a mano.",
+ "limites": {
+  "sisMin": 60,
+  "sisMax": 260,
+  "diaMin": 30,
+  "diaMax": 160,
+  "pulMin": 25,
+  "pulMax": 220,
+  "difMin": 10
+ },
+ "espera_repeticion_s": 300,
+ "reposo_s": 300,
+ "recordatorio_min": 10,
+ "sin_repetir_min": 15,
+ "alarma": [
+  "dolor_pecho",
+  "falta_aire",
+  "cefalea_fuerte_nueva",
+  "cambios_vista",
+  "debilidad_un_lado",
+  "dificultad_hablar",
+  "confusion",
+  "desmayo"
+ ],
+ "otros": [
+  "palpitaciones",
+  "mareo_al_pararse",
+  "vomitos_diarrea"
+ ],
+ "sintomas": {
+  "dolor_pecho": "Dolor de pecho",
+  "falta_aire": "Falta de aire",
+  "cefalea_fuerte_nueva": "Dolor de cabeza fuerte y distinto",
+  "cambios_vista": "Cambios en la vista",
+  "debilidad_un_lado": "Debilidad u hormigueo de un lado del cuerpo",
+  "dificultad_hablar": "Dificultad para hablar",
+  "confusion": "Confusión",
+  "desmayo": "Desmayo",
+  "palpitaciones": "Palpitaciones",
+  "mareo_al_pararse": "Mareo al pararse",
+  "vomitos_diarrea": "Vómitos o diarrea"
+ },
+ "validar": [
+  {
+   "toma": {
+    "sis": 120,
+    "dia": 80,
+    "pulso": 60
+   },
+   "sale": "ok"
+  },
+  {
+   "toma": {
+    "sis": 159,
+    "dia": 99,
+    "pulso": 119
+   },
+   "sale": "ok"
+  },
+  {
+   "toma": {
+    "sis": 160,
+    "dia": 90,
+    "pulso": 62
+   },
+   "sale": "confirmar"
+  },
+  {
+   "toma": {
+    "sis": 150,
+    "dia": 100,
+    "pulso": 62
+   },
+   "sale": "confirmar"
+  },
+  {
+   "toma": {
+    "sis": 120,
+    "dia": 80,
+    "pulso": 120
+   },
+   "sale": "confirmar"
+  },
+  {
+   "toma": {
+    "sis": 120,
+    "dia": 80,
+    "pulso": 40
+   },
+   "sale": "confirmar"
+  },
+  {
+   "toma": {
+    "sis": 120,
+    "dia": 80,
+    "pulso": 41
+   },
+   "sale": "ok"
+  },
+  {
+   "toma": {
+    "sis": 59,
+    "dia": 40,
+    "pulso": 62
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 60,
+    "dia": 40,
+    "pulso": 62
+   },
+   "sale": "ok"
+  },
+  {
+   "toma": {
+    "sis": 261,
+    "dia": 100,
+    "pulso": 62
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 260,
+    "dia": 100,
+    "pulso": 62
+   },
+   "sale": "confirmar"
+  },
+  {
+   "toma": {
+    "sis": 120,
+    "dia": 29,
+    "pulso": 62
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 200,
+    "dia": 161,
+    "pulso": 62
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 120,
+    "dia": 80,
+    "pulso": 24
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 120,
+    "dia": 80,
+    "pulso": 221
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 100,
+    "dia": 100,
+    "pulso": 62
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 100,
+    "dia": 91,
+    "pulso": 62
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 100,
+    "dia": 90,
+    "pulso": 62
+   },
+   "sale": "ok"
+  },
+  {
+   "toma": {
+    "sis": 80,
+    "dia": 120,
+    "pulso": 62
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 120.5,
+    "dia": 80,
+    "pulso": 60
+   },
+   "sale": "imposible"
+  },
+  {
+   "toma": {
+    "sis": 120,
+    "dia": 80
+   },
+   "sale": "imposible"
+  }
+ ],
+ "nivel": [
+  {
+   "toma": {
+    "sis": 179,
+    "dia": 119
+   },
+   "sale": "alta"
+  },
+  {
+   "toma": {
+    "sis": 180,
+    "dia": 80
+   },
+   "sale": "urgencia"
+  },
+  {
+   "toma": {
+    "sis": 150,
+    "dia": 120
+   },
+   "sale": "urgencia"
+  },
+  {
+   "toma": {
+    "sis": 160,
+    "dia": 80
+   },
+   "sale": "alta"
+  },
+  {
+   "toma": {
+    "sis": 140,
+    "dia": 100
+   },
+   "sale": "alta"
+  },
+  {
+   "toma": {
+    "sis": 159,
+    "dia": 99
+   },
+   "sale": "comun"
+  },
+  {
+   "toma": {
+    "sis": 135,
+    "dia": 85
+   },
+   "sale": "comun"
+  }
+ ],
+ "tramo": [
+  {
+   "cm": 0,
+   "sale": null
+  },
+  {
+   "cm": 21.9,
+   "sale": "menos_22"
+  },
+  {
+   "cm": 22,
+   "sale": "estandar"
+  },
+  {
+   "cm": 31.9,
+   "sale": "estandar"
+  },
+  {
+   "cm": 32,
+   "sale": "grande"
+  },
+  {
+   "cm": 41.9,
+   "sale": "grande"
+  },
+  {
+   "cm": 42,
+   "sale": "extra_grande"
+  },
+  {
+   "cm": 52,
+   "sale": "extra_grande"
+  },
+  {
+   "cm": 52.1,
+   "sale": "mas_52"
+  },
+  {
+   "cm": 60,
+   "sale": "mas_52"
+  }
+ ],
+ "calza": [
+  {
+   "cm": 38,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 22,
+    "manguito_max_cm": 42,
+    "manguito_validado_min_cm": 22,
+    "manguito_validado_max_cm": 42
+   },
+   "sale": true
+  },
+  {
+   "cm": 42,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 22,
+    "manguito_max_cm": 42,
+    "manguito_validado_min_cm": 22,
+    "manguito_validado_max_cm": 42
+   },
+   "sale": false
+  },
+  {
+   "cm": 41.9,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 22,
+    "manguito_max_cm": 42,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": true
+  },
+  {
+   "cm": 33,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 22,
+    "manguito_max_cm": 42,
+    "manguito_validado_min_cm": 22,
+    "manguito_validado_max_cm": 32
+   },
+   "sale": false
+  },
+  {
+   "cm": 32,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 22,
+    "manguito_max_cm": 32,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": false
+  },
+  {
+   "cm": 31.5,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 22,
+    "manguito_max_cm": 32,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": true
+  },
+  {
+   "cm": 52,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 32,
+    "manguito_max_cm": 52,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": true
+  },
+  {
+   "cm": 45,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 31,
+    "manguito_max_cm": 45,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": true
+  },
+  {
+   "cm": 38.5,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 22,
+    "manguito_max_cm": 42,
+    "manguito_validado_min_cm": 25,
+    "manguito_validado_max_cm": 38.5
+   },
+   "sale": true
+  },
+  {
+   "cm": 39,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 22,
+    "manguito_max_cm": 42,
+    "manguito_validado_min_cm": 25,
+    "manguito_validado_max_cm": 38.5
+   },
+   "sale": false
+  },
+  {
+   "cm": 21,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": 22,
+    "manguito_max_cm": 42,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": false
+  },
+  {
+   "cm": 35,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "sin_revisar",
+    "manguito_min_cm": null,
+    "manguito_max_cm": null,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": null
+  }
+ ],
+ "metodo": [
+  {
+   "cm": 35,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "si",
+    "manguito_min_cm": null,
+    "manguito_max_cm": null,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": {
+    "metodo": "brazo",
+    "provisoria": false,
+    "pedir_brazo": false,
+    "pedir_validado": false,
+    "admite_tomas": true
+   }
+  },
+  {
+   "cm": 35,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "sin_revisar",
+    "manguito_min_cm": null,
+    "manguito_max_cm": null,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": {
+    "metodo": "brazo",
+    "provisoria": false,
+    "pedir_brazo": false,
+    "pedir_validado": false,
+    "admite_tomas": true
+   }
+  },
+  {
+   "cm": 35,
+   "aparato": {
+    "tipo": "brazo",
+    "validado": "no",
+    "manguito_min_cm": null,
+    "manguito_max_cm": null,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": {
+    "metodo": "brazo",
+    "provisoria": true,
+    "pedir_brazo": false,
+    "pedir_validado": true,
+    "admite_tomas": true
+   }
+  },
+  {
+   "cm": 35,
+   "aparato": {
+    "tipo": "muneca",
+    "validado": "si",
+    "manguito_min_cm": null,
+    "manguito_max_cm": null,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": {
+    "metodo": "muneca_provisoria",
+    "provisoria": true,
+    "pedir_brazo": true,
+    "pedir_validado": false,
+    "admite_tomas": true
+   }
+  },
+  {
+   "cm": 52,
+   "aparato": {
+    "tipo": "muneca",
+    "validado": "si",
+    "manguito_min_cm": null,
+    "manguito_max_cm": null,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": {
+    "metodo": "muneca_provisoria",
+    "provisoria": true,
+    "pedir_brazo": true,
+    "pedir_validado": false,
+    "admite_tomas": true
+   }
+  },
+  {
+   "cm": 54,
+   "aparato": {
+    "tipo": "muneca",
+    "validado": "si",
+    "manguito_min_cm": null,
+    "manguito_max_cm": null,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": {
+    "metodo": "muneca_habitual",
+    "provisoria": false,
+    "pedir_brazo": false,
+    "pedir_validado": false,
+    "admite_tomas": true
+   }
+  },
+  {
+   "cm": 54,
+   "aparato": {
+    "tipo": "muneca",
+    "validado": "no",
+    "manguito_min_cm": null,
+    "manguito_max_cm": null,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": {
+    "metodo": "muneca_habitual",
+    "provisoria": false,
+    "pedir_brazo": false,
+    "pedir_validado": true,
+    "admite_tomas": true
+   }
+  },
+  {
+   "cm": 35,
+   "aparato": {
+    "tipo": "reloj_anillo_otro",
+    "validado": "no",
+    "manguito_min_cm": null,
+    "manguito_max_cm": null,
+    "manguito_validado_min_cm": null,
+    "manguito_validado_max_cm": null
+   },
+   "sale": {
+    "metodo": "no_sirve",
+    "provisoria": false,
+    "pedir_brazo": true,
+    "pedir_validado": false,
+    "admite_tomas": false
+   }
+  }
+ ],
+ "momento": [
+  {
+   "hora": 3,
+   "sale": "otro"
+  },
+  {
+   "hora": 4,
+   "sale": "manana"
+  },
+  {
+   "hora": 11,
+   "sale": "manana"
+  },
+  {
+   "hora": 12,
+   "sale": "otro"
+  },
+  {
+   "hora": 20,
+   "sale": "otro"
+  }
+ ],
+ "pasos": [
+  {
+   "tipo": "estandar",
+   "variante": null,
+   "sale": [
+    {
+     "espera_s": 300,
+     "posicion": "sentado",
+     "minutos_de_pie": null,
+     "brazo": null
+    }
+   ]
+  },
+  {
+   "tipo": "bajo_efecto",
+   "variante": null,
+   "sale": [
+    {
+     "espera_s": 300,
+     "posicion": "sentado",
+     "minutos_de_pie": null,
+     "brazo": null
+    }
+   ]
+  },
+  {
+   "tipo": "suelta",
+   "variante": null,
+   "sale": [
+    {
+     "espera_s": 300,
+     "posicion": "sentado",
+     "minutos_de_pie": null,
+     "brazo": null
+    }
+   ]
+  },
+  {
+   "tipo": "ortostatica",
+   "variante": "acostado_parado",
+   "sale": [
+    {
+     "espera_s": 300,
+     "posicion": "acostado",
+     "minutos_de_pie": null,
+     "brazo": null
+    },
+    {
+     "espera_s": 60,
+     "posicion": "de_pie",
+     "minutos_de_pie": 1,
+     "brazo": null
+    },
+    {
+     "espera_s": 120,
+     "posicion": "de_pie",
+     "minutos_de_pie": 3,
+     "brazo": null
+    }
+   ]
+  },
+  {
+   "tipo": "ortostatica",
+   "variante": "sentado_parado",
+   "sale": [
+    {
+     "espera_s": 300,
+     "posicion": "sentado",
+     "minutos_de_pie": null,
+     "brazo": null
+    },
+    {
+     "espera_s": 60,
+     "posicion": "de_pie",
+     "minutos_de_pie": 1,
+     "brazo": null
+    },
+    {
+     "espera_s": 120,
+     "posicion": "de_pie",
+     "minutos_de_pie": 3,
+     "brazo": null
+    }
+   ]
+  },
+  {
+   "tipo": "comparacion_brazos",
+   "variante": null,
+   "sale": [
+    {
+     "espera_s": 300,
+     "posicion": "sentado",
+     "minutos_de_pie": null,
+     "brazo": "izq"
+    },
+    {
+     "espera_s": 60,
+     "posicion": "sentado",
+     "minutos_de_pie": null,
+     "brazo": "der"
+    },
+    {
+     "espera_s": 60,
+     "posicion": "sentado",
+     "minutos_de_pie": null,
+     "brazo": "der"
+    },
+    {
+     "espera_s": 60,
+     "posicion": "sentado",
+     "minutos_de_pie": null,
+     "brazo": "izq"
+    }
+   ]
+  }
+ ],
+ "sesion": [
+  {
+   "nombre": "toma común, cuenta",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 124,
+     "dia": 78,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "café previo: no cuenta",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": true,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "toma_no_cuenta",
+    "cuenta": false,
+    "motivo_exclusion": "condicion_incumplida",
+    "valor": {
+     "sis": 124,
+     "dia": 78,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "entreno en la última hora: no cuenta",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": true
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 118,
+      "dia": 70,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "toma_no_cuenta",
+    "cuenta": false,
+    "motivo_exclusion": "condicion_incumplida",
+    "valor": {
+     "sis": 118,
+     "dia": 70,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "temporizador salteado: no cuenta",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": false,
+    "temporizador_salteado": true,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "toma_no_cuenta",
+    "cuenta": false,
+    "motivo_exclusion": "condicion_incumplida",
+    "valor": {
+     "sis": 124,
+     "dia": 78,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "160/100: repetir a los 5 minutos",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 162,
+      "dia": 94,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "repetir",
+    "texto": "quedate_sentado_5min",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 162,
+     "dia": 94,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "diastólica 100: repetir",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 150,
+      "dia": 100,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "repetir",
+    "texto": "quedate_sentado_5min",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 150,
+     "dia": 100,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "160/100 sin repetir a los 10 minutos: recordatorio, no es alta",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 10,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 165,
+      "dia": 95,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "repetir",
+    "texto": "repetir_pendiente",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 165,
+     "dia": 95,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "repetir_pendiente"
+    ]
+   }
+  },
+  {
+   "nombre": "160/100 confirmada: alta, vale el promedio de las dos",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 164,
+      "dia": 96,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 160,
+      "dia": 92,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 162,
+     "dia": 94,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "alta_toma_160_100"
+    ]
+   }
+  },
+  {
+   "nombre": "160/100 que baja: no es alta y cuenta el promedio",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 162,
+      "dia": 90,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 148,
+      "dia": 88,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 155,
+     "dia": 89,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "café previo y 160/100 confirmada: no cuenta pero es alta",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": true,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 170,
+      "dia": 100,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 166,
+      "dia": 101,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "toma_no_cuenta",
+    "cuenta": false,
+    "motivo_exclusion": "condicion_incumplida",
+    "valor": {
+     "sis": 168,
+     "dia": 101,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "alta_toma_160_100"
+    ]
+   }
+  },
+  {
+   "nombre": "180/120: espera con la lista de síntomas",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 184,
+      "dia": 110,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "repetir_con_lista",
+    "texto": "lista_sintomas_espera",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 184,
+     "dia": 110,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "diastólica 120: espera con la lista",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 170,
+      "dia": 120,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "repetir_con_lista",
+    "texto": "lista_sintomas_espera",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 170,
+     "dia": 120,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "180/120 con un Sí en la espera: guardia por síntomas en el acto",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "dolor_pecho"
+    ],
+    "lista_espera": "si",
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 186,
+      "dia": 112,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_sintomas",
+    "texto": "guardia_sintomas",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 186,
+     "dia": 112,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "sintoma_alarma_en_espera"
+    ]
+   }
+  },
+  {
+   "nombre": "180/120 con todos en No: sigue la espera",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": "no",
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 186,
+      "dia": 112,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "repetir_con_lista",
+    "texto": "lista_sintomas_espera",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 186,
+     "dia": 112,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "180/120 confirmada: guardia por presión",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": "no",
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 186,
+      "dia": 112,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 182,
+      "dia": 108,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_presion",
+    "texto": "guardia_presion",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 184,
+     "dia": 110,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "toma_180_120_confirmada"
+    ]
+   }
+  },
+  {
+   "nombre": "180 confirmada por la diastólica de 120",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 182,
+      "dia": 100,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 170,
+      "dia": 121,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_presion",
+    "texto": "guardia_presion",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 176,
+     "dia": 111,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "toma_180_120_confirmada"
+    ]
+   }
+  },
+  {
+   "nombre": "180/120 que baja a 160/100: alta, sin guardia",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": "no",
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 184,
+      "dia": 104,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 168,
+      "dia": 100,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 176,
+     "dia": 102,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "alta_toma_160_100"
+    ]
+   }
+  },
+  {
+   "nombre": "180/120 que baja de 160/100: nada especial",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": "no",
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 182,
+      "dia": 98,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 150,
+      "dia": 92,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 166,
+     "dia": 95,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "diastólica confirmada de 110 a 119: alta, no urgencia",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 150,
+      "dia": 114,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 150,
+      "dia": 112,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 150,
+     "dia": 113,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "alta_toma_160_100"
+    ]
+   }
+  },
+  {
+   "nombre": "180/120 sin repetir a los 10 minutos: recordatorio con la lista",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 10,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 190,
+      "dia": 110,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "repetir_con_lista",
+    "texto": "repetir_pendiente",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 190,
+     "dia": 110,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "180/120 sin repetir a los 15 minutos: cuenta como alta",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 15,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 190,
+      "dia": 110,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "repetir_con_lista",
+    "texto": "repetir_pendiente",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 190,
+     "dia": 110,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "alta_180_120_sin_repetir"
+    ]
+   }
+  },
+  {
+   "nombre": "160 y después 180: alta y pide otra con la lista",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 166,
+      "dia": 96,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 184,
+      "dia": 100,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "repetir_con_lista",
+    "texto": "lista_sintomas_espera",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 175,
+     "dia": 98,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "alta_toma_160_100"
+    ]
+   }
+  },
+  {
+   "nombre": "160, 180 y 180: guardia por presión",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": "no",
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 166,
+      "dia": 96,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 184,
+      "dia": 100,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 3,
+      "posicion": "sentado",
+      "sis": 181,
+      "dia": 99,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_presion",
+    "texto": "guardia_presion",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 177,
+     "dia": 98,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "toma_180_120_confirmada"
+    ]
+   }
+  },
+  {
+   "nombre": "síntoma de alarma con presión común: guardia por síntomas",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "falta_aire"
+    ],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 122,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_sintomas",
+    "texto": "guardia_sintomas",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 122,
+     "dia": 78,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "sintoma_alarma"
+    ]
+   }
+  },
+  {
+   "nombre": "desmayo: guardia y regla propia",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "desmayo"
+    ],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 110,
+      "dia": 70,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_sintomas",
+    "texto": "guardia_sintomas",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 110,
+     "dia": 70,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "desmayo",
+     "sintoma_alarma"
+    ]
+   }
+  },
+  {
+   "nombre": "desmayo en el esfuerzo: alarma",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "desmayo_en_esfuerzo"
+    ],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 110,
+      "dia": 70,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_sintomas",
+    "texto": "guardia_sintomas",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 110,
+     "dia": 70,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "desmayo",
+     "sintoma_alarma"
+    ]
+   }
+  },
+  {
+   "nombre": "pulso 120 con palpitaciones: urgencia",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "palpitaciones"
+    ],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 128,
+      "dia": 80,
+      "pulso": 124,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_sintomas",
+    "texto": "guardia_sintomas",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 128,
+     "dia": 80,
+     "pulso": 124
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "pulso_120_sintomas"
+    ]
+   }
+  },
+  {
+   "nombre": "pulso 120 sin síntomas: nada",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 128,
+      "dia": 80,
+      "pulso": 124,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 128,
+     "dia": 80,
+     "pulso": 124
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "pulso 119 con palpitaciones: no es urgencia",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "palpitaciones"
+    ],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 128,
+      "dia": 80,
+      "pulso": 119,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 128,
+     "dia": 80,
+     "pulso": 119
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "pulso 40 con mareo: urgencia",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "mareo_al_pararse"
+    ],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 112,
+      "dia": 70,
+      "pulso": 40,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_sintomas",
+    "texto": "guardia_sintomas",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 112,
+     "dia": 70,
+     "pulso": 40
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "pulso_40_mareo",
+     "sintomas_al_pararse"
+    ]
+   }
+  },
+  {
+   "nombre": "pulso 40 sin síntomas: aviso",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 112,
+      "dia": 70,
+      "pulso": 38,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 112,
+     "dia": 70,
+     "pulso": 38
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "pulso_40_sin_sintomas"
+    ]
+   }
+  },
+  {
+   "nombre": "sistólica menor de 90 con mareo: sentate y agua",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "mareo_al_pararse"
+    ],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 88,
+      "dia": 56,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "sentate_agua",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 88,
+     "dia": 56,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "sintomas_al_pararse",
+     "sistolica_menor_90_sintomas"
+    ]
+   }
+  },
+  {
+   "nombre": "sistólica menor de 90 sin síntomas: nada",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 88,
+      "dia": 56,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 88,
+     "dia": 56,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "vómitos o diarrea: al brief",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "vomitos_diarrea"
+    ],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 110,
+      "dia": 70,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": true,
+    "motivo_exclusion": null,
+    "valor": {
+     "sis": 110,
+     "dia": 70,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "sintoma_vomitos_diarrea"
+    ]
+   }
+  },
+  {
+   "nombre": "suelta de 135/85: dispara una serie",
+   "entrada": {
+    "tipo": "suelta",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 136,
+      "dia": 80,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 136,
+     "dia": 80,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "suelta_135_85"
+    ]
+   }
+  },
+  {
+   "nombre": "suelta por debajo: nada",
+   "entrada": {
+    "tipo": "suelta",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 134,
+      "dia": 84,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 134,
+     "dia": 84,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "suelta de 160/100 confirmada: alta",
+   "entrada": {
+    "tipo": "suelta",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 162,
+      "dia": 100,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 160,
+      "dia": 98,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 161,
+     "dia": 99,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": [
+     "alta_toma_160_100",
+     "suelta_135_85"
+    ]
+   }
+  },
+  {
+   "nombre": "suelta de 180/120 confirmada: urgencia",
+   "entrada": {
+    "tipo": "suelta",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 190,
+      "dia": 120,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 188,
+      "dia": 118,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_presion",
+    "texto": "guardia_presion",
+    "cuenta": false,
+    "motivo_exclusion": "otra",
+    "valor": {
+     "sis": 189,
+     "dia": 119,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "suelta_135_85",
+     "toma_180_120_confirmada"
+    ]
+   }
+  },
+  {
+   "nombre": "bajo efecto válida",
+   "entrada": {
+    "tipo": "bajo_efecto",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": false,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 142,
+      "dia": 86,
+      "pulso": 96,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "bajo_efecto",
+    "valor": {
+     "sis": 142,
+     "dia": 86,
+     "pulso": 96
+    },
+    "valida_bajo_efecto": true,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "bajo efecto con entreno entre la dosis y la toma: no cuenta",
+   "entrada": {
+    "tipo": "bajo_efecto",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": true,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 130,
+      "dia": 80,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "toma_no_cuenta",
+    "cuenta": false,
+    "motivo_exclusion": "bajo_efecto",
+    "valor": {
+     "sis": 130,
+     "dia": 80,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "bajo efecto sin reposo: no vale",
+   "entrada": {
+    "tipo": "bajo_efecto",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": false,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": false,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 130,
+      "dia": 80,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "toma_no_cuenta",
+    "cuenta": false,
+    "motivo_exclusion": "bajo_efecto",
+    "valor": {
+     "sis": 130,
+     "dia": 80,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "bajo efecto de 180/120 confirmada: urgencia igual",
+   "entrada": {
+    "tipo": "bajo_efecto",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": true,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 182,
+      "dia": 110,
+      "pulso": 62,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 180,
+      "dia": 112,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "paso": "guardia_presion",
+    "texto": "guardia_presion",
+    "cuenta": false,
+    "motivo_exclusion": "bajo_efecto",
+    "valor": {
+     "sis": 181,
+     "dia": 111,
+     "pulso": 62
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": true,
+    "ortostatica": null,
+    "reglas": [
+     "toma_180_120_confirmada"
+    ]
+   }
+  },
+  {
+   "nombre": "ortostática sin caída",
+   "entrada": {
+    "tipo": "ortostatica",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "acostado",
+      "sis": 124,
+      "dia": 76,
+      "pulso": 58,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "de_pie",
+      "sis": 120,
+      "dia": 78,
+      "pulso": 72,
+      "latido_irregular": false,
+      "minutos_de_pie": 1
+     },
+     {
+      "orden": 3,
+      "posicion": "de_pie",
+      "sis": 122,
+      "dia": 79,
+      "pulso": 70,
+      "latido_irregular": false,
+      "minutos_de_pie": 3
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "ortostatica",
+    "valor": null,
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": {
+     "caida_sis_max": 4,
+     "caida_dia_max": -2,
+     "subida_pulso_max": 14,
+     "hipotension": false,
+     "hipertension_posible": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "ortostática con caída de 20",
+   "entrada": {
+    "tipo": "ortostatica",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "acostado",
+      "sis": 130,
+      "dia": 80,
+      "pulso": 60,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "de_pie",
+      "sis": 110,
+      "dia": 78,
+      "pulso": 80,
+      "latido_irregular": false,
+      "minutos_de_pie": 1
+     },
+     {
+      "orden": 3,
+      "posicion": "de_pie",
+      "sis": 118,
+      "dia": 80,
+      "pulso": 76,
+      "latido_irregular": false,
+      "minutos_de_pie": 3
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "ortostatica",
+    "valor": null,
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": {
+     "caida_sis_max": 20,
+     "caida_dia_max": 2,
+     "subida_pulso_max": 20,
+     "hipotension": true,
+     "hipertension_posible": false
+    },
+    "reglas": [
+     "ortostatica_positiva"
+    ]
+   }
+  },
+  {
+   "nombre": "ortostática con caída de la diastólica de 10",
+   "entrada": {
+    "tipo": "ortostatica",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "acostado",
+      "sis": 120,
+      "dia": 80,
+      "pulso": 60,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "de_pie",
+      "sis": 112,
+      "dia": 70,
+      "pulso": 70,
+      "latido_irregular": false,
+      "minutos_de_pie": 1
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "ortostatica",
+    "valor": null,
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": {
+     "caida_sis_max": 8,
+     "caida_dia_max": 10,
+     "subida_pulso_max": 10,
+     "hipotension": true,
+     "hipertension_posible": false
+    },
+    "reglas": [
+     "ortostatica_positiva"
+    ]
+   }
+  },
+  {
+   "nombre": "ortostática con subida de 20: hipertensión ortostática posible",
+   "entrada": {
+    "tipo": "ortostatica",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "acostado",
+      "sis": 120,
+      "dia": 78,
+      "pulso": 60,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "de_pie",
+      "sis": 141,
+      "dia": 84,
+      "pulso": 66,
+      "latido_irregular": false,
+      "minutos_de_pie": 1
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "ortostatica",
+    "valor": null,
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": {
+     "caida_sis_max": -21,
+     "caida_dia_max": -6,
+     "subida_pulso_max": 6,
+     "hipotension": false,
+     "hipertension_posible": true
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "ortostática con mareo: quedate sentado",
+   "entrada": {
+    "tipo": "ortostatica",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [
+     "mareo_al_pararse"
+    ],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "acostado",
+      "sis": 120,
+      "dia": 78,
+      "pulso": 60,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "de_pie",
+      "sis": 116,
+      "dia": 76,
+      "pulso": 70,
+      "latido_irregular": false,
+      "minutos_de_pie": 1
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "quedate_sentado_ortostatica",
+    "cuenta": false,
+    "motivo_exclusion": "ortostatica",
+    "valor": null,
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": {
+     "caida_sis_max": 4,
+     "caida_dia_max": 2,
+     "subida_pulso_max": 10,
+     "hipotension": false,
+     "hipertension_posible": false
+    },
+    "reglas": [
+     "sintomas_al_pararse"
+    ]
+   }
+  },
+  {
+   "nombre": "de pie con 180: no cuenta para la alta",
+   "entrada": {
+    "tipo": "ortostatica",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "acostado",
+      "sis": 150,
+      "dia": 90,
+      "pulso": 60,
+      "latido_irregular": false
+     },
+     {
+      "orden": 2,
+      "posicion": "de_pie",
+      "sis": 182,
+      "dia": 100,
+      "pulso": 70,
+      "latido_irregular": false,
+      "minutos_de_pie": 1
+     },
+     {
+      "orden": 3,
+      "posicion": "de_pie",
+      "sis": 181,
+      "dia": 100,
+      "pulso": 70,
+      "latido_irregular": false,
+      "minutos_de_pie": 3
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "ortostatica",
+    "valor": null,
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": {
+     "caida_sis_max": -31,
+     "caida_dia_max": -10,
+     "subida_pulso_max": 10,
+     "hipotension": false,
+     "hipertension_posible": true
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "comparación de brazos: no cuenta ni pide repetir",
+   "entrada": {
+    "tipo": "comparacion_brazos",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 128,
+      "dia": 80,
+      "pulso": 60,
+      "latido_irregular": false,
+      "brazo": "izq"
+     },
+     {
+      "orden": 2,
+      "posicion": "sentado",
+      "sis": 140,
+      "dia": 82,
+      "pulso": 60,
+      "latido_irregular": false,
+      "brazo": "der"
+     },
+     {
+      "orden": 3,
+      "posicion": "sentado",
+      "sis": 138,
+      "dia": 82,
+      "pulso": 60,
+      "latido_irregular": false,
+      "brazo": "der"
+     },
+     {
+      "orden": 4,
+      "posicion": "sentado",
+      "sis": 126,
+      "dia": 80,
+      "pulso": 60,
+      "latido_irregular": false,
+      "brazo": "izq"
+     }
+    ]
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "comparacion_brazos",
+    "valor": {
+     "sis": 133,
+     "dia": 81,
+     "pulso": 60
+    },
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "sin tomas",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": []
+   },
+   "sale": {
+    "paso": "listo",
+    "texto": "ninguno",
+    "cuenta": false,
+    "motivo_exclusion": "error",
+    "valor": null,
+    "valida_bajo_efecto": false,
+    "urgencia": false,
+    "ortostatica": null,
+    "reglas": []
+   }
+  }
+ ],
+ "serie": [
+  {
+   "nombre": "ejemplo de CAMPOS: 131/81 limítrofe",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 130,
+        "dia": 80,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 134,
+        "dia": 84,
+        "pulso": 63,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": true,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 140,
+        "dia": 86,
+        "pulso": 70,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-07",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 129,
+        "dia": 79,
+        "pulso": 61,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-07"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 131,
+     "dia": 81,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 134,
+     "dia": 84
+    },
+    "categoria": "limitrofe",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "sin tomas",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": []
+   },
+   "sale": {
+    "tomas_validas": 0,
+    "dias": [],
+    "serie_valida": false,
+    "faltan": 3,
+    "promedio": null,
+    "maximos": null,
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "incompleta, 2 de 3",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 122,
+        "dia": 76,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 2,
+    "dias": [
+     "2026-11-04",
+     "2026-11-06"
+    ],
+    "serie_valida": false,
+    "faltan": 1,
+    "promedio": {
+     "sis": 121,
+     "dia": 77,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 122,
+     "dia": 78
+    },
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "dos tomas el mismo día cuentan como una",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ],
+      "orden": 1
+     },
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 140,
+        "dia": 90,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ],
+      "orden": 2
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 122,
+        "dia": 76,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 2,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05"
+    ],
+    "serie_valida": false,
+    "faltan": 1,
+    "promedio": {
+     "sis": 121,
+     "dia": 77,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 122,
+     "dia": 78
+    },
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "fuera de los 7 días no cuenta",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-10",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 122,
+        "dia": 76,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-11",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 124,
+        "dia": 76,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 2,
+    "dias": [
+     "2026-11-04",
+     "2026-11-10"
+    ],
+    "serie_valida": false,
+    "faltan": 1,
+    "promedio": {
+     "sis": 121,
+     "dia": 77,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 122,
+     "dia": 78
+    },
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "promedio de 135: alta",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 134,
+        "dia": 80,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 136,
+        "dia": 82,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 135,
+        "dia": 81,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 135,
+     "dia": 81,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 136,
+     "dia": 82
+    },
+    "categoria": "hipertension_casa",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": [
+     "alta_promedio_135_85"
+    ]
+   }
+  },
+  {
+   "nombre": "promedio con diastólica de 85: alta",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 124,
+        "dia": 85,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 126,
+        "dia": 86,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 122,
+        "dia": 84,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 124,
+     "dia": 85,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 126,
+     "dia": 86
+    },
+    "categoria": "hipertension_casa",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": [
+     "alta_promedio_135_85"
+    ]
+   }
+  },
+  {
+   "nombre": "134/84: limítrofe, sin alta",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 134,
+        "dia": 84,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 134,
+        "dia": 84,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 134,
+        "dia": 84,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 134,
+     "dia": 84,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 134,
+     "dia": 84
+    },
+    "categoria": "limitrofe",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "124/78: elevada",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 124,
+        "dia": 78,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 124,
+        "dia": 78,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 124,
+        "dia": 78,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 124,
+     "dia": 78,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 124,
+     "dia": 78
+    },
+    "categoria": "elevada",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "118/76: óptima",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 118,
+        "dia": 76,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 118,
+        "dia": 76,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 118,
+        "dia": 76,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 118,
+     "dia": 76,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 118,
+     "dia": 76
+    },
+    "categoria": "optima",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "150/95: estadio 2 de NICE",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 150,
+        "dia": 90,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 152,
+        "dia": 92,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 148,
+        "dia": 88,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 150,
+     "dia": 90,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 152,
+     "dia": 92
+    },
+    "categoria": "hipertension_casa_estadio_2",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": [
+     "alta_promedio_135_85"
+    ]
+   }
+  },
+  {
+   "nombre": "incompleta con valores altos: no hay alta por promedio",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 150,
+        "dia": 92,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 152,
+        "dia": 94,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 2,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05"
+    ],
+    "serie_valida": false,
+    "faltan": 1,
+    "promedio": {
+     "sis": 151,
+     "dia": 93,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 152,
+     "dia": 94
+    },
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "un día con repetición vale el promedio de las dos",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 164,
+        "dia": 100,
+        "pulso": 62,
+        "latido_irregular": false
+       },
+       {
+        "orden": 2,
+        "posicion": "sentado",
+        "sis": 150,
+        "dia": 90,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 130,
+        "dia": 80,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 130,
+        "dia": 80,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 139,
+     "dia": 85,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 164,
+     "dia": 100
+    },
+    "categoria": "hipertension_casa",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": [
+     "alta_promedio_135_85"
+    ]
+   }
+  },
+  {
+   "nombre": "alta por toma confirmada dentro de la serie",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 164,
+        "dia": 100,
+        "pulso": 62,
+        "latido_irregular": false
+       },
+       {
+        "orden": 2,
+        "posicion": "sentado",
+        "sis": 162,
+        "dia": 98,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 70,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 2,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05"
+    ],
+    "serie_valida": false,
+    "faltan": 1,
+    "promedio": {
+     "sis": 142,
+     "dia": 85,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 164,
+     "dia": 100
+    },
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": [
+     "alta_toma_160_100"
+    ]
+   }
+  },
+  {
+   "nombre": "muñeca solo para urgencias: sin categoría ni alta por promedio",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": true,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 140,
+        "dia": 90,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 140,
+        "dia": 90,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 140,
+        "dia": 90,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 140,
+     "dia": 90,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 140,
+     "dia": 90
+    },
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "pulso de 100 en 2 de las 3 tomas",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 102,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 100,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 80,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 120,
+     "dia": 78,
+     "pulso": 94
+    },
+    "maximos": {
+     "sis": 120,
+     "dia": 78
+    },
+    "categoria": "elevada",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": [
+     "pulso_100_dos_tomas"
+    ]
+   }
+  },
+  {
+   "nombre": "pulso 20 por encima de la basal",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": 58,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 78,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 78,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 78,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 120,
+     "dia": 78,
+     "pulso": 78
+    },
+    "maximos": {
+     "sis": 120,
+     "dia": 78
+    },
+    "categoria": "elevada",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": [
+     "pulso_20_sobre_basal"
+    ]
+   }
+  },
+  {
+   "nombre": "pulso 19 por encima de la basal: nada",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": 59,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 78,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 78,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 78,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 120,
+     "dia": 78,
+     "pulso": 78
+    },
+    "maximos": {
+     "sis": 120,
+     "dia": 78
+    },
+    "categoria": "elevada",
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "latido irregular en 2 tomas",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 62,
+        "latido_irregular": true
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": true,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 120,
+        "dia": 78,
+        "pulso": 62,
+        "latido_irregular": true
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 1,
+    "dias": [
+     "2026-11-04"
+    ],
+    "serie_valida": false,
+    "faltan": 2,
+    "promedio": {
+     "sis": 120,
+     "dia": 78,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 120,
+     "dia": 78
+    },
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 0,
+     "validas": 0,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": [
+     "latido_irregular_2_tomas"
+    ]
+   }
+  },
+  {
+   "nombre": "bajo efecto de 150/95: alta",
+   "entrada": {
+    "serie": {
+     "tipo": "bajo_efecto",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 152,
+        "dia": 90,
+        "pulso": 88,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 150,
+        "dia": 92,
+        "pulso": 90,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 148,
+        "dia": 94,
+        "pulso": 86,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": null,
+    "maximos": null,
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 3,
+     "validas": 3,
+     "promedio": {
+      "sis": 150,
+      "dia": 92,
+      "pulso": 88
+     },
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": true
+    },
+    "reglas": [
+     "alta_bajo_efecto_150_95"
+    ]
+   }
+  },
+  {
+   "nombre": "bajo efecto de 135/85 a 149/94: aviso",
+   "entrada": {
+    "serie": {
+     "tipo": "bajo_efecto",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 140,
+        "dia": 86,
+        "pulso": 90,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 138,
+        "dia": 84,
+        "pulso": 92,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 2,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05"
+    ],
+    "serie_valida": false,
+    "faltan": 1,
+    "promedio": null,
+    "maximos": null,
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 2,
+     "validas": 2,
+     "promedio": {
+      "sis": 139,
+      "dia": 85,
+      "pulso": 91
+     },
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": true,
+     "alta": false
+    },
+    "reglas": [
+     "bajo_efecto_135_85"
+    ]
+   }
+  },
+  {
+   "nombre": "bajo efecto con una sola válida: sin promedio",
+   "entrada": {
+    "serie": {
+     "tipo": "bajo_efecto",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": true,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 160,
+        "dia": 98,
+        "pulso": 90,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 156,
+        "dia": 96,
+        "pulso": 92,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 1,
+    "dias": [
+     "2026-11-05"
+    ],
+    "serie_valida": false,
+    "faltan": 2,
+    "promedio": null,
+    "maximos": null,
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 2,
+     "validas": 1,
+     "promedio": null,
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": []
+   }
+  },
+  {
+   "nombre": "bajo efecto con pulso de 100 en 2 tomas: aviso",
+   "entrada": {
+    "serie": {
+     "tipo": "bajo_efecto",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 128,
+        "dia": 80,
+        "pulso": 104,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 126,
+        "dia": 78,
+        "pulso": 100,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 2,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05"
+    ],
+    "serie_valida": false,
+    "faltan": 1,
+    "promedio": null,
+    "maximos": null,
+    "categoria": null,
+    "bajo_efecto": {
+     "n": 2,
+     "validas": 2,
+     "promedio": {
+      "sis": 127,
+      "dia": 79,
+      "pulso": 102
+     },
+     "tomas_pulso_100_o_mas": 2,
+     "aviso": false,
+     "alta": false
+    },
+    "reglas": [
+     "pulso_100_bajo_efecto"
+    ]
+   }
+  },
+  {
+   "nombre": "tomas comunes y bajo efecto en la misma serie: aparte",
+   "entrada": {
+    "serie": {
+     "tipo": "estandar",
+     "tomas_objetivo": 3,
+     "fecha_inicio": "2026-11-04"
+    },
+    "solo_urgencias": false,
+    "basal_pulso": null,
+    "sesiones": [
+     {
+      "fecha": "2026-11-04",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 124,
+        "dia": 78,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 126,
+        "dia": 80,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-06",
+      "tipo": "estandar",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": null,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 122,
+        "dia": 76,
+        "pulso": 62,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-04",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 152,
+        "dia": 96,
+        "pulso": 90,
+        "latido_irregular": false
+       }
+      ]
+     },
+     {
+      "fecha": "2026-11-05",
+      "tipo": "bajo_efecto",
+      "previo": {
+       "cafeina": false,
+       "fumo": false,
+       "comida": false,
+       "ejercicio": false
+      },
+      "reposo_cumplido": true,
+      "temporizador_salteado": false,
+      "entreno_entre_dosis_y_toma": false,
+      "sintomas": [],
+      "lista_espera": null,
+      "minutos_desde_ultima": 0,
+      "tomas": [
+       {
+        "orden": 1,
+        "posicion": "sentado",
+        "sis": 154,
+        "dia": 96,
+        "pulso": 92,
+        "latido_irregular": false
+       }
+      ]
+     }
+    ]
+   },
+   "sale": {
+    "tomas_validas": 3,
+    "dias": [
+     "2026-11-04",
+     "2026-11-05",
+     "2026-11-06"
+    ],
+    "serie_valida": true,
+    "faltan": 0,
+    "promedio": {
+     "sis": 124,
+     "dia": 78,
+     "pulso": 62
+    },
+    "maximos": {
+     "sis": 126,
+     "dia": 80
+    },
+    "categoria": "elevada",
+    "bajo_efecto": {
+     "n": 2,
+     "validas": 2,
+     "promedio": {
+      "sis": 153,
+      "dia": 96,
+      "pulso": 91
+     },
+     "tomas_pulso_100_o_mas": 0,
+     "aviso": false,
+     "alta": true
+    },
+    "reglas": [
+     "alta_bajo_efecto_150_95"
+    ]
+   }
+  }
+ ],
+ "textos": {
+  "antes": [
+   "Para esto necesitás un tensiómetro automático de brazo. El reloj no sirve. Si ya tenés uno de muñeca, por ahora lo usamos, pero vas a tener que comprar uno de brazo.",
+   "Antes de comprarlo medite el brazo con un centímetro de costura. Medí en la mitad entre el hombro y el codo, con el brazo relajado al costado del cuerpo y sin haber entrenado ese día.",
+   "Con esa medida la app te muestra qué aparatos sirven. El manguito trae impreso un rango en centímetros y tu medida tiene que entrar en ese rango. Si quedás justo en el límite entre dos talles, elegí el más grande.",
+   "Sacale una foto al tensiómetro y otra a la etiqueta del manguito y subilas acá. Yo te confirmo si sirve."
+  ],
+  "medirBrazo": [
+   "Usá un centímetro de costura, de los blandos.",
+   "Medí el brazo en el que te vas a tomar la presión. Sacate la remera o subí bien la manga.",
+   "Dejá el brazo relajado, colgando al costado del cuerpo, sin hacer fuerza.",
+   "Buscá la mitad entre la punta del hombro y la punta del codo. Si podés, pedile a alguien que te ayude.",
+   "Rodeá el brazo a esa altura, sobre la piel, derecho y sin apretar.",
+   "Anotá los centímetros. Si dudás entre dos números, anotá el más alto.",
+   "No te midas recién entrenado ni con el brazo hinchado. Hacelo un día de descanso o antes de entrenar."
+  ],
+  "medirDeNuevo": "Antes de empezar, medite de nuevo el brazo y anotalo.",
+  "g3": [
+   "Medí en la mitad entre el hombro y el codo",
+   "Brazo relajado y sin haber entrenado ese día",
+   "Tu medida tiene que entrar en el rango que trae impreso el manguito",
+   "Si quedás justo entre dos talles, elegí el más grande"
+  ],
+  "g3Alt": "Brazo relajado con un centímetro alrededor, en la mitad entre el hombro y el codo. Abajo, una etiqueta de manguito con su rango en centímetros y una barra de talles de chico a extra grande.",
+  "tramos": {
+   "estandar": "Estándar",
+   "grande": "Grande",
+   "extra_grande": "Extra grande",
+   "mas_52": "Te indico yo"
+  },
+  "tramosRango": {
+   "estandar": "22 a 32 cm",
+   "grande": "32 a 42 cm",
+   "extra_grande": "42 a 52 cm",
+   "mas_52": "Más de 52 cm"
+  },
+  "marca42": "Más de 42 cm, manguito más grande, mejor si es cónico",
+  "verCuales": "Ver cuáles sirven",
+  "fueraDeTalle": "Ese manguito no es de tu talle. Mandame una foto de la etiqueta y lo vemos.",
+  "porTramo": {
+   "estandar": "Con tu medida te sirve casi cualquier tensiómetro de brazo de esta lista. Fijate que el código de la caja sea igual al de la lista, con las letras del final.",
+   "grande": "Con tu medida necesitás un manguito que llegue hasta 42. Te dejo cuáles sirven. Fijate que el código de la caja sea igual al de la lista, con las letras del final.",
+   "extra_grande": "Con tu medida necesitás un manguito más grande, que en general se compra aparte. Te dejo cuáles sirven.",
+   "mas_52": "Con tu medida te indico yo cuál usar. Si ya tenés un tensiómetro, subí las fotos y te digo."
+  },
+  "muneca": [
+   "Por ahora usamos el de muñeca, pero necesito que compres uno de brazo.",
+   "Te dejo cuáles sirven según la medida de tu brazo."
+  ],
+  "munecaNoValidada": "Ese de muñeca no está entre los que miden bien. Te dejo cuáles sirven.",
+  "noValidado": [
+   "Ese tensiómetro no está entre los que miden bien. Por ahora lo usamos, pero necesito que compres uno de la lista.",
+   "Te dejo cuáles sirven según la medida de tu brazo."
+  ],
+  "cuandoTitulo": "Cuándo",
+  "cuando": [
+   "Son 3 tomas en total, una por día, en 3 días distintos de la misma semana.",
+   "A la mañana, después de hacer pis y antes de desayunar, del mate o el café, del preentreno, de tus remedios y de entrenar.",
+   "En la media hora previa nada de cigarrillo, vapeador, comida, café, mate, energizante ni preentreno."
+  ],
+  "comoTitulo": "Cómo",
+  "g1": [
+   "Espalda apoyada",
+   "Pies planos en el piso y piernas sin cruzar",
+   "Brazo apoyado en la mesa",
+   "La mitad del manguito a la altura del corazón",
+   "5 minutos quieto y sin hablar"
+  ],
+  "g1Alt": "Persona sentada de costado en una silla con respaldo, con la espalda apoyada, los pies en el piso, el brazo sobre la mesa y el manguito a la altura del corazón.",
+  "g2": [
+   [
+    "Brazo colgando",
+    "Da más alto"
+   ],
+   [
+    "A la altura del corazón",
+    "Así sí"
+   ],
+   [
+    "Brazo levantado",
+    "Da más bajo"
+   ]
+  ],
+  "g2Alt": "Tres dibujos. Con el brazo colgando la presión da más alta, con el brazo levantado da más baja y con el manguito a la altura del corazón da bien.",
+  "g4": [
+   "2 o 3 centímetros arriba del pliegue del codo",
+   "La marca de la arteria va del lado de adentro",
+   "Firme, que entre justo un dedo",
+   "Sobre la piel, nunca sobre la ropa"
+  ],
+  "g4Alt": "Brazo visto del lado de adentro con el manguito sobre la piel, dos o tres centímetros arriba del pliegue del codo, con la marca de la arteria del lado de adentro y un dedo que entra justo debajo del borde.",
+  "queEvitar": "Qué evitar",
+  "g5": [
+   [
+    "Hablar o mirar el celular",
+    "Ni antes ni durante la toma"
+   ],
+   [
+    "Piernas cruzadas",
+    "Pies planos en el piso"
+   ],
+   [
+    "Sobre la ropa",
+    "El manguito va sobre la piel"
+   ],
+   [
+    "Brazo colgando",
+    "Apoyalo en la mesa"
+   ],
+   [
+    "Medirte recién entrenado",
+    "Esperá al menos una hora"
+   ],
+   [
+    "Café, mate, energizante o preentreno",
+    "Nada en la media hora previa"
+   ],
+   [
+    "Cigarrillo o vapeador",
+    "Nada en la media hora previa"
+   ],
+   [
+    "Con ganas de hacer pis",
+    "Andá al baño antes"
+   ],
+   [
+    "Sillón blando o sin respaldo",
+    "Silla con respaldo recto"
+   ],
+   [
+    "Reloj o anillo para medir",
+    "Solo tensiómetro de brazo"
+   ]
+  ],
+  "g5Alt": "Diez cosas que hay que evitar al medirte la presión. Hablar o mirar el celular, cruzar las piernas, poner el manguito sobre la ropa, dejar el brazo colgando, medirte recién entrenado, tomar café, mate, energizante o preentreno, fumar o vapear, medirte con ganas de hacer pis, sentarte en un sillón blando y usar un reloj o un anillo para medir.",
+  "bien": "Bien",
+  "asiNo": "Así no",
+  "bajoEfecto": [
+   "Estas 3 tomas son con el estimulante hecho efecto. Medite entre 1 y 2 horas después de tomarlo, en 3 días distintos.",
+   "Hacé la toma antes de entrenar. Si entrenaste entre la dosis y la toma, esa no cuenta y la hacés otro día.",
+   "Sentado, con la espalda apoyada y el brazo a la altura del corazón. Esperá 5 minutos sin hablar y medite, igual que en las otras tomas.",
+   "Anotá a qué hora tomaste el estimulante."
+  ],
+  "brazos": [
+   "Hoy hacé 4 tomas en este orden, izquierdo, derecho, derecho e izquierdo, con un minuto de descanso entre cada una.",
+   "Estas no cuentan para el promedio. Sirven para ver qué brazo usar."
+  ],
+  "g6Mareo": "Si te mareás, sentate o acostate enseguida",
+  "g6Antebrazo": "Antebrazo apoyado, sin dejarlo colgando",
+  "g6Alt": "Tres dibujos. Acostado cinco minutos con una toma, después parado con el antebrazo apoyado y tomas al minuto uno y al minuto tres. Si te mareás, sentate o acostate enseguida.",
+  "listoSerie": "Listo, terminaste las 3 tomas. Gracias.",
+  "listoSerieCorto": "Listo, terminaste las 3 tomas",
+  "marcarSintoma": "Marcar un síntoma",
+  "esperaTitulo": "Quedate sentado y tranquilo. En 5 minutos volvé a medirte.",
+  "esperaLista": "Mientras esperás, decime si tenés alguno de estos.",
+  "esperaVoz": "Faltan 5 minutos para volver a medirte.",
+  "si": "Sí",
+  "no": "No",
+  "repetirPendiente": "Te quedó pendiente repetir la toma. Hacela sentado y tranquilo cuando puedas.",
+  "guardiaPresion": [
+   "Con estos valores tiene que verte un médico hoy. Andá a una guardia.",
+   "No tomes nada por tu cuenta para bajarla. Si ya tenés un remedio para la presión indicado, tomalo como siempre, sin doblarlo.",
+   "Si aparece dolor de pecho, falta de aire, debilidad de un lado del cuerpo o te cuesta hablar, no vayas manejando y llamá a emergencias."
+  ],
+  "guardiaSintomas": [
+   "Con lo que marcaste tiene que verte un médico ahora. Andá a una guardia.",
+   "No vayas manejando. Si es dolor de pecho, falta de aire, debilidad de un lado del cuerpo o te cuesta hablar, llamá a emergencias."
+  ],
+  "sentateAgua": "Sentate o acostate un rato y tomá agua. Escribime cuando puedas.",
+  "mareoOrtostatica": "Quedate sentado o acostado hasta que se te pase.",
+  "latidoIrregular": "Gracias, seguí como siempre.",
+  "revisarNumero": "Revisá el número que anotaste. Si podés, sacale una foto a la pantalla del aparato.",
+  "revisarNumeroSinFoto": "Revisá el número que anotaste.",
+  "noCuenta": "Esta no cuenta. Hacé otra otro día, antes del café y del preentreno.",
+  "recordatorioManana": "Buen día, te toca la presión antes de desayunar.",
+  "comoIzq": [
+   "Sentate en una silla con respaldo, al lado de una mesa, en un lugar tranquilo. Espalda apoyada, pies planos en el piso y piernas sin cruzar.",
+   "Apoyá el brazo izquierdo en la mesa, relajado y con la palma para arriba. El manguito va sobre la piel, nunca sobre la ropa. Si la manga te aprieta al subirla, sacate la remera.",
+   "La mitad del manguito tiene que quedar a la altura del corazón. Si la mesa es baja, poné un almohadón abajo del brazo.",
+   "El borde de abajo del manguito va 2 o 3 centímetros arriba del pliegue del codo, con la marca de la arteria del lado de adentro del brazo. Ajustalo firme, que entre justo un dedo.",
+   "Quedate 5 minutos quieto, sin hablar ni mirar el celular.",
+   "Hacé la toma y anotá la alta, la baja y el pulso. Si el aparato muestra el símbolo de latido irregular, marcalo.",
+   "Si sale error, revisá el manguito, esperá un minuto y repetí.",
+   "Listo por hoy. La próxima, otro día."
+  ],
+  "comoDer": [
+   "Sentate en una silla con respaldo, al lado de una mesa, en un lugar tranquilo. Espalda apoyada, pies planos en el piso y piernas sin cruzar.",
+   "Apoyá el brazo derecho en la mesa, relajado y con la palma para arriba. El manguito va sobre la piel, nunca sobre la ropa. Si la manga te aprieta al subirla, sacate la remera.",
+   "La mitad del manguito tiene que quedar a la altura del corazón. Si la mesa es baja, poné un almohadón abajo del brazo.",
+   "El borde de abajo del manguito va 2 o 3 centímetros arriba del pliegue del codo, con la marca de la arteria del lado de adentro del brazo. Ajustalo firme, que entre justo un dedo.",
+   "Quedate 5 minutos quieto, sin hablar ni mirar el celular.",
+   "Hacé la toma y anotá la alta, la baja y el pulso. Si el aparato muestra el símbolo de latido irregular, marcalo.",
+   "Si sale error, revisá el manguito, esperá un minuto y repetí.",
+   "Listo por hoy. La próxima, otro día."
+  ],
+  "ortostaticaAcostado": [
+   "Hacela a la mañana, después de la toma sentado, con el mismo manguito puesto.",
+   "Hacela al lado de la cama, sin nadie apurándote.",
+   "Acostate boca arriba 5 minutos. Dejá el brazo apoyado sobre una almohada chica, a la altura del medio del pecho.",
+   "Hacé una toma acostado.",
+   "Parate al lado de la cama. Apoyá el antebrazo en un mueble alto o sostenelo con la otra mano, así el manguito queda a la altura del corazón. No dejes el brazo colgando.",
+   "Cuando la app marque un minuto parado, hacé una toma.",
+   "Cuando marque 3 minutos parado, hacé otra.",
+   "Si te mareás, se te nubla la vista o sentís que te vas a desmayar, sentate o acostate enseguida y marcalo. No hace falta terminar."
+  ],
+  "ortostaticaSentado": [
+   "Hacela a la mañana, después de la toma sentado, con el mismo manguito puesto.",
+   "Hacela al lado de la cama, sin nadie apurándote.",
+   "Sentado 5 minutos y una toma",
+   "Parate al lado de la cama. Apoyá el antebrazo en un mueble alto o sostenelo con la otra mano, así el manguito queda a la altura del corazón. No dejes el brazo colgando.",
+   "Cuando la app marque un minuto parado, hacé una toma.",
+   "Cuando marque 3 minutos parado, hacé otra.",
+   "Si te mareás, se te nubla la vista o sentís que te vas a desmayar, sentate o acostate enseguida y marcalo. No hace falta terminar."
+  ],
+  "g6Acostado": [
+   "Acostado 5 minutos y una toma",
+   "Parado, toma al minuto 1",
+   "Parado, toma al minuto 3"
+  ],
+  "g6Sentado": [
+   "Sentado 5 minutos y una toma",
+   "Parado, toma al minuto 1",
+   "Parado, toma al minuto 3"
+  ],
+  "faltan1": "Te falta 1 toma",
+  "faltan2": "Te faltan 2 tomas",
+  "avanceAlt2": "Tres círculos, uno por toma. Completaste dos de tres."
+ },
+ "propios": {
+  "titulo": "Presión",
+  "entrada": "Presión arterial",
+  "antesTitulo": "Antes de la primera serie",
+  "medirBrazoTitulo": "Cómo medirte el brazo",
+  "medida": "Medida del brazo, en centímetros",
+  "tipoAparato": "¿Qué tensiómetro tenés?",
+  "tipos": {
+   "brazo": "De brazo",
+   "muneca": "De muñeca",
+   "reloj_anillo_otro": "Reloj, anillo u otro",
+   "ninguno": "Todavía no tengo"
+  },
+  "marca": "Marca",
+  "modelo": "Modelo",
+  "codigo": "Código de la etiqueta",
+  "codigoAyuda": "Copialo tal cual, con las letras del final",
+  "rango": "Rango impreso en el manguito, en centímetros",
+  "desde": "Desde",
+  "hasta": "Hasta",
+  "guardar": "Guardar",
+  "seguir": "Seguir",
+  "empezar": "Empezar",
+  "cerrar": "Cerrar",
+  "volver": "Volver",
+  "tomaDeHoy": "Hacer la toma de hoy",
+  "tomaSuelta": "Anotar una toma",
+  "repetir": "Repetir la toma",
+  "previas": "Antes de medirte",
+  "previa": {
+   "cafeina": "¿Tomaste café, mate, energizante o preentreno en la última media hora?",
+   "fumo": "¿Fumaste o vapeaste en la última media hora?",
+   "comida": "¿Comiste en la última media hora?",
+   "ejercicio": "¿Entrenaste en la última hora?"
+  },
+  "esperarMejor": "Mejor esperá un rato y medite después.",
+  "esperar": "Esperar",
+  "medirIgual": "Medirme igual",
+  "reposo": "Quedate 5 minutos quieto, sin hablar ni mirar el celular",
+  "saltear": "Ya esperé",
+  "alta": "Alta",
+  "baja": "Baja",
+  "pulso": "Pulso",
+  "irregular": "El aparato mostró el símbolo de latido irregular",
+  "anotar": "Anotar la toma",
+  "confirmar": "Sí, es ese número",
+  "corregir": "Corregir",
+  "horaDosis": "¿A qué hora tomaste el estimulante?",
+  "entrenoEntre": "¿Entrenaste entre la dosis y la toma?",
+  "alarma": "Avisame si tenés alguno de estos",
+  "otros": "Otros",
+  "nota": "Si querés, contame algo más",
+  "enviar": "Enviar",
+  "sintomaRecibido": "Anotado.",
+  "tusTomas": "Tus tomas",
+  "sinTomas": "Todavía no anotaste ninguna toma",
+  "hoyListo": "La de hoy ya está. La próxima, otro día.",
+  "relojNoSirve": "El reloj y el anillo no sirven para esto. Hace falta un tensiómetro de brazo.",
+  "aparato": "Tu tensiómetro",
+  "cambiarAparato": "Cambiar",
+  "brazo": "Brazo",
+  "cm": "cm",
+  "brazoIzq": "Brazo izquierdo",
+  "brazoDer": "Brazo derecho",
+  "noGuardo": "No se pudo guardar. Probá de nuevo.",
+  "sinSenal": "Sin señal. Queda guardada y se manda sola.",
+  "tarjeta": "Tu presión",
+  "tarjetaPreparar": "Primero medí tu brazo y anotá tu tensiómetro",
+  "tarjetaSerie": "Son 3 tomas, una por día",
+  "meMaree": "Me mareé",
+  "sinLista": "Todavía estamos armando la lista para tu país.",
+  "minutoParado1": "Toma al minuto 1",
+  "minutoParado3": "Toma al minuto 3",
+  "graficoAlt3": "Gráfico con tus 3 tomas, alta y baja, por día."
+ }
+}

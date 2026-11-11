@@ -58,6 +58,12 @@ firmas.set('mypump_gimnasio_responder', new Set(['p_token', 'p_id', 'p_respuesta
 firmas.set('mypump_tecnica_get', new Set(['p_token']));
 firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ejercicio_nombre', 'p_nota']));
 firmas.set('mypump_tecnica_cancelar', new Set(['p_token', 'p_id']));
+// Presión arterial: propuesta sin aplicar (presion/CONTRATO_APP.md, rama nativa-presion). Si no existe, la web no muestra nada.
+firmas.set('mypump_presion_get', new Set(['p_token', 'p_zona']));
+firmas.set('mypump_presion_aparato', new Set(['p_token', 'p_aparato']));
+firmas.set('mypump_presion_medida', new Set(['p_token', 'p_cm', 'p_zona']));
+firmas.set('mypump_presion_sesion', new Set(['p_token', 'p_sesion']));
+firmas.set('mypump_presion_sintoma', new Set(['p_token', 'p_sintoma']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.

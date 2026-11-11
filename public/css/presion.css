@@ -1,0 +1,124 @@
+/* «Presión arterial». Solo se ve con la palanca prendida. Se apoya en las piezas de gimnasio.css y usa solo los tokens de la app.
+   Sin colores de riesgo: el avance, el gráfico y Sí/No van en neutro. Los tamaños mínimos son min-height, para que el texto grande no se corte. */
+.pre-voz{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* Botones grandes y con texto: 56 px como mínimo, ancho completo, uno debajo del otro. */
+.pre .btn-primary,.pre .btn-secondary{width:100%;height:auto;min-height:56px;padding:12px var(--space-4);font-size:17px;font-weight:600;line-height:1.25;text-align:center;overflow-wrap:anywhere}
+.pre .btn-secondary{border-color:var(--color-border-strong)}
+.pre .btn-primary:disabled{opacity:.45;cursor:default}
+.pre .sd-volver{min-height:48px;padding:0 var(--space-3) 0 0;font-size:16px;font-weight:600}
+.pre .gim-h-chico{font-size:20px}
+.pre-fuerte{margin:0;font-size:16px;line-height:1.45;font-weight:600;color:var(--color-text-primary)}
+.pre-texto{display:flex;flex-direction:column;gap:var(--space-2)}
+.pre-texto p{margin:0;font-size:16px;line-height:1.45;color:var(--color-text-primary)}
+/* Una idea por tarjeta, numerada. */
+.pre-pasos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-2);counter-reset:paso;color:var(--color-text-primary)}
+.pre-pasos li{counter-increment:paso;display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary);font-size:16px;line-height:1.45;overflow-wrap:anywhere}
+.pre-pasos li::before{content:counter(paso);flex:none;box-sizing:border-box;min-width:1.8em;min-height:1.8em;padding:0 .3em;border-radius:999px;display:grid;place-items:center;background:var(--color-bg-tertiary);font-size:15px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+.pre-tarjeta{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary);color:var(--color-text-primary)}
+.pre-enlace{all:unset;box-sizing:border-box;cursor:pointer;align-self:center;min-height:48px;display:inline-flex;align-items:center;padding:var(--space-2) var(--space-3);font-size:15px;font-weight:500;color:var(--color-text-secondary);text-decoration:underline;text-underline-offset:3px}
+.pre-enlace:focus-visible,.pre-sn-b:focus-visible,.pre-fila:focus-visible,.pre .gim-op:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
+
+/* Dibujos: la base toma el color del texto y el manguito, el de acento. */
+.pre-dibujo{color:var(--color-text-primary);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-2)}
+.pre-dibujo svg{display:block;width:100%;height:auto}
+.pre-dibujo.is-chico{border:0;padding:0;background:none;width:72px;max-width:100%}
+.pre-grilla{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2)}
+.pre-evitar{align-items:flex-start;gap:6px}
+.pre-evitar strong{font-size:15px;line-height:1.3;font-weight:600}
+.pre-evitar small{font-size:13px;line-height:1.35;color:var(--color-text-secondary)}
+.pre-tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-2)}
+.pre-tres div{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;color:var(--color-text-primary)}
+.pre-tres strong{font-size:13px;line-height:1.3;font-weight:600;overflow-wrap:anywhere}
+.pre-tres small{font-size:13px;line-height:1.3;color:var(--color-text-secondary)}
+.pre-ic{width:24px;height:24px;flex:none}
+
+/* Avance: un círculo por toma. */
+.pre-avance{display:flex;flex-direction:column;align-items:center;gap:var(--space-2);padding:var(--space-3) 0 var(--space-1)}
+.pre-circs{display:flex;gap:var(--space-3)}
+.pre-circ{width:28px;height:28px;border-radius:50%;border:2px solid var(--color-text-secondary);box-sizing:border-box}
+.pre-circ.is-on{background:var(--color-text-primary);border-color:var(--color-text-primary)}
+.pre-avance-t{margin:0;font-size:17px;line-height:1.3;font-weight:600;color:var(--color-text-primary);text-align:center}
+
+/* Tus tomas */
+.pre-chart{margin-top:0}
+.pre-leyenda{margin:0;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--color-text-secondary)}
+.pre-ley{width:9px;height:9px;border-radius:50%;box-sizing:border-box;border:2px solid var(--color-text-secondary);margin-left:var(--space-3)}
+.pre-ley:first-child{margin-left:0}
+.pre-ley.is-alta{background:var(--color-text-secondary)}
+.pre-tomas{display:flex;flex-direction:column}
+.pre-toma{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px var(--space-3);padding:10px 0;font-size:15px;color:var(--color-text-primary)}
+.pre-toma + .pre-toma{border-top:1px solid var(--color-border)}
+.pre-toma-f{flex:1 1 96px;color:var(--color-text-secondary)}
+.pre-toma-v{font-weight:600;font-variant-numeric:tabular-nums}
+.pre-toma-p{flex:0 0 auto;min-width:76px;text-align:right;color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
+.pre-fila{justify-content:flex-start;text-align:left}
+.pre-fila-fija{cursor:default}
+.pre-fila-acc{flex:none;font-size:14px;color:var(--color-text-secondary)}
+
+/* Sí y No: mismo tamaño y mismo color, ninguno marcado de entrada. */
+.pre-lista{display:flex;flex-direction:column;border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary);overflow:hidden}
+.pre-sn{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--space-2) var(--space-3);padding:10px var(--space-3)}
+.pre-sn + .pre-sn{border-top:1px solid var(--color-border)}
+.pre-sn-t{flex:1 1 9.5em;min-width:0;font-size:16px;line-height:1.35;color:var(--color-text-primary)}
+.pre-sn-bs{flex:none;display:flex;gap:var(--space-2)}
+.pre-sn-b{box-sizing:border-box;min-width:76px;min-height:56px;padding:6px var(--space-3);border:1.5px solid var(--color-border-strong);border-radius:var(--radius-md);background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:17px;font-weight:600;cursor:pointer}
+.pre-sn-b.is-on{background:var(--color-text-primary);border-color:var(--color-text-primary);color:var(--color-bg-primary)}
+
+/* Tildes de la hoja de síntomas */
+.pre-tildes{display:flex;flex-direction:column;border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary);overflow:hidden}
+.pre-tilde{display:flex;align-items:center;gap:var(--space-3);min-height:56px;padding:8px var(--space-3);font-size:16px;line-height:1.35;color:var(--color-text-primary);cursor:pointer}
+.pre-tildes .pre-tilde + .pre-tilde{border-top:1px solid var(--color-border)}
+.pre-tilde input{flex:none;width:26px;height:26px;margin:0;accent-color:var(--color-text-primary)}
+
+/* Temporizador */
+.pre-reloj-caja{display:flex;flex-direction:column;align-items:center;gap:var(--space-3);padding:var(--space-6) var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary)}
+.pre-reloj{font-family:var(--font-num);font-size:56px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+.pre-reloj-t{margin:0;font-size:17px;line-height:1.4;font-weight:600;text-align:center;color:var(--color-text-primary)}
+
+/* Campos */
+.pre-campo{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:500;color:var(--color-text-secondary)}
+.pre-campo input,.pre-num input{box-sizing:border-box;width:100%;min-height:56px;padding:0 var(--space-3);border:1px solid var(--color-border-strong);border-radius:var(--radius-md);background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:17px}
+.pre-campo input:focus-visible,.pre-num input:focus-visible{outline:2px solid var(--color-brand);outline-offset:1px}
+.pre-dos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3)}
+.pre-nums{display:grid;font-size:15px;grid-template-columns:repeat(auto-fit,minmax(4.6em,1fr));gap:var(--space-3)}
+/* «Anotar la toma» siempre a la vista, arriba del teclado o de la barra de pestañas. */
+.pre-pie{position:sticky;bottom:var(--pre-pie,0px);z-index:2;display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-2) 0;background:var(--color-bg-secondary)}
+.pre-num{display:flex;flex-direction:column;gap:6px;font-size:15px;font-weight:600;color:var(--color-text-primary)}
+.pre-campo.is-grande{font-size:16px;font-weight:600;color:var(--color-text-primary)}
+.pre-campo.is-grande input{min-height:72px;text-align:center;font-family:var(--font-num);font-size:32px;font-weight:700;font-variant-numeric:tabular-nums}
+.pre-num{min-width:0}
+.pre-num input{min-height:72px;padding:0 var(--space-2);text-align:center;font-family:var(--font-num);font-size:32px;font-weight:700;font-variant-numeric:tabular-nums}
+.pre-num input[readonly]{background:var(--color-bg-tertiary)}
+.pre-ops{display:flex;flex-direction:column;gap:var(--space-2)}
+.pre .gim-op{min-height:56px;font-size:17px;font-weight:600;background:var(--color-bg-primary);border-color:var(--color-border-strong)}
+.pre .gim-op.is-on{background:var(--color-text-primary);border-color:var(--color-text-primary);color:var(--color-bg-primary)}
+
+/* Barra de talles con el marcador en su medida */
+.pre-talles{display:flex;flex-direction:column;gap:6px;padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary)}
+.pre-talles-42{margin:0 0 0 50%;padding:0 0 4px 6px;border-left:2px solid var(--color-text-secondary);border-bottom:2px solid var(--color-text-secondary);font-size:12px;line-height:1.3;color:var(--color-text-secondary)}
+.pre-talles-barra{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;height:14px;margin:8px 0 4px}
+.pre-talle{border-radius:4px;background:var(--color-bg-tertiary);border:1px solid var(--color-border-strong);box-sizing:border-box}
+.pre-talle.is-on{background:var(--color-text-secondary);border-color:var(--color-text-secondary)}
+.pre-talles-m{position:absolute;top:-7px;bottom:-7px;width:4px;margin-left:-2px;border-radius:2px;background:var(--color-text-primary);box-shadow:0 0 0 2px var(--color-bg-primary)}
+.pre-talles-txt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+.pre-talles-txt span{display:flex;flex-direction:column;gap:1px;text-align:center;color:var(--color-text-secondary);overflow-wrap:anywhere}
+.pre-talles-txt strong{font-size:12px;line-height:1.25;font-weight:600}
+.pre-talles-txt small{font-size:11px;line-height:1.25}
+.pre-talles-txt span.is-on{color:var(--color-text-primary)}
+
+/* Texto de guardia: se tiene que leer entero, sin colores de alarma. */
+.pre-guardia .pre-pasos{gap:var(--space-3)}
+.pre-guardia .pre-pasos li{border:2px solid var(--color-text-primary);font-size:17px;font-weight:600}
+.pre .md-ceja{text-transform:none;letter-spacing:0;font-size:14px;margin-left:var(--space-1)}
+.pre-pasos.is-aparte{padding-top:var(--space-3);border-top:1px solid var(--color-border-strong)}
+
+/* La tarjeta «Tu presión», arriba de todo en Entreno. Una tarjeta más: no tapa ni frena la rutina. */
+.pre-tj{box-sizing:border-box;display:flex;flex-direction:column;gap:var(--space-3);width:100%;margin-bottom:var(--space-3);padding:var(--space-4);border:2px solid var(--color-brand);border-radius:var(--radius-lg);background:var(--color-bg-primary);color:var(--color-text-primary)}
+.pre-tj[role="button"]{cursor:pointer}
+.pre-tj:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
+.pre-tj-h{font-size:18px;line-height:1.25;font-weight:700}
+.pre-tj-t{margin:0;font-size:17px;line-height:1.4;font-weight:600;overflow-wrap:anywhere}
+.pre-tj-s{margin:calc(var(--space-2) * -1) 0 0;font-size:15px;line-height:1.4;color:var(--color-text-secondary)}
+.pre-tj .pre-circs{align-self:flex-start}
+.pre-tj .btn-primary{width:100%;height:auto;min-height:56px;padding:12px var(--space-4);font-size:17px;font-weight:600;line-height:1.25;text-align:center;overflow-wrap:anywhere}
+.pre-tj .btn-primary:not(:disabled){color:#0a0a0a}

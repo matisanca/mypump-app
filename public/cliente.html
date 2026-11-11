@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/gimnasio.css">
 <link rel="stylesheet" href="/css/tecnica.css">
+<link rel="stylesheet" href="/css/presion.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--font-size-base);line-height:var(--line-height-normal);-webkit-font-smoothing:antialiased}
@@ -1492,6 +1493,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
     <section class="scene" id="scene-misdatos"></section>
     <section class="scene" id="scene-gimnasio"></section>
     <section class="scene" id="scene-tecnica"></section>
+    <section class="scene" id="scene-presion"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -1601,6 +1603,20 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/tecnica.js"></script>
 <script src="/js/tecnica-cola.js"></script>
 <script src="/js/tecnica-ui.js"></script>
+<script src="/js/presion.js"></script>
+<script src="/js/presion-dibujos.js"></script>
+<script src="/js/presion-cola.js"></script>
+<script src="/js/presion-ui.js"></script>
+<script>
+/* Doble del servidor de presión, para ver las pantallas sin base (js/presion-prueba.js).
+ * Mismas compuertas que el banco de pruebas de salud: parámetro explícito, nunca en la app nativa y SOLO en localhost. */
+(function () {
+  var q = new URLSearchParams(location.search);
+  var capReal = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  if (q.get('presionprueba') && !capReal && local) document.write('<script src="/js/presion-prueba.js"><\/script>');
+})();
+</script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1784,11 +1800,29 @@ function _tecPalanca(cfg) {
   });
   window.TecnicaUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.tecnica_video === true : null);
 }
+/* «Presión arterial» (js/presion*.js), detrás de `presion_app`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada.
+   No toca Entreno ni la rutina: la presión nunca frena el entrenamiento. */
+let _presionPorUI = false;
+function _prePalanca(cfg) {
+  if (!window.PresionUI) return;
+  // `irA` es la única entrada a la escena: un aviso o un link con destino `presion` pasan por `abrirDirecto` (ver setScene).
+  const base = { irA: (escena) => { _presionPorUI = true; try { setScene(escena); } finally { _presionPorUI = false; } }, alCambiarEntrada: () => { if (STATE.scene === 'misdatos') renderMisDatos(); } };
+  // Solo existe en localhost con ?presionprueba= (ver el cargador de arriba): un servidor en memoria, sin red.
+  if (window.PresionPrueba) {
+    window.PresionUI.configurar({ ...base, token: window.PresionPrueba.token, rpc: window.PresionPrueba.rpc });
+    window.PresionUI.aplicarPalanca(true).then(() => window.PresionPrueba.guion(window.PresionUI)).catch(() => {});
+    return;
+  }
+  if (!TOKEN || DEMO) return;
+  window.PresionUI.configurar({ ...base, token: TOKEN, rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params) });
+  window.PresionUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.presion_app === true : null);
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
   _gimPalanca(cfg);
   _tecPalanca(cfg);
+  _prePalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -10106,7 +10140,7 @@ function renderRecordatorio() {
   }
 
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
-  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica') return;
+  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica' || STATE.scene === 'presion') return;
 
   const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan tu check y tus fotos de la semana'
               : p.faltaCheck ? 'Te falta tu check de la semana'
@@ -10986,6 +11020,7 @@ function renderMisDatos() {
       ${guia ? fila('mdGuia', 'Ver mi guía') : ''}
       ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
       ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? fila('mdTecnica', window.Tecnica.T.titulo) : ''}
+      ${window.PresionUI && window.PresionUI.entradaVisible() ? fila('mdPresion', window.PresionUI.entrada()) : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
@@ -10996,6 +11031,8 @@ function renderMisDatos() {
   if (gim) gim.onclick = () => window.GimnasioUI.abrir('misdatos');
   const tec = document.getElementById('mdTecnica');
   if (tec) tec.onclick = () => window.TecnicaUI.abrir('misdatos');
+  const pre = document.getElementById('mdPresion');
+  if (pre) pre.onclick = () => window.PresionUI.abrir('misdatos');
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
   const sw = document.getElementById('mdOscuro');
@@ -11246,6 +11283,8 @@ function renderMyday() {
 }
 
 function setScene(scene) {
+  // Un aviso (local o push) con destino `presion`: Presión abierta directo en lo pendiente. Apagada o sin habilitar, no hace nada.
+  if (scene === 'presion' && !_presionPorUI) { if (window.PresionUI) window.PresionUI.abrirDirecto('train'); return; }
   if (scene !== 'train') { _csVaciarDeshacer(); _csCorr = null; }
   // Dieta se abre siempre en hoy, y las otras pantallas leen lo de hoy.
   if (scene !== 'diet') _dietaVolverAHoy(true);
@@ -11259,6 +11298,7 @@ function setScene(scene) {
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
     const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision'
+      : scene === 'presion' ? (window.PresionUI.origen === 'train' ? 'train' : 'revision')
       : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train')
       : scene === 'tecnica' ? (window.TecnicaUI.origen === 'train' ? 'train' : 'revision') : scene;
     const active = t.getAttribute('data-scene') === tabDe;
@@ -11332,6 +11372,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = window.TecnicaUI.titulo();
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'presion') {
+    $('#hdrEyebrow').textContent = window.PresionUI.origen === 'train' ? 'ENTRENAMIENTO' : 'REVISIÓN';
+    $('#hdrTitle').textContent = window.PresionUI.titulo();
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   }
 
   if (scene === 'train') renderTrain();
@@ -11344,6 +11389,7 @@ function setScene(scene) {
   if (scene === 'misdatos') renderMisDatos();
   if (scene === 'gimnasio') window.GimnasioUI.renderEscena();
   if (scene === 'tecnica') window.TecnicaUI.renderEscena();
+  if (scene === 'presion') window.PresionUI.renderEscena();
   if (scene === 'supl') { STATE.suplAbierto = null; renderSupl(); }
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
@@ -11364,6 +11410,7 @@ function arrancarGuia() {
   _guiaHost.dataset.montado = '1';
   const r = document.getElementById('scene-train');
   if (r) r.insertBefore(_guiaHost, r.firstChild);
+  if (r && window.PresionUI) window.PresionUI.montarTarjeta(r);
   window.MyPumpGuia.montarTarjeta(_guiaHost, TOKEN).catch(() => {});
   window.MyPumpGuia.alCambiar(() => { if (STATE.scene === 'misdatos') renderMisDatos(); });
   document.addEventListener('visibilitychange', _bienvenidaGuia);
@@ -11395,6 +11442,8 @@ function _bienvenidaGuia() {
     const r = document.getElementById('scene-train');
     if (r && window.MyPumpGuia && _guiaHost.dataset.montado) { r.insertBefore(_guiaHost, r.firstChild); _bienvenidaGuia(); }
     if (r && window.GimnasioUI) window.GimnasioUI.montarTarjeta(r, _guiaHost);
+    // «Tu presión», primera de todas. Solo es una tarjeta: no toca ni condiciona la rutina.
+    if (r && window.PresionUI) window.PresionUI.montarTarjeta(r);
   };
   renderProgress = function () {
     _rp.apply(this, arguments);
@@ -11447,6 +11496,7 @@ function _aplicarSceneDeURL() {
     const s = new URLSearchParams(location.search).get('scene');
     if (!s) return;
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
+    if (s === 'presion') { if (window.PresionUI) window.PresionUI.abrirDirecto('train'); return; }   // el aviso de presión: directo a lo pendiente (queda pedido hasta que llegue la palanca)
     if (validas.indexOf(s) !== -1 && s !== 'gimnasio' && s !== 'tecnica') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
   } catch (e) {}
 }
@@ -11722,7 +11772,8 @@ async function init() {
   // dispositivo, incógnito, cache limpio, retroceso de semana).
   await restoreSesionDelDia();
   aplicarPendientesEntreno();
-  if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
+  if (window.PresionPrueba) _prePalanca(null);
+  else if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
   // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio también va, como en la app.
   else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => _gimPalanca(r.ok ? r.data : null)).catch(() => {});
 
