@@ -162,7 +162,8 @@ fun TarjetaMiSaludInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
         // Sin pendiente de estudios, lo primero es el control cerca (sin bloque propio: va en Estudios).
         MiSalud.Bloque.ESTUDIOS -> estado.botonEstudios?.let { it.boton to (if (it.nueva) Iconos.FlechaDerecha else Iconos.FlechaArriba) }
             ?: (TextosControles.verMisEstudios to Iconos.FlechaDerecha)
-        MiSalud.Bloque.CONTROL -> TextosControles.verMisEstudios to Iconos.FlechaDerecha
+        // Lleva al bloque «Próximo control» (con el control sin bloque propio, `bloque` es ESTUDIOS).
+        MiSalud.Bloque.CONTROL -> MiSalud.VER_MI_CONTROL to Iconos.FlechaDerecha
         MiSalud.Bloque.PRESION -> when (estado.presion) {
             ModeloPresion.Tarjeta.Repetir -> TextosPresion.N.repetir
             ModeloPresion.Tarjeta.Preparar -> TextosPresion.N.empezar

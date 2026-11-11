@@ -78,6 +78,12 @@ object MiSalud {
     /** La ceja de la tarjeta verde de arriba de Entreno (simplificar, 11/11). */
     const val CEJA_INICIO = "Mi salud"
 
+    /**
+     * El botón de la tarjeta de Entreno cuando lo primero es el control y lleva al bloque «Próximo control». Sin ese bloque
+     * lleva a Estudios y dice «Ver mis estudios», como la tarjeta vieja. Igual en iOS y la web.
+     */
+    const val VER_MI_CONTROL = "Ver mi control"
+
     /** Debajo de la línea, con más de una cosa: «Y 1 cosa más» / «Y 2 cosas más». null con una sola. */
     fun masCosas(cuenta: Int): String? = when {
         cuenta <= 1 -> null

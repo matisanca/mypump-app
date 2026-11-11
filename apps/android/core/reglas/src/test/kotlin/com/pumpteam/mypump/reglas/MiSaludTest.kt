@@ -71,4 +71,10 @@ class MiSaludTest {
         assertEquals("Y 1 cosa más", MiSalud.masCosas(2))
         assertEquals("Y 2 cosas más", MiSalud.masCosas(3))
     }
+
+    @Test
+    fun botonDelControl() {
+        // El mismo texto en iOS y la web: lleva al bloque «Próximo control».
+        assertEquals("Ver mi control", MiSalud.VER_MI_CONTROL)
+    }
 }
