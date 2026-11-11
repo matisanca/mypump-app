@@ -4,7 +4,7 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -104,6 +105,10 @@ internal class FuentesTuCambio(
         }
     }
 
+    /** Cambia cuando cambian las fotos (no solo cuántas): vuelve a pedir las URLs si hace falta. */
+    val claveFirma: List<String>
+        get() = entradas.map { "${it.first}|${it.second}" }.sorted() + fechasInicio.map { "i|${it.key}|${it.value}" }.sorted()
+
     /** Las URLs firmadas de las dos fuentes (cada modelo guarda las suyas 50 minutos). */
     suspend fun firmar() {
         if (fotos != null && entradas.isNotEmpty()) fotos.firmar()
@@ -144,7 +149,7 @@ internal fun TarjetaTuCambio(fuentes: FuentesTuCambio, modifier: Modifier = Modi
     var comparador by rememberSaveable { mutableStateOf(false) }
     val v = fuentes.vista(pose)
     val c = MyPump.colores
-    LaunchedEffect(fuentes.entradas.size, fuentes.fechasInicio.size) { fuentes.firmar() }
+    LaunchedEffect(fuentes.claveFirma) { fuentes.firmar() }
 
     Tarjeta(modifier.testTag("tucambio-tarjeta"), espaciado = Espacio.m) {
         Text(
@@ -157,7 +162,9 @@ internal fun TarjetaTuCambio(fuentes: FuentesTuCambio, modifier: Modifier = Modi
         if (v.modo == TuCambio.Modo.PAR) {
             SelectorPoseTuCambio(pose) { pose = it }
             // Tocar las fotos abre el comparador; para TalkBack cada foto es su propio elemento y el camino es el botón.
-            ParTuCambio(v, fuentes, Modifier.clickable(onClickLabel = TuCambio.BOTON_VER) { comparador = true })
+            // Tocar las fotos abre el comparador, sin fundirlas en un solo botón: para el lector cada foto es su propio
+            // elemento y el camino es «Ver mis fotos».
+            ParTuCambio(v, fuentes, Modifier.pointerInput(Unit) { detectTapGestures { comparador = true } })
             v.pie?.let {
                 Text(
                     it,
@@ -198,7 +205,7 @@ internal fun TarjetaTuCambio(fuentes: FuentesTuCambio, modifier: Modifier = Modi
 internal fun ParTuCambio(v: TuCambio.Vista, fuentes: FuentesTuCambio, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
         MarcoTuCambio(fuentes.imagen(v.antes, v.pose), v.rotuloAntes, v.accesibleAntes, TuCambio.sinFoto(v.pose), Modifier.weight(1f).testTag("tucambio-antes"))
-        MarcoTuCambio(fuentes.imagen(v.despues, v.pose), v.rotuloDespues, v.accesibleDespues, TuCambio.sinFoto(v.pose), Modifier.weight(1f).testTag("tucambio-despues"))
+        MarcoTuCambio(fuentes.imagen(v.despues, v.pose), v.rotuloDespues, v.accesibleDespues, v.vacioDespues, Modifier.weight(1f).testTag("tucambio-despues"))
     }
 }
 
@@ -261,7 +268,7 @@ internal fun MarcoTuCambio(imagen: ImagenTuCambio?, rotulo: String, accesible: S
                 else -> ImagenLocalTuCambio(imagen)
             }
         }
-        Text(rotulo, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = c.texto, textAlign = TextAlign.Center)
+        if (rotulo.isNotEmpty()) Text(rotulo, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = c.texto, textAlign = TextAlign.Center)
     }
 }
 
@@ -270,16 +277,20 @@ internal fun MarcoTuCambio(imagen: ImagenTuCambio?, rotulo: String, accesible: S
 private fun ImagenLocalTuCambio(imagen: ImagenTuCambio) {
     val bitmap by produceState<ImageBitmap?>(null, imagen) {
         value = withContext(Dispatchers.IO) {
-            val opciones = BitmapFactory.Options().apply { inSampleSize = 2 }
             runCatching {
-                when (imagen) {
-                    is ImagenTuCambio.Archivo -> BitmapFactory.decodeFile(imagen.archivo.path, opciones)
-                    is ImagenTuCambio.Datos -> {
-                        val b = Base64.decode(imagen.dataUrl.substringAfter(','), Base64.DEFAULT)
-                        BitmapFactory.decodeByteArray(b, 0, b.size, opciones)
-                    }
+                // Primero solo el tamaño, para achicarla a unos 900 px de lado largo (alcanza para pantalla completa).
+                val datos = (imagen as? ImagenTuCambio.Datos)?.let { Base64.decode(it.dataUrl.substringAfter(','), Base64.DEFAULT) }
+                fun leer(o: BitmapFactory.Options) = when (imagen) {
+                    is ImagenTuCambio.Archivo -> BitmapFactory.decodeFile(imagen.archivo.path, o)
+                    is ImagenTuCambio.Datos -> datos?.let { BitmapFactory.decodeByteArray(it, 0, it.size, o) }
                     is ImagenTuCambio.Url -> null
-                }?.asImageBitmap()
+                }
+                if (imagen is ImagenTuCambio.Url) return@runCatching null
+                val medida = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                leer(medida)
+                var paso = 1
+                while (maxOf(medida.outWidth, medida.outHeight) / (paso * 2) >= 900) paso *= 2
+                leer(BitmapFactory.Options().apply { inSampleSize = paso })?.asImageBitmap()
             }.getOrNull()
         }
     }

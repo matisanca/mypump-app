@@ -3,6 +3,8 @@ package com.pumpteam.mypump.reglas
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
 import java.time.format.DateTimeParseException
 import java.util.Locale
 
@@ -45,6 +47,11 @@ object TuCambio {
         val rotuloDespues: String,
         val accesibleAntes: String,
         val accesibleDespues: String,
+        /**
+         * Lo que dice el marco de la derecha sin foto: «Sin foto de perfil», o «Todavía no hay otra foto de perfil» cuando esa
+         * pose tiene una sola foto (que entonces va a la izquierda con su propia semana, nunca rotulada «Semana 1»).
+         */
+        val vacioDespues: String,
     )
 
     /**
@@ -74,17 +81,23 @@ object TuCambio {
         if (momentos.size < 2) {
             val orden = listOf(elegida) + poses.filter { it != elegida }
             val p = orden.firstOrNull { primera(it) != null } ?: elegida
-            return Vista(Modo.ESPERA, p, primera(p), null, TEXTO_ESPERA, null, ROTULO_ANTES, "", accesible(ROTULO_ANTES), "")
+            return Vista(Modo.ESPERA, p, primera(p), null, TEXTO_ESPERA, null, ROTULO_ANTES, "", accesible(ROTULO_ANTES), "", sinFoto(p))
         }
 
         val antes = primera(elegida)
         val despues = antes?.let { a -> semanasDe(elegida).lastOrNull()?.takeIf { it > a.semana }?.let { Foto(Origen.PROGRESO, it) } }
         val pie = if (antes != null && despues != null) FotosProgreso.resumenComparador(antes.semana, despues.semana, peso) else null
+        if (antes != null && despues == null) {
+            // Esa pose tiene una sola foto: se rotula con su semana y el otro marco dice que todavía no hay otra.
+            val r = rotulo(antes.semana, semanaActual)
+            return Vista(Modo.PAR, elegida, antes, null, null, null, r, "", accesible(r), sinOtra(elegida), sinOtra(elegida))
+        }
         val rotuloDespues = rotulo(despues?.semana ?: semanaActual, semanaActual)
         return Vista(
             Modo.PAR, elegida, antes, despues, null, pie, ROTULO_ANTES, rotuloDespues,
             accesible(ROTULO_ANTES, if (antes == null) elegida else null),
             accesible(rotuloDespues, if (despues == null) elegida else null),
+            sinFoto(elegida),
         )
     }
 
@@ -102,6 +115,10 @@ object TuCambio {
     fun sinFoto(pose: String): String =
         "Sin foto de ${(FotosProgreso.poses.firstOrNull { it.first == pose }?.second ?: pose).lowercase(Locale.ROOT)}"
 
+    /** El marco de la derecha cuando esa pose tiene una sola foto: «Todavía no hay otra foto de perfil». */
+    fun sinOtra(pose: String): String =
+        "Todavía no hay otra foto de ${(FotosProgreso.poses.firstOrNull { it.first == pose }?.second ?: pose).lowercase(Locale.ROOT)}"
+
     private fun minusculaInicial(s: String) = s.take(1).lowercase(Locale.ROOT) + s.drop(1)
 
     private val MESES = listOf("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
@@ -116,9 +133,17 @@ object TuCambio {
         return "$d de ${MESES[m - 1]}"
     }
 
+    /** ISO 8601 con la zona como «Z», «-03:00» o «+0000» (Postgres puede mandar cualquiera). */
+    private val ISO_CON_ZONA: DateTimeFormatter = DateTimeFormatterBuilder()
+        .append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        .optionalStart().appendOffset("+HH:MM", "Z").optionalEnd()
+        .optionalStart().appendOffset("+HHMM", "Z").optionalEnd()
+        .optionalStart().appendOffset("+HH", "Z").optionalEnd()
+        .toFormatter()
+
     /** La fecha local (AAAA-MM-DD) de un `tomada_en` del servidor. Sin zona o ilegible: sus 10 primeros caracteres, si son una fecha. */
     fun fechaLocal(iso: String, zona: ZoneId = ZoneId.systemDefault()): String? = try {
-        OffsetDateTime.parse(iso).atZoneSameInstant(zona).toLocalDate().toString()
+        OffsetDateTime.parse(iso, ISO_CON_ZONA).atZoneSameInstant(zona).toLocalDate().toString()
     } catch (e: DateTimeParseException) {
         val p = iso.take(10)
         if (p.length == 10 && DiaCalendario.numero(p) != null) LocalDate.ofEpochDay(DiaCalendario.numero(p)!!).toString() else null

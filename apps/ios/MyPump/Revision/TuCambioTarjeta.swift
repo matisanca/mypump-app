@@ -55,6 +55,11 @@ struct FuentesTuCambio {
         }
     }
 
+    /// Cambia cuando cambian las fotos (no solo cuántas): vuelve a pedir las URLs si hace falta.
+    var claveFirma: [String] {
+        entradas.map { "\($0.semana)|\($0.pose)" }.sorted() + fechasInicio.map { "i|\($0.key)|\($0.value)" }.sorted()
+    }
+
     /// Las URLs firmadas de las dos fuentes (cada modelo guarda las suyas 50 minutos).
     func firmar() async {
         if let fotos, !fotos.fotos.isEmpty { await fotos.firmar() }
@@ -110,7 +115,7 @@ struct TuCambioTarjeta: View {
         .tarjeta()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tucambio-tarjeta")
-        .task(id: fuentes.entradas.count + fuentes.fechasInicio.count) { await fuentes.firmar() }
+        .task(id: fuentes.claveFirma) { await fuentes.firmar() }
         .fullScreenCover(isPresented: $comparador) {
             GaleriaFotos(modelo: fuentes.fotos, fotos: fuentes.fotos?.fotos ?? [], peso: fuentes.peso, tuCambio: fuentes, poseInicial: pose)
         }
@@ -127,7 +132,7 @@ struct ParTuCambio: View {
             MarcoTuCambio(imagen: fuentes.imagen(vista.antes, pose: vista.pose), rotulo: vista.rotuloAntes, accesible: vista.accesibleAntes,
                           vacio: TuCambio.sinFoto(vista.pose), id: "tucambio-antes")
             MarcoTuCambio(imagen: fuentes.imagen(vista.despues, pose: vista.pose), rotulo: vista.rotuloDespues, accesible: vista.accesibleDespues,
-                          vacio: TuCambio.sinFoto(vista.pose), id: "tucambio-despues")
+                          vacio: vista.vacioDespues, id: "tucambio-despues")
         }
     }
 }
@@ -188,11 +193,13 @@ struct MarcoTuCambio: View {
                     }
                 }
                 .clipShape(.rect(cornerRadius: Radio.control, style: .continuous))
-            Text(rotulo)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+            if !rotulo.isEmpty {
+                Text(rotulo)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)

@@ -43,6 +43,9 @@ public enum TuCambio {
         public let rotuloDespues: String
         public let accesibleAntes: String
         public let accesibleDespues: String
+        /// Lo que dice el marco de la derecha sin foto: «Sin foto de perfil», o «Todavía no hay otra foto de perfil» cuando
+        /// esa pose tiene una sola foto (que entonces va a la izquierda con su propia semana, nunca rotulada «Semana 1»).
+        public let vacioDespues: String
     }
 
     /// `fotos`: las de progreso (las del servidor y las que esperan subir), como (semana, pose). `inicio`: las fotos de
@@ -67,17 +70,24 @@ public enum TuCambio {
             let orden = [elegida] + poses.filter { $0 != elegida }
             let p = orden.first { primera($0) != nil } ?? elegida
             return Vista(modo: .espera, pose: p, antes: primera(p), despues: nil, texto: textoEspera, pie: nil,
-                         rotuloAntes: rotuloAntes, rotuloDespues: "", accesibleAntes: accesible(rotuloAntes), accesibleDespues: "")
+                         rotuloAntes: rotuloAntes, rotuloDespues: "", accesibleAntes: accesible(rotuloAntes), accesibleDespues: "",
+                         vacioDespues: sinFoto(p))
         }
 
         let antes = primera(elegida)
         let despues = antes.flatMap { a in semanasDe(elegida).last.flatMap { $0 > a.semana ? Foto(origen: .progreso, semana: $0) : nil } }
         let pie = antes.flatMap { a in despues.map { FotosProgreso.resumenComparador(primera: a.semana, ultima: $0.semana, peso: peso) } }
+        if let a = antes, despues == nil {
+            // Esa pose tiene una sola foto: se rotula con su semana y el otro marco dice que todavía no hay otra.
+            let r = rotulo(a.semana, semanaActual: semanaActual)
+            return Vista(modo: .par, pose: elegida, antes: a, despues: nil, texto: nil, pie: nil, rotuloAntes: r, rotuloDespues: "",
+                         accesibleAntes: accesible(r), accesibleDespues: sinOtra(elegida), vacioDespues: sinOtra(elegida))
+        }
         let rotuloDespues = rotulo(despues?.semana ?? semanaActual, semanaActual: semanaActual)
         return Vista(modo: .par, pose: elegida, antes: antes, despues: despues, texto: nil, pie: pie,
                      rotuloAntes: rotuloAntes, rotuloDespues: rotuloDespues,
                      accesibleAntes: accesible(rotuloAntes, falta: antes == nil ? elegida : nil),
-                     accesibleDespues: accesible(rotuloDespues, falta: despues == nil ? elegida : nil))
+                     accesibleDespues: accesible(rotuloDespues, falta: despues == nil ? elegida : nil), vacioDespues: sinFoto(elegida))
     }
 
     /// «Esta semana» o «Semana del 12 de octubre».
@@ -96,6 +106,11 @@ public enum TuCambio {
         "Sin foto de \((FotosProgreso.poses.first { $0.clave == pose }?.etiqueta ?? pose).lowercased())"
     }
 
+    /// El marco de la derecha cuando esa pose tiene una sola foto: «Todavía no hay otra foto de perfil».
+    public static func sinOtra(_ pose: String) -> String {
+        "Todavía no hay otra foto de \((FotosProgreso.poses.first { $0.clave == pose }?.etiqueta ?? pose).lowercased())"
+    }
+
     private static let meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
                                 "octubre", "noviembre", "diciembre"]
 
@@ -106,12 +121,17 @@ public enum TuCambio {
         return "\(d) de \(meses[m - 1])"
     }
 
-    /// La fecha local (AAAA-MM-DD) de un `tomada_en` del servidor (ISO 8601 con zona). Sin zona o ilegible: sus 10 primeros caracteres.
-    public static func fechaLocal(_ iso: String, zona: TimeZone = .current) -> String? {
+    // Se crean una vez (son caros) y solo se leen: ISO8601DateFormatter es seguro entre hilos.
+    nonisolated(unsafe) private static let conFraccion: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let g = ISO8601DateFormatter()
-        guard let d = f.date(from: iso) ?? g.date(from: iso) else {
+        return f
+    }()
+    nonisolated(unsafe) private static let sinFraccion = ISO8601DateFormatter()
+
+    /// La fecha local (AAAA-MM-DD) de un `tomada_en` del servidor (ISO 8601 con zona). Sin zona o ilegible: sus 10 primeros caracteres.
+    public static func fechaLocal(_ iso: String, zona: TimeZone = .current) -> String? {
+        guard let d = conFraccion.date(from: iso) ?? sinFraccion.date(from: iso) else {
             let p = String(iso.prefix(10))
             return p.count == 10 && DiaCalendario.numero(p) != nil ? p : nil
         }

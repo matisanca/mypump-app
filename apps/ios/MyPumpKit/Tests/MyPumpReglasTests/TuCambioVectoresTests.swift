@@ -51,6 +51,7 @@ final class TuCambioVectoresTests: XCTestCase {
             XCTAssertEqual(r.rotuloDespues, e?["rotuloDespues"]?.comoTexto, n)
             XCTAssertEqual(r.accesibleAntes, e?["accesibleAntes"]?.comoTexto, n)
             XCTAssertEqual(r.accesibleDespues, e?["accesibleDespues"]?.comoTexto, n)
+            XCTAssertEqual(r.vacioDespues, e?["vacioDespues"]?.comoTexto, n)
         }
     }
 
@@ -58,6 +59,8 @@ final class TuCambioVectoresTests: XCTestCase {
         let v = try vectores()
         for f in lista(v["fechas"]) { XCTAssertEqual(TuCambio.fecha(lista(f)[0].comoTexto ?? ""), lista(f)[1].comoTexto) }
         for f in lista(v["sinFoto"]) { XCTAssertEqual(TuCambio.sinFoto(lista(f)[0].comoTexto ?? ""), lista(f)[1].comoTexto) }
+        for f in lista(v["sinOtra"]) { XCTAssertEqual(TuCambio.sinOtra(lista(f)[0].comoTexto ?? ""), lista(f)[1].comoTexto) }
+        XCTAssertFalse(lista(v["sinOtra"]).isEmpty)
         for f in lista(v["fechaLocal"]) {
             let zona = try XCTUnwrap(TimeZone(identifier: f["zona"]?.comoTexto ?? ""))
             XCTAssertEqual(TuCambio.fechaLocal(f["iso"]?.comoTexto ?? "", zona: zona), f["esperado"]?.comoTexto, f["iso"]?.comoTexto ?? "")

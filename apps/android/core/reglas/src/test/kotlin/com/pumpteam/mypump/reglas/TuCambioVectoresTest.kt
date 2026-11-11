@@ -49,12 +49,15 @@ class TuCambioVectoresTest {
             assertEquals(e?.get("rotuloDespues")?.comoTexto, r.rotuloDespues, n)
             assertEquals(e?.get("accesibleAntes")?.comoTexto, r.accesibleAntes, n)
             assertEquals(e?.get("accesibleDespues")?.comoTexto, r.accesibleDespues, n)
+            assertEquals(e?.get("vacioDespues")?.comoTexto, r.vacioDespues, n)
         }
     }
 
     @Test fun fechasYSinFoto() {
         for (f in lista(v["fechas"])) assertEquals(lista(f)[1].comoTexto, TuCambio.fecha(lista(f)[0].comoTexto!!))
         for (f in lista(v["sinFoto"])) assertEquals(lista(f)[1].comoTexto, TuCambio.sinFoto(lista(f)[0].comoTexto!!))
+        assertTrue(lista(v["sinOtra"]).isNotEmpty())
+        for (f in lista(v["sinOtra"])) assertEquals(lista(f)[1].comoTexto, TuCambio.sinOtra(lista(f)[0].comoTexto!!))
         for (f in lista(v["fechaLocal"])) {
             val zona = ZoneId.of(f["zona"]!!.comoTexto!!)
             assertEquals(f["esperado"]?.comoTexto, TuCambio.fechaLocal(f["iso"]!!.comoTexto!!, zona), f["iso"]?.comoTexto)
