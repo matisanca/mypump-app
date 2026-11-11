@@ -53,8 +53,11 @@
     if (!tok) return;
     // Ya estamos adentro con ese mismo token → no recargar (evita el loop si
     // iOS reentrega la URL al volver del background).
+    // Desde la auditoría del 10/11 (F21) la web saca el ?t= de la dirección apenas lo guarda: «ya adentro» también es tenerlo
+    // guardado. Sin esto, cada apertura volvía a cargar la página con el link de arranque, para siempre.
     var params = new URLSearchParams(location.search);
-    if (/cliente/.test(location.pathname) && params.get('t') === tok) return;
+    var guardado = null; try { guardado = localStorage.getItem(TOKEN_KEY); } catch (e) {}
+    if (/cliente/.test(location.pathname) && (params.get('t') === tok || guardado === tok)) return;
     try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
     location.replace('/cliente.html?t=' + encodeURIComponent(tok));
   }

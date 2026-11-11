@@ -186,7 +186,7 @@ t('cerrar el día NO expira el swap del día abierto (reabrir para corregir)', (
 });
 
 t('la pantalla de Progreso agrupa por ejercicio, no por slot', () => {
-  const i = HTML.indexOf('async function loadProgressAndRender()');
+  const i = HTML.indexOf('async function loadProgressAndRender(');
   const cuerpo = HTML.slice(i, i + 4500);
   if (cuerpo.includes('if (seen.has(ex.id)) continue;'))
     throw new Error('Progreso sigue deduplicando por ex.id: el mismo ejercicio en dos días sale dos veces');
@@ -257,7 +257,7 @@ t('un fallo de red NUNCA cae al historial por slot (mezclaría original y sustit
   if (!cuerpo.includes('porClave === false ? window.mypumpDB.getHistoricoEjercicio'))
     throw new Error('loadHistorico cae al slot con cualquier valor falsy, no solo con false');
   if (!cuerpo.includes('porClave === null  ? null')) throw new Error('un null de red no se propaga como "sin definir"');
-  const j = HTML.indexOf('async function loadProgressAndRender()');
+  const j = HTML.indexOf('async function loadProgressAndRender(');
   const prog = HTML.slice(j, j + 4000);
   if (!prog.includes('else if (porClave === null)')) throw new Error('Progreso cae al slot ante un fallo de red');
 });

@@ -773,7 +773,8 @@ main{padding:var(--space-4)}
 /* F8 — avisos del modal de sustitución */
 .swap-aviso{margin:var(--space-2) 0;padding:8px 10px;border-radius:var(--radius-md);background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));font-size:12px;line-height:1.45;color:var(--color-text-secondary)}
 /* F10 — comidas libres */
-.comidas-libres{margin-top:var(--space-4);padding:var(--space-3) var(--space-4);border:1px dashed var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-primary)}
+/* U4 (auditoría del 10/11): arriba de las comidas, cerca del anillo. Al fondo, un alumno real no la encontró. */
+.comidas-libres{margin:var(--space-4) 0;padding:var(--space-3) var(--space-4);border:1px dashed var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-primary)}
 .cl-title{font-size:13px;font-weight:700;color:var(--color-text-primary);margin-bottom:var(--space-2)}
 .cl-sub{font-size:11px;font-weight:500;color:var(--color-text-muted);margin-left:4px}
 .cl-item{display:flex;align-items:center;gap:var(--space-3);padding:8px 0;border-bottom:1px solid var(--color-border)}
@@ -1092,6 +1093,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .fp-vergaleria{width:100%;margin-top:var(--space-3);height:44px;border:1px solid color-mix(in oklab,var(--color-brand) 45%,var(--color-border));background:color-mix(in oklab,var(--color-brand) 8%,var(--color-bg-primary));color:var(--color-text-primary);border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer}
 .fp-vergaleria:active{transform:scale(.98)}
 .fp-msg{margin-top:var(--space-2);font-size:12px;color:var(--color-text-muted);min-height:16px}
+.fp-link{background:none;border:0;padding:4px 6px;font:inherit;font-weight:700;color:var(--color-brand);cursor:pointer}
 .fp-msg.is-ok{color:var(--color-brand);font-weight:600}
 .fp-msg.is-warn{color:var(--color-warning)}
 .fp-msg.is-err{color:var(--color-danger)}
@@ -1686,6 +1688,17 @@ const TOKEN = (function() {
     return typeof t === 'string' && /^[a-zA-Z0-9_-]{16,64}$/.test(t);
   }
 
+  // Auditoría del 10/11, F21: el link queda en la barra, en el historial y en las capturas. Leído y guardado, se saca de
+  // la dirección (los demás parámetros quedan). Solo si quedó guardado: si el teléfono no deja guardar, recargar lo perdería.
+  function sacarDeLaDireccion(t) {
+    try {
+      if (localStorage.getItem(TOKEN_KEY) !== t) return;
+      var u = new URL(window.location.href);
+      u.searchParams.delete('t');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    } catch (e) {}
+  }
+
   // Prioridad 1: query string ?t=xxx
   var params = new URLSearchParams(window.location.search);
   var fromQuery = params.get('t');
@@ -1696,8 +1709,9 @@ const TOKEN = (function() {
     // que ya falló como inválido no vuelve a ganar: se usa el guardado.
     var invalido = null; try { invalido = localStorage.getItem('mypump_token_invalido'); } catch(e) {}
     var guardado = null; try { guardado = localStorage.getItem(TOKEN_KEY); } catch(e) {}
-    if (invalido === fromQuery && isValidToken(guardado) && guardado !== fromQuery) return guardado;
+    if (invalido === fromQuery && isValidToken(guardado) && guardado !== fromQuery) { sacarDeLaDireccion(guardado); return guardado; }
     try { localStorage.setItem(TOKEN_KEY, fromQuery); } catch(e) {}
+    sacarDeLaDireccion(fromQuery);
     return fromQuery;
   }
 
@@ -2197,7 +2211,7 @@ function computeProgresionNota(ej, semanaActual) {
   const cur = byWeek(sem);
   if (!cur) return null;
 
-  const _CALIBRACION = 'Semana de calibración: buscá el fallo muscular, no te guardes reps. Las reps son una guía (±2-3): si apuntás a 12 y te salen 9 o 14, perfecto. La idea es encontrar tu peso real llegando cerca del fallo.';
+  const _CALIBRACION = 'Semana de calibración. Llevá cada serie al fallo, sin guardarte reps. Las reps son una guía, si apuntás a 12 y te salen 9 o 14 está perfecto. La idea es encontrar tu peso real.';
 
   const prev = (sem > 1) ? (ej.progresion.find(p => p.semana === sem - 1) || ej.progresion[sem - 2]) : null;
   if (!prev) {
@@ -2219,14 +2233,14 @@ function computeProgresionNota(ej, semanaActual) {
   if      (repsDown && seriesSame) parts.push(`Esta semana bajan las reps (de ${prev.reps} a ${cur.reps}). Subí la carga: apuntá a más kilos que la semana pasada, manteniendo buena técnica.`);
   else if (repsDown && seriesUp)   parts.push(`Más series y menos reps: subí un poco la carga y sumá volumen.`);
   else if (seriesUp && repsSame)   parts.push(`Sumamos una serie: mismo peso, más volumen total esta semana.`);
-  else if (repsUp && seriesSame)   parts.push(`Suben las reps con el mismo peso. Si las completás sobrado, subí la carga la próxima.`);
+  else if (repsUp && seriesSame)   parts.push(`Suben las reps con el mismo peso. Si te salen más reps que las de la pauta, hacelas y subí la carga la próxima.`);
 
-  if (rirDown) parts.push(`Acercate más al fallo en cada serie.`);
+  if (rirDown) parts.push(`Llevá cada serie al fallo.`);
 
   const cambia = parts.length > 0;
   if (!cambia) {
-    if (repsSame && seriesSame) parts.push(`Mantené el peso de la semana pasada e intentá superar tus reps, siempre cerca del fallo. Si te sobra, subí la carga.`);
-    else parts.push(`Seguí la pauta de esta semana (${cur.series ?? '—'}×${cur.reps ?? '—'}) y trabajá cerca del fallo; si te sobra, subí la carga.`);
+    if (repsSame && seriesSame) parts.push(`Mantené el peso de la semana pasada e intentá superar tus reps, siempre al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.`);
+    else parts.push(`Seguí la pauta de esta semana (${cur.series ?? '—'}×${cur.reps ?? '—'}) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.`);
   }
   return { texto: parts.join(' '), cambia, calibracion: false };
 }
@@ -2703,8 +2717,13 @@ async function loadComentarios() {
 async function enviarComentarioEjercicio(exId, exNombre, contenido) {
   contenido = (contenido || '').trim();
   if (!contenido || !TOKEN || (DATA && DATA._isDemo)) return;
+  // F14 (auditoría 10/11): lo escrito queda como borrador hasta que el servidor
+  // lo confirme. Antes el campo se vaciaba aunque el envío fallara.
+  STATE.borradoresComentario = STATE.borradoresComentario || {};
+  STATE.borradoresComentario[exId] = contenido;
   const res = await window.mypumpDB.agregarComentario(TOKEN, 'ejercicio', exId, exNombre, contenido);
-  if (!res || !res.success) { alert('No se pudo enviar el comentario. Probá de nuevo.'); return; }
+  if (!res || !res.success) { alert('No se pudo enviar el comentario. Quedó escrito para que lo mandes de nuevo.'); return; }
+  delete STATE.borradoresComentario[exId];
   await loadComentarios();
 }
 
@@ -3537,8 +3556,15 @@ function writeSet(exId, setIdx) {
   }, `carga_${DATA.dia.id}_${exId}_${setIdx}`);
 }
 
+/* F14 (auditoría 10/11): las notas del cierre quedan guardadas hasta que el
+ * servidor cierre el día. Antes el modal se cerraba y, si fallaba, se perdían. */
+function _notasCierreKey() { return `mypump_notas_cierre_${TOKEN}_${DATA && DATA.dia ? DATA.dia.id : ''}`; }
+function _notasCierreGuardadas() { try { return localStorage.getItem(_notasCierreKey()) || ''; } catch (_) { return ''; } }
+function _notasCierreAnotar(n) { try { if (n) localStorage.setItem(_notasCierreKey(), n); else localStorage.removeItem(_notasCierreKey()); } catch (_) {} }
+
 async function writeFinish(notas) {
   if (!RUTINA_ID) return;
+  _notasCierreAnotar(notas || '');
   _csVaciarDeshacer();
   // Garantizar que exista la sesión antes de finalizar (defensivo: el cliente
   // podría cerrar sin haber confirmado ninguna serie).
@@ -3563,10 +3589,11 @@ async function writeFinish(notas) {
   // cliente o inexistente): antes eso pasaba como éxito y el día quedaba en
   // verde en el teléfono sin cerrar en la base.
   if (!res || res.success === false || res.data === false) {
-    alert('No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo.');
+    alert('No se pudo terminar el entrenamiento. Revisá tu conexión e intentá de nuevo.');
     return;
   }
   // Día cerrado = día HECHO (aunque no se hayan tildado todos los ejercicios).
+  _notasCierreAnotar('');
   _diaFinalizado = true;
   STATE.progressLoaded = false;   // Revisión / Fuerza vuelven a traer el historial con lo de hoy
   localStorage.setItem(`mypump_sesion_${TOKEN}_${DATA.dia.id}_finalizada`, '1');
@@ -3637,7 +3664,7 @@ async function confirmEmpezarBloqueNuevo() {
   _csVaciarDeshacer();
   const ok = await MyPump.ui.showConfirmModal({
     title:        '¡Nuevo bloque!',
-    body:         'Terminaste tu plan. Tu coach ya te dejó preparado el siguiente bloque. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo — tus cargas anteriores quedan guardadas.',
+    body:         'Terminaste este bloque. Ya te dejé preparado el siguiente. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo y tus cargas anteriores quedan guardadas.',
     confirmLabel: 'Empezar bloque nuevo',
     cancelLabel:  'Ahora no',
   });
@@ -3661,7 +3688,7 @@ async function doEmpezarBloqueNuevo() {
     const recargar = await MyPump.ui.showConfirmModal({
       title: sinRed ? 'Sin conexión' : 'Ups',
       body: sinRed ? 'No llegó la respuesta del servidor. Recargá para ver si el bloque nuevo ya quedó activo.'
-                   : 'No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribile a tu coach.',
+                   : 'No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribime por el chat.',
       confirmLabel: sinRed ? 'Recargar' : 'Ok', cancelLabel: sinRed ? 'Cerrar' : '',
     });
     if (sinRed && recargar) {
@@ -4164,7 +4191,7 @@ function renderTrain() {
       </div>
       ${_diaFinalizado
         ? `<div class="finish-cerrado-msg">Tu sesión de hoy quedó guardada.</div>`
-        : `<button class="btn-primary" id="finishBtn">${ICONS.flag} Cerrar sesión de hoy</button>`}
+        : `<button class="btn-primary" id="finishBtn">${ICONS.flag} Terminar el entrenamiento de hoy</button>`}
     </div>`;
   }
 
@@ -4176,7 +4203,7 @@ function renderTrain() {
   if (_nCambian > 0) {
     html += `<div class="prog-banner">Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</div>`;
   } else if (_esCalibracion) {
-    html += `<div class="prog-banner is-calibracion">Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3) — no te guardes reps.</div>`;
+    html += `<div class="prog-banner is-calibracion">Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto.</div>`;
   }
 
   // F3 — Inicio claro del cronómetro de sesión (el timer de DESCANSO es otro y
@@ -4246,7 +4273,7 @@ function renderTrain() {
       <button class="btn-week-advance" style="background:var(--color-brand)" onclick="confirmEmpezarBloqueNuevo()">
         Empezar bloque nuevo
       </button>
-      <div style="font-size:11px;color:var(--color-text-muted);text-align:center;margin-top:6px;font-family:var(--font-num)">Terminaste tu plan. Tu próximo bloque ya está listo.</div>
+      <div style="font-size:11px;color:var(--color-text-muted);text-align:center;margin-top:6px;font-family:var(--font-num)">Terminaste este bloque. El próximo ya está listo.</div>
     </div>`;
   }
 
@@ -4261,7 +4288,7 @@ function renderTrain() {
         <div class="fs-cell"><span class="lbl">Restan</span><span class="val">${pendingCount}<small>ej</small></span></div>
       </div>
       <button class="btn-secondary-outline" id="earlyFinishBtn" ${!hasStarted?'style="opacity:.5"':''}>
-        ${ICONS.flag} Cerrar sesión de hoy
+        ${ICONS.flag} Terminar el entrenamiento de hoy
       </button>
     </div>`;
   }
@@ -4655,8 +4682,8 @@ function _csFilasHtml(ex, s) {
 function _csPistaCalibracion(ex, s) {
   const i = s.activa;
   if (i == null || s.sinKg || s.carga != null || CS.repsDelPlan(s.repsPlan) == null || s.ultimaVez.length || s.series[i].kg != null) return '';
-  const plan = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'al fallo' : 'dejando 1–2 en reserva';
-  return `<div class="cs-nota">Primera vez con este ejercicio: elegí un peso con el que llegues a ${escapeHtml(String(s.repsPlan))} reps ${plan}. Queda de referencia para la próxima.</div>`;
+  const plan = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? ' al fallo' : '';
+  return `<div class="cs-nota">Primera vez con este ejercicio: elegí un peso con el que llegues a ${escapeHtml(String(s.repsPlan))} reps${plan}. Queda de referencia para la próxima.</div>`;
 }
 function _csTarjetaHtml(ex, s, conPrep, leyenda, selector) {
   return `<div class="cs" data-cs="${ex.id}">
@@ -5294,7 +5321,7 @@ function renderExCard(ex, blockIdx) {
           <div class="ex-comments-title">Comentarios</div>
           <div class="ex-comments-list">${items || '<div class="ex-com-empty">Todavía no hay comentarios. Dejale una nota a Mati o contale cómo te fue.</div>'}</div>
           <div class="ex-comment-form">
-            <textarea class="ex-comment-input" rows="2" placeholder="Escribí una nota… (ej: hice plano con mancuernas porque la máquina estaba ocupada)" data-comment-input="${ex.id}"></textarea>
+            <textarea class="ex-comment-input" rows="2" placeholder="Escribí una nota… (ej: hice plano con mancuernas porque la máquina estaba ocupada)" data-comment-input="${ex.id}">${escapeHtml((STATE.borradoresComentario || {})[ex.id] || '')}</textarea>
             <button class="ex-comment-send" data-comment-send="${ex.id}">Enviar</button>
           </div>
         </div>`;
@@ -5308,7 +5335,7 @@ function renderExCard(ex, blockIdx) {
             <button class="ex-extra-row" data-acc="video-${ex.id}">${ICONS.video}<span class="label">Ver video tutorial</span><span class="chev">${ICONS.chevron}</span></button>
             <div class="ex-extra-content video" id="video-${ex.id}" hidden>
               ${ex.video_url.includes('youtube') || ex.video_url.includes('youtu.be')
-                ? `<iframe src="${ex.video_url}" allowfullscreen></iframe>`
+                ? `<iframe src="${ex.video_url}" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`
                 : `<div class="play">${ICONS.play}</div><span>video tutorial</span>`}
             </div>` : ''}
         </div>` : ''}
@@ -5402,7 +5429,7 @@ function renderSetRow(ex, s, i, isActive) {
   // guiar la elección del peso en vez de dejar el input mudo. No aplica a los
   // ejercicios sin peso (peso corporal).
   const calibHint = (!conf && isActive && !hasSug && !typed && !noKg && sugRepsPlan != null)
-    ? `<div class="set-sug-hint is-calib">Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps ${ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'al fallo' : 'dejando 1–2 en reserva'}. Queda de referencia para la próxima.</div>`
+    ? `<div class="set-sug-hint is-calib">Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps${ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? ' al fallo' : ''}. Queda de referencia para la próxima.</div>`
     : '';
   return `
   <div class="${cls}" data-set="${ex.id}|${i}">
@@ -5598,7 +5625,13 @@ async function confirmarSerie(exId, idx, foto) {   // foto: viene del OK de la c
       STATE.expandedId = next.id;
       // Cargar el histórico del siguiente ANTES de renderizar, para que el peso
       // sugerido / récord / última vez aparezcan al primer load (bug del auto-avance).
-      if (!Array.isArray(DATA.historico_por_ejercicio[next.id])) await loadHistorico(next.id);
+      // F14 (auditoría 10/11): con el OK de la carga simple (`foto`) no se espera:
+      // la ventana de Deshacer, que es la copia de esta serie, se guarda recién
+      // al volver de acá, y con la red colgada cerrar la app perdía el OK.
+      if (!Array.isArray(DATA.historico_por_ejercicio[next.id])) {
+        if (foto) loadHistorico(next.id).then(() => { if (STATE.expandedId === next.id && STATE.scene === 'train') renderTrain(); }).catch(() => {});
+        else await loadHistorico(next.id);
+      }
       marcarLeidosEjercicio(next.id);
     }
   }
@@ -5900,8 +5933,8 @@ async function mostrarOnboardingPermisos() {
     } : {
       icono: '🔔',
       titulo: 'Que no se te pase nada',
-      texto: 'Un recordatorio para entrenar, y el aviso del check de los domingos. '
-           + 'Nada más: no te vamos a llenar el teléfono de notificaciones.',
+      texto: 'Un recordatorio para entrenar y el aviso semanal de tu revisión. '
+           + 'Nada más, no te vamos a llenar el teléfono de notificaciones.',
       detalle: 'Podés elegir cuáles querés y a qué hora, cuando quieras.',
       cta: 'Activar recordatorios',
     };
@@ -6047,11 +6080,11 @@ function openFinishModal() {
     <div class="modal-back" id="finBack">
       <div class="modal-sheet">
         <div class="modal-handle"></div>
-        <div class="modal-title">Cerrar sesión de hoy</div>
+        <div class="modal-title">Terminar el entrenamiento de hoy</div>
         <div class="modal-text">${totalSets} series · ${totalReps} reps · ${Math.round(tonnage)}kg de volumen.</div>
         <div>
           <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--color-text-secondary);font-weight:500">Notas de la sesión <span style="color:var(--color-text-muted);font-weight:400">· opcional</span></label>
-          <textarea class="session-textarea" id="sessionNotes" placeholder="ej: molestia leve hombro derecho, jalón se sintió pesado…"></textarea>
+          <textarea class="session-textarea" id="sessionNotes" placeholder="ej: molestia leve hombro derecho, jalón se sintió pesado…">${escapeHtml(_notasCierreGuardadas())}</textarea>
         </div>
         <button class="btn-primary" id="finConfirm">${ICONS.flag} Confirmar y cerrar</button>
         <button class="btn-secondary" id="finCancel">Cancelar</button>
@@ -6097,12 +6130,12 @@ async function openEarlyFinishModal() {
     <div class="modal-back" id="finBack">
       <div class="modal-sheet">
         <div class="modal-handle"></div>
-        <div class="modal-title">Cerrar sesión de hoy</div>
+        <div class="modal-title">Terminar el entrenamiento de hoy</div>
         <div class="modal-text">${totalSets} series · ${Math.round(tonnage)}kg de volumen · ${mins||'—'} min.</div>
         ${warningHtml}
         <div>
           <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--color-text-secondary);font-weight:500">Notas de la sesión <span style="color:var(--color-text-muted);font-weight:400">· opcional</span></label>
-          <textarea class="session-textarea" id="sessionNotes" placeholder="ej: poco tiempo hoy, saltó press de banca…"></textarea>
+          <textarea class="session-textarea" id="sessionNotes" placeholder="ej: poco tiempo hoy, saltó press de banca…">${escapeHtml(_notasCierreGuardadas())}</textarea>
         </div>
         <button class="btn-primary" id="finConfirm">${ICONS.flag} Confirmar y cerrar</button>
         <button class="btn-secondary" id="finCancel">Cancelar</button>
@@ -6468,7 +6501,28 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && STATE.mydayFecha && STATE.mydayFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
     loadMyday();   // hábitos y vasos de agua de HOY, no los de ayer
   }
+  if (!document.hidden) _relecturasAlVolver();
 });
+
+// Auditoría del 10/11, F7: Progreso se traía una sola vez (el «día de atraso») y Suplementación solo al abrir. Al volver a
+// la app, pasados unos minutos, se releen. Con escrituras en cola no se relee Progreso: mostraría la serie recién hecha
+// como si no estuviera.
+const RELEER_PROGRESO_MS = 5 * 60 * 1000;
+const RELEER_SUPL_MS = 10 * 60 * 1000;
+function _relecturasAlVolver(ahora) {
+  ahora = ahora || Date.now();
+  if (!TOKEN || (DATA && DATA._isDemo)) return;
+  const enCola = (() => { try { return Outbox.pending() > 0; } catch (_) { return false; } })();
+  if (STATE.progressLoaded && !STATE._cargandoProgreso && !enCola && ahora - (STATE.progresoLeidoEn || 0) >= RELEER_PROGRESO_MS) {
+    STATE._cargandoProgreso = true;
+    STATE.progresoLeidoEn = ahora;
+    Promise.resolve(loadProgressAndRender(true)).catch(() => {}).finally(() => { STATE._cargandoProgreso = false; });
+  }
+  if (ahora - (STATE.suplLeidaEn || 0) >= RELEER_SUPL_MS) {
+    STATE.suplLeidaEn = ahora;
+    loadSuplementacion();
+  }
+}
 // Reintentar en cuanto vuelva la conexión.
 window.addEventListener('online', () => { if (OUTBOX_ENABLED) Outbox.flushSoon(0); flushFotosSoon(); });
 
@@ -7224,8 +7278,24 @@ function calcularConsumido() {
   return { kcal: t.kcal, prot: t.prot, carb: t.carb, fat: t.fat, nComidas: t.comidas, nComidasMarcadas: t.hechas, nSalteadas: t.salteadas };
 }
 
+/* F3 (auditoría 10/11): una cuenta real nunca ve la dieta de ejemplo. */
+function _avisoDietaOculta(motivo) {
+  if (motivo === 'sin-red') {
+    return `<div class="dz-ejemplo">Sin conexión. Tu dieta se va a ver apenas vuelva la señal.</div>
+      <button class="dz-copiar-otro" data-recargar-datos>Actualizar</button>`;
+  }
+  if (motivo === 'incompleta') return '<div class="dz-ejemplo">Tu dieta está publicada pero incompleta. Avisale a Mati por el chat.</div>';
+  return '<div class="dz-ejemplo">Todavía no tenés dieta. Cuando Mati publique la tuya, la vas a ver acá.</div>';
+}
+
 function renderDiet() {
   const root = $('#scene-diet');
+  if (DATA && DATA._dietaOculta) {
+    root.innerHTML = _avisoDietaOculta(DATA._dietaOculta);
+    const b = root.querySelector('[data-recargar-datos]');
+    if (b) b.addEventListener('click', recargarDatos);
+    return;
+  }
   const plan = getActivePlan();
   const tg = plan.macros_target;
 
@@ -7292,8 +7362,8 @@ function renderDiet() {
   </div>
   ${esHoy && barraDias ? '<button class="dz-copiar-otro" data-dia-copiar-otro>Copiar de otro día</button>' : ''}
   ${DATA && DATA._dietaEjemplo ? '<div class="dz-ejemplo">Ejemplo: todavía no tenés dieta. Cuando Mati publique la tuya, la vas a ver acá.</div>' : ''}
-  ${plan.comidas.map((c, i) => renderMeal(c, i, delDia, dia)).join('')}
   ${renderComidasLibres()}
+  ${plan.comidas.map((c, i) => renderMeal(c, i, delDia, dia)).join('')}
   ${renderFuentesFooter('dieta')}`;
   bindDietEvents();
   _bindBarraDias();
@@ -8480,7 +8550,7 @@ function renderProgress() {
   $$('[data-reintentar-progreso]').forEach(btn => btn.addEventListener('click', () => { STATE.progressLoaded = false; renderProgress(); }));
 }
 
-async function loadProgressAndRender() {
+async function loadProgressAndRender(refresco = false) {
   // Recorrer TODOS los días de la rutina (no solo el día actual): el progreso
   // debe mostrar cada ejercicio que el cliente entrenó en cualquiera de sus días.
   const dias = DATA._dias || [DATA.dia];
@@ -8529,6 +8599,8 @@ async function loadProgressAndRender() {
     if (porClave) {
       results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: porClave[ex.clave] || [] }));
     } else if (porClave === null) {
+      // Una relectura al volver a la app que no llega deja lo que ya se veía.
+      if (refresco && STATE.progressLoaded) return;
       // Falló la red. NO se cae al slot (mezclaría original y sustituto), NO
       // se pisa la caché de Entreno con [] (dejaba todas las cards en "Primera
       // vez" hasta recargar la app) y NO se marca cargado: al volver a abrir
@@ -8615,6 +8687,7 @@ async function loadProgressAndRender() {
     exercises,
   };
   STATE.progressLoaded = true;
+  STATE.progresoLeidoEn = Date.now();
   renderProgress();
 }
 
@@ -8835,7 +8908,7 @@ const _TXT_SALUD = {
     relojes:    'Apple Watch, Oura, Garmin…',
     sincroniza: 'la app Salud del iPhone',
     desdeApp:   'la app de iPhone',
-    revocar:    'Ajustes → Privacidad y seguridad → Salud → MyPump',
+    revocar:    'Ajustes → Privacidad y seguridad → Salud → Pump Team',
   },
   android: {
     app:        'Health Connect',
@@ -8848,7 +8921,7 @@ const _TXT_SALUD = {
     relojes:    'Galaxy Watch, Mi Band, Garmin, Fitbit…',
     sincroniza: 'Health Connect',
     desdeApp:   'la app del teléfono',
-    revocar:    'Ajustes → Salud y bienestar → Health Connect → MyPump',
+    revocar:    'Ajustes → Salud y bienestar → Health Connect → Pump Team',
   },
 };
 const _T = (k) => _TXT_SALUD[_esAndroid() ? 'android' : 'ios'][k];
@@ -9175,14 +9248,14 @@ function renderMydayRecuperacion() {
   const drivers = _recDrivers(row);
   let frase;
   if (row.discordancia) {
-    frase = 'Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís.';
+    frase = 'Tus números de hoy no coinciden con cómo te sentís. Seguí tu plan.';
   } else if (row.estado_autonomico === 'maladaptacion') {
-    frase = 'Tu cuerpo viene peleando con la carga. Hoy conviene aflojar.';
+    frase = 'Tu recuperación viene baja hace varios días. Seguí tu plan y contámelo por el chat.';
   } else if (row.estado_autonomico === 'fatiga_acumulada') {
-    frase = 'Venís con fatiga acumulada de varios días.';
+    frase = 'Venís con varios días de recuperación baja. Seguí tu plan y contámelo por el chat.';
   } else if (!drivers) {
-    frase = banda === 'alta' ? 'Venís bien. Aprovechalo.'
-          : banda === 'baja' ? 'Hoy tu cuerpo pide más descanso.'
+    frase = banda === 'alta' ? 'Recuperación alta hoy.'
+          : banda === 'baja' ? 'Recuperación baja hoy. Seguí tu plan y si se repite varios días, contámelo por el chat.'
           : 'Estás en tu rango normal.';
   } else { frase = ''; }
 
@@ -9919,6 +9992,45 @@ function _fotoqGuardar(q) {
   try { localStorage.setItem(FOTOQ_KEY(), JSON.stringify(q)); return true; }
   catch (_) { return false; }   // QuotaExceededError → el caller avisa
 }
+/* F6 (auditoría 10/11): saca de la cola SOLO la foto que se mandó, leyendo la
+ * cola de nuevo. Antes la pasada guardaba su copia vieja de la cola: una foto
+ * sacada mientras otra subía se perdía, y una nueva de la misma pose también. */
+function _fotoqSacar(k, item) {
+  const q = _fotoqLeer();
+  if (q[k] && (!item || q[k].dataUrl === item.dataUrl)) { delete q[k]; _fotoqGuardar(q); }
+}
+/* F6: las que el servidor rechazó al subirse solas. Antes se borraban sin
+ * avisar; ahora quedan a la vista con «Reintentar» y «Descartar». */
+const FOTOS_RECHAZADAS_KEY = () => `mypump_fotos_rechazadas_${TOKEN}`;
+function _fotosRechazadas() {
+  try { return JSON.parse(localStorage.getItem(FOTOS_RECHAZADAS_KEY()) || '{}') || {}; } catch (_) { return {}; }
+}
+function _fotosRechazadasGuardar(r) {
+  try {
+    if (Object.keys(r).length) localStorage.setItem(FOTOS_RECHAZADAS_KEY(), JSON.stringify(r));
+    else localStorage.removeItem(FOTOS_RECHAZADAS_KEY());
+  } catch (_) {}
+}
+function _fotoRechazar(k, item, motivo) {
+  const r = _fotosRechazadas();
+  r[k] = { item, motivo: String(motivo || '') };
+  _fotosRechazadasGuardar(r);
+}
+async function _fotoReintentar(k) {
+  const r = _fotosRechazadas();
+  const x = r[k];
+  if (!x) return;
+  delete r[k]; _fotosRechazadasGuardar(r);
+  const q = _fotoqLeer();
+  if (!q[k]) { q[k] = x.item; _fotoqGuardar(q); }
+  await flushFotos();
+}
+// Las claves son «YYYY-MM-DD|pose»: lo demás se filtra antes de ir a un atributo.
+function _claveFotoSegura(k) { return String(k).replace(/[^0-9A-Za-z|_-]/g, ''); }
+function _fotoDescartar(k) {
+  const r = _fotosRechazadas();
+  delete r[k]; _fotosRechazadasGuardar(r);
+}
 
 // Reduce a dataURL JPEG. 900px/0.7 alcanza para comparar fisico
 // (1024/0.8 es para OCR de etiquetas). El re-encode por canvas ademas
@@ -10020,20 +10132,24 @@ async function flushFotos() {
 async function _flushFotosPasada(q, keys) {
   for (const k of keys) {
     const item = q[k];
-    if (!item || !item.dataUrl) { delete q[k]; continue; }
+    if (!item || !item.dataUrl) { _fotoqSacar(k, item); continue; }
     const res = await _subirFoto(item.pose, item.dataUrl, item.fecha);
-    if (res.ok) { delete q[k]; _fotoqGuardar(q); continue; }
+    if (res.ok) { _fotoqSacar(k, item); continue; }
     // Un item RECHAZADO (4xx salvo 429) se descarta: si no queda adelante en la
     // cola y bloquea para siempre a las que vienen atras.
     // Un error del servidor (5xx, 429) o de RED no gasta la foto: con la Mini
     // caída Cloudflare contesta 502/530, que contaba como error del server, y al
     // octavo intento la foto se borraba. Ahora espera; si nunca entra, la corta
     // la ventana de fechas del servidor (+1/−7), que la rechaza con un 400.
-    if (res.fatal) { delete q[k]; _fotoqGuardar(q); continue; }
-    _fotoqGuardar(q);
+    // F6: el rechazo ya no se borra en silencio: queda a la vista.
+    if (res.fatal) {
+      const actual = _fotoqLeer()[k];
+      if (actual && actual.dataUrl === item.dataUrl) _fotoRechazar(k, item, res.error);
+      _fotoqSacar(k, item);
+      continue;
+    }
     break;   // sin conexión / server caido / tope del día: se reintenta después
   }
-  _fotoqGuardar(q);
   await loadFotos();
   STATE.fotosUrls = null;          // subio algo de la cola: refirmar
   if (STATE.scene === 'revision') renderMydayFotos();
@@ -10192,6 +10308,9 @@ function renderMydayFotos() {
         <div class="fp-slots">${slots}</div>
         ${serie >= 2 ? `<div class="fp-serie">${serie} semanas seguidas registradas</div>` : ''}
         ${comparador}
+        ${Object.keys(_fotosRechazadas()).sort().map(k => `<div class="fp-msg is-err" data-foto-rechazada="${_claveFotoSegura(k)}">Esta foto no se pudo subir
+          <button class="fp-link" data-foto-reintentar="${_claveFotoSegura(k)}">Reintentar</button>
+          <button class="fp-link" data-foto-descartar="${_claveFotoSegura(k)}">Descartar</button></div>`).join('')}
         <div class="fp-msg" id="fpMsg"></div>
       </div>
     </div>`;
@@ -10214,6 +10333,8 @@ function renderMydayFotos() {
   }
 
   el.querySelectorAll('.fp-slot').forEach(b => b.addEventListener('click', () => _pedirFoto(b.dataset.pose)));
+  el.querySelectorAll('[data-foto-reintentar]').forEach(b => b.addEventListener('click', () => { _fotoReintentar(b.dataset.fotoReintentar).catch(() => {}); }));
+  el.querySelectorAll('[data-foto-descartar]').forEach(b => b.addEventListener('click', () => { _fotoDescartar(b.dataset.fotoDescartar); renderMydayFotos(); }));
   const ver = document.getElementById('fpVerGaleria');
   if (ver) ver.addEventListener('click', abrirGaleriaFotos);
 }
@@ -10290,19 +10411,21 @@ async function _tomarFoto(pose, origen) {
     if (dataUrl.length > 2.4e6) return setMsg('Esa foto es demasiado pesada. Probá sacarla con la cámara.', 'is-err');
     q[key] = { pose, fecha: hoyLocal(), dataUrl, intentos: 0 };
     const guardo = _fotoqGuardar(q);
+    // Una foto nueva de esa pose y semana reemplaza a la rechazada (si no, «Reintentar» subía la vieja encima).
+    _fotoDescartar(key);
     renderMydayFotos();
     setMsg('Subiendo…');
 
     const res = await _subirFoto(pose, dataUrl, hoyLocal());
     if (res.ok) {
-      const q2 = _fotoqLeer(); delete q2[key]; _fotoqGuardar(q2);
+      _fotoqSacar(key, { dataUrl });
       await loadFotos();
       STATE.fotosUrls = null;      // que se refirme y aparezca la miniatura
       renderMydayFotos();
       setMsg('Listo, guardada ✓', 'is-ok');
     } else if (res.fatal) {
       // La foto no va a entrar nunca: sacarla de la cola y decir por que.
-      const q2 = _fotoqLeer(); delete q2[key]; _fotoqGuardar(q2);
+      _fotoqSacar(key, { dataUrl });
       renderMydayFotos();
       setMsg(`No se pudo guardar: ${res.error}`, 'is-err');
     } else if (guardo) {
@@ -10628,10 +10751,10 @@ function _renderRevTarjetas() {
       rec = txt('Ocultaste el número de recuperación. Tocá para ver tus datos de salud.');
     } else if (row && row.score != null && row.estado !== 'calibrando') {
       const banda = row.banda || 'media';
-      const frase = row.discordancia ? 'Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís.'
-        : row.estado_autonomico === 'maladaptacion' ? 'Tu cuerpo viene peleando con la carga. Hoy conviene aflojar.'
-        : row.estado_autonomico === 'fatiga_acumulada' ? 'Venís con fatiga acumulada de varios días.'
-        : banda === 'alta' ? 'Venís bien. Aprovechalo.' : banda === 'baja' ? 'Hoy tu cuerpo pide más descanso.' : 'Estás en tu rango normal.';
+      const frase = row.discordancia ? 'Tus números de hoy no coinciden con cómo te sentís. Seguí tu plan.'
+        : row.estado_autonomico === 'maladaptacion' ? 'Tu recuperación viene baja hace varios días. Seguí tu plan y contámelo por el chat.'
+        : row.estado_autonomico === 'fatiga_acumulada' ? 'Venís con varios días de recuperación baja. Seguí tu plan y contámelo por el chat.'
+        : banda === 'alta' ? 'Recuperación alta hoy.' : banda === 'baja' ? 'Recuperación baja hoy. Seguí tu plan y si se repite varios días, contámelo por el chat.' : 'Estás en tu rango normal.';
       rec = `<div class="rv-score"><span class="rv-num rec-${banda}">${row.score}</span><span class="rv-de">de 100</span>
           <span class="rv-banda rec-${banda}">${_REC_BANDA_TXT[banda] || ''}</span></div>${txt(frase)}`;
     } else if (row && (row.estado === 'calibrando' || (row.score == null && row.estado !== 'insuficiente'))) {
@@ -10787,6 +10910,7 @@ async function loadSuplementacion() {
   }
   STATE.supl = resp;
   STATE.suplDesdeCache = desdeCache;
+  STATE.suplLeidaEn = desdeCache ? 0 : Date.now();
   const tab = document.querySelector('.tab[data-scene="supl"]');
   if (tab) tab.hidden = !resp;
   // Si los datos dejan de estar estando en la pestaña, se vuelve a Entreno (como la app).
@@ -11539,6 +11663,8 @@ async function init() {
 
   let info, rutina, dieta;
   let _fromCache = false;
+  // F3 (auditoría 10/11): la dieta no llegó por red y no hay copia guardada.
+  let _dietaSinRed = false;
   if (DEMO) {
     // Sin red: rutina/dieta quedan sin definir y cae al SAMPLE de abajo
     // (_isDemo:true), que ademas apaga todas las escrituras a Supabase.
@@ -11550,6 +11676,13 @@ async function init() {
     rutina = await window.mypumpDB.getRutinaActiva(TOKEN);
     const errRutina = window.mypumpDB._lastError;
     dieta = await window.mypumpDB.getDietaActiva(TOKEN);
+    const errDieta = window.mypumpDB._lastError;
+    // F3 (auditoría 10/11): igual que la rutina. Un corte NO es «no tiene dieta»:
+    // antes mostraba la dieta de ejemplo de 3.200 kcal con «Todavía no tenés
+    // dieta publicada» y además guardaba la copia sin dieta, pisando la buena.
+    const _da = _dietaDelArranque(dieta, errDieta, errDieta ? loadOfflineSnapshot() : null);
+    dieta = _da.dieta; _dietaSinRed = _da.sinRed;
+    const _snapDieta = _da.deCopia;
     // Si la rutina NO llegó por un fallo de red/servicio (getClienteInfo
     // entró, el segundo request se cayó), antes se seguía como si el cliente
     // no tuviera rutina: entraba al modo DEMO con la rutina de ejemplo,
@@ -11568,9 +11701,12 @@ async function init() {
       }
     }
     // Guardar snapshot para modo offline (solo si trajo rutina real con estructura).
+    // La dieta que salió de la copia (o que no llegó) no cuenta como nueva: se
+    // guarda la que había, nunca un hueco.
     if (!_fromCache && rutina && rutina.estructura && rutina.estructura.dias) {
-      saveOfflineSnapshot(info, rutina, dieta);
+      saveOfflineSnapshot(info, rutina, _dietaSinRed ? _dietaDeLaCopia() : dieta);
     }
+    if (_snapDieta) _fromCache = true;
   } else {
     // Distinguir: token inválido (sin error) vs servicio caído / sin conexión.
     const lastErr = window.mypumpDB._lastError;
@@ -11654,9 +11790,12 @@ async function init() {
     DIET = SAMPLE_DIET;
     DIETA_ID = null;
     if (DATA) DATA._dietaEjemplo = true;
+    // F3: una cuenta real no ve el ejemplo (renderDiet muestra un aviso). Si la
+    // dieta no llegó por un corte, el aviso es de conexión y no de «sin dieta».
+    if (DATA && !DATA._isDemo) DATA._dietaOculta = _dietaSinRed ? 'sin-red' : (dieta ? 'incompleta' : 'sin-dieta');
     if (!(DATA && DATA._isDemo)) {
       _PLAN_PROBLEMAS = _PLAN_PROBLEMAS.concat(
-        dieta ? ['Tu dieta está publicada pero incompleta.'] : ['Todavía no tenés dieta publicada.']);
+        _dietaSinRed ? [] : dieta ? ['Tu dieta está publicada pero incompleta.'] : ['Todavía no tenés dieta publicada.']);
     }
   }
 
@@ -11790,6 +11929,18 @@ async function init() {
 // Guarda el último cliente/rutina/dieta que trajo el backend, para poder abrir
 // la app sin conexión (el gym con mala señal). Junto al service worker (sw.js)
 // que cachea el código, esto hace la app usable 100% offline.
+/* F3 (auditoría 10/11): la dieta del arranque. Si no llegó por un corte
+ * (`err`), sale de la copia; sin copia, queda marcada «sin red» (nunca «no tiene
+ * dieta»). Sin error y sin filas sí es «no tiene» (Mati no la publicó). */
+function _dietaDelArranque(dieta, err, snap) {
+  if (dieta || !err) return { dieta: dieta || null, sinRed: false, deCopia: false };
+  if (snap && snap.dieta) return { dieta: snap.dieta, sinRed: false, deCopia: true };
+  return { dieta: null, sinRed: true, deCopia: false };
+}
+function _dietaDeLaCopia() {
+  const snap = loadOfflineSnapshot();
+  return (snap && snap.dieta) || null;
+}
 function saveOfflineSnapshot(info, rutina, dieta) {
   try {
     localStorage.setItem(`mypump_offline_${TOKEN}`, JSON.stringify({ info, rutina, dieta, ts: Date.now() }));
@@ -11799,9 +11950,25 @@ function loadOfflineSnapshot() {
   try { return JSON.parse(localStorage.getItem(`mypump_offline_${TOKEN}`) || 'null'); }
   catch (_) { return null; }
 }
+/* F4 (auditoría 10/11): si la app abrió sin señal, cuando vuelve no se
+ * actualizaba sola y la web instalada no tiene botón de recarga. Recargar es lo
+ * que ya hace la web para traer el plan (la cola de envíos queda guardada). */
+function recargarDatos() { location.reload(); }
+
 function updateOfflineBanner() {
   const offline = !navigator.onLine || (DATA && DATA._offline);
   let el = document.getElementById('offline-banner');
+  // Volvió la señal y lo que se ve es la copia guardada (o faltó la dieta): se
+  // ofrece actualizar con un toque.
+  const vieja = navigator.onLine && DATA && (DATA._offline || DATA._dietaOculta === 'sin-red');
+  if (vieja) {
+    if (!el) { el = document.createElement('div'); el.id = 'offline-banner'; document.body.appendChild(el); }
+    el.textContent = 'Ves lo guardado en este teléfono. Tocá acá para actualizar.';
+    el.classList.add('show');
+    el.onclick = recargarDatos;
+    return;
+  }
+  if (el) el.onclick = null;
   if (offline) {
     if (!el) { el = document.createElement('div'); el.id = 'offline-banner'; document.body.appendChild(el); }
     el.textContent = (DATA && DATA._offline)
@@ -11810,12 +11977,11 @@ function updateOfflineBanner() {
     el.classList.add('show');
   } else if (el) {
     el.classList.remove('show');
-    // Volvió la conexión: si habíamos arrancado de cache, ya no lo estamos.
-    if (DATA) DATA._offline = false;
   }
 }
 window.addEventListener('online',  updateOfflineBanner);
 window.addEventListener('offline', updateOfflineBanner);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateOfflineBanner(); });
 
 /* ---- SWAP MODAL ---- */
 let _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null, query:'' };
