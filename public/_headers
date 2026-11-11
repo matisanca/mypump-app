@@ -28,6 +28,10 @@
 /js/*
   Cache-Control: no-cache
 
+# La historia de ejemplo de la demo sin cuenta: cambia con la app.
+/demo/*
+  Cache-Control: no-cache
+
 /css/*
   Cache-Control: no-cache
 

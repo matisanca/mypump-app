@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v58-20261110-cola-a';
+const VERSION       = 'v59-20261110-cola-a-wins';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = '/js/vendor/supabase-js.min.js';   // vendorizada el 20-sep-2026 (antes CDN)
@@ -53,6 +53,13 @@ const SHELL = [
   '/css/tecnica.css',
   '/js/devolucion.js',
   '/css/devolucion.css',
+  '/js/wins.js',
+  '/css/wins.css',
+  '/js/lista-previa.js',
+  '/css/lista-previa.css',
+  // La demo sin cuenta: su historia de ejemplo viaja con la app (sin red).
+  '/js/demo-historial.js',
+  '/demo/historial.json',
   '/js/healthkit-bridge.js',
   '/js/notificaciones.js',
   '/js/app.js',
@@ -104,7 +111,8 @@ self.addEventListener('fetch', (e) => {
   const isCode = req.mode === 'navigate'
     || url.pathname === '/'
     || url.pathname === '/cliente'
-    || /\.(html|js|css)$/.test(url.pathname);
+    || /\.(html|js|css)$/.test(url.pathname)
+    || url.pathname.startsWith('/demo/');                 // la historia de la demo cambia con la app
   if (isCode) { e.respondWith(networkFirst(req)); return; }
 
   // Estáticos del mismo origen (iconos, imágenes de ejercicios) → cache-first.
