@@ -83,6 +83,8 @@ class Navegacion(
     gimnasio: Boolean = false,
     gimnasioEnMisDatos: Boolean = false,
     tecnicaEnMisDatos: Boolean = false,
+    fotosInicio: Boolean = false,
+    fotosInicioEnMisDatos: Boolean = false,
 ) {
     var pestana by mutableStateOf(pestana)
     var misDatos by mutableStateOf(misDatos)
@@ -101,6 +103,12 @@ class Navegacion(
 
     /** «Mi técnica» abierto desde Mis datos. */
     var tecnicaEnMisDatos by mutableStateOf(tecnicaEnMisDatos)
+
+    /** «Tus fotos de inicio» abierto desde la tarjeta de Revisión. */
+    var fotosInicio by mutableStateOf(fotosInicio)
+
+    /** «Mis fotos de inicio» abierto desde Mis datos. */
+    var fotosInicioEnMisDatos by mutableStateOf(fotosInicioEnMisDatos)
 
     /**
      * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check), como `anclaRevision` de
@@ -125,6 +133,8 @@ class Navegacion(
             guiaEnMisDatos = false
             gimnasioEnMisDatos = false
             tecnicaEnMisDatos = false
+            fotosInicio = false
+            fotosInicioEnMisDatos = false
         }
         if (p == pestana && p == Pestana.ENTRENO) {
             guia = false
@@ -150,6 +160,7 @@ class Navegacion(
                 guiaEnMisDatos = false
                 gimnasioEnMisDatos = false
                 tecnicaEnMisDatos = false
+                fotosInicioEnMisDatos = false
             }
         }
     }
@@ -161,6 +172,8 @@ class Navegacion(
         guiaEnMisDatos = false
         gimnasioEnMisDatos = false
         tecnicaEnMisDatos = false
+        fotosInicio = false
+        fotosInicioEnMisDatos = false
         anclaRevision = ancla
     }
 
@@ -178,7 +191,7 @@ class Navegacion(
 
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos, it.fotosInicio, it.fotosInicioEnMisDatos) },
             restore = {
                 Navegacion(
                     Pestana.entries.firstOrNull { p -> p.name == it[0] } ?: Pestana.ENTRENO,
@@ -190,6 +203,8 @@ class Navegacion(
                     it.getOrNull(6) as? Boolean ?: false,
                     it.getOrNull(7) as? Boolean ?: false,
                     it.getOrNull(8) as? Boolean ?: false,
+                    it.getOrNull(9) as? Boolean ?: false,
+                    it.getOrNull(10) as? Boolean ?: false,
                 )
             },
         )

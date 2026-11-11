@@ -31,4 +31,4 @@ tasks.withType<Test>().configureEach {
 }
 
 // El doble del servidor del gimnasio: solo para las pruebas (también lo usa :app en androidTest).
-kotlin.sourceSets.named("test") { kotlin.srcDir("src/dobleGimnasio/kotlin"); kotlin.srcDir("src/dobleTecnica/kotlin") }
+kotlin.sourceSets.named("test") { kotlin.srcDir("src/dobleGimnasio/kotlin"); kotlin.srcDir("src/dobleTecnica/kotlin"); kotlin.srcDir("src/dobleFotosInicio/kotlin") }

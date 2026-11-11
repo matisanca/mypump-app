@@ -148,4 +148,22 @@ internal object CuentasDelTelefono {
         }
         return total
     }
+
+    /** Lo mismo con las fotos de inicio que no llegaron a subirse (y la nota que no salió): suben con el link nuevo. */
+    fun adoptarFotosInicio(clienteId: String, disco: Disco, fotos: ModeloFotosInicio): Int {
+        if (clienteId.isEmpty()) return 0
+        var total = 0
+        for (otra in otras(disco)) {
+            val viejas = PendienteFotoInicio.leerCola(otra)
+            val nota = PendienteFotoInicio.leerNota(otra)
+            if ((viejas.isEmpty() && nota == null) || clienteId(otra) != clienteId) continue
+            if (fotos.adoptar(viejas, otra)) {
+                otra.borrar(PendienteFotoInicio.ARCHIVO)
+                otra.borrar(ModeloFotosInicio.ARCHIVO_NOTA)
+                otra.archivo(PendienteFotoInicio.CARPETA).deleteRecursively()
+                total += viejas.size
+            }
+        }
+        return total
+    }
 }

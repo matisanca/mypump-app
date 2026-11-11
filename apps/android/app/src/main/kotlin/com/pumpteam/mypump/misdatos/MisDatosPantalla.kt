@@ -51,11 +51,13 @@ import com.pumpteam.mypump.diseno.RotuloSeccion
 import com.pumpteam.mypump.diseno.Separador
 import com.pumpteam.mypump.diseno.abrirEnNavegador
 import com.pumpteam.mypump.diseno.superficieTarjeta
+import com.pumpteam.mypump.fotosinicio.fotosInicioVisible
 import com.pumpteam.mypump.respaldo.HojaFuentes
 import com.pumpteam.mypump.salud.SeccionSaludMisDatos
 import com.pumpteam.mypump.guia.lugarDeLaGuia
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.ReglasGuia
+import com.pumpteam.mypump.reglas.TextosFotosInicio
 import com.pumpteam.mypump.reglas.TextosGimnasio
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -119,6 +121,10 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                     FilaEnlace(Iconos.Pesa, c.marcaTexto, TextosGimnasio.entradaMisDatos, etiqueta = "mis-datos-gimnasio") { navegacion?.gimnasioEnMisDatos = true }
                     Separador(sangria = 58.dp)
                 }
+            }
+            if (fotosInicioVisible(modelo)) {
+                FilaEnlace(Iconos.Camara, c.marcaTexto, TextosFotosInicio.entradaMisDatos, etiqueta = "mis-datos-fotos-inicio") { navegacion?.fotosInicioEnMisDatos = true }
+                Separador(sangria = 58.dp)
             }
             val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
             tecnica?.let { x ->

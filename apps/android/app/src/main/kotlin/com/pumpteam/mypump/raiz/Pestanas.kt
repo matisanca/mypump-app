@@ -91,6 +91,7 @@ import com.pumpteam.mypump.entreno.LocalPanelesCarga
 import com.pumpteam.mypump.entreno.DialogoPreguntas
 import com.pumpteam.mypump.entreno.EntrenoPantalla
 import com.pumpteam.mypump.entreno.RelojDescanso
+import com.pumpteam.mypump.fotosinicio.FotosInicioPantalla
 import com.pumpteam.mypump.gimnasio.GimnasioPantalla
 import com.pumpteam.mypump.guia.AvisoGuiaOculta
 import com.pumpteam.mypump.guia.BienvenidaGuiaDe
@@ -155,10 +156,13 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     BackHandler(enabled = enGuiaDeMisDatos) { navegacion.guiaEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.gimnasioEnMisDatos) { navegacion.gimnasioEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.tecnicaEnMisDatos) { navegacion.tecnicaEnMisDatos = false }
+    BackHandler(enabled = enMisDatos && navegacion.fotosInicioEnMisDatos) { navegacion.fotosInicioEnMisDatos = false }
     BackHandler(enabled = navegacion.pestana == Pestana.ENTRENO && navegacion.gimnasio) { navegacion.gimnasio = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
     BackHandler(enabled = enSalud) { navegacion.irARevision(null) }
+    // Después del que vuelve a Entreno: con las fotos de inicio abiertas sobre Revisión, Atrás vuelve a Revisión.
+    BackHandler(enabled = navegacion.pestana == Pestana.REVISION && !navegacion.misDatos && navegacion.fotosInicio) { navegacion.fotosInicio = false }
 
     CompositionLocalProvider(LocalNavegacion provides navegacion) {
         val densidad = LocalDensity.current
@@ -193,7 +197,9 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                 }
                                 Pestana.DIETA -> DietaPantalla(modelo)
                                 Pestana.CHAT -> ChatPantalla(modelo)
-                                Pestana.REVISION ->
+                                Pestana.REVISION -> {
+                                    val fotosInicioRevision by modelo.fotosInicio.collectAsStateWithLifecycle()
+                                    val fir = fotosInicioRevision
                                     if (navegacion.misDatos) {
                                         val guia by modelo.guia.collectAsStateWithLifecycle()
                                         val g = guia
@@ -201,7 +207,9 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         val gim = gimnasio
                                         val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
                                         val tec = tecnica
-                                        if (navegacion.guiaEnMisDatos && g != null) {
+                                        if (navegacion.fotosInicioEnMisDatos && fir != null) {
+                                            FotosInicioPantalla(fir, alVolver = { navegacion.fotosInicioEnMisDatos = false })
+                                        } else if (navegacion.guiaEnMisDatos && g != null) {
                                             GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false })
                                         } else if (navegacion.gimnasioEnMisDatos && gim != null) {
                                             GimnasioPantalla(gim, alVolver = { navegacion.gimnasioEnMisDatos = false })
@@ -210,6 +218,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         } else {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }
+                                    } else if (navegacion.fotosInicio && fir != null) {
+                                        FotosInicioPantalla(fir, alVolver = { navegacion.fotosInicio = false })
                                     } else {
                                         RevisionPantalla(
                                             modelo,
@@ -218,6 +228,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                             alAbrirFuerza = { navegacion.irASalud(SegmentoSalud.FUERZA) },
                                         )
                                     }
+                                }
                                 Pestana.SALUD -> SaludPantalla(modelo, alVolver = { navegacion.irARevision(null) })
                                 Pestana.SUPLEMENTACION -> {
                                     val m = suplementacion
