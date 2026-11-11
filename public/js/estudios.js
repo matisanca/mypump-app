@@ -54,6 +54,12 @@
     comoPrepararte: 'Cómo prepararte',
     dondeHacerlo: 'Dónde hacerlo',
     noSePudoAbrir: 'No se pudo abrir. Probá de nuevo.',
+    // Novedades: el aviso de arriba en la pantalla principal, el punto y la etiqueta de la tarjeta.
+    estudioNuevo: 'Tenés un estudio nuevo para hacer',
+    ordenNueva: 'Tenés una orden nueva',
+    estudioParaHacer: 'Tenés un estudio para hacer',
+    nuevo: 'Nuevo',
+    novedad: 'Novedad',                       // solo accesibilidad: lo que dice el punto
     // Fuera del contrato: los mismos rótulos mínimos que usa la app (cierre, nombre de cada archivo, fallas de guardado y envío).
     cerrar: 'Cerrar',
     cancelar: 'Cancelar',
@@ -142,6 +148,8 @@
     const conId = (x) => objeto(x) && !!texto(x.id);
     return {
       hoy: dia(j.hoy),
+      // Pedidos y órdenes vigentes que todavía no vio. Un servidor que no lo manda es cero: sin aviso ni punto.
+      novedades: positivo(j.novedades, 0),
       topeArchivos: positivo(topes.archivos_por_envio, TOPE_ARCHIVOS),
       topeMB: positivo(topes.mb_por_archivo, TOPE_MB),
       proximoControl: pc ? { tipo: texto(pc.tipo), titulo: texto(pc.titulo) || 'Estudio', desde: dia(pc.desde), hasta: dia(pc.hasta) } : null,
@@ -149,10 +157,12 @@
       pendientes: lista(j.pendientes).filter(conId).map((x) => ({
         id: texto(x.id), tipo: texto(x.tipo), titulo: texto(x.titulo) || 'Estudio', detalle: texto(x.detalle),
         desde: dia(x.desde), hasta: dia(x.hasta), hecho: x.estado === 'hecho', hechoFecha: dia(x.hecho_fecha), ordenId: texto(x.orden_id),
+        nuevo: x.nuevo === true,
       })),
       ordenes: lista(j.ordenes).filter(conId).map((x) => ({
         id: texto(x.id), tipo: texto(x.tipo), titulo: texto(x.titulo) || 'Estudio', emitida: dia(x.emitida), vence: dia(x.vence),
         vigente: x.vigente !== false,       // solo un `false` explícito la cierra
+        nuevo: x.nuevo === true,
       })),
       estudios: lista(j.estudios).map((x, i) => (objeto(x) ? {
         id: texto(x.id) || `sin-id-${i}`, tipo: texto(x.tipo), titulo: texto(x.titulo) || 'Estudio', fecha: dia(x.fecha), hojas: entero(x.hojas),
@@ -173,6 +183,56 @@
     const b = { proximoControl: !!e.proximoControl, pendientes: e.pendientes.length > 0, ordenes: e.ordenes.length > 0, estudios: e.estudios.length > 0 || enviosVisibles(e).length > 0 };
     b.vacio = !b.proximoControl && !b.pendientes && !b.ordenes && !b.estudios;
     return b;
+  }
+
+  // ── Novedades: lo que el alumno todavía no vio ──
+  const DESTINO = 'estudios';               // el mismo del push y de `?scene=`
+  const pedidoNuevo = (e) => e.pendientes.find((x) => x.nuevo) || null;
+  const ordenNueva = (e) => e.ordenes.find((x) => x.nuevo && x.vigente) || null;
+
+  /* La primera tarjeta nueva, en el orden de la pantalla: un pedido antes que una orden. */
+  function primeraNueva(e) {
+    const p = e && pedidoNuevo(e);
+    if (p) return { clase: 'pedido', id: p.id };
+    const o = e && ordenNueva(e);
+    return o ? { clase: 'orden', id: o.id } : null;
+  }
+
+  /* EL punto de entrada de la novedad de Estudios (título + destino): de acá salen el aviso de arriba, el punto de
+     Mis datos y, cuando se integre, la fila de «Novedades de tu plan». null = no hay nada nuevo.
+     Con un pedido nuevo manda el pedido; «Tenés una orden nueva» es solo cuando lo nuevo son órdenes. Si el servidor
+     cuenta novedades y no marca cuál, se mira qué hay; si no hay ni pedidos ni órdenes vigentes, no se avisa nada. */
+  function novedadDeEstudios(e) {
+    if (!e || !(e.novedades > 0)) return null;
+    let pedido = !!pedidoNuevo(e), orden = !!ordenNueva(e);
+    if (!pedido && !orden) { pedido = e.pendientes.length > 0; orden = e.ordenes.some((x) => x.vigente); }
+    if (!pedido && !orden) return null;
+    return { titulo: pedido ? T.estudioNuevo : T.ordenNueva, destino: DESTINO };
+  }
+
+  /* La tarjeta de arriba en la pantalla principal: la novedad con «Ver»; sin novedad y con algo pendiente, el
+     recordatorio con «Subir resultado». null = no va. */
+  function tarjetaInicio(e) {
+    const n = novedadDeEstudios(e);
+    if (n) return { titulo: n.titulo, boton: T.ver, destino: n.destino, novedad: true };
+    if (e && e.pendientes.length > 0) return { titulo: T.estudioParaHacer, boton: T.subirResultado, destino: DESTINO, novedad: false };
+    return null;
+  }
+
+  /* La tarjeta que tiene que quedar a la vista al llegar por el aviso: la primera nueva o, si no hay, el primer pendiente. */
+  function tarjetaDeLlegada(e) {
+    const n = primeraNueva(e);
+    if (n) return n;
+    return e && e.pendientes.length ? { clase: 'pedido', id: e.pendientes[0].id } : null;
+  }
+
+  /* Tras marcar vistas esas tarjetas: se les apaga el «Nuevo» y se descuenta. Siguen en pendientes. → cuántas cambió */
+  function apagarNuevas(e, ids) {
+    const hechas = new Set(ids);
+    let n = 0;
+    for (const x of e.pendientes.concat(e.ordenes)) if (x.nuevo && hechas.has(x.id)) { x.nuevo = false; n += 1; }
+    if (n) e.novedades = primeraNueva(e) ? Math.max(1, e.novedades - n) : 0;
+    return n;
   }
 
   // ── Preparación y dónde: textos fijos por tipo (no salen de la orden) ──
@@ -248,6 +308,7 @@
     dia, diaDeInstante, iso, corta, conDia, fechaPendiente, fechaControl, hecho,
     detalleOrden, detalleEstudio, hojas, archivos, tituloEnvio, lineaEnvio,
     decodificarEstado, enviosVisibles, bloques, preparacion, donde,
+    DESTINO, primeraNueva, novedadDeEstudios, tarjetaInicio, tarjetaDeLlegada, apagarNuevas,
     formato, puedeAgregar, clasificarSubida, progreso,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

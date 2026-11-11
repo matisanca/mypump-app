@@ -107,6 +107,7 @@
       this._reintento = false;
       this._fondo = 0;
       this._muerto = false;
+      this._marcando = new Set();
     }
 
     _cambio() { if (this.alCambiar && !this._muerto) { try { this.alCambiar(); } catch (_) {} } }
@@ -118,6 +119,9 @@
     // ── Lo que lee la pantalla ──
     get habilitado() { return !!this.estado; }
     get pendientes() { return this.estado ? this.estado.pendientes.length : 0; }
+    /* La novedad de Estudios (título + destino) o null: el punto y el aviso de arriba salen de acá. */
+    get novedad() { return E.novedadDeEstudios(this.estado); }
+    get tarjetaInicio() { return E.tarjetaInicio(this.estado); }
     get topeArchivos() { return this.estado ? this.estado.topeArchivos : E.TOPE_ARCHIVOS; }
     get topeMB() { return this.estado ? this.estado.topeMB : E.TOPE_MB; }
     get puedeAgregar() { return this.borrador.length < this.topeArchivos; }
@@ -172,6 +176,33 @@
       if (j.error === 'no_encontrado') { await this.refrescar(); return 'ok'; }   // ya llegó o lo cerraron: vale lo del servidor
       if (j.error === 'no_habilitado') this.apagar();
       return 'error';
+    }
+
+    /* Las tarjetas nuevas que estuvieron de verdad en pantalla (ids de pedidos y de órdenes, mezclados). Solo apaga el
+       «Nuevo»: el pendiente sigue. Apagada o cerrada la sección no se llama a nada. Si falla no se guarda ni se encola:
+       sale de nuevo la próxima vez que la tarjeta esté a la vista. → cuántas quedaron apagadas acá */
+    async marcarVistas(ids) {
+      const s = this.estado;
+      if (!s || this._muerto || this._sinVistas) return 0;
+      const nuevas = new Set(s.pendientes.concat(s.ordenes).filter((x) => x.nuevo).map((x) => x.id));
+      const l = Array.from(new Set(ids)).filter((id) => nuevas.has(id) && !this._marcando.has(id));
+      if (!l.length) return 0;
+      l.forEach((id) => this._marcando.add(id));
+      let r;
+      try { r = await this._rpc('mypump_estudios_novedades_vistas', { p_ids: l }); } finally { l.forEach((id) => this._marcando.delete(id)); }
+      if (this._muerto) return 0;
+      if (!r.ok) {
+        // Un servidor sin la función: no se le insiste en esta visita.
+        if (r.status === 404 || r.codigo === 'PGRST202') this._sinVistas = true;
+        return 0;
+      }
+      const j = r.data;
+      if (j === null || j === undefined) { await this.refrescar(); return 0; }      // token caído
+      if (typeof j !== 'object') return 0;
+      if (j.ok !== true) { if (j.error === 'no_habilitado') this.apagar(); return 0; }
+      const n = this.estado ? E.apagarNuevas(this.estado, l) : 0;
+      if (n) this._cambio();
+      return n;
     }
 
     // ── Hoja de subida ──
