@@ -137,7 +137,7 @@ def test_las_plantillas_reales_vigentes():
     import hashlib
     import cargar_plantillas as cp
     carpeta = os.environ.get("PUMP_FIRMA_FUENTES", "")
-    vigentes = {"servicio_ar": ("A_v10.md", "2a2d334cd6618707fd1969ced0571cd9"), "servicio_ext": ("E_v5.md", "99f8a42ea31c5e72d04eae33337221aa")}
+    vigentes = {"servicio_ar": ("A_v11.md", "a83186488e6b4642267ee5065c71bb62"), "servicio_ext": ("E_v6.md", "41b57e9097eb3e30cf8833a0a9ef09f1")}
     if not all(os.path.exists(os.path.join(carpeta, a)) for a, _ in vigentes.values()):
         pytest.skip("sin las fuentes privadas")
     for tipo, (archivo, md5) in vigentes.items():
@@ -145,7 +145,7 @@ def test_las_plantillas_reales_vigentes():
         assert hashlib.md5(md.encode()).hexdigest() == md5, archivo
         assert cp.texto_retirado(tipo, md) == [], archivo
         assert "videollamadas" not in md.lower() and "sesiones de coaching" not in md.lower(), archivo
-    for tipo, viejas in {"servicio_ar": ("A_v8.md", "A_v9.md"), "servicio_ext": ("E_v3.md", "E_v4.md")}.items():
+    for tipo, viejas in {"servicio_ar": ("A_v8.md", "A_v9.md", "A_v10.md"), "servicio_ext": ("E_v3.md", "E_v4.md", "E_v5.md")}.items():
         for archivo in viejas:
             ruta = os.path.join(carpeta, archivo)
             if os.path.exists(ruta):

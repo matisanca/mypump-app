@@ -3,7 +3,7 @@
 desde el archivo aprobado, y el md5 esperado se pasa a mano para que un archivo equivocado no entre.
 
 Uso (con el rol dueño, no con firma_srv):
-  FIRMA_DB_ADMIN_URL=postgresql://... python tools/cargar_plantillas.py servicio_ar v10 /ruta/A_v10.md <md5 esperado> [--ensayo]
+  FIRMA_DB_ADMIN_URL=postgresql://... python tools/cargar_plantillas.py servicio_ar v11 /ruta/A_v11.md <md5 esperado> [--ensayo]
 
 `--ensayo` hace todo y termina en ROLLBACK. Una versión ya cargada con el mismo texto no se vuelve a cargar."""
 import hashlib
@@ -19,15 +19,26 @@ TIPOS = ("servicio_ar", "servicio_ext", "consentimiento_ar")
 #   - una sola videollamada (cláusula 1 c en los dos; 9.3 c en los dos);
 #   - Argentina: pasado el plazo de revocación lo pagado no se reembolsa (14.2), sin el 30 % fijo ni devolución del excedente;
 #   - exterior: el desistimiento europeo de 14 días informado completo (cláusula 10.2, formulario modelo y aviso).
-# Las frases se comparan sin distinguir mayúsculas ni saltos de línea. Vigentes: servicio_ar v10, servicio_ext v5.
+#   - compromiso de continuidad con tope de tres meses; antes de la entrega se retiene como máximo el 30 % (AR 8.7 y 14.2);
+#   - exterior: cláusula 9 sin «garantía» ni extinción automática; cláusula 14 con el criterio de Argentina fuera de
+#     Europa y, para la UE, el EEE y el Reino Unido, pago solo de lo ya prestado; teléfono del Prestador en la 10.2;
+#   - «no grabar la videollamada» (ya no «las sesiones»).
+# Las frases se comparan sin distinguir mayúsculas ni saltos de línea. Vigentes: servicio_ar v11, servicio_ext v6.
 RETIRADAS = {
     "servicio_ar": ("sesiones de coaching individual",
                     "de las sesiones de coaching y de los controles programados",
                     "una suma fija equivalente al treinta por ciento (30 %) del precio total",
-                    "14.2. desistimiento del cliente"),
+                    "14.2. desistimiento del cliente",
+                    "ni difundir las sesiones"),
     "servicio_ext": ("sesiones de coaching individual",
                      "la asistencia a la totalidad de las sesiones de coaching",
-                     "con devolución de lo abonado cuando la prestación del servicio no hubiera comenzado. a modo de referencia"),
+                     "con devolución de lo abonado cuando la prestación del servicio no hubiera comenzado. a modo de referencia",
+                     "ni difundir las sesiones",
+                     "garantía de resultados físicos",
+                     "extinción automática",
+                     "constituyen prueba suficiente del cumplimiento",
+                     "cualquiera de las partes podrá terminar el contrato con aviso previo",
+                     "no libera al cliente de las cuotas vencidas e impagas"),
 }
 EXIGIDAS = {
     "servicio_ar": ("una videollamada individual de entrega y acompañamiento del proceso por mensajes",
@@ -37,7 +48,11 @@ EXIGIDAS = {
                     "cuando la terminación obedece a un incumplimiento del prestador",
                     "una imposibilidad de continuar por razones de salud",
                     "dentro de los diez (10) días corridos desde la fecha de celebración",
-                    "botón de revocación"),
+                    "botón de revocación",
+                    "por un máximo de tres (3) meses adicionales",
+                    "si la terminación se comunica antes de la entrega de la planificación inicial (cláusula 10.3 c), el prestador conserva lo abonado solo hasta el tope del treinta por ciento (30 %)",
+                    "si la resolución ocurre antes de la entrega de la planificación inicial (cláusula 10.3 c), el prestador conserva lo abonado solo hasta el tope del treinta por ciento (30 %)",
+                    "ni difundir la videollamada"),
     "servicio_ext": ("una videollamada individual de entrega y acompañamiento del proceso por mensajes",
                      "la asistencia a la videollamada de entrega y la realización de los check-ins programados",
                      "en un plazo de catorce (14) días naturales sin necesidad de justificación",
@@ -45,7 +60,13 @@ EXIGIDAS = {
                      "un importe proporcional a la parte ya prestada del servicio",
                      "habrá perdido su derecho de desistimiento",
                      "modelo de formulario de desistimiento",
-                     "por la presente le comunico que desisto de mi contrato"),
+                     "por la presente le comunico que desisto de mi contrato",
+                     "estados unidos de américa; teléfono +",
+                     "por un máximo de tres (3) meses adicionales",
+                     "las sumas abonadas hasta esa comunicación no se reembolsan",
+                     "a estos clientes no se les aplica la cláusula 14.2",
+                     "abona únicamente el precio de lo ya prestado",
+                     "ni difundir la videollamada"),
 }
 
 
