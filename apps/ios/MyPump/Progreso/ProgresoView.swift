@@ -77,7 +77,7 @@ struct FuerzaSeccion: View {
         .task {
             // Al abrir el segmento (como la web al abrir Progreso); si ya está, se actualiza tirando para abajo.
             guard let progreso, progreso.tarjetas.isEmpty || progreso.estado == .sinRed else { return }
-            await modelo.cargarProgreso()
+            await modelo.cargarProgresoSiHaceFalta()
         }
         // Capturas: `-abrir detalle` entra al primer ejercicio apenas hay datos (una sola vez).
         .onChange(of: lineas.count, initial: true) { _, n in

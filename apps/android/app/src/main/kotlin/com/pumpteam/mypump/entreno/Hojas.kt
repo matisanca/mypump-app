@@ -339,7 +339,7 @@ fun HojaCerrarDia(modelo: ModeloApp, motor: ModeloEntreno, v: VistaEntreno, alCe
     LaunchedEffect(Unit) {
         val p = modelo.progreso.value ?: return@LaunchedEffect
         // Como iOS (CerrarDiaView): si no hay historial o la vez anterior faltó la red, se vuelve a pedir.
-        if (p.tarjetas.value.isEmpty() || p.estado.value == ModeloProgreso.Estado.SIN_RED) alcance.launch { modelo.cargarProgreso() }
+        if (p.tarjetas.value.isEmpty() || p.estado.value == ModeloProgreso.Estado.SIN_RED) alcance.launch { modelo.cargarProgresoSiHaceFalta() }
     }
 
     fun cerrar() {

@@ -116,7 +116,7 @@ fun FuerzaSegmento(modelo: ModeloApp, estadoLista: LazyListState, alAbrir: (Stri
     LaunchedEffect(p) {
         val m = p ?: return@LaunchedEffect
         if (m.tarjetas.value.isEmpty() || m.estado.value == ModeloProgreso.Estado.SIN_RED) {
-            alcance.launch { modelo.cargarProgreso() }
+            alcance.launch { modelo.cargarProgresoSiHaceFalta() }
         }
     }
 

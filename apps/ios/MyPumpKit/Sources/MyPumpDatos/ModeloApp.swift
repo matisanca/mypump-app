@@ -823,6 +823,12 @@ public final class ModeloApp {
         await progreso?.cargar(rutina: rutina, nombreEfectivo: { entreno?.efectivo($0).ejercicio.nombre ?? $0.nombre })
     }
 
+    /// `cargarProgreso` solo si hace falta y no hay otra en camino (`ModeloProgreso.cargarSiHaceFalta`).
+    public func cargarProgresoSiHaceFalta() async {
+        let entreno = entreno
+        await progreso?.cargarSiHaceFalta(rutina: rutina, nombreEfectivo: { entreno?.efectivo($0).ejercicio.nombre ?? $0.nombre })
+    }
+
     /// Volvió la red (el monitor de la raíz): sale lo pendiente y, si se estaba mostrando la copia guardada, se trae todo.
     public func alVolverLaRed() async {
         guard fase == .listo, !esDemo, token != nil, !cargando else { return }

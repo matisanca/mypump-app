@@ -122,7 +122,7 @@ fun TarjetaProgresoRevision(modelo: ModeloApp, alAbrirFuerza: () -> Unit, modifi
         val p = progreso ?: return@LaunchedEffect
         // En la demo solo hay progreso con el historial inventado (no toca la red).
         if (!conRutina) return@LaunchedEffect
-        if (p.tarjetas.value.isEmpty() || p.estado.value == ModeloProgreso.Estado.SIN_RED) alcance.launch { modelo.cargarProgreso() }
+        if (p.tarjetas.value.isEmpty() || p.estado.value == ModeloProgreso.Estado.SIN_RED) alcance.launch { modelo.cargarProgresoSiHaceFalta() }
     }
     val hoy = FechaLocal.hoy()
     val linea = remember(tarjetas, esDemo, hoy) {

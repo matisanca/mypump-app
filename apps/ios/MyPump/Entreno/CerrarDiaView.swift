@@ -113,7 +113,7 @@ struct CerrarDiaView: View {
         .task {
             // La semana necesita el historial de los días anteriores (se trae al abrir Salud → Fuerza): si no está, acá.
             guard !modelo.conMuestras, modelo.entreno === motor, let p = modelo.progreso, p.tarjetas.isEmpty || p.estado == .sinRed else { return }
-            await modelo.cargarProgreso()
+            await modelo.cargarProgresoSiHaceFalta()
         }
         .presentationDetents([.medium, .large], selection: $detente)
         .presentationDragIndicator(.visible)

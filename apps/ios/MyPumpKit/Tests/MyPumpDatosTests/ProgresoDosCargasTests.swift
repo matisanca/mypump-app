@@ -73,4 +73,46 @@ struct ProgresoDosCargasTests {
         #expect(Array(m.historialPorClave.keys) == [nuevo])
         #expect(m.estado == .listo)
     }
+    final class Contado: Transporte, @unchecked Sendable {
+        let lock = NSLock()
+        var pedidos = 0
+        var sinRed = false
+        func enviar(_ p: URLRequest) async throws -> (Data, URLResponse) {
+            let corte = lock.withLock { pedidos += 1; return sinRed }
+            if corte { throw URLError(.notConnectedToInternet) }
+            let cuerpo = ProgresoDosCargasTests.filas(["Uno"], porEjercicio: 3)
+            return (Data(cuerpo.utf8), HTTPURLResponse(url: p.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
+    }
+
+    /// La tarjeta de progreso de Revisión y Salud → Fuerza piden solas: con una carga en camino, la segunda no sale (eran
+    /// dos pedidos iguales con todas las claves del plan). Con tarjetas tampoco; sin red, sí.
+    @Test func siHaceFaltaNoPideDosVeces() async throws {
+        let t = Contado()
+        let m = ModeloProgreso(cliente: ClienteRPC(config: .produccion, transporte: t), token: "AAAAAAAAAAAAAAAAAAAA")
+        let r = Self.rutina(["Uno"])
+        var adentro: Bool?
+        m.antesDeLasCuentas = {
+            guard adentro == nil else { return }
+            adentro = m.cargando
+            await m.cargarSiHaceFalta(rutina: r)
+        }
+        await m.cargarSiHaceFalta(rutina: r)
+        #expect(adentro == true)
+        #expect(t.pedidos == 1, "con una carga en camino salió otra")
+        #expect(!m.cargando)
+        #expect(m.tarjetas.map(\.clave) == [ClaveEjercicio.de("Uno")])
+        await m.cargarSiHaceFalta(rutina: r)
+        #expect(t.pedidos == 1, "con tarjetas no hace falta")
+        // Tirar para actualizar sí pide.
+        t.lock.withLock { t.sinRed = true }
+        await m.cargar(rutina: r)
+        let conCorte = t.pedidos
+        #expect(conCorte >= 2)
+        #expect(m.estado == .sinRed)
+        t.lock.withLock { t.sinRed = false }
+        await m.cargarSiHaceFalta(rutina: r)
+        #expect(t.pedidos == conCorte + 1, "sin red se vuelve a pedir")
+        #expect(m.estado == .listo)
+    }
 }

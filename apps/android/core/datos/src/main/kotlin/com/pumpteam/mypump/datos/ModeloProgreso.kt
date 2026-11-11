@@ -63,6 +63,12 @@ class ModeloProgreso(
      */
     private val carga = AtomicInteger(0)
 
+    /** Las cargas que todavía no volvieron (las cuenta [cargar]; las mira [cargarSiHaceFalta]). */
+    private val enVuelo = AtomicInteger(0)
+
+    /** Hay una carga en camino. */
+    val cargando: Boolean get() = enVuelo.get() > 0
+
     /** Solo para las pruebas: corre justo antes de las cuentas, que es donde se cuela otra carga. */
     internal var antesDeLasCuentas: (suspend () -> Unit)? = null
 
@@ -70,6 +76,27 @@ class ModeloProgreso(
 
     /** [nombreEfectivo] da el nombre que se está haciendo (el del sustituto si el ejercicio está sustituido). */
     suspend fun cargar(rutina: RutinaActiva?, nombreEfectivo: (Ejercicio) -> String = { it.nombre }) {
+        enVuelo.incrementAndGet()
+        try {
+            cargarYa(rutina, nombreEfectivo)
+        } finally {
+            enVuelo.decrementAndGet()
+        }
+    }
+
+    /**
+     * Lo que piden solas Revisión (su tarjeta de progreso), Salud → Fuerza y el cierre del día: solo si no hay tarjetas o
+     * faltó la red, y nunca con otra carga en camino. Abrir Fuerza desde Revisión mientras la tarjeta todavía cargaba
+     * hacía dos pedidos iguales con todas las claves del plan (y la primera respuesta se tiraba). Tirar para actualizar
+     * usa [cargar].
+     */
+    suspend fun cargarSiHaceFalta(rutina: RutinaActiva?, nombreEfectivo: (Ejercicio) -> String = { it.nombre }) {
+        if (cargando) return
+        if (_tarjetas.value.isNotEmpty() && _estado.value != Estado.SIN_RED) return
+        cargar(rutina, nombreEfectivo)
+    }
+
+    private suspend fun cargarYa(rutina: RutinaActiva?, nombreEfectivo: (Ejercicio) -> String) {
         val mia = carga.incrementAndGet()
         _estado.value = Estado.CARGANDO
         val dias = rutina?.estructura?.dias

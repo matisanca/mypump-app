@@ -1550,6 +1550,12 @@ class ModeloApp(
         _progreso.value?.cargar(_rutina.value) { entreno?.efectivo(it)?.ejercicio?.nombre ?: it.nombre }
     }
 
+    /** [cargarProgreso] solo si hace falta y no hay otra en camino ([ModeloProgreso.cargarSiHaceFalta]). */
+    suspend fun cargarProgresoSiHaceFalta() {
+        val entreno = _entreno.value
+        _progreso.value?.cargarSiHaceFalta(_rutina.value) { entreno?.efectivo(it)?.ejercicio?.nombre ?: it.nombre }
+    }
+
     /** Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas. */
     val pendientesDeLaSemana: FotosProgreso.Pendientes
         get() {

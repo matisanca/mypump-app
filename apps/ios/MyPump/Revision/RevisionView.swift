@@ -240,7 +240,7 @@ struct RevisionView: View {
             .id("progreso")
             .task {
                 guard let p = modelo.conMuestras ? nil : modelo.progreso, p.tarjetas.isEmpty || p.estado == .sinRed else { return }
-                await modelo.cargarProgreso()
+                await modelo.cargarProgresoSiHaceFalta()
             }
     }
     /// Lo que era la pestaña Progreso, en una línea; tocarla abre Salud en Fuerza.
@@ -250,7 +250,7 @@ struct RevisionView: View {
             // El historial se trae al abrir Fuerza; si todavía no se abrió, acá (una vez, o al volver la red).
             .task {
                 guard let p = modelo.conMuestras ? nil : modelo.progreso, p.tarjetas.isEmpty || p.estado == .sinRed else { return }
-                await modelo.cargarProgreso()
+                await modelo.cargarProgresoSiHaceFalta()
             }
     }
     private var lineaProgreso: ProgresoSemana.Linea? {

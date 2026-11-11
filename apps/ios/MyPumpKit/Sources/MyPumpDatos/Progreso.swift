@@ -35,6 +35,10 @@ public final class ModeloProgreso {
     /// La carga en curso: si mientras tanto empezó otra, lo que vuelve de esta se descarta. Dos cargas que se pisaban
     /// dejaban las tarjetas de una con el historial de la otra (revisión adversarial del 15-oct).
     @ObservationIgnored private var carga = 0
+    /// Las cargas que todavía no volvieron (las cuenta `cargar`; las mira `cargarSiHaceFalta`).
+    @ObservationIgnored private var enVuelo = 0
+    /// Hay una carga en camino.
+    public var cargando: Bool { enVuelo > 0 }
     /// Solo para las pruebas: corre justo antes de las cuentas, que es donde se cuela otra carga.
     @ObservationIgnored var antesDeLasCuentas: (() async -> Void)?
 
@@ -42,8 +46,19 @@ public final class ModeloProgreso {
         self.cliente = cliente; self.token = token
     }
 
+    /// Lo que piden solas Revisión (su tarjeta de progreso), Salud → Fuerza y el cierre del día: solo si no hay tarjetas o
+    /// faltó la red, y nunca con otra carga en camino. Abrir Fuerza desde Revisión mientras la tarjeta todavía cargaba
+    /// hacía dos pedidos iguales con todas las claves del plan (y la primera respuesta se tiraba). Tirar para actualizar
+    /// usa `cargar`.
+    public func cargarSiHaceFalta(rutina: RutinaActiva?, nombreEfectivo: (Ejercicio) -> String = { $0.nombre }) async {
+        guard !cargando, tarjetas.isEmpty || estado == .sinRed else { return }
+        await cargar(rutina: rutina, nombreEfectivo: nombreEfectivo)
+    }
+
     /// `nombreEfectivo` da el nombre que se está haciendo (el del sustituto si el ejercicio está sustituido).
     public func cargar(rutina: RutinaActiva?, nombreEfectivo: (Ejercicio) -> String = { $0.nombre }) async {
+        enVuelo += 1
+        defer { enVuelo -= 1 }
         carga += 1
         let mia = carga
         estado = .cargando

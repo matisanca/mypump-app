@@ -4,6 +4,7 @@ import com.pumpteam.mypump.modelos.RutinaActiva
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.ClaveEjercicio
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -46,6 +47,42 @@ class ProgresoDosCargasTest {
         assertEquals(listOf(nuevo), p.tarjetas.value.map { it.clave }, "las cuentas de la carga vieja pisaron a la nueva")
         assertEquals(setOf(nuevo), p.historialPorClave.value.keys)
         assertEquals(3, p.sesiones.value)
+        assertEquals(ModeloProgreso.Estado.LISTO, p.estado.value)
+    }
+    /**
+     * La tarjeta de progreso de Revisión y Salud → Fuerza piden solas: con una carga en camino, la segunda no sale (eran
+     * dos pedidos iguales con todas las claves del plan). Con tarjetas tampoco; sin red, sí.
+     */
+    @Test
+    fun siHaceFaltaNoPideDosVeces() = enUnHilo {
+        var sinRed = false
+        val t = TransporteProgramado { _, _ ->
+            if (sinRed) throw java.io.IOException("sin conexión (prueba)")
+            200 to filas(listOf("Uno"), 3)
+        }
+        fun pedidos() = t.llamadas.size
+        val p = ModeloProgreso(ClienteRpc(transporte = t), "AAAAAAAAAAAAAAAAAAAA")
+        val r = rutina(listOf("Uno"))
+        p.antesDeLasCuentas = {
+            p.antesDeLasCuentas = null
+            assertEquals(true, p.cargando)
+            p.cargarSiHaceFalta(r)
+        }
+        p.cargarSiHaceFalta(r)
+        assertEquals(1, pedidos(), "con una carga en camino salió otra")
+        assertEquals(false, p.cargando)
+        assertEquals(listOf(ClaveEjercicio.de("Uno")), p.tarjetas.value.map { it.clave })
+        p.cargarSiHaceFalta(r)
+        assertEquals(1, pedidos(), "con tarjetas no hace falta")
+        // Tirar para actualizar sí pide.
+        sinRed = true
+        p.cargar(r)
+        val conCorte = pedidos()
+        assertTrue(conCorte >= 2)
+        assertEquals(ModeloProgreso.Estado.SIN_RED, p.estado.value)
+        sinRed = false
+        p.cargarSiHaceFalta(r)
+        assertEquals(conCorte + 1, pedidos(), "sin red se vuelve a pedir")
         assertEquals(ModeloProgreso.Estado.LISTO, p.estado.value)
     }
 }
