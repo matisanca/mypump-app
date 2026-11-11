@@ -16,6 +16,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,16 @@ internal object ProporcionesVideo {
     private const val ARCHIVO = "guia-video-proporciones"
     private val memoria = HashMap<String, Float>()
 
+    /**
+     * Los clips que el reproductor ya mostró en esta sesión, en estado de Compose: [recorteDe] se entera aunque la
+     * proporción no cambie. Un 1280×720 con las franjas metidas da el mismo 16:9 que la caja de mientras carga, y sin esto
+     * la pantalla no se recomponía y el recorte no se medía hasta la próxima apertura (se veían las franjas).
+     */
+    private val mostrados = mutableStateMapOf<String, Boolean>()
+
+    /** El reproductor ya mostró [id] en esta sesión (lo lee al componer: se recompone cuando pasa). */
+    fun mostrado(id: String): Boolean = mostrados[id] == true
+
     @Synchronized
     fun de(contexto: Context, id: String): Float? = memoria[id] ?: contexto.getSharedPreferences(ARCHIVO, Context.MODE_PRIVATE)
         .getFloat(id, Float.NaN).takeIf { it.isFinite() && it > 0f }?.also { memoria[id] = it }
@@ -51,11 +62,14 @@ internal object ProporcionesVideo {
     @Synchronized
     fun olvidar(contexto: Context) {
         memoria.clear()
+        mostrados.clear()
         contexto.getSharedPreferences(ARCHIVO, Context.MODE_PRIVATE).edit().clear().commit()
     }
 
+    /** Lo llama el reproductor (en el hilo principal) cada vez que sabe el tamaño de [id]. */
     @Synchronized
     fun guardar(contexto: Context, id: String, p: Float) {
+        if (mostrados[id] != true) mostrados[id] = true
         if (memoria[id] == p) return
         memoria[id] = p
         contexto.getSharedPreferences(ARCHIVO, Context.MODE_PRIVATE).edit().putFloat(id, p).apply()
@@ -223,7 +237,9 @@ internal object RecuadrosVideo {
 internal fun recorteDe(url: String?, id: String?): ReglasVideo.Recuadro? {
     val contexto = LocalContext.current.applicationContext
     var r by remember(url) { mutableStateOf(url?.let { RecuadrosVideo.recorteGuardado(contexto, it) }) }
-    val cargo = id != null && ProporcionesVideo.de(contexto, id) != null
+    // `mostrado` primero, siempre: es lo que hace recomponer cuando el reproductor carga el clip.
+    val mostrado = id != null && ProporcionesVideo.mostrado(id)
+    val cargo = mostrado || (id != null && ProporcionesVideo.de(contexto, id) != null)
     LaunchedEffect(url, cargo) {
         if (url != null && cargo && RecuadrosVideo.guardado(contexto, url) == null) r = RecuadrosVideo.detectar(contexto, url)
     }
