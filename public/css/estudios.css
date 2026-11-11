@@ -1,0 +1,61 @@
+/* «Estudios y órdenes». Solo se ve con la palanca prendida. Se apoya en las piezas de gimnasio.css y en los tokens de la app.
+   Tamaños en rem y alturas mínimas (nunca fijas): con la letra agrandada el texto baja de línea, no se corta. */
+.est{gap:var(--space-4)}
+.est-h1{font-size:1.5rem;line-height:1.2;font-weight:700;color:var(--color-text-primary);margin:0;outline:none}
+.est-h2{font-size:1.125rem;line-height:1.25;font-weight:700;color:var(--color-text-primary);margin:var(--space-3) var(--space-1) calc(var(--space-2) * -1)}
+.est-h3{font-size:1.0625rem;line-height:1.3;font-weight:700;color:var(--color-text-primary);margin:0}
+.est-tarjeta{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-4);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:22px}
+.est .btn-primary{height:auto;min-height:52px;padding:10px var(--space-4);border-radius:var(--radius-full);text-decoration:none;box-sizing:border-box;text-align:center}
+.est-principal{min-height:56px}
+.est-control{flex-direction:row;align-items:center}
+.est-control-ic{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.est-ceja{font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)}
+.est-linea{display:flex;align-items:flex-start;gap:var(--space-2);margin:0;font-size:.9375rem;line-height:1.35;color:var(--color-text-secondary)}
+.est-linea svg{flex:none;margin-top:1px}
+/* Una fecha pasada va en ámbar, con su ícono y su texto: nunca en rojo. */
+.est-linea.is-pasada{color:var(--color-alerta)}
+.est-botones{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.est-botones .est-pildora{flex:1 1 130px}
+.est-pildora{box-sizing:border-box;min-height:44px;padding:8px var(--space-4);border:0;border-radius:var(--radius-full);background:var(--color-bg-tertiary);color:var(--color-text-primary);font:inherit;font-size:.9375rem;font-weight:600;cursor:pointer}
+.est-pildora.is-verde{color:var(--color-brand-text)}
+.est-pildora:disabled,.est-opcion:disabled{opacity:.5;cursor:not-allowed}
+.est-cancelar{align-self:center;background:transparent;color:var(--color-text-secondary)}
+.est-grupo{list-style:none;margin:0;padding:0;background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:22px;overflow:hidden}
+.est-fila{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:56px;padding:var(--space-3) var(--space-4);color:var(--color-text-primary)}
+button.est-fila{cursor:pointer}
+.est-fila + .est-fila{border-top:1px solid var(--color-border)}
+.est-fila-txt{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.est-fila-txt strong{font-size:1rem;line-height:1.3;font-weight:600;color:var(--color-text-primary);overflow-wrap:anywhere}
+.est-fila-txt small{font-size:.875rem;line-height:1.35;color:var(--color-text-secondary)}
+.est-fila.is-vencida strong{color:var(--color-text-muted)}
+.est-ver{flex:none;font-size:.9375rem;font-weight:600;color:var(--color-brand-text)}
+/* El estado se lee por el ícono y el texto, no solo por el color. */
+.est-chip{display:inline-flex;align-items:center;gap:6px;margin-top:4px;padding:3px 10px 3px 8px;border-radius:var(--radius-full);background:var(--color-bg-tertiary);color:var(--color-text-secondary);font-size:.8125rem;font-weight:600;line-height:1.3}
+.est-chip svg{width:14px;height:14px;flex:none}
+.est-chip.is-visto{background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.est-nota,.est-vacio{margin:0 var(--space-1);font-size:.875rem;line-height:1.45;color:var(--color-text-secondary)}
+.est-vacio{font-size:.9375rem;text-align:center;padding:var(--space-4) var(--space-3)}
+.est-banda{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3);padding:var(--space-3) var(--space-4);border-radius:var(--radius-lg);background:var(--color-bg-tertiary);color:var(--color-text-primary);font-size:.9375rem;line-height:1.4}
+.est-banda > span{flex:1 1 180px;min-width:0}
+.est-banda > svg{flex:none;color:var(--color-brand-text)}
+.est-banda.is-bien{background:var(--color-brand-subtle)}
+.est-banda .est-pildora{background:var(--color-bg-primary)}
+.est-x{all:unset;box-sizing:border-box;flex:none;width:44px;height:44px;margin:-8px -10px -8px 0;display:grid;place-items:center;border-radius:50%;color:var(--color-text-secondary);cursor:pointer}
+.est-spinner{flex:none;width:20px;height:20px;border-width:2px}
+.est-guia{margin:0;font-size:1.0625rem;line-height:1.4;color:var(--color-text-primary)}
+.est-opciones{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:var(--space-2)}
+.est-opcion{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-2);min-height:88px;padding:var(--space-3) var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:.875rem;font-weight:600;line-height:1.25;text-align:center;cursor:pointer}
+.est-opcion svg{color:var(--color-brand-text)}
+.est-mini{flex:none;width:48px;height:48px;border-radius:var(--radius-md);overflow:hidden;display:grid;place-items:center;background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.est-mini img{width:100%;height:100%;object-fit:cover}
+.est-preparando{display:flex;justify-content:center;padding:var(--space-2)}
+.est-puntos{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:var(--space-2);font-size:.9375rem;line-height:1.45;color:var(--color-text-primary)}
+.est-hoja{display:block;width:100%;height:auto;border-radius:var(--radius-md);border:1px solid var(--color-border);background:#fff}
+.est-hoja-fecha{display:flex;flex-direction:column;gap:var(--space-3)}
+.est-hoja-fecha .fp-pick-tit{margin:0;font-size:1.0625rem}
+.est-hoja-fecha .btn-primary{border-radius:var(--radius-full)}
+.est-hoja-fecha .gim-nota:empty{display:none}
+.est-fecha{box-sizing:border-box;width:100%;min-height:52px;padding:0 var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-secondary);color:var(--color-text-primary);font:inherit;font-size:1rem}
+.est-pildora:focus-visible,.est-opcion:focus-visible,.est-x:focus-visible,button.est-fila:focus-visible,.est .btn-primary:focus-visible,.est-fecha:focus-visible,.est .sd-volver:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
+button.est-fila:focus-visible{outline-offset:-2px}
+@media (prefers-reduced-motion:reduce){.est .spinner{animation-duration:2s}}

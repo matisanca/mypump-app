@@ -58,6 +58,11 @@ firmas.set('mypump_gimnasio_responder', new Set(['p_token', 'p_id', 'p_respuesta
 firmas.set('mypump_tecnica_get', new Set(['p_token']));
 firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ejercicio_nombre', 'p_nota']));
 firmas.set('mypump_tecnica_cancelar', new Set(['p_token', 'p_id']));
+// Estudios y órdenes: propuesta sin aplicar (supabase/propuestas/nativa_estudios.sql, rama nativa-estudios). Si no existe, la web no muestra nada.
+firmas.set('mypump_estudios_get', new Set(['p_token']));
+firmas.set('mypump_estudios_envio_nuevo', new Set(['p_token', 'p_id', 'p_pedido_id']));
+firmas.set('mypump_estudios_enviar', new Set(['p_token', 'p_id', 'p_archivos']));
+firmas.set('mypump_estudios_hecho', new Set(['p_token', 'p_pedido_id', 'p_fecha']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.

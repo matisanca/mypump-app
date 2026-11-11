@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/gimnasio.css">
 <link rel="stylesheet" href="/css/tecnica.css">
+<link rel="stylesheet" href="/css/estudios.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--font-size-base);line-height:var(--line-height-normal);-webkit-font-smoothing:antialiased}
@@ -1492,6 +1493,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
     <section class="scene" id="scene-misdatos"></section>
     <section class="scene" id="scene-gimnasio"></section>
     <section class="scene" id="scene-tecnica"></section>
+    <section class="scene" id="scene-estudios"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -1601,6 +1603,9 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/tecnica.js"></script>
 <script src="/js/tecnica-cola.js"></script>
 <script src="/js/tecnica-ui.js"></script>
+<script src="/js/estudios.js"></script>
+<script src="/js/estudios-cola.js"></script>
+<script src="/js/estudios-ui.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1784,11 +1789,24 @@ function _tecPalanca(cfg) {
   });
   window.TecnicaUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.tecnica_video === true : null);
 }
+/* «Estudios y órdenes» (js/estudios*.js), detrás de `estudios_app`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada. */
+function _estPalanca(cfg) {
+  if (!window.EstudiosUI || !TOKEN || DEMO) return;
+  window.EstudiosUI.configurar({
+    token: TOKEN,
+    visionUrl: (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '',
+    rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
+    irA: (escena) => setScene(escena),
+    alCambiarEntrada: () => { if (STATE.scene === 'misdatos') renderMisDatos(); },
+  });
+  window.EstudiosUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.estudios_app === true : null);
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
   _gimPalanca(cfg);
   _tecPalanca(cfg);
+  _estPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -10106,7 +10124,7 @@ function renderRecordatorio() {
   }
 
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
-  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica') return;
+  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica' || STATE.scene === 'estudios') return;
 
   const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan tu check y tus fotos de la semana'
               : p.faltaCheck ? 'Te falta tu check de la semana'
@@ -10986,6 +11004,7 @@ function renderMisDatos() {
       ${guia ? fila('mdGuia', 'Ver mi guía') : ''}
       ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
       ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? fila('mdTecnica', window.Tecnica.T.titulo) : ''}
+      ${window.EstudiosUI && window.EstudiosUI.entradaVisible() ? `<button class="md-fila" id="mdEstudios"><span class="gim-zona-txt"><span>${window.Estudios.T.entradaMisDatos}</span><small>${window.EstudiosUI.subtitulo()}</small></span><span class="md-chev">${_CHEV_DER}</span></button>` : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
@@ -10996,6 +11015,8 @@ function renderMisDatos() {
   if (gim) gim.onclick = () => window.GimnasioUI.abrir('misdatos');
   const tec = document.getElementById('mdTecnica');
   if (tec) tec.onclick = () => window.TecnicaUI.abrir('misdatos');
+  const est = document.getElementById('mdEstudios');
+  if (est) est.onclick = () => window.EstudiosUI.abrir();
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
   const sw = document.getElementById('mdOscuro');
@@ -11258,7 +11279,7 @@ function setScene(scene) {
     // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
-    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision'
+    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos' || scene === 'estudios') ? 'revision'
       : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train')
       : scene === 'tecnica' ? (window.TecnicaUI.origen === 'train' ? 'train' : 'revision') : scene;
     const active = t.getAttribute('data-scene') === tabDe;
@@ -11332,6 +11353,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = window.TecnicaUI.titulo();
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'estudios') {
+    $('#hdrEyebrow').textContent = 'REVISIÓN';
+    $('#hdrTitle').textContent = window.EstudiosUI.titulo();
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   }
 
   if (scene === 'train') renderTrain();
@@ -11344,6 +11370,7 @@ function setScene(scene) {
   if (scene === 'misdatos') renderMisDatos();
   if (scene === 'gimnasio') window.GimnasioUI.renderEscena();
   if (scene === 'tecnica') window.TecnicaUI.renderEscena();
+  if (scene === 'estudios') window.EstudiosUI.renderEscena();
   if (scene === 'supl') { STATE.suplAbierto = null; renderSupl(); }
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
@@ -11447,7 +11474,7 @@ function _aplicarSceneDeURL() {
     const s = new URLSearchParams(location.search).get('scene');
     if (!s) return;
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
-    if (validas.indexOf(s) !== -1 && s !== 'gimnasio' && s !== 'tecnica') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
+    if (validas.indexOf(s) !== -1 && s !== 'gimnasio' && s !== 'tecnica' && s !== 'estudios') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
   } catch (e) {}
 }
 
@@ -11723,8 +11750,8 @@ async function init() {
   await restoreSesionDelDia();
   aplicarPendientesEntreno();
   if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
-  // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio también va, como en la app.
-  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => _gimPalanca(r.ok ? r.data : null)).catch(() => {});
+  // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio y los estudios también van, como en la app.
+  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const cfg = r.ok ? r.data : null; _gimPalanca(cfg); _estPalanca(cfg); }).catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;
