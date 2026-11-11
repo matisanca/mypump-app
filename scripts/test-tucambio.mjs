@@ -32,6 +32,7 @@ for (const c of V.casos) {
 }
 for (const [f, e] of V.fechas) caso(`fecha ${f}`, () => assert.equal(TC.fecha(f), e));
 for (const [p, e] of V.sinFoto) caso(`sinFoto ${p}`, () => assert.equal(TC.sinFoto(p), e));
+for (const [p, e] of V.sinOtra) caso(`sinOtra ${p}`, () => assert.equal(TC.sinOtra(p), e));
 for (const f of V.fechaLocal) caso(`fechaLocal ${f.iso}`, () => assert.equal(TC.fechaLocal(f.iso, f.zona), f.esperado));
 
 // Lo que se ve de Tu cambio en la página: nada de IA, ciclo, fármacos ni compartir.

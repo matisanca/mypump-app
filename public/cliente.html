@@ -11849,7 +11849,10 @@ const TuCambio = (() => {
     if (!(m >= 1 && m <= 12) || isNaN(d)) return f;
     return `${d} de ${MESES[m - 1]}`;
   }
-  const sinFoto = (pose) => `Sin foto de ${((POSES_TC.find(p => p[0] === pose) || [pose, pose])[1]).toLowerCase()}`;
+  const etiquetaPose = (pose) => ((POSES_TC.find(p => p[0] === pose) || [pose, pose])[1]).toLowerCase();
+  const sinFoto = (pose) => `Sin foto de ${etiquetaPose(pose)}`;
+  // El marco de la derecha cuando esa pose tiene una sola foto.
+  const sinOtra = (pose) => `Todavía no hay otra foto de ${etiquetaPose(pose)}`;
   const rotulo = (semana, actual) => semana === actual ? T.rotuloEstaSemana : `Semana del ${fecha(semana)}`;
   function accesible(r, falta) {
     const base = r === T.rotuloEstaSemana ? 'Foto de esta semana' : `Foto de la ${minuscula(r)}`;
@@ -11857,7 +11860,8 @@ const TuCambio = (() => {
   }
   // La fecha local (AAAA-MM-DD) de un `tomada_en` del servidor. Solo la fecha, o ilegible: sus 10 primeros caracteres, si son una fecha.
   function fechaLocal(iso, zona) {
-    const s = String(iso || '');
+    // «+0000» → «+00:00» (Postgres puede mandar cualquiera de las dos).
+    const s = String(iso || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
     if (FECHA.test(s)) return s;
     const ms = /T\d{2}:\d{2}/.test(s) ? Date.parse(s) : NaN;
     if (isNaN(ms)) { const p = s.slice(0, 10); return dia(p) != null ? p : null; }
@@ -11883,18 +11887,25 @@ const TuCambio = (() => {
       const orden = [elegida, ...poses.filter(p => p !== elegida)];
       const p = orden.find(x => primera(x) != null) || elegida;
       return { modo: 'espera', pose: p, antes: primera(p), despues: null, texto: T.textoEspera, pie: null,
-        rotuloAntes: T.rotuloAntes, rotuloDespues: '', accesibleAntes: accesible(T.rotuloAntes), accesibleDespues: '' };
+        rotuloAntes: T.rotuloAntes, rotuloDespues: '', accesibleAntes: accesible(T.rotuloAntes), accesibleDespues: '', vacioDespues: sinFoto(p) };
     }
     const antes = primera(elegida);
     const ultima = semanasDe(elegida).slice(-1)[0];
     const despues = antes && ultima != null && ultima > antes.semana ? { origen: 'progreso', semana: ultima } : null;
     const pie = antes && despues ? resumen(antes.semana, despues.semana, peso || []) : null;
+    if (antes && !despues) {
+      // Esa pose tiene una sola foto: se rotula con su semana (nunca «Semana 1») y el otro marco dice que todavía no hay otra.
+      const r = rotulo(antes.semana, semanaActual);
+      return { modo: 'par', pose: elegida, antes, despues: null, texto: null, pie: null, rotuloAntes: r, rotuloDespues: '',
+        accesibleAntes: accesible(r), accesibleDespues: sinOtra(elegida), vacioDespues: sinOtra(elegida) };
+    }
     const rd = rotulo(despues ? despues.semana : semanaActual, semanaActual);
     return { modo: 'par', pose: elegida, antes, despues, texto: null, pie, rotuloAntes: T.rotuloAntes, rotuloDespues: rd,
-      accesibleAntes: accesible(T.rotuloAntes, antes ? null : elegida), accesibleDespues: accesible(rd, despues ? null : elegida) };
+      accesibleAntes: accesible(T.rotuloAntes, antes ? null : elegida), accesibleDespues: accesible(rd, despues ? null : elegida),
+      vacioDespues: sinFoto(elegida) };
   }
 
-  return { T, POSES: POSES_TC, vista, fecha, sinFoto, fechaLocal, rotulo, accesible, lunes };
+  return { T, POSES: POSES_TC, vista, fecha, sinFoto, sinOtra, fechaLocal, rotulo, accesible, lunes };
 })();
 /* ═══ TU CAMBIO · REGLAS (fin) ═══ */
 
@@ -12679,7 +12690,6 @@ async function _tomarFoto(pose, origen) {
    cola), las de inicio guiadas (FotosInicioUI) y el peso. Tocarla abre el comparador a pantalla completa. Las fotos son
    privadas: no hay ningún botón para mandarlas afuera. */
 let _tcPose = TuCambio.T.poseInicial;
-let _tcFirmaInicio = '';
 
 function _tcFuentes() {
   const fotos = (STATE.fotos || []).map(f => [f.semana_lunes, f.pose]);
@@ -12716,15 +12726,14 @@ function _tcImagen(foto, pose, f) {
 function _tcMarco(src, rotulo, accesible, vacio, testid) {
   return `<figure class="tc-foto" role="img" aria-label="${escapeHtml(accesible)}" data-testid="${testid}">
       <div class="tc-img">${src ? `<img src="${escapeHtml(src)}" alt="">` : `<span>${escapeHtml(vacio)}</span>`}</div>
-      <figcaption aria-hidden="true">${escapeHtml(rotulo)}</figcaption>
+      ${rotulo ? `<figcaption aria-hidden="true">${escapeHtml(rotulo)}</figcaption>` : ''}
     </figure>`;
 }
 
 function _tcParHtml(v, f) {
-  const vacio = TuCambio.sinFoto(v.pose);
   return `<div class="tc-par" data-testid="tucambio-par">
-    ${_tcMarco(_tcImagen(v.antes, v.pose, f), v.rotuloAntes, v.accesibleAntes, vacio, 'tucambio-antes')}
-    ${_tcMarco(_tcImagen(v.despues, v.pose, f), v.rotuloDespues, v.accesibleDespues, vacio, 'tucambio-despues')}
+    ${_tcMarco(_tcImagen(v.antes, v.pose, f), v.rotuloAntes, v.accesibleAntes, TuCambio.sinFoto(v.pose), 'tucambio-antes')}
+    ${_tcMarco(_tcImagen(v.despues, v.pose, f), v.rotuloDespues, v.accesibleDespues, v.vacioDespues, 'tucambio-despues')}
   </div>`;
 }
 
@@ -12738,21 +12747,50 @@ function _tcEnlazarPoses(raiz, alElegir) {
   raiz.querySelectorAll('[data-tc-pose]').forEach(b => b.addEventListener('click', () => alElegir(b.dataset.tcPose)));
 }
 
-// Las URLs firmadas que falten (las de siempre: /progreso/urls y /inicio/urls), una vez por lo que se ve.
+// Las URLs firmadas que falten o vencieron (las de siempre: /progreso/urls y /inicio/urls). Una sola firma en vuelo por
+// fuente, y si falla o vuelve vacía no se reintenta antes de un minuto (así nunca queda pidiendo en bucle).
+const TC_REINTENTO_MS = 60 * 1000;
+let _tcProgresoEspera = 0;
+let _tcInicioEnVuelo = false;
+let _tcInicioEspera = 0;
+
 function _tcFirmar(f) {
-  const vencidas = !STATE.fotosUrls || !(STATE.fotosUrls.exp > Date.now());
-  // El mismo candado que la sección de fotos: una sola firma en vuelo.
-  if (vencidas && !STATE._firmando && (STATE.fotos || []).length) {
+  const ahora = Date.now();
+  const vencidas = !STATE.fotosUrls || !(STATE.fotosUrls.exp > ahora);
+  // El mismo candado que la sección de fotos.
+  if (vencidas && !STATE._firmando && ahora >= _tcProgresoEspera && (STATE.fotos || []).length) {
     STATE._firmando = true;
-    cargarFotosFirmadas().then(() => { STATE._firmando = false; renderTuCambio(); }).catch(() => { STATE._firmando = false; });
+    cargarFotosFirmadas().then((mapa) => {
+      STATE._firmando = false;
+      const vigentes = STATE.fotosUrls && STATE.fotosUrls.exp > Date.now();
+      if (mapa && vigentes) _tcRepintar(); else _tcProgresoEspera = Date.now() + TC_REINTENTO_MS;
+    }).catch(() => { STATE._firmando = false; _tcProgresoEspera = Date.now() + TC_REINTENTO_MS; });
   }
-  if (f.m) {
-    const ids = f.m.estado.fotos.filter(x => !f.m.miniaturas[x.id] && !f.m.urls[x.id]).map(x => x.id);
-    const clave = ids.join(',');
-    if (ids.length && clave !== _tcFirmaInicio) {
-      _tcFirmaInicio = clave;
-      Promise.resolve(f.m.firmar(ids)).catch(() => {}).then(() => renderTuCambio());
+  if (f.m && !_tcInicioEnVuelo && ahora >= _tcInicioEspera) {
+    const ids = (f.m.estado.fotos || []).filter(x => !f.m.miniaturas[x.id]).map(x => x.id);
+    const faltan = ids.some(id => !f.m.urls[id]);
+    const vencen = !(f.m._urlsVencen > ahora);
+    if (ids.length && (faltan || vencen)) {
+      _tcInicioEnVuelo = true;
+      const antes = f.m.urls;
+      // firmar() no vuelve a pedir si están todas y no vencieron; si cambió algo, se repinta.
+      Promise.resolve(f.m.firmar(ids)).catch(() => {}).then(() => {
+        _tcInicioEnVuelo = false;
+        // Si volvió sin alguna (o no volvió), un minuto antes de pedir de nuevo; si trajo algo, se repinta.
+        if (f.m.urls === antes || ids.some(id => !f.m.urls[id])) _tcInicioEspera = Date.now() + TC_REINTENTO_MS;
+        if (f.m.urls !== antes) _tcRepintar();
+      });
     }
+  }
+}
+
+// La tarjeta y, si está abierta, la pantalla «Listo» del check guiado.
+function _tcRepintar() {
+  renderTuCambio();
+  const listo = document.querySelector('[data-testid="cg-listo-tucambio"]');
+  if (listo) {
+    const nuevo = _tcListoHtml(true);
+    if (nuevo) listo.outerHTML = nuevo;
   }
 }
 
@@ -12784,10 +12822,12 @@ function renderTuCambio() {
 }
 
 // «Listo» del check guiado: el par de frente, solo con las dos fotos.
-function _tcListoHtml() {
+function _tcListoHtml(repintando) {
   if (!checkGuiadoPrendido()) return '';
   const { v, f } = _tcVista(TuCambio.T.poseInicial);
   if (v.modo !== 'par' || !v.antes || !v.despues) return '';
+  // Si le faltan las URLs, se piden y la pantalla se repinta sola al llegar.
+  if (!repintando) setTimeout(() => _tcFirmar(f), 0);
   return `<div class="tc-listo" data-testid="cg-listo-tucambio">
     <h3 class="tc-listo-tit">${escapeHtml(TuCambio.T.listoTitulo)}</h3>
     ${_tcParHtml(v, f)}
@@ -12797,7 +12837,10 @@ function _tcListoHtml() {
 /* ═══ TU CAMBIO · PANTALLA (fin) ═══ */
 
 /* `opciones.pose`: la pose con que abre el comparador de «Tu cambio» (con la palanca `check_guiado`, a pantalla completa). */
+// El elemento que tenía el foco al abrir la galería (para devolvérselo al cerrarla).
+let _tcAntesDeAbrir = null;
 async function abrirGaleriaFotos(opciones) {
+  _tcAntesDeAbrir = document.activeElement;
   _fpMsg('Cargando tus fotos…');
   const mapa = await cargarFotosFirmadas();
   _fpMsg('');
@@ -12906,7 +12949,25 @@ async function abrirGaleriaFotos(opciones) {
       b.classList.add('is-on'); pintarComp(b.dataset.p);
     }));
   }
-  document.getElementById('fpGalClose').addEventListener('click', () => cont.classList.remove('is-open', 'is-pantalla'));
+  if (!conTuCambio) {
+    document.getElementById('fpGalClose').addEventListener('click', () => cont.classList.remove('is-open', 'is-pantalla'));
+    return;
+  }
+  // A pantalla completa es un diálogo: Escape o «Listo» lo cierran y el foco vuelve a donde estaba.
+  const volver = _tcAntesDeAbrir;
+  cont.setAttribute('role', 'dialog');
+  cont.setAttribute('aria-modal', 'true');
+  cont.setAttribute('aria-label', 'Tus fotos');
+  const cerrar = () => {
+    cont.classList.remove('is-open', 'is-pantalla');
+    ['role', 'aria-modal', 'aria-label'].forEach(a => cont.removeAttribute(a));
+    document.removeEventListener('keydown', alTeclado, true);
+    const destino = volver && document.contains(volver) ? volver : document.getElementById('tcVer');
+    if (destino) destino.focus({ preventScroll: true });
+  };
+  const alTeclado = (e) => { if (e.key === 'Escape') { e.preventDefault(); cerrar(); } };
+  document.addEventListener('keydown', alTeclado, true);
+  document.getElementById('fpGalClose').addEventListener('click', cerrar);
 }
 
 async function loadCheckin() {

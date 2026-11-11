@@ -9,6 +9,16 @@
   "poseInicial": "frente",
   "listoTitulo": "Tu cambio hasta hoy"
  },
+ "sinOtra": [
+  [
+   "frente",
+   "Todavía no hay otra foto de frente"
+  ],
+  [
+   "espalda",
+   "Todavía no hay otra foto de espalda"
+  ]
+ ],
  "semanaActual": "2026-11-09",
  "casos": [
   {
@@ -27,7 +37,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": ""
+    "accesibleDespues": "",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -62,7 +73,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": ""
+    "accesibleDespues": "",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -89,7 +101,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": ""
+    "accesibleDespues": "",
+    "vacioDespues": "Sin foto de espalda"
    }
   },
   {
@@ -148,7 +161,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Esta semana",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana"
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -207,7 +221,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Esta semana",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana"
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de perfil"
    }
   },
   {
@@ -269,7 +284,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Semana del 26 de octubre",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de la semana del 26 de octubre"
+    "accesibleDespues": "Foto de la semana del 26 de octubre",
+    "vacioDespues": "Sin foto de espalda"
    }
   },
   {
@@ -320,7 +336,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Semana del 2 de noviembre",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de la semana del 2 de noviembre"
+    "accesibleDespues": "Foto de la semana del 2 de noviembre",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -374,7 +391,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Esta semana",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana"
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -428,7 +446,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Esta semana",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana"
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de perfil"
    }
   },
   {
@@ -454,7 +473,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": ""
+    "accesibleDespues": "",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -493,7 +513,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": ""
+    "accesibleDespues": "",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -529,7 +550,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Esta semana",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana"
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -563,10 +585,11 @@
     "despues": null,
     "texto": null,
     "pie": null,
-    "rotuloAntes": "Semana 1",
-    "rotuloDespues": "Esta semana",
-    "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana, sin foto de frente"
+    "rotuloAntes": "Esta semana",
+    "rotuloDespues": "",
+    "accesibleAntes": "Foto de esta semana",
+    "accesibleDespues": "Todavía no hay otra foto de frente",
+    "vacioDespues": "Todavía no hay otra foto de frente"
    }
   },
   {
@@ -598,7 +621,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Esta semana",
     "accesibleAntes": "Foto de la semana 1, sin foto de espalda",
-    "accesibleDespues": "Foto de esta semana, sin foto de espalda"
+    "accesibleDespues": "Foto de esta semana, sin foto de espalda",
+    "vacioDespues": "Sin foto de espalda"
    }
   },
   {
@@ -630,10 +654,47 @@
     "despues": null,
     "texto": null,
     "pie": null,
-    "rotuloAntes": "Semana 1",
-    "rotuloDespues": "Esta semana",
-    "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana, sin foto de perfil"
+    "rotuloAntes": "Esta semana",
+    "rotuloDespues": "",
+    "accesibleAntes": "Foto de esta semana",
+    "accesibleDespues": "Todavía no hay otra foto de perfil",
+    "vacioDespues": "Todavía no hay otra foto de perfil"
+   }
+  },
+  {
+   "nombre": "unaSolaDeEsaPoseVieja",
+   "fotos": [
+    [
+     "2026-10-26",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-10-26",
+     "frente"
+    ]
+   ],
+   "inicio": {},
+   "pose": "perfil",
+   "peso": [],
+   "esperado": {
+    "modo": "par",
+    "pose": "perfil",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-10-26"
+    },
+    "despues": null,
+    "texto": null,
+    "pie": null,
+    "rotuloAntes": "Semana del 26 de octubre",
+    "rotuloDespues": "",
+    "accesibleAntes": "Foto de la semana del 26 de octubre",
+    "accesibleDespues": "Todavía no hay otra foto de perfil",
+    "vacioDespues": "Todavía no hay otra foto de perfil"
    }
   },
   {
@@ -683,7 +744,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Esta semana",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana"
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -720,7 +782,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": ""
+    "accesibleDespues": "",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -759,7 +822,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": ""
+    "accesibleDespues": "",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -814,7 +878,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Esta semana",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana"
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
    }
   },
   {
@@ -873,7 +938,8 @@
     "rotuloAntes": "Semana 1",
     "rotuloDespues": "Esta semana",
     "accesibleAntes": "Foto de la semana 1",
-    "accesibleDespues": "Foto de esta semana"
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
    }
   }
  ],
@@ -919,6 +985,11 @@
    "iso": "2026-09-16T13:30:00.250Z",
    "zona": "America/Argentina/Buenos_Aires",
    "esperado": "2026-09-16"
+  },
+  {
+   "iso": "2026-09-16T01:30:00+0000",
+   "zona": "America/Argentina/Buenos_Aires",
+   "esperado": "2026-09-15"
   },
   {
    "iso": "2026-09-16T23:30:00-03:00",
