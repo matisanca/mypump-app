@@ -207,6 +207,8 @@ struct Raiz: View {
         .task(id: pedirBienvenida) { await presentarBienvenida() }
         // «Novedades de tu plan» (palanca `novedades_plan`): la de esta publicación, una vez, y la que abra la tarjeta.
         .hojaDeNovedades(otraHoja: navegacion.saludAbierta || bienvenidaGuia || pedirBienvenida, navegacion: navegacion)
+        // «Tu recorrido con Mati» (palanca `fin_plan`): la abre la tarjeta de Entreno o Mis datos y, una vez, sola.
+        .hojaDeRecorrido(otraHoja: navegacion.saludAbierta || bienvenidaGuia || pedirBienvenida)
         .accesorioDeDescanso()
         // La barra de pestañas queda siempre entera: achicarla al bajar, como Música, empeoraba mucho el uso (Mati,
         // 15-oct). No volver a ponerle `tabBarMinimizeBehavior`.

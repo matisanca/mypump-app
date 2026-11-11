@@ -12,6 +12,21 @@ struct SuplementacionView: View {
     @Environment(\.horizontalSizeClass) private var claseAncho
     /// El detalle abierto. Si un refresco cambia la lista y en ese lugar ya no está el mismo suplemento, se cierra.
     @State private var ruta: [SuplementoAbierto] = []
+    /// «Dónde comprarlo» (2.3.0, palanca `compras_pais`): el suplemento del que se están viendo las opciones.
+    @State private var comprando: SuplementoAbierto?
+
+    /// La primera fila de cada suplemento que tiene dónde comprarse: ahí va el botón (uno por suplemento, no uno por toma).
+    private func filasConCompra(_ v: VistaSuplementacion) -> Set<String> {
+        guard app.palanca.comprasPais, let c = app.compras, c.hay else { return [] }
+        var vistos = Set<Int>(), filas = Set<String>()
+        for m in v.momentos {
+            for f in m.filas where v.items.indices.contains(f.item) && !vistos.contains(f.item) {
+                vistos.insert(f.item)
+                if !c.opciones(para: v.items[f.item].nombre).isEmpty { filas.insert(f.id) }
+            }
+        }
+        return filas
+    }
 
     var body: some View {
         NavigationStack(path: $ruta) {
@@ -33,11 +48,16 @@ struct SuplementacionView: View {
             let items = r?.suplementacion?.items ?? []
             let siguen = Array(ruta.prefix { ReglasSuplementacion.itemAbierto(items, indice: $0.item, nombre: $0.nombre) != nil })
             if siguen.count != ruta.count { ruta = siguen }
+            if let c = comprando, ReglasSuplementacion.itemAbierto(items, indice: c.item, nombre: c.nombre) == nil { comprando = nil }
+        }
+        .sheet(item: $comprando) { c in
+            HojaCompras(nombre: c.nombre, cerrar: { comprando = nil }).presentationDragIndicator(.visible)
         }
     }
 
     private func contenido(_ v: VistaSuplementacion) -> some View {
         let s = modelo.respuesta?.suplementacion
+        let conCompra = filasConCompra(v)
         return ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 if claseAncho == .regular {
@@ -54,11 +74,21 @@ struct SuplementacionView: View {
                         .accessibilityIdentifier("supl-sin-red")
                 }
                 Cabecera(titulo: s?.titulo, accion: s?.accion)
+                if !conCompra.isEmpty {
+                    Label(TextosColaB.Compras.ayuda, systemImage: "cart.fill")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(Espacio.s)
+                        .background(Color.marcaSuave, in: .rect(cornerRadius: Radio.control + 6))
+                        .accessibilityIdentifier("compras-ayuda")
+                }
                 if !v.momentos.isEmpty {
                     VStack(alignment: .leading, spacing: Espacio.s) {
                         Text("Tu día").textoCeja().accessibilityAddTraits(.isHeader)
                         ForEach(v.momentos) { m in
-                            MomentoTarjeta(momento: m, items: v.items)
+                            MomentoTarjeta(momento: m, items: v.items, conCompra: conCompra) { comprando = $0 }
                         }
                     }
                 }
@@ -229,6 +259,8 @@ private struct Cabecera: View {
 private struct MomentoTarjeta: View {
     let momento: VistaSuplementacion.Momento
     let items: [ItemSuplemento]
+    var conCompra: Set<String> = []
+    var comprar: (SuplementoAbierto) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -243,6 +275,15 @@ private struct MomentoTarjeta: View {
                 if n > 0 { Divider().padding(.leading, Espacio.m) }
                 if items.indices.contains(f.item) {
                     FilaSuplemento(fila: f, item: items[f.item])
+                    if conCompra.contains(f.id) {
+                        Button { comprar(SuplementoAbierto(item: f.item, nombre: items[f.item].nombre)) } label: {
+                            Label(TextosColaB.Compras.boton, systemImage: "cart.fill")
+                        }
+                        .buttonStyle(BotonSecundario(tono: .marcaTexto))
+                        .padding(.horizontal, Espacio.m)
+                        .padding(.bottom, Espacio.s)
+                        .accessibilityIdentifier("compras-abrir-\(f.item)")
+                    }
                 }
             }
         }
@@ -473,5 +514,70 @@ private struct Seccion<Contenido: View>: View {
 enum DemoSuplementacion {
     static var datos: Data? {
         Bundle.main.url(forResource: "suplementacion", withExtension: "json", subdirectory: "Demo.bundle").flatMap { try? Data(contentsOf: $0) }
+    }
+}
+
+// MARK: - Dónde comprarlo
+
+extension SuplementoAbierto: Identifiable {
+    var id: String { "\(item)-\(nombre)" }
+}
+
+/// Las opciones que cargó Mati para ese suplemento en el país del alumno. Sin opciones se cierra sola.
+private struct HojaCompras: View {
+    let nombre: String
+    let cerrar: () -> Void
+    @State private var app = Proveedor.modelo
+    @Environment(\.openURL) private var abrir
+
+    private var opciones: [OpcionCompra] { app.palanca.comprasPais ? app.compras?.opciones(para: nombre) ?? [] : [] }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Espacio.m) {
+                    VStack(alignment: .leading, spacing: Espacio.xxs) {
+                        Text(TextosColaB.Compras.boton).textoCeja()
+                        Text(nombre.trimmingCharacters(in: .whitespacesAndNewlines))
+                            .font(Archivo.fuente(28, peso: 800, relativoA: .title1))
+                            .accessibilityAddTraits(.isHeader)
+                            .accessibilityIdentifier("compras-titulo")
+                    }
+                    ForEach(Array(opciones.enumerated()), id: \.offset) { n, o in
+                        VStack(alignment: .leading, spacing: Espacio.xs) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(o.producto).font(.title3.weight(.bold))
+                                Text(o.tienda).font(.body).foregroundStyle(.secondary)
+                                if let nota = o.nota { Text(nota).font(.subheadline).foregroundStyle(.secondary) }
+                            }
+                            .accessibilityElement(children: .combine)
+                            if let u = o.url {
+                                Button { abrir(u) } label: { Label(TextosColaB.Compras.abrirTienda, systemImage: "arrow.up.right.square") }
+                                    .buttonStyle(BotonMarca())
+                                    .accessibilityIdentifier("compras-tienda-\(n)")
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .tarjeta()
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("compras-opcion-\(n)")
+                    }
+                    Text(TextosColaB.Compras.pie).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("compras-pie")
+                }
+                .padding(.horizontal, Espacio.m)
+                .padding(.top, Espacio.s)
+                .padding(.bottom, Espacio.xl)
+                .anchoLectura()
+            }
+            .background(Color.fondo)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(TextosColaB.Compras.cerrar, action: cerrar).accessibilityIdentifier("compras-cerrar")
+                }
+            }
+        }
+        .accessibilityIdentifier("compras-hoja")
+        .onChange(of: opciones.isEmpty, initial: true) { _, vacia in if vacia { cerrar() } }
     }
 }

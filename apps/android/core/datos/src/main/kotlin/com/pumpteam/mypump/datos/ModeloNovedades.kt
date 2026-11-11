@@ -140,6 +140,15 @@ class ModeloNovedades(private val disco: Disco?, private val ahora: () -> Long =
         return n
     }
 
+    /**
+     * Con la palanca apagada: se borra el plan «ya visto» (la lista de novedades guardadas no se toca). Así, al volver a
+     * prenderla, se compara contra la copia de la última carga y no contra una base de hace semanas (un resumen enorme).
+     */
+    @Synchronized
+    fun olvidarBase() {
+        disco?.borrar(ARCHIVO_BASE)
+    }
+
     private fun guardarLista() {
         disco?.guardar(ARCHIVO_LISTA, JsonArray(_lista.value.map { it.aJson() }))
     }

@@ -40,6 +40,9 @@ enum Proveedor {
             else if let caso = d.string(forKey: "devolucionDePrueba") { transporte = DevolucionDePrueba(doble: .escenario(caso)) }
             // `-fotosInicioDePrueba <escenario>`: lo mismo con las fotos de inicio (`-fotosInicioFoto buena|oscura|chica|movida`: la foto que «saca»).
             else if let caso = d.string(forKey: "fotosInicioDePrueba") { transporte = FotosInicioDePrueba(doble: .escenario(caso)) }
+            // `-colaBDePrueba <escenario>`: «Tu recorrido», «Dónde comprarlo» y «Entreno en casa» contra el servidor de
+            // mentira (ver `DobleColaB.escenario`), con datos inventados; lo demás, de las muestras.
+            else if let caso = d.string(forKey: "colaBDePrueba") { transporte = ColaBDePrueba(doble: .escenario(caso)) }
             else if let caso = d.string(forKey: "tecnicaDePrueba") { transporte = TecnicaDePrueba(doble: .escenario(caso)) }
             // `-feedbackDePrueba <escenario>`: «Me duele» y las marcas de suplementos contra el doble (ver `FeedbackDePrueba`).
             else if let caso = d.string(forKey: "feedbackDePrueba") { transporte = FeedbackDePrueba(doble: .escenario(caso, ejercicios: FeedbackDePrueba.ejercicios)) }
@@ -113,6 +116,25 @@ private struct EstudiosDePrueba: Transporte {
         if ruta.contains("/estudios/") || f.hasPrefix("mypump_estudios") || f == "mypump_get_app_config" || pedido.url?.host?.hasSuffix(".invalid") == true {
             // `-estudiosLento YES`: cada subida tarda, para ver «Subiendo 1 de 3».
             if ruta.hasSuffix("estudios/upload"), UserDefaults.standard.bool(forKey: "estudiosLento") { try? await Task.sleep(for: .seconds(4)) }
+            return try await doble.enviar(pedido)
+        }
+        var cuerpo = Data("[]".utf8)
+        if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
+           let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }
+        return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
+/// `-colaBDePrueba`: la cola B de la 2.3.0 (y Mi gimnasio y la suplementación, de las que depende) la contesta el doble;
+/// la cuenta y el plan salen de las muestras. Sin red y sin datos de nadie.
+private struct ColaBDePrueba: Transporte {
+    let doble: DobleColaB
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = pedido.url?.path ?? ""
+        let f = ruta.components(separatedBy: "/").last ?? ""
+        let suyas = ["mypump_gimnasio", "mypump_fin_plan", "mypump_compras", "mypump_casa"]
+        if ruta.contains("/gimnasio/") || suyas.contains(where: f.hasPrefix) || f == "mypump_get_app_config" || f == "mypump_suplementacion" {
             return try await doble.enviar(pedido)
         }
         var cuerpo = Data("[]".utf8)

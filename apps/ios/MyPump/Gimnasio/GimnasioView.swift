@@ -45,11 +45,19 @@ struct TarjetaGimnasio: View {
     }
 
     private func detalle(_ m: ModeloGimnasio) -> String {
+        // Con la carga de casa abierta no hay zonas que falten: lo que falta es marcar lo que tiene.
+        if app.palanca.casa, let c = app.casa, c.visible {
+            switch c.pantalla {
+            case .lista: return TextosColaB.Casa.listaTitulo
+            case .recibido: return T.recibido
+            default: break
+            }
+        }
         switch m.pantalla {
-        case .zonas: m.faltantes.isEmpty ? T.revisarYEnviar : T.faltanZonas(m.faltantes.count)
-        case .recibido: T.recibido
-        case .preguntas: T.confirmarTarjeta
-        default: T.inicioBajada
+        case .zonas: return m.faltantes.isEmpty ? T.revisarYEnviar : T.faltanZonas(m.faltantes.count)
+        case .recibido: return T.recibido
+        case .preguntas: return T.confirmarTarjeta
+        default: return T.inicioBajada
         }
     }
 }
@@ -64,6 +72,14 @@ struct GimnasioRaiz: View {
     let modelo: ModeloGimnasio
     let alCerrar: () -> Void
     @State private var camino: [DestinoGimnasio] = []
+    @State private var app = Proveedor.modelo
+    @Environment(\.dynamicTypeSize) private var letra
+
+    /// «Entreno en casa», si la palanca `casa` está prendida y el servidor lo habilita para esta cuenta.
+    private var casa: ModeloCasa? {
+        guard app.palanca.casa, let c = app.casa, c.visible else { return nil }
+        return c
+    }
 
     private var destino: Binding<DestinoGimnasio?> {
         Binding(get: { camino.last }, set: { d in camino = d.map { [$0] } ?? [] })
@@ -78,13 +94,25 @@ struct GimnasioRaiz: View {
                     Color.fondo
                 } else if modelo.envio != nil {
                     EnviandoGimnasio(modelo: modelo)
+                } else if let c = casa, c.pantalla != .ninguna {
+                    // «Entreno en casa» (2.3.0): la carga es de su casa, sin zonas ni fotos.
+                    CasaPantalla(casa: c, gimnasio: modelo)
                 } else {
-                    switch modelo.pantalla {
-                    case .inicio: ArranqueGimnasio(modelo: modelo)
-                    case .zonas: ZonasGimnasio(modelo: modelo, destino: destino)
-                    case .recibido: RecibidoGimnasio()
-                    case .preguntas: PreguntasGimnasio(modelo: modelo)
-                    case .listo: ListoGimnasio(modelo: modelo, destino: destino)
+                    VStack(spacing: 0) {
+                        // El interruptor, arriba de todo y siempre. Con la letra muy grande va sin la bajada: fijo y entero
+                        // le sacaba media pantalla a lo de abajo.
+                        if let c = casa {
+                            InterruptorCasa(casa: c, gimnasio: modelo, compacto: letra.isAccessibilitySize)
+                                .padding(.horizontal, Espacio.m).padding(.top, Espacio.s).padding(.bottom, Espacio.xs)
+                                .anchoLectura()
+                        }
+                        switch modelo.pantalla {
+                        case .inicio: ArranqueGimnasio(modelo: modelo)
+                        case .zonas: ZonasGimnasio(modelo: modelo, destino: destino)
+                        case .recibido: RecibidoGimnasio()
+                        case .preguntas: PreguntasGimnasio(modelo: modelo)
+                        case .listo: ListoGimnasio(modelo: modelo, destino: destino)
+                        }
                     }
                 }
             }
@@ -101,10 +129,10 @@ struct GimnasioRaiz: View {
                 }
             }
         }
-        .task { await modelo.refrescar(); modelo.drenarEnFondo() }
+        .task { await modelo.refrescar(); modelo.drenarEnFondo(); if app.palanca.casa { await app.casa?.refrescar() } }
         .onChange(of: modelo.estado == nil) { _, apagado in if apagado { alCerrar() } }
         // Si la carga pasó a otra etapa, se vuelve a la raíz: lo que importa es lo que dice ella.
-        .onChange(of: "\(modelo.pantalla)-\(modelo.envio != nil)") { _, _ in camino = [] }
+        .onChange(of: "\(modelo.pantalla)-\(modelo.envio != nil)-\(casa?.pantalla ?? .ninguna)") { _, _ in camino = [] }
     }
 }
 

@@ -63,6 +63,21 @@ class NovedadesPlanTest {
         }
     }
 
+    /** La prueba compartida de «sin dosis»: la misma salida que la referencia en Python, entrada por entrada. */
+    @Test fun sinDosisDaLoMismoQueLaReferencia() {
+        val filas = Json.parseToJsonElement(Files.readString(Vectores.compartido("fixtures/novedades/sin_dosis.json"))).jsonArray
+        assertTrue(filas.size >= 40)
+        for (f in filas) {
+            val o = f.jsonObject
+            val entrada = o["entrada"]!!.jsonPrimitive.content
+            assertEquals(o["salida"]!!.jsonPrimitive.content, NovedadesPlan.sinDosis(entrada), "sinDosis(«$entrada»)")
+        }
+    }
+
+    @Test fun hayAlMenos38CasosCompartidos() {
+        assertTrue(casos.size >= 38)
+    }
+
     @Test fun losTextosCumplenLasReglas() {
         for (c in casos) {
             val o = c.jsonObject

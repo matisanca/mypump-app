@@ -26,9 +26,15 @@ public final class ModeloSuplementacion {
     @ObservationIgnored let disco: Disco?
     @ObservationIgnored private var esMuestra = false
     @ObservationIgnored private var cargaEnCurso: Task<Void, Never>?
+    /// Cuándo contestó el servidor por última vez. Al abrir la app, la carga de la cuenta y la vuelta a primer plano caen
+    /// casi juntas: la segunda no vuelve a preguntar lo que se acaba de traer.
+    @ObservationIgnored private var contestoEn: Date?
+    @ObservationIgnored let ahora: () -> Date
+    /// Cuánto vale lo recién traído.
+    public static let frescura: TimeInterval = 10
 
-    public init(cliente: ClienteRPC, token: String, disco: Disco?) {
-        self.cliente = cliente; self.token = token; self.disco = disco
+    public init(cliente: ClienteRPC, token: String, disco: Disco?, ahora: @escaping () -> Date = Date.init) {
+        self.cliente = cliente; self.token = token; self.disco = disco; self.ahora = ahora
         respuesta = disco?.leer(RespuestaSuplementacion.self, Self.archivo).flatMap { $0.hay ? $0 : nil }
     }
 
@@ -37,6 +43,7 @@ public final class ModeloSuplementacion {
         cliente = ClienteRPC()
         token = ""
         disco = nil
+        ahora = Date.init
         esMuestra = true
         respuesta = muestra.hay ? muestra : nil
     }
@@ -46,10 +53,12 @@ public final class ModeloSuplementacion {
     /// Hay suplementación para mostrar: la pestaña aparece.
     public var hay: Bool { vista != nil }
 
-    /// Trae la suplementación. Si ya hay una carga en vuelo, espera esa.
-    public func cargar() async {
+    /// Trae la suplementación. Si ya hay una carga en vuelo, espera esa. Con `siHaceFalta` (la vuelta a primer plano, que
+    /// al abrir cae pegada a la carga) no vuelve a preguntar si el servidor contestó recién.
+    public func cargar(siHaceFalta: Bool = false) async {
         if esMuestra { return }
         if let t = cargaEnCurso { await t.value; return }
+        if siHaceFalta, let c = contestoEn, ahora().timeIntervalSince(c) >= 0, ahora().timeIntervalSince(c) < Self.frescura { return }
         let t = Task { await self.traer() }
         cargaEnCurso = t
         await t.value
@@ -64,6 +73,7 @@ public final class ModeloSuplementacion {
         case .success(let filas):
             desdeCache = false
             ultimaLlego = true
+            contestoEn = ahora()
             if let f = filas.first, f.hay {
                 if f != respuesta { respuesta = f }
                 disco?.guardar(f, Self.archivo)

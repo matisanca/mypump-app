@@ -104,17 +104,23 @@ class ModeloNovedadesTest {
 
     // ---------------------------------------------------------------- La carga entera, con la palanca
 
-    private fun app(palanca: Boolean, ejercicio: () -> String, raizApp: java.io.File, alcance: kotlinx.coroutines.CoroutineScope): ModeloApp {
+    private fun app(
+        palanca: Boolean, ejercicio: () -> String, raizApp: java.io.File, alcance: kotlinx.coroutines.CoroutineScope,
+        config: (() -> Pair<Int, String>)? = null, suplementacion: () -> Pair<Int, String> = { 200 to "[]" },
+    ): ModeloApp {
         val t = TransporteProgramado { fn, _ ->
             when (fn) {
                 "mypump_get_cliente_info" -> 200 to """[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"""
-                "mypump_get_app_config" -> 200 to (if (palanca) """{"novedades_plan":true}""" else "{}")
+                "mypump_get_app_config" -> config?.invoke() ?: (200 to (if (palanca) """{"novedades_plan":true}""" else "{}"))
                 "mypump_get_rutina_activa" -> 200 to "[" + (rutina(ejercicio()) as ModeloNovedades.Entrada.Hay).valor.toString() + "]"
+                "mypump_suplementacion" -> suplementacion()
                 else -> 200 to "[]"
             }
         }
         return ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria(token), raizApp, PreferenciasEnMemoria(), alcance)
     }
+
+    private fun filaSupl(vararg nombres: String) = 200 to "[" + (supl(*nombres) as ModeloNovedades.Entrada.Hay).valor.toString() + "]"
 
     @Test fun conLaPalancaPrendidaUnaPublicacionNuevaSeVe() = enUnHilo { alcance ->
         var e = "Press banca"
@@ -137,5 +143,94 @@ class ModeloNovedadesTest {
         val d = Disco(r, token)
         assertFalse(d.archivo(ModeloNovedades.ARCHIVO_BASE).exists())
         assertFalse(d.archivo(ModeloNovedades.ARCHIVO_LISTA).exists())
+    }
+
+    // ---------------------------------------------------------------- Arreglos de la cola B
+
+    @Test fun olvidarBaseNoTocaLaLista() {
+        val m = nuevo()
+        m.observar(rutina("A"), no, no)
+        val n = m.observar(rutina("B"), no, no)!!
+        assertTrue(disco().archivo(ModeloNovedades.ARCHIVO_BASE).exists())
+        m.olvidarBase()
+        assertFalse(disco().archivo(ModeloNovedades.ARCHIVO_BASE).exists())
+        assertEquals(listOf(n.id), nuevo().lista.value.map { it.id })
+        m.olvidarBase()   // sin base, no pasa nada
+    }
+
+    /**
+     * El resumen enorme: con la palanca apagada la base se borra en cada carga, así al prenderla se compara contra la copia de
+     * la última carga (lo que el alumno ya tenía a la vista) y no contra el plan de hace semanas.
+     */
+    @Test fun conLaPalancaApagadaLaBaseSeBorraYAlPrenderlaNoHayResumenViejo() = enUnHilo { alcance ->
+        var e = "Press banca"
+        var prendida = true
+        val r = carpetaTemporal("nov-app-base")
+        val d = Disco(r, token)
+        fun abrir() = app(prendida, { e }, r, alcance)
+        abrir().cargar()
+        e = "Press inclinado"
+        abrir().cargar()
+        assertTrue(d.archivo(ModeloNovedades.ARCHIVO_BASE).exists())
+        val guardadas = ModeloNovedades(d).lista.value.map { it.id }
+        assertEquals(1, guardadas.size)
+
+        // Se apaga: la base se va en la primera carga, la lista queda. Mientras tanto Mati cambia el plan varias veces.
+        prendida = false
+        e = "Fondos"
+        abrir().cargar()
+        assertFalse(d.archivo(ModeloNovedades.ARCHIVO_BASE).exists())
+        assertEquals(guardadas, ModeloNovedades(d).lista.value.map { it.id })
+        e = "Aperturas"
+        abrir().cargar()
+
+        // Se prende de nuevo sin que haya cambiado nada desde la última carga: no hay nada que contar.
+        prendida = true
+        val otra = abrir()
+        otra.cargar()
+        assertEquals(guardadas, otra.novedades.value?.lista?.value?.map { it.id })
+        assertTrue(d.archivo(ModeloNovedades.ARCHIVO_BASE).exists())
+        // Y lo que cambie de ahí en más se cuenta contra esa carga, no contra «Press inclinado».
+        e = "Cruces en polea"
+        val ultima = abrir()
+        ultima.cargar()
+        assertEquals("En Torso cambia Aperturas por Cruces en polea", ultima.novedades.value?.pendiente?.resumen)
+    }
+
+    /** Si la palanca no se pudo leer (un corte), no se sabe si está apagada: la base no se toca. */
+    @Test fun sinPoderLeerLaPalancaLaBaseNoSeBorra() = enUnHilo { alcance ->
+        val r = carpetaTemporal("nov-app-corte")
+        val d = Disco(r, token)
+        app(true, { "Press banca" }, r, alcance).cargar()
+        assertTrue(d.archivo(ModeloNovedades.ARCHIVO_BASE).exists())
+        app(true, { "Press banca" }, r, alcance, config = { 503 to """{"message":"caído"}""" }).cargar()
+        assertTrue(d.archivo(ModeloNovedades.ARCHIVO_BASE).exists())
+    }
+
+    /** Android: un 404 de `mypump_suplementacion` contaba como «no tiene» y Novedades decía «Dejás de tomar…». */
+    @Test fun un404DeSuplementacionNoEsDejarDeTomar() = enUnHilo { alcance ->
+        val r = carpetaTemporal("nov-app-404")
+        var respuesta = filaSupl("Creatina", "Omega 3")
+        fun abrir() = app(true, { "Press banca" }, r, alcance, suplementacion = { respuesta })
+        abrir().also { it.cargar(); it.suplementacion.value!!.alDia() }
+        val base = Disco(r, token).leer(ModeloNovedades.ARCHIVO_BASE)
+        assertNotNull(base)
+
+        for (falla in listOf(404 to """{"code":"PGRST202","message":"no existe"}""", 404 to "")) {
+            respuesta = falla
+            val m = abrir()
+            m.cargar()
+            m.suplementacion.value!!.alDia()
+            assertTrue(m.novedades.value!!.lista.value.isEmpty(), "$falla")
+            assertEquals(base, Disco(r, token).leer(ModeloNovedades.ARCHIVO_BASE), "$falla")
+            // La pestaña conserva lo guardado.
+            assertEquals(2, m.suplementacion.value!!.plan.value?.suplementacion?.items?.size, "$falla")
+        }
+
+        // Cuando vuelve, un cambio de verdad sí se cuenta; y «no tiene» de verdad (cero filas) también.
+        respuesta = filaSupl("Creatina")
+        val vuelve = abrir()
+        vuelve.cargar()
+        assertEquals("Dejás de tomar Omega 3", vuelve.novedades.value?.pendiente?.resumen)
     }
 }

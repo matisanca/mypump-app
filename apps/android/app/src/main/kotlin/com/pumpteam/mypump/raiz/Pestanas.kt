@@ -206,7 +206,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                     if (navegacion.guia && g != null) {
                                         GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guia = false }, elegirHorario = com.pumpteam.mypump.guia.Videollamada.elegirHorario(modelo))
                                     } else if (navegacion.gimnasio && gim != null) {
-                                        GimnasioPantalla(gim, alVolver = { navegacion.gimnasio = false })
+                                        GimnasioPantalla(gim, alVolver = { navegacion.gimnasio = false }, casa = modelo.casa.collectAsStateWithLifecycle().value)
                                     } else {
                                         EntrenoPantalla(modelo, vm.preguntasEntreno)
                                     }
@@ -232,7 +232,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         } else if (navegacion.guiaEnMisDatos && g != null) {
                                             GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false }, elegirHorario = com.pumpteam.mypump.guia.Videollamada.elegirHorario(modelo))
                                         } else if (navegacion.gimnasioEnMisDatos && gim != null) {
-                                            GimnasioPantalla(gim, alVolver = { navegacion.gimnasioEnMisDatos = false })
+                                            GimnasioPantalla(gim, alVolver = { navegacion.gimnasioEnMisDatos = false }, casa = modelo.casa.collectAsStateWithLifecycle().value)
                                         } else if (navegacion.tecnicaEnMisDatos && tec != null) {
                                             com.pumpteam.mypump.tecnica.TecnicaPantalla(tec, modelo, alVolver = { navegacion.tecnicaEnMisDatos = false })
                                         } else if (navegacion.novedadesEnMisDatos && modelo.novedades.value != null) {
@@ -303,6 +303,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
             BienvenidaGuiaDe(modelo, navegacion)
             // «Novedades de tu plan» (palanca `novedades_plan`): la de esta publicación, una vez, y la que abra la tarjeta.
             com.pumpteam.mypump.novedades.HojaDeNovedadesDe(modelo, navegacion)
+            // «Tu recorrido» (palanca `fin_plan`): sola una vez, y la que abran la tarjeta de Entreno o Mis datos.
+            com.pumpteam.mypump.recorrido.HojaDeRecorridoDe(modelo, navegacion)
             // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
             DialogoPreguntas(vm.preguntasEntreno)
             // «Pump lleno» (2.3.0): la celebración del día, arriba de las pestañas.

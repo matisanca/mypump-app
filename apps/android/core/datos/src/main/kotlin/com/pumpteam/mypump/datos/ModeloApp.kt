@@ -345,6 +345,18 @@ class ModeloApp(
     private val _novedades = MutableStateFlow<ModeloNovedades?>(null)
     val novedades: StateFlow<ModeloNovedades?> = _novedades.asStateFlow()
 
+    /** Fin de plan, «Tu recorrido» (2.3.0): existe con cuenta; solo llama al servidor con la palanca `fin_plan` prendida. */
+    private val _finPlan = MutableStateFlow<ModeloFinPlan?>(null)
+    val finPlan: StateFlow<ModeloFinPlan?> = _finPlan.asStateFlow()
+
+    /** Compras por país, «Dónde comprarlo» (2.3.0): existe con cuenta; solo llama con la palanca `compras_pais` prendida. */
+    private val _compras = MutableStateFlow<ModeloCompras?>(null)
+    val compras: StateFlow<ModeloCompras?> = _compras.asStateFlow()
+
+    /** Entrenar en casa (2.3.0): el interruptor de Mi gimnasio. Solo llama con las palancas `gimnasio_fotos` y `casa`. */
+    private val _casa = MutableStateFlow<ModeloCasa?>(null)
+    val casa: StateFlow<ModeloCasa?> = _casa.asStateFlow()
+
     /** La demo con novedades de muestra (capturas). Solo en la demo: nunca toca una cuenta. */
     fun usarNovedadesDeMuestra(m: ModeloNovedades) {
         if (_esDemo.value) _novedades.value = m
@@ -565,6 +577,9 @@ class ModeloApp(
         _suplementacion.value = null
         _novedades.value = null
         _documentos.value = null
+        _finPlan.value = null
+        _compras.value = null
+        _casa.value = null
         val t = almacen.leer()
         token = t
         if (t != null) {
@@ -611,6 +626,9 @@ class ModeloApp(
         _suplementacion.value = null
         _novedades.value = null
         _documentos.value = null
+        _finPlan.value = null
+        _compras.value = null
+        _casa.value = null
         _entreno.value = null
     }
 
@@ -651,8 +669,12 @@ class ModeloApp(
         alcance.launch { chat.cargarAdjuntosDeLaCola() }
         _revision.value = ModeloRevision(cliente, t, cola, alcance, d)
         _fotos.value = ModeloFotos(cliente, t, d)
-        _gimnasio.value = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        val gimnasioCuenta = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        _gimnasio.value = gimnasioCuenta
         _fotosInicio.value = ModeloFotosInicio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        _casa.value = ModeloCasa(cliente, t, d, gimnasioCuenta)
+        _finPlan.value = ModeloFinPlan(cliente, t, d)
+        _compras.value = ModeloCompras(cliente, t, d)
         _tecnica.value = ModeloTecnica(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _devolucion.value = ModeloDevolucion(cliente, t, d)
         _feedback.value = ModeloFeedback(cliente, t, d)
@@ -917,6 +939,10 @@ class ModeloApp(
             _devolucion.value?.recordarPalanca(it.devolucionSemanal)
             disco?.let { d -> if (elegirHorarioRecordado(d) != it.elegirHorario) d.guardar(ARCHIVO_PALANCA_ELEGIR, ValorJson.Booleano(it.elegirHorario)) }
             _estudios.value?.usarPalanca(it.estudiosApp)
+            // La cola B (2.3.0): apagadas (o sin la clave) no se llama a nada nuevo ni queda nada a la vista.
+            _finPlan.value?.usarPalanca(it.finPlan)
+            _compras.value?.usarPalanca(it.comprasPais)
+            _casa.value?.usarPalanca(it.casa && it.gimnasioFotos)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -980,7 +1006,11 @@ class ModeloApp(
             launch { _fotos.value?.cargar() }
             // «Tu guía»: solo el resumen (no marca `abierto_en`); el `get` es solo al abrir la sección.
             launch { _guia.value?.refrescarResumen() }
-            launch { _suplementacion.value?.refrescar() }
+            launch {
+                _suplementacion.value?.refrescar()
+                sincronizarCompras()
+            }
+            launch { sincronizarFinPlan() }
         }
         if (!vigente()) return
         // «Novedades de tu plan» (palanca `novedades_plan`): lo que llegó contra lo que ya se vio.
@@ -996,6 +1026,9 @@ class ModeloApp(
                 suplAntes?.let { ModeloNovedades.Entrada.Hay(it) } ?: ModeloNovedades.Entrada.NoLlego)
             nov.observar(entrada(rr, rutinaJson.takeIf { rr is Resultado.Ok }), entrada(dd, dietaJson.takeIf { dd is Resultado.Ok }),
                 _suplementacion.value?.entradaNovedades ?: ModeloNovedades.Entrada.NoLlego, semilla)
+        } else if (palancaLeida != null && !palancaLeida.novedadesPlan) {
+            // Apagada (leída en ESTA carga, no por un corte): la base no se queda vieja para cuando se vuelva a prender.
+            nov?.olvidarBase()
         }
         // Documentos: aparte, así no demora la carga (un error es «sin documentos»).
         _documentos.value?.let { m -> alcance.launch { m.refrescar() } }
@@ -1088,12 +1121,28 @@ class ModeloApp(
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
     private suspend fun sincronizarGimnasio() {
         val g = _gimnasio.value ?: return
+        val casa = _casa.value
         if (g.palancaRecordada) {
             g.refrescar()
+            // Entrenar en casa: junto con el gimnasio, y solo con las dos palancas (`gimnasio_fotos` y `casa`).
+            if (casa?.palancaRecordada == true) casa.refrescar() else casa?.apagar()
             g.drenarEnFondo()   // decenas de fotos no frenan el resto de la carga
         } else {
             g.apagar()
+            casa?.apagar()
         }
+    }
+
+    /** «Tu recorrido»: al cargar la cuenta y al volver a primer plano, solo con la palanca `fin_plan` prendida. */
+    private suspend fun sincronizarFinPlan() {
+        val f = _finPlan.value ?: return
+        if (f.palancaRecordada) f.refrescar()
+    }
+
+    /** «Dónde comprarlo»: junto con la suplementación, solo con la palanca `compras_pais` prendida y si hay suplementación. */
+    private suspend fun sincronizarCompras() {
+        val c = _compras.value ?: return
+        if (c.palancaRecordada && _suplementacion.value?.plan?.value != null) c.refrescar()
     }
 
     /**
@@ -1165,8 +1214,11 @@ class ModeloApp(
                 if (nov != null && _novedades.value === nov) {
                     nov.observar(ModeloNovedades.Entrada.NoLlego, ModeloNovedades.Entrada.NoLlego, m.entradaNovedades, soloConBase = true)
                 }
+                if (_suplementacion.value === m) sincronizarCompras()
             }
         }
+        // «Tu recorrido»: aparte también (es una lectura).
+        alcance.launch { sincronizarFinPlan() }
         // Documentos, cada vez: quien firmó en el navegador vuelve y ve «Firmado» (y el aviso se va).
         _documentos.value?.let { m -> alcance.launch { m.refrescar() } }
         if (toca(Relectura.SALUD)) _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y el historial

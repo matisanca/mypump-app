@@ -20,7 +20,8 @@ import kotlin.math.min
  * `apps/shared/fixtures/novedades/casos.json`.
  *
  * Textos: cortos, sin dos puntos, guiones ni emojis; nunca RIR (ni se compara) ni «cerca del fallo»; repes = referencia;
- * nunca «tu coach» ni «tu entrenador», solo Mati. Nunca una dosis: de la suplementación se nombra el suplemento y nada más.
+ * nunca «tu coach» ni «tu entrenador», solo Mati. Nunca una dosis: de la suplementación se nombra el suplemento y nada más
+ * (si el nombre trae la dosis, [NovedadesPlan.sinDosis] se la saca).
  */
 
 /** Una parte del plan como se vio la última vez o como llega ahora. */
@@ -407,12 +408,16 @@ object NovedadesPlan {
 
     // ---------------------------------------------------------------- Suplementación
 
+    private data class SuplementoPlano(val clave: String, val nombre: String, val item: ItemSuplemento)
+
     private fun suplementacion(antes: Suplementacion?, despues: Suplementacion): ParteNovedad? {
-        fun activos(s: Suplementacion?): List<Pair<String, ItemSuplemento>> {
+        // Se compara y se muestra el nombre sin la dosis: «Creatina 5 g» es «Creatina». Lo que queda vacío no es un suplemento.
+        fun activos(s: Suplementacion?): List<SuplementoPlano> {
             val vistos = HashSet<String>()
             return (s?.items ?: emptyList()).mapNotNull { it ->
-                val k = clave(it.nombre)
-                if (k.isEmpty() || clave(it.estado ?: "") == "sale" || !vistos.add(k)) null else k to it
+                val nombre = sinDosis(it.nombre)
+                val k = clave(nombre)
+                if (k.isEmpty() || clave(it.estado ?: "") == "sale" || !vistos.add(k)) null else SuplementoPlano(k, nombre, it)
             }
         }
         val n = activos(despues)
@@ -422,24 +427,133 @@ object NovedadesPlan {
                 listOf(if (n.size == 1) "Un suplemento para tu día" else "${n.size} suplementos para tu día"))
         }
         val v = activos(antes)
-        val kv = v.map { it.first }.toSet()
-        val kn = n.map { it.first }.toSet()
+        val kv = v.map { it.clave }.toSet()
+        val kn = n.map { it.clave }.toSet()
         val lineas = mutableListOf<String>()
-        for ((k, it) in n) if (k !in kv) lineas.add("Se suma ${limpio(it.nombre)}")
-        for ((k, it) in v) if (k !in kn) lineas.add("Dejás de tomar ${limpio(it.nombre)}")
-        for ((k, it) in n) {
-            val b = v.firstOrNull { x -> x.first == k }?.second ?: continue
-            if (firma(it) != firma(b)) lineas.add("Cambia cómo tomás ${limpio(it.nombre)}")
+        for (x in n) if (x.clave !in kv) lineas.add("Se suma ${x.nombre}")
+        for (x in v) if (x.clave !in kn) lineas.add("Dejás de tomar ${x.nombre}")
+        for (x in n) {
+            val b = v.firstOrNull { it.clave == x.clave } ?: continue
+            if (firma(x) != firma(b)) lineas.add("Cambia cómo tomás ${x.nombre}")
         }
         if (lineas.isEmpty()) return null
         return ParteNovedad("suplementacion", "Mati actualizó tu suplementación", false, recortar(lineas))
     }
 
-    /** La cantidad se compara pero nunca se muestra. */
-    private fun firma(it: ItemSuplemento): String {
+    /** La cantidad se compara pero nunca se muestra. Si el nombre traía la dosis, el nombre entero también cuenta. */
+    private fun firma(x: SuplementoPlano): String {
+        val it = x.item
         val tomas = it.tomas.joinToString(";") { "${clave(it.momento ?: "")}=${clave(it.cantidad ?: "")}" }
         val dias = it.dias.map(::clave).sorted().joinToString(",")
-        return listOf(clave(it.cantidad ?: ""), clave(it.momento ?: ""), tomas, dias, if (it.opcional) "1" else "0").joinToString("|")
+        val entero = clave(it.nombre).takeIf { k -> k != x.clave }.orEmpty()
+        return listOf(clave(it.cantidad ?: ""), clave(it.momento ?: ""), tomas, dias, if (it.opcional) "1" else "0", entero).joinToString("|")
+    }
+
+    // ---------------------------------------------------------------- Sin dosis
+
+    private val unidadesDosis = ("mg mcg ug \u00B5g g gr grs kg ml l ui iu % cap caps capsula capsulas comprimido comprimidos comp tableta tabletas " +
+        "tab tabs pastilla pastillas gota gotas scoop scoops cucharada cucharadas cucharadita cucharaditas sobre sobres unidad unidades").split(" ").toSet()
+    private val tiemposDosis = setOf("dia", "toma", "noche", "semana", "comida", "mañana")
+    private val enlacesDosis = setOf("por", "x", "al", "/", "c/")
+    private val sueltosDosis = setOf("x", "-", "–", "—", ":", "·")
+    private const val NUMERO_DOSIS = "0123456789.,"
+    private const val DIGITOS = "0123456789"
+
+    private fun normDosis(t: String): String {
+        var n = clave(t)
+        while (n.isNotEmpty() && n[0] in "([") n = n.substring(1)
+        while (n.isNotEmpty() && n[n.length - 1] in ").,;:]") n = n.substring(0, n.length - 1)
+        return n
+    }
+
+    /** (número, resto). El número: dígitos con . o , y a lo sumo un rango «3-5» o «3/5». */
+    private fun partirDosis(n: String): Pair<String, String> {
+        if (n.isEmpty() || n[0] !in DIGITOS) return "" to n
+        var i = 0
+        while (i < n.length && n[i] in NUMERO_DOSIS) i++
+        if (i + 1 < n.length && n[i] in "-/" && n[i + 1] in DIGITOS) {
+            i++
+            while (i < n.length && n[i] in NUMERO_DOSIS) i++
+        }
+        return n.substring(0, i) to n.substring(i)
+    }
+
+    private fun esUnidadDosis(resto: String): Boolean {
+        var r = resto.substringBefore('/')
+        while (r.endsWith(".")) r = r.substring(0, r.length - 1)
+        return r in unidadesDosis
+    }
+
+    private fun esNumeroDosis(n: String): Boolean = partirDosis(n).let { (p, r) -> p.isNotEmpty() && r.isEmpty() }
+
+    private fun cuenta(xs: List<String>, c: Char): Int = xs.sumOf { x -> x.count { it == c } }
+
+    /**
+     * El nombre del suplemento sin la dosis («Creatina 5 g» → «Creatina»). Port EXACTO de la referencia
+     * `scripts/nativa/novedades-sin-dosis.py`: un recorrido de tokens, sin expresiones regulares. La prueba compartida es
+     * `apps/shared/fixtures/novedades/sin_dosis.json`; las tres plataformas dan la misma salida.
+     */
+    fun sinDosis(nombre: String): String {
+        val ts = limpio(nombre).let { if (it.isEmpty()) emptyList() else it.split(" ") }
+        val out = mutableListOf<String>()
+        var i = 0
+        var cerrar = 0
+        while (i < ts.size) {
+            var t = ts[i]
+            val n = normDosis(t)
+            val (p, r) = partirDosis(n)
+            var quita = 0
+            if (p.isNotEmpty()) {
+                if (r.isNotEmpty() && (esUnidadDosis(r) || r == "x")) {
+                    quita = 1
+                } else if (r.isEmpty() && i + 1 < ts.size && normDosis(ts[i + 1]).let { it.isNotEmpty() && esUnidadDosis(it) }) {
+                    quita = 2
+                }
+            } else if (n.length > 1 && n[0] == 'x' && n.substring(1).all { it in DIGITOS }) {
+                quita = 1
+            }
+            if (quita == 0) {
+                if (cerrar > 0 && t.endsWith(")")) {
+                    t = t.substring(0, t.length - 1)
+                    cerrar--
+                }
+                if (t.isNotEmpty()) out.add(t)
+                i++
+                continue
+            }
+            val ido = ts.subList(i, i + quita).toMutableList()
+            i += quita
+            if (i + 1 < ts.size && normDosis(ts[i]) in enlacesDosis && normDosis(ts[i + 1]) in tiemposDosis) {
+                ido += ts.subList(i, i + 2)
+                i += 2
+            } else if (i < ts.size && normDosis(ts[i]).let { it.startsWith("/") && it.substring(1) in tiemposDosis }) {
+                ido += ts[i]
+                i += 1
+            } else if (i + 1 < ts.size && normDosis(ts[i]) == "x" && esNumeroDosis(normDosis(ts[i + 1]))) {
+                ido += ts.subList(i, i + 2)
+                i += 2
+            }
+            if (out.size >= 2 && normDosis(out[out.size - 1]) == "a" && esNumeroDosis(normDosis(out[out.size - 2]))) {
+                ido.addAll(0, out.subList(out.size - 2, out.size).toList())
+                out.removeAt(out.size - 1)
+                out.removeAt(out.size - 1)
+            }
+            if (out.isNotEmpty() && out[out.size - 1] in sueltosDosis) out.removeAt(out.size - 1)
+            val abren = cuenta(ido, '(')
+            val cierran = cuenta(ido, ')')
+            if (abren > cierran) {
+                cerrar += abren - cierran
+            } else if (cierran > abren && out.isNotEmpty() && cuenta(out, '(') > cuenta(out, ')')) {
+                out[out.size - 1] = out[out.size - 1] + ")"
+            }
+        }
+        while (out.isNotEmpty() && out[out.size - 1].all { it in "-–—:,·+/x" }) out.removeAt(out.size - 1)
+        if (out.isNotEmpty()) {
+            var u = out[out.size - 1]
+            while (u.isNotEmpty() && u[u.length - 1] in ",:;") u = u.substring(0, u.length - 1)
+            if (u.isEmpty()) out.removeAt(out.size - 1) else out[out.size - 1] = u
+        }
+        return out.joinToString(" ").replace("()", "").trim()
     }
 
     // ---------------------------------------------------------------- Texto

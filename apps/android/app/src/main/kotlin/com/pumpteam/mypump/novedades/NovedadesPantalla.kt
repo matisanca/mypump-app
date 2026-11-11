@@ -256,7 +256,8 @@ fun HojaDeNovedadesDe(modelo: ModeloApp, navegacion: Navegacion) {
         val p = pendiente ?: return@LaunchedEffect
         if (p.id in NovedadesUI.yaPedidas) return@LaunchedEffect
         delay(1_200)
-        while ((Onboarding.pendiente(modelo.preferencias) && !esDemo) || NovedadesUI.bienvenidaGuia) delay(400)
+        // «Tu recorrido» a la vista: las hojas no se apilan (la que llega segunda espera).
+        while ((Onboarding.pendiente(modelo.preferencias) && !esDemo) || NovedadesUI.bienvenidaGuia || com.pumpteam.mypump.recorrido.RecorridoUI.abierta) delay(400)
         if (navegacion.guia || NovedadesUI.abierta != null) return@LaunchedEffect
         NovedadesUI.yaPedidas += p.id
         NovedadesUI.abierta = p

@@ -21,9 +21,10 @@ import kotlinx.serialization.json.JsonObject
  * - **Caché.** La última fila (`suplementacion.json`) en la carpeta de la cuenta, como la copia offline de rutina y dieta:
  *   sin red la pestaña se ve igual.
  * - **Sin suplementación.** Cero filas (token inválido, sin suplementación o todo filtrado), una fila mal formada o sin
- *   ningún ítem con nombre, o la función que todavía no existe (404, PGRST202) borran la caché: la pestaña desaparece y
- *   Salud vuelve a la barra. Lo mismo que iOS (salvo el 404, que iOS trata como un error más).
- * - **Sin red o un error del servidor.** Queda lo que había.
+ *   ningún ítem con nombre borran la caché: la pestaña desaparece y Salud vuelve a la barra. Lo mismo que iOS.
+ * - **Sin red o un error del servidor.** Queda lo que había. También con un 404 o PGRST202 (la función no está, o PostgREST
+ *   está recargando el esquema): es «no llegó», como en iOS. Antes contaba como «no tiene» y «Novedades de tu plan»
+ *   terminaba diciendo «Dejás de tomar…» de toda la suplementación.
  *
  * Como [ModeloGuia], se usa desde el hilo principal.
  */
@@ -100,14 +101,10 @@ class ModeloSuplementacion(
         try {
             when (val r = cliente.filas(RPC, mapOf("p_token" to ValorJson.Texto(token)), ::leerFila)) {
                 is Resultado.Falla -> {
-                    // La función no existe (todavía no se aplicó la migración): para la app no hay suplementación.
-                    if (r.error.status == 404 || r.error.codigo == "PGRST202") {
-                        olvidar()
-                        ultimaLlego = true
-                    } else {
-                        _desdeCache.value = _plan.value != null
-                        ultimaLlego = false
-                    }
+                    // Cualquier falla (red, 5xx, y también 404 o PGRST202) es «no llegó»: queda lo guardado, no se borra la
+                    // copia y Novedades no compara. Solo una respuesta sin filas quiere decir «no tiene».
+                    _desdeCache.value = _plan.value != null
+                    ultimaLlego = false
                 }
                 is Resultado.Ok -> {
                     ultimaLlego = true

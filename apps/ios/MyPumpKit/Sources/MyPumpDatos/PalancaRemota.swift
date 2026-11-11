@@ -42,6 +42,12 @@ public struct PalancaRemota: Equatable, Sendable {
     public var estudiosApp = false
     /// Fotos de inicio (`fotos_inicio`). Sin la clave, apagadas: ni se muestran ni se llama a nada nuevo.
     public var fotosInicio = false
+    /// «Tu recorrido» (`fin_plan`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo.
+    public var finPlan = false
+    /// «Dónde comprarlo» (`compras_pais`). Sin la clave, apagada.
+    public var comprasPais = false
+    /// «Entreno en casa» (`casa`), dentro de Mi gimnasio: además necesita `gimnasio_fotos`. Sin la clave, apagada.
+    public var casa = false
 
     public init() {}
 
@@ -65,6 +71,10 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveElegirHorario = "mypump-palanca-elegir-horario"
     /// El último valor leído de `fotos_inicio`: prendida, una foto en la cola sigue subiendo aunque se arranque sin red.
     static let claveFotosInicio = "mypump-palanca-fotos-inicio"
+    /// Lo último leído de la cola B: prendidas, lo ya traído se sigue viendo si la app arranca sin red.
+    static let claveFinPlan = "mypump-palanca-fin-plan"
+    static let claveComprasPais = "mypump-palanca-compras-pais"
+    static let claveCasa = "mypump-palanca-casa"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
@@ -80,6 +90,9 @@ public struct PalancaRemota: Equatable, Sendable {
         if let v = defaults.string(forKey: "elegirHorario") { p.elegirHorario = v == "YES" }
         #endif
         if defaults.bool(forKey: claveFotosInicio) { p.fotosInicio = true }
+        if defaults.bool(forKey: claveFinPlan) { p.finPlan = true }
+        if defaults.bool(forKey: claveComprasPais) { p.comprasPais = true }
+        if defaults.bool(forKey: claveCasa) { p.casa = true }
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
@@ -92,6 +105,9 @@ public struct PalancaRemota: Equatable, Sendable {
         defaults.set(chatAdjuntos, forKey: Self.claveChatAdjuntos)
         defaults.set(elegirHorario, forKey: Self.claveElegirHorario)
         defaults.set(fotosInicio, forKey: Self.claveFotosInicio)
+        defaults.set(finPlan, forKey: Self.claveFinPlan)
+        defaults.set(comprasPais, forKey: Self.claveComprasPais)
+        defaults.set(casa, forKey: Self.claveCasa)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
@@ -111,6 +127,9 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["elegir_horario"] { elegirHorario = b }
         if case .bool(let b)? = j["estudios_app"] { estudiosApp = b }
         if case .bool(let b)? = j["fotos_inicio"] { fotosInicio = b }
+        if case .bool(let b)? = j["fin_plan"] { finPlan = b }
+        if case .bool(let b)? = j["compras_pais"] { comprasPais = b }
+        if case .bool(let b)? = j["casa"] { casa = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

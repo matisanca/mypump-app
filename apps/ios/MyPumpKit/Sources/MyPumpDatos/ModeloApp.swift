@@ -140,6 +140,12 @@ public final class ModeloApp {
     /// Documentos (contrato y consentimiento): la fila de Mis datos y el aviso de Entreno, solo si
     /// `mypump_contrato_get` devolvió algo. No existe en la demo ni sin cuenta.
     public private(set) var documentos: ModeloDocumentos?
+    /// «Tu recorrido» (2.3.0): existe con cuenta; solo llama al servidor con la palanca `fin_plan` prendida.
+    public private(set) var recorrido: ModeloRecorrido?
+    /// «Dónde comprarlo» (2.3.0): ídem con `compras_pais`, y solo si hay suplementación.
+    public private(set) var compras: ModeloCompras?
+    /// «Entreno en casa» (2.3.0), dentro de Mi gimnasio: ídem con `casa` y `gimnasio_fotos`.
+    public private(set) var casa: ModeloCasa?
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet {
@@ -278,6 +284,7 @@ public final class ModeloApp {
         suplementacion = nil
         novedades = nil
         documentos = nil
+        recorrido = nil; compras = nil; casa = nil
         esDemo = false
         sinRedEn = []
         fase = .sinToken
@@ -337,6 +344,7 @@ public final class ModeloApp {
         suplementacion = nil
         novedades = nil
         documentos = nil
+        recorrido = nil; compras = nil; casa = nil
         token = almacen.leer()
         if let t = token {
             prepararCuenta(t)
@@ -358,6 +366,7 @@ public final class ModeloApp {
         suplementacion = nil
         novedades = nil
         documentos = nil
+        recorrido = nil; compras = nil; casa = nil
     }
 
     /// Hay un mapa de reemplazos de comida sin la marca de migrados: el servidor quizás nunca los vio y, hasta decidirlo, la
@@ -428,6 +437,9 @@ public final class ModeloApp {
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
         novedades = ModeloNovedades(disco: disco)
         documentos = ModeloDocumentos(cliente: cliente, token: t)
+        recorrido = ModeloRecorrido(cliente: cliente, token: t, disco: disco)
+        compras = ModeloCompras(cliente: cliente, token: t, disco: disco)
+        casa = ModeloCasa(cliente: cliente, token: t, disco: disco)
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3).
         salud = ModeloSalud(cliente: cliente, token: t, almacen: AlmacenSaludPorCuenta(base: AlmacenSaludDefaults(), cuenta: Disco.huella(t)))
         Task { [weak self] in
@@ -635,8 +647,19 @@ public final class ModeloApp {
                 nov.observar(rutina: er, dieta: ed, suplementacion: supl?.entradaNovedades ?? .noLlego, semilla: semilla)
             }
         }
+        // Palanca leída y apagada: el plan «ya visto» se olvida, para no comparar contra algo viejo el día que se prenda.
+        if palancaLeida != nil, !palanca.novedadesPlan { novedades?.olvidarBase() }
         // Suplementación sin esperar a lo demás: decide si la pestaña está (con copia guardada ya se ve desde el arranque).
-        if let suplementacion { Task { await suplementacion.cargar() } }
+        // Detrás, «Dónde comprarlo», que solo tiene sentido si hay suplementación.
+        if let suplementacion {
+            Task {
+                await suplementacion.cargar()
+                guard vigente() else { return }
+                await self.sincronizarCompras()
+            }
+        }
+        // «Tu recorrido» arriba de Entreno: sin esperar a lo demás.
+        Task { await self.sincronizarRecorrido() }
         // Documentos, igual: un error es «sin documentos» y no frena nada.
         if let documentos { Task { await documentos.cargar() } }
         // El motor que ya arrancó con la copia no se vuelve a cargar, salvo que la rutina haya cambiado: `prepararEntreno`
@@ -830,6 +853,21 @@ public final class ModeloApp {
         } else {
             gimnasio.apagar()
         }
+        // «Entreno en casa» es parte de Mi gimnasio: sin las dos palancas, o sin Mi gimnasio para esta cuenta, no se pregunta.
+        if palanca.gimnasioFotos, palanca.casa, gimnasio.estado != nil { await casa?.refrescar() } else { casa?.apagar() }
+    }
+
+    /// Después de tocar el interruptor de casa o de enviar: Mi gimnasio y casa leen la misma carga.
+    public func refrescarGimnasioYCasa() async { await sincronizarGimnasio() }
+
+    private func sincronizarRecorrido() async {
+        guard let recorrido else { return }
+        if palanca.finPlan { await recorrido.refrescar() } else { recorrido.apagar() }
+    }
+
+    private func sincronizarCompras() async {
+        guard let compras else { return }
+        if palanca.comprasPais, suplementacion?.hay == true { await compras.refrescar() } else { compras.apagar() }
     }
 
     /// El modelo se crea una sola vez y puede nacer con la app en segundo plano antes del primer desbloqueo (reinicio del
@@ -873,13 +911,15 @@ public final class ModeloApp {
         if let suplementacion, toca(.suplementacion) {
             let nov = palanca.novedadesPlan ? novedades : nil
             Task {
-                await suplementacion.cargar()
+                await suplementacion.cargar(siHaceFalta: true)
+                await self.sincronizarCompras()
                 guard let nov, self.novedades === nov else { return }
                 nov.observar(rutina: .noLlego, dieta: .noLlego, suplementacion: suplementacion.entradaNovedades, soloConBase: true)
             }
         }
         // Documentos, cada vez: quien firmó en el navegador vuelve y ve «Firmado» (y el aviso se va).
         if let documentos { Task { await documentos.cargar() } }
+        Task { await self.sincronizarRecorrido() }
         await outbox?.drenar()
         // Las marcas de hoy se releen en cada vuelta: las pudo cambiar la web u otro teléfono (DIE-05, D25) y es un pedido chico.
         await hidratarMarcas()

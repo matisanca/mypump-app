@@ -39,6 +39,7 @@ struct EntrenoView: View {
                 case .sinRutina:
                     ScrollView {
                         TarjetaFotosInicio(soloSiFaltan: true).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                        TarjetaRecorrido().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         TarjetaGimnasio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
@@ -213,6 +214,8 @@ private struct ListaEntreno: View {
                 // el aviso de Revisión.
                 // 2.3.0: la videollamada fija arriba, desde que se agenda hasta que termina (aunque la tarjeta de la guía esté oculta).
                 if let g = GuiaUI.modelo { TarjetaVideollamadaEntreno(modelo: g) }
+                // «Tu recorrido con Mati» (2.3.0): arriba de todo, solo debajo de la videollamada que está por empezar.
+                TarjetaRecorrido()
                 // Un estudio pedido o una orden nueva (pedido de Mati, 10-nov). Orden fijo de las tarjetas de arriba: el link
                 // de la entrega (tiene hora), Estudios (lo pidió Mati y tiene fecha) y la guía destacada.
                 TarjetaEstudiosInicio()

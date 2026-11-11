@@ -65,14 +65,45 @@ class ModeloSuplementacionTest {
         assertNull(m.plan.value)
     }
 
+    /**
+     * Un 404 o PGRST202 (la función no está, o PostgREST recarga el esquema) es «no llegó», no «no tiene»: la pestaña
+     * conserva lo guardado, la copia no se borra y «Novedades de tu plan» no compara (antes decía «Dejás de tomar…»).
+     */
     @Test
-    fun laFuncionQueNoExisteEsComoNoTener() = enUnHilo { alcance ->
+    fun un404EsNoLlegoYNoBorraNada() = enUnHilo { alcance ->
+        for (falla in listOf(404 to """{"code":"PGRST202","message":"no existe"}""", 404 to "", 400 to """{"code":"PGRST202","message":"no existe"}""")) {
+            val disco = Disco(carpetaTemporal("supl"), "tok")
+            var respuesta = 200 to unaFila
+            val m = ModeloSuplementacion(ClienteRpc(transporte = TransporteProgramado { _, _ -> respuesta }), "tok", disco, alcance).also { it.alDia() }
+            m.refrescar()
+            val antes = m.plan.value
+            assertNotNull(antes)
+            assertTrue(m.entradaNovedades is ModeloNovedades.Entrada.Hay)
+            respuesta = falla
+            m.refrescar()
+            assertEquals(antes, m.plan.value, "$falla")
+            assertTrue(m.desdeCache.value, "$falla")
+            assertFalse(m.ultimaLlego, "$falla")
+            assertEquals(ModeloNovedades.Entrada.NoLlego, m.entradaNovedades, "$falla")
+            m.alDia()
+            assertNotNull(disco.leer(ModeloSuplementacion.ARCHIVO), "$falla")
+            // Y al abrir de nuevo con la función todavía caída, la pestaña sale de la copia.
+            val otra = ModeloSuplementacion(ClienteRpc(transporte = TransporteProgramado { _, _ -> falla }), "tok", disco, alcance).also { it.alDia() }
+            otra.refrescar()
+            assertEquals(antes, otra.plan.value, "$falla")
+        }
+    }
+
+    @Test
+    fun un404SinNadaGuardadoNoMuestraNada() = enUnHilo { alcance ->
         val m = ModeloSuplementacion(
             ClienteRpc(transporte = TransporteProgramado { _, _ -> 404 to """{"code":"PGRST202","message":"no existe"}""" }),
             "tok", Disco(carpetaTemporal("supl"), "tok"), alcance,
         ).also { it.alDia() }
         m.refrescar()
         assertNull(m.plan.value)
+        assertFalse(m.desdeCache.value)
+        assertEquals(ModeloNovedades.Entrada.NoLlego, m.entradaNovedades)
     }
 
     @Test

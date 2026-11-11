@@ -109,6 +109,15 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
             // «Tu guía» después de la entrega (o quitada de Entreno): una sola fila, solo con resumen `ok: true`.
             val guia by modelo.guia.collectAsStateWithLifecycle()
             val navegacion = LocalNavegacion.current
+            // «Tu recorrido» (palanca `fin_plan`): arriba, junto a Novedades, mientras el servidor diga que se ve.
+            val finPlan by modelo.finPlan.collectAsStateWithLifecycle()
+            val recorrido = finPlan?.recorrido?.collectAsStateWithLifecycle()?.value
+            if (recorrido != null) {
+                FilaEnlace(Iconos.Trofeo, c.marcaTexto, com.pumpteam.mypump.reglas.FinPlan.Textos.ENTRADA_MIS_DATOS, etiqueta = "mis-datos-recorrido") {
+                    com.pumpteam.mypump.recorrido.RecorridoUI.abierta = true
+                }
+                Separador(sangria = 58.dp)
+            }
             // «Novedades de tu plan» (palanca `novedades_plan`): el lugar fijo, primero.
             val novedades by modelo.novedades.collectAsStateWithLifecycle()
             val palanca by modelo.palanca.collectAsStateWithLifecycle()
