@@ -136,7 +136,8 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                     FilaEnlace(
                         Iconos.Documento, c.marcaTexto, com.pumpteam.mypump.reglas.TextosEstudios.entrada,
                         etiqueta = "mis-datos-estudios", subtitulo = com.pumpteam.mypump.reglas.Estudios.subtitulo(e),
-                    ) { navegacion?.estudiosEnMisDatos = true }
+                        novedad = com.pumpteam.mypump.reglas.Estudios.hayNovedad(e),
+                    ) { navegacion?.irAEstudios(resuelto = true) }
                     Separador(sangria = 58.dp)
                 }
             }
@@ -199,6 +200,8 @@ private fun FilaEnlace(
     colorTexto: Color = MyPump.colores.texto,
     etiqueta: String? = null,
     subtitulo: String? = null,
+    /** Algo sin ver adentro: un punto antes de la flecha, que TalkBack lee como «Novedad». */
+    novedad: Boolean = false,
     alTocar: () -> Unit,
 ) {
     val c = MyPump.colores
@@ -221,6 +224,7 @@ private fun FilaEnlace(
                 Text(subtitulo, style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
             }
         }
+        if (novedad && etiqueta != null) com.pumpteam.mypump.estudios.PuntoNovedad(Modifier.testTag("$etiqueta-novedad"))
         Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
     }
 }

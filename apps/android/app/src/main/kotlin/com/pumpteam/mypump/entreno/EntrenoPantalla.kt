@@ -207,6 +207,7 @@ private fun SinRutina(modelo: ModeloApp) {
             modifier = Modifier.padding(relleno).fillMaxSize(),
         ) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
                 TarjetaGimnasioDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
                 Spacer(Modifier.height(80.dp))
                 EstadoVacio(

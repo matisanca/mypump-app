@@ -7,8 +7,11 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.provider.MediaStore
 import androidx.exifinterface.media.ExifInterface
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pumpteam.mypump.Entorno
+import com.pumpteam.mypump.MainActivity
+import com.pumpteam.mypump.avisos.CentroAvisos
 import com.pumpteam.mypump.datos.DobleEstudios
 import com.pumpteam.mypump.datos.Transporte
 import com.pumpteam.mypump.fotos.FotoDePrueba
@@ -91,7 +94,7 @@ class EstudiosUiTest : PruebaUi() {
         }
     }
 
-    private fun lanzar(escenario: String): DobleEstudios {
+    private fun lanzar(escenario: String, abrirLaApp: () -> Unit = { abrir() }): DobleEstudios {
         val d = DobleEstudios.escenario(escenario)
         d.imagenParaVer = CamaraDePrueba.fotoGrande()
         val s = servidor
@@ -100,9 +103,13 @@ class EstudiosUiTest : PruebaUi() {
         }
         guardarCuenta()
         ponerSelectores()
-        abrir()
+        abrirLaApp()
         return d
     }
+
+    /** Como tocar el aviso «Tenés un estudio nuevo para hacer» con la app cerrada. */
+    private fun lanzarDesdeElAviso(escenario: String): DobleEstudios =
+        lanzar(escenario) { registrar(ActivityScenario.launch<MainActivity>(CentroAvisos.intentDeAviso(app, "estudios"))) }
 
     private fun irAMisDatos() {
         p.nodo(etiqueta("pestana-entreno"))
@@ -421,5 +428,156 @@ class EstudiosUiTest : PruebaUi() {
     fun fechaLetraGrande() {
         Telefono.shell("settings put system font_scale 2.0")
         yaMeLoHice("grande")
+    }
+
+
+    // ── Novedades: la tarjeta de arriba, el punto, «Nuevo» y el aviso ──
+
+    private fun novedad(tema: String): DobleEstudios {
+        val d = lanzar("novedad")
+        // Arriba de Entreno, sin tocar nada: la tarjeta verde con el botón grande.
+        p.nodo(etiqueta("estudios-tarjeta-inicio"))
+        p.nodo(texto("Tenés un estudio nuevo para hacer"))
+        p.nodo(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.nodo(texto("Ver"))
+        Telefono.captura("est-novedad-inicio-$tema")
+        // Un toque: Estudios, con la tarjeta nueva a la vista y su «Nuevo».
+        p.tocar(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.nodo(etiqueta("estudios-pantalla"))
+        assertTrue(p.seleccionado(etiqueta("pestana-revision")))
+        p.nodo(etiqueta("estudios-nuevo-${DobleEstudios.PEDIDO_ECO}"))
+        p.nodo(texto("Nuevo"))
+        Telefono.captura("est-novedad-estudios-$tema")
+        // Estuvo a la vista: deja de ser novedad en el servidor, sigue pendiente y conserva «Nuevo» mientras se la mira.
+        p.esperar("el pedido marcado como visto", 15_000, enElPrincipal = false) { d.vistasPedidas.flatten().contains(DobleEstudios.PEDIDO_ECO).takeIf { it } }
+        p.quieto(800)
+        assertTrue(p.existe(etiqueta("estudios-nuevo-${DobleEstudios.PEDIDO_ECO}")))
+        assertTrue(p.existe(etiqueta("estudios-pendiente-${DobleEstudios.PEDIDO_ECO}")))
+        return d
+    }
+
+    @Test
+    fun laTarjetaDeArribaLlevaALaTarjetaNueva() {
+        val d = novedad("claro")
+        assertTrue("solo se marca lo que era nuevo: ${d.vistasPedidas}", d.vistasPedidas.flatten().all { it == DobleEstudios.PEDIDO_ECO || it == DobleEstudios.ORDEN_LAB })
+    }
+
+    @Test
+    fun novedadOscuro() {
+        Telefono.modoNoche(true)
+        guardarTemaOscuro()
+        novedad("oscuro")
+    }
+
+    /** Con la letra al 200 % la tarjeta de arriba y «Nuevo» no se cortan y el botón sigue ahí. */
+    @Test
+    fun novedadLetraGrande() {
+        Telefono.shell("settings put system font_scale 2.0")
+        novedad("grande")
+    }
+
+    @Test
+    fun sinNovedadLaTarjetaLlevaASubirEnDosToques() {
+        lanzar("completo")
+        p.nodo(etiqueta("estudios-tarjeta-inicio"))
+        p.nodo(texto("Tenés un estudio para hacer"))
+        p.nodo(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.nodo(texto("Subir resultado"))
+        assertFalse("sin nada sin ver no hay punto", p.existe(etiqueta("pestana-revision-novedad")))
+        Telefono.captura("est-para-hacer-inicio-claro")
+        // Un toque a Estudios, dos al selector de archivos.
+        p.tocar(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.nodo(etiqueta("estudios-pantalla"))
+        assertFalse(p.existe(texto("Nuevo")))
+        p.tocar(etiqueta("estudios-subir-resultado"))
+        p.nodo(etiqueta("estudios-sacar-fotos"))
+        p.nodo(etiqueta("estudios-elegir-fotos"))
+        p.nodo(etiqueta("estudios-elegir-pdf"))
+        Telefono.captura("est-hoja-opciones-claro")
+    }
+
+    @Test
+    fun sinPedidosNiNovedadNoHayTarjetaArriba() {
+        lanzar("vacio")
+        p.nodo(etiqueta("pestana-entreno"))
+        p.quieto(2500)
+        assertFalse(p.existe(etiqueta("estudios-tarjeta-inicio")))
+    }
+
+    @Test
+    fun elPuntoMarcaElCaminoYSeApagaAlVerLaOrden() {
+        val d = lanzar("ordenNueva")
+        p.nodo(texto("Tenés una orden nueva"))
+        p.tocar(etiqueta("pestana-revision"))
+        // El punto en el botón de Mis datos y en la fila, leído como «Novedad».
+        assertEquals("Novedad", p.descripcion(etiqueta("mis-datos-novedad")))
+        p.tocar(etiqueta("mis-datos"))
+        p.nodo(etiqueta("mis-datos-pantalla"))
+        assertEquals("Novedad", p.descripcion(etiqueta("mis-datos-estudios-novedad")))
+        Telefono.captura("est-novedad-mis-datos-claro")
+        // La fila lleva a la orden nueva, que está más abajo que los pedidos: se desplaza sola.
+        p.tocar(etiqueta("mis-datos-estudios"))
+        p.nodo(etiqueta("estudios-pantalla"))
+        p.nodo(etiqueta("estudios-nuevo-${DobleEstudios.ORDEN_LAB}"))
+        p.esperar("la orden marcada como vista", 15_000, enElPrincipal = false) { (d.vistasPedidas.toList() == listOf(listOf(DobleEstudios.ORDEN_LAB))).takeIf { it } }
+        p.atras()
+        p.nodo(etiqueta("mis-datos-pantalla"))
+        p.esperarQueNoEste(etiqueta("mis-datos-estudios-novedad"))
+        p.atras()
+        p.esperarQueNoEste(etiqueta("mis-datos-novedad"))
+    }
+
+    @Test
+    fun tocarElAvisoConLaAppCerradaAbreEstudios() {
+        lanzarDesdeElAviso("novedad")
+        p.nodo(etiqueta("estudios-pantalla"), ms = 30_000)
+        assertTrue(p.seleccionado(etiqueta("pestana-revision")))
+        p.nodo(etiqueta("estudios-nuevo-${DobleEstudios.PEDIDO_ECO}"))
+        // Atrás vuelve a Mis datos, de donde cuelga.
+        p.atras()
+        p.nodo(etiqueta("mis-datos-pantalla"))
+    }
+
+    @Test
+    fun elLinkConLaEscenaAbreEstudios() {
+        lanzar("novedad") { abrirConLink("https://app.mypumpteam.com/?t=${ServidorDePrueba.TOKEN}&scene=estudios") }
+        p.nodo(etiqueta("estudios-pantalla"), ms = 30_000)
+    }
+
+    @Test
+    fun tocarElAvisoConLaAppAbiertaAbreEstudios() {
+        lanzar("soloOrdenNueva")
+        p.nodo(texto("Tenés una orden nueva"))
+        app.startActivity(CentroAvisos.intentDeAviso(app, "estudios"))
+        p.nodo(etiqueta("estudios-pantalla"))
+        p.nodo(etiqueta("estudios-nuevo-${DobleEstudios.ORDEN_LAB}"))
+    }
+
+    /** Sin la sección, el aviso deja en Mis datos: nunca una pantalla en blanco ni el Chat. */
+    private fun elAvisoCaeEnMisDatos(escenario: String): DobleEstudios {
+        val d = lanzarDesdeElAviso(escenario)
+        p.nodo(etiqueta("mis-datos-pantalla"), ms = 30_000)
+        p.quieto(7_000)   // más que el tope de la espera
+        assertTrue(p.existe(etiqueta("mis-datos-pantalla")))
+        assertFalse(p.existe(etiqueta("estudios-pantalla")))
+        assertFalse(p.existe(etiqueta("mis-datos-estudios")))
+        assertTrue(p.seleccionado(etiqueta("pestana-revision")))
+        return d
+    }
+
+    @Test
+    fun elAvisoConLaPalancaApagadaCaeEnMisDatosSinLlamarNada() {
+        val d = elAvisoCaeEnMisDatos("apagado")
+        assertTrue("con la palanca apagada no se llama nada nuevo: ${d.llamadasEstudios}", d.llamadasEstudios.isEmpty())
+    }
+
+    @Test
+    fun elAvisoSinElServidorNuevoCaeEnMisDatos() {
+        elAvisoCaeEnMisDatos("sinServidor")
+    }
+
+    @Test
+    fun elAvisoSinLaFuncionCaeEnMisDatos() {
+        elAvisoCaeEnMisDatos("noHabilitado")
     }
 }

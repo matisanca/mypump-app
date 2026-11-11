@@ -107,6 +107,16 @@ class Navegacion(
     var estudiosEnMisDatos by mutableStateOf(estudiosEnMisDatos)
 
     /**
+     * Cada pedido de ir a Estudios (un aviso, `?scene=estudios`) suma uno. La raíz espera a saber si la sección existe y
+     * recién ahí la abre: mientras tanto, y si no existe, se está en Mis datos. No se guarda al rotar: es de un momento.
+     */
+    var pedidoEstudios by mutableStateOf(0)
+        private set
+
+    /** Al abrirse, Estudios se desplaza hasta la primera tarjeta nueva y lo consume. */
+    var enfocarEstudios by mutableStateOf(false)
+
+    /**
      * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check), como `anclaRevision` de
      * `Navegacion.swift`. Revisión la consume al llegar.
      */
@@ -149,15 +159,42 @@ class Navegacion(
             DestinoAviso.REVISION -> irARevision(null)
             // `?scene=myday` y el aviso de Mi Día (ya no existe): Revisión + Salud → Recuperación.
             DestinoAviso.RECUPERACION -> irASalud(SegmentoSalud.RECUPERACION)
-            DestinoAviso.MIS_DATOS -> {
-                pestana = Pestana.REVISION
-                misDatos = true
-                guiaEnMisDatos = false
-                gimnasioEnMisDatos = false
-                tecnicaEnMisDatos = false
-                estudiosEnMisDatos = false
-            }
+            DestinoAviso.MIS_DATOS -> irAMisDatos()
+            // El aviso de un estudio pedido o una orden nueva y `?scene=estudios`: Mis datos → Estudios.
+            DestinoAviso.ESTUDIOS -> irAEstudios()
         }
+    }
+
+    private fun irAMisDatos() {
+        pestana = Pestana.REVISION
+        misDatos = true
+        guiaEnMisDatos = false
+        gimnasioEnMisDatos = false
+        tecnicaEnMisDatos = false
+        estudiosEnMisDatos = false
+        enfocarEstudios = false
+    }
+
+    /**
+     * A «Estudios y órdenes», en la primera tarjeta nueva. Primero Mis datos, que es la caída segura. Con [resuelto] (la
+     * tarjeta de Entreno: la sección ya está a la vista) se abre en el momento; si no (un aviso o un link, tal vez con la
+     * app recién abierta) queda pedido y la raíz la abre cuando sabe que existe ([abrirEstudiosPedido]).
+     */
+    fun irAEstudios(resuelto: Boolean = false) {
+        irAMisDatos()
+        if (resuelto) {
+            enfocarEstudios = true
+            estudiosEnMisDatos = true
+        } else {
+            pedidoEstudios++
+        }
+    }
+
+    /** La sección existe: se abre, salvo que mientras se esperaba el alumno se haya ido a otro lado. */
+    fun abrirEstudiosPedido() {
+        if (pestana != Pestana.REVISION || !misDatos || guiaEnMisDatos || gimnasioEnMisDatos || tecnicaEnMisDatos) return
+        enfocarEstudios = true
+        estudiosEnMisDatos = true
     }
 
     /** A Revisión (fuera de Mis datos) y, si hay [ancla], a esa sección. */

@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -23,7 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -36,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -47,6 +45,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -87,6 +88,8 @@ import com.pumpteam.mypump.reglas.OrdenEstudios
 import com.pumpteam.mypump.reglas.PendienteEstudios
 import com.pumpteam.mypump.reglas.TextosEstudios as T
 import java.time.LocalDate
+import com.pumpteam.mypump.entreno.reducirMovimiento
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -95,15 +98,22 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** Lo que se espera a que la carga de la app lea la palanca al volver de una muerte del proceso. */
 private const val ESPERA_PALANCA_MS = 20_000L
 
+/** Lo que una tarjeta nueva tiene que estar a la vista para darla por vista. */
+private const val VISTA_MS = 1_000L
+
 /** Sin pedido: «Subir un estudio» suelto. */
 private const val SUBIDA_SUELTA = ""
 
 /**
  * «Estudios y órdenes» (`estudios/CONTRATO_APP.md`): lo que falta hacer, las órdenes, lo que ya llegó y la subida. Acá no
  * hay valores, rangos ni interpretación: solo qué se pidió, qué llegó y si Mati ya lo vio.
+ *
+ * Con [enfocar] (se llegó desde un aviso, un link o la tarjeta de Entreno) se desplaza hasta la primera tarjeta nueva y
+ * avisa con [alEnfocar]. Una tarjeta nueva que estuvo a la vista deja de ser novedad en el servidor; acá conserva su
+ * «Nuevo» hasta salir de la pantalla, para que no desaparezca mientras se la mira.
  */
 @Composable
-fun EstudiosPantalla(m: ModeloEstudios, alVolver: () -> Unit) {
+fun EstudiosPantalla(m: ModeloEstudios, alVolver: () -> Unit, enfocar: Boolean = false, alEnfocar: () -> Unit = {}) {
     val estado by m.estado.collectAsStateWithLifecycle()
     // Al volver de una muerte del proceso el estado todavía no está: se decide después de preguntar.
     var preguntado by remember { mutableStateOf(false) }
@@ -125,6 +135,9 @@ fun EstudiosPantalla(m: ModeloEstudios, alVolver: () -> Unit) {
     var abierto by rememberSaveable(stateSaver = Abierto.Guarda) { mutableStateOf<Abierto?>(null) }
 
     val e = estado ?: return Box(Modifier.fillMaxSize().background(MyPump.colores.fondo))
+    // Lo que se vio como nuevo en esta visita (sobrevive a entrar a una orden y volver).
+    val nuevasAca = remember(m) { mutableStateMapOf<String, Boolean>() }
+    for (id in Estudios.nuevas(e)) if (id !in nuevasAca) nuevasAca[id] = true
     val orden = e.orden(ordenAbierta)
     val viendo = abierto
     BackHandler(enabled = orden != null && viendo == null) { ordenAbierta = null }
@@ -138,6 +151,10 @@ fun EstudiosPantalla(m: ModeloEstudios, alVolver: () -> Unit) {
         orden != null -> DetalleOrden(orden, alVolver = { ordenAbierta = null }, alVer = { verOrden(orden) })
         else -> Principal(
             m, e, alVolver,
+            nuevasAca = nuevasAca.keys,
+            // Recién con lo que contestó el servidor: la copia de antes puede no tener lo nuevo.
+            enfocar = enfocar && preguntado,
+            alEnfocar = alEnfocar,
             alSubir = { subida = it ?: SUBIDA_SUELTA },
             alPedirFecha = { fechaDe = it },
             alAbrirOrden = { id ->
@@ -158,6 +175,9 @@ private fun Principal(
     m: ModeloEstudios,
     e: EstadoEstudios,
     alVolver: () -> Unit,
+    nuevasAca: Set<String>,
+    enfocar: Boolean,
+    alEnfocar: () -> Unit,
     alSubir: (String?) -> Unit,
     alPedirFecha: (String) -> Unit,
     alAbrirOrden: (String) -> Unit,
@@ -174,6 +194,36 @@ private fun Principal(
     var recargando by remember { mutableStateOf(false) }
     val hoy = e.hoy
     val bloques = Estudios.bloques(e)
+    val desplazamiento = rememberScrollState()
+    val reducir = reducirMovimiento()
+    val margenAncla = with(LocalDensity.current) { 72.dp.roundToPx() }
+    // Dónde están, en el contenido, el borde de arriba de la lista y la tarjeta a la que hay que llevar.
+    var yLista by remember { mutableStateOf(0f) }
+    var yAncla by remember { mutableStateOf<Float?>(null) }
+    val ancla = Estudios.ancla(e)
+    LaunchedEffect(enfocar, ancla, yAncla != null) {
+        if (!enfocar) return@LaunchedEffect
+        if (ancla == null) return@LaunchedEffect alEnfocar()
+        val y = yAncla ?: return@LaunchedEffect
+        // Deja a la vista el título de la sección, arriba de la tarjeta.
+        val destino = (y - yLista).toInt() - margenAncla
+        if (reducir) desplazamiento.scrollTo(destino) else desplazamiento.animateScrollTo(destino)
+        alEnfocar()
+    }
+    fun Modifier.siEsElAncla(a: Estudios.Ancla): Modifier =
+        if (a == ancla) onGloballyPositioned { yAncla = it.positionInRoot().y + desplazamiento.value } else this
+
+    // Las tarjetas nuevas que están en pantalla: pasado un momento dejan de ser novedad (siguen pendientes). Si falla, queda
+    // como estaba y se reintenta la próxima vez que se vean. El pedido corre en el alcance de la app: salir no lo corta.
+    val aLaVista = remember(m) { mutableStateMapOf<String, Boolean>() }
+    val sinMarcar = Estudios.nuevas(e).filter { aLaVista[it] == true }
+    LaunchedEffect(sinMarcar) {
+        if (sinMarcar.isEmpty()) return@LaunchedEffect
+        delay(VISTA_MS)
+        alcance.launch { m.marcarVistas(sinMarcar) }
+    }
+    fun Modifier.vista(id: String, nuevo: Boolean): Modifier =
+        if (nuevo) alEstarALaVista { if (aLaVista[id] != it) aLaVista[id] = it } else this
 
     MarcoPantalla(T.titulo, alVolver = alVolver) { relleno ->
         PullToRefreshBox(
@@ -188,12 +238,12 @@ private fun Principal(
                     }
                 }
             },
-            modifier = Modifier.fillMaxSize().padding(top = relleno.calculateTopPadding()),
+            modifier = Modifier.fillMaxSize().padding(top = relleno.calculateTopPadding()).onGloballyPositioned { yLista = it.positionInRoot().y },
         ) {
             Column(
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(desplazamiento)
                     .padding(horizontal = Espacio.m)
                     .padding(top = Espacio.xs, bottom = Espacio.xl + LocalRellenoInferior.current)
                     .testTag("estudios-pantalla"),
@@ -211,7 +261,12 @@ private fun Principal(
                         Estudios.Bloque.PROXIMO -> e.proximo?.let { ProximoControl(it) }
                         Estudios.Bloque.PENDIENTES -> Seccion(T.teFaltaHacer) {
                             for (p in e.pendientes) {
-                                TarjetaPendiente(m, p, hoy, alSubir = { alSubir(p.id) }, alPedirFecha = { alPedirFecha(p.id) }, alAbrirOrden = alAbrirOrden)
+                                TarjetaPendiente(
+                                    m, p, hoy,
+                                    nuevo = p.nuevo || p.id in nuevasAca,
+                                    modifier = Modifier.siEsElAncla(Estudios.Ancla.Pendiente(p.id)).vista(p.id, p.nuevo),
+                                    alSubir = { alSubir(p.id) }, alPedirFecha = { alPedirFecha(p.id) }, alAbrirOrden = alAbrirOrden,
+                                )
                             }
                         }
                         Estudios.Bloque.SUBIR -> BotonMarca(T.subirUnEstudio, alTocar = { alSubir(null) }, modifier = Modifier.testTag("estudios-subir"))
@@ -219,7 +274,11 @@ private fun Principal(
                             Tarjeta(relleno = 0.dp, espaciado = 0.dp) {
                                 e.ordenes.forEachIndexed { i, o ->
                                     if (i > 0) Separador(sangria = 64.dp)
-                                    FilaOrden(o) { alAbrirOrden(o.id) }
+                                    FilaOrden(
+                                        o,
+                                        nuevo = o.nuevo || o.id in nuevasAca,
+                                        modifier = Modifier.siEsElAncla(Estudios.Ancla.Orden(o.id)).vista(o.id, o.nuevo),
+                                    ) { alAbrirOrden(o.id) }
                                 }
                             }
                         }
@@ -351,14 +410,24 @@ private fun ProximoControl(p: ControlEstudios) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TarjetaPendiente(m: ModeloEstudios, p: PendienteEstudios, hoy: LocalDate?, alSubir: () -> Unit, alPedirFecha: () -> Unit, alAbrirOrden: (String) -> Unit) {
+private fun TarjetaPendiente(
+    m: ModeloEstudios,
+    p: PendienteEstudios,
+    hoy: LocalDate?,
+    nuevo: Boolean,
+    modifier: Modifier = Modifier,
+    alSubir: () -> Unit,
+    alPedirFecha: () -> Unit,
+    alAbrirOrden: (String) -> Unit,
+) {
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
     val cuando = Estudios.cuandoPendiente(p.desde, p.hasta, hoy)
     var deshaciendo by remember(p.id) { mutableStateOf(false) }
     var error by remember(p.id, p.hecho) { mutableStateOf(false) }
-    Tarjeta(Modifier.testTag("estudios-pendiente-${p.id}"), relleno = Espacio.l, espaciado = Espacio.m) {
+    Tarjeta(modifier.testTag("estudios-pendiente-${p.id}"), relleno = Espacio.l, espaciado = Espacio.m) {
         Column(Modifier.semantics(mergeDescendants = true) { }, verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+            if (nuevo) EtiquetaNuevo(Modifier.testTag("estudios-nuevo-${p.id}"))
             Text(p.titulo, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = c.texto, modifier = Modifier.semantics { heading() })
             p.detalle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario) }
             if (p.hecho) {
@@ -368,7 +437,8 @@ private fun TarjetaPendiente(m: ModeloEstudios, p: PendienteEstudios, hoy: Local
                 Renglon(if (cuando.pasada) Iconos.Reloj else Iconos.Calendario, cuando.texto, if (cuando.pasada) c.alerta else c.textoSecundario, fuerte = cuando.pasada)
             }
         }
-        BotonSuave(T.subirResultado, alSubir, Modifier.fillMaxWidth().testTag("estudios-subir-resultado"))
+        // Lo principal de la tarjeta: el verde lleno de la marca, de ancho completo.
+        BotonMarca(T.subirResultado, alTocar = alSubir, modifier = Modifier.testTag("estudios-subir-resultado"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(Espacio.xs), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
             if (p.hecho) {
                 BotonSecundario(
@@ -395,28 +465,12 @@ private fun TarjetaPendiente(m: ModeloEstudios, p: PendienteEstudios, hoy: Local
     }
 }
 
-/** El botón de una tarjeta: verde suave, para que el principal de la pantalla siga siendo uno solo. */
 @Composable
-private fun BotonSuave(texto: String, alTocar: () -> Unit, modifier: Modifier = Modifier) {
-    val c = MyPump.colores
-    Button(
-        onClick = alTocar,
-        modifier = modifier.defaultMinSize(minHeight = 50.dp),
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(containerColor = c.marcaSuave, contentColor = c.marcaTexto),
-        elevation = null,
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-    ) {
-        Text(texto, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-    }
-}
-
-@Composable
-private fun FilaOrden(o: OrdenEstudios, alAbrir: () -> Unit) {
+private fun FilaOrden(o: OrdenEstudios, nuevo: Boolean, modifier: Modifier = Modifier, alAbrir: () -> Unit) {
     val c = MyPump.colores
     val renglones = Estudios.renglonesOrden(o)
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
             // Una orden vencida se lista, pero no se abre.
@@ -431,6 +485,7 @@ private fun FilaOrden(o: OrdenEstudios, alAbrir: () -> Unit) {
             Icon(Iconos.Documento, contentDescription = null, tint = if (o.vigente) c.marcaTexto else c.textoSecundario, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            if (nuevo) EtiquetaNuevo(Modifier.padding(bottom = 2.dp).testTag("estudios-nuevo-${o.id}"))
             Text(o.titulo, style = MaterialTheme.typography.titleMedium, color = if (o.vigente) c.texto else c.textoSecundario)
             if (o.vigente) {
                 if (renglones.isNotEmpty()) Text(renglones.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)

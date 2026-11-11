@@ -199,6 +199,9 @@ fun ListaEntreno(
                     // «Tu guía» mientras falta ver algo: verde y primera, arriba de todo, como iOS (revisión del 4-nov, hallazgo 5).
                     // «Tu entrega empieza a las 10:00 · Entrar» (2.2.0): desde 30 min antes hasta el fin de la franja.
                     EntregaAhoraDe(modelo)
+                    // Un estudio pedido o una orden nueva (10-nov): después de la entrega de ahora (tiene hora) y antes de
+                    // la guía. El mismo orden en iOS.
+                    com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo)
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
                     TarjetaGimnasioDe(modelo)
                     // Hasta dónde llega la cabecera (con la tarjeta arriba, no es solo su alto): el título pasa a la barra después.

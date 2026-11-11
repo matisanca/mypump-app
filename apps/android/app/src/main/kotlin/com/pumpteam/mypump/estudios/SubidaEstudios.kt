@@ -260,13 +260,10 @@ internal fun SubidaEstudios(m: ModeloEstudios, pedidoId: String?, alCerrar: () -
                 Text(T.topeArchivos(topeArchivos), style = MaterialTheme.typography.bodySmall, color = c.textoSecundario, modifier = Modifier.testTag("estudios-tope"))
             }
 
-            Tarjeta(relleno = 0.dp, espaciado = 0.dp) {
-                if (hayCamara) {
-                    Opcion(Iconos.Camara, T.sacarFotos, "estudios-sacar-fotos", ::abrirCamara)
-                    Separador(sangria = 64.dp)
-                }
+            // Tres botones grandes, uno por renglón, con su ícono y su texto: se entiende qué hace cada uno sin leer chico.
+            Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                if (hayCamara) Opcion(Iconos.Camara, T.sacarFotos, "estudios-sacar-fotos", ::abrirCamara)
                 Opcion(Iconos.Foto, T.elegirFotos, "estudios-elegir-fotos", ::abrirFotos)
-                Separador(sangria = 64.dp)
                 Opcion(Iconos.Documento, T.elegirPdf, "estudios-elegir-pdf", ::abrirPdf)
             }
 
@@ -318,17 +315,18 @@ private fun Opcion(icono: ImageVector, texto: String, etiqueta: String, alTocar:
         Modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(c.marcaSuave)
             .clickable(role = Role.Button, onClick = alTocar)
             .padding(horizontal = Espacio.m, vertical = Espacio.s)
             .testTag(etiqueta),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
-        Box(Modifier.size(36.dp).background(c.marcaSuave, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icono, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(20.dp))
+        Box(Modifier.size(44.dp).background(c.marca, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icono, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(24.dp))
         }
-        Text(texto, style = MaterialTheme.typography.titleMedium, color = c.texto, modifier = Modifier.weight(1f))
-        Icon(Iconos.Mas, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
+        Text(texto, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = c.marcaTexto, modifier = Modifier.weight(1f))
     }
 }
 
