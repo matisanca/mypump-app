@@ -221,7 +221,7 @@ await caso('4xx: se descarta con su texto, se cierra el borrador y no se reinten
     assert.deepEqual(d.cancelados, [SID]);
   }
 });
-await caso('errores de nuevo: en_curso, tope, no_habilitado', async () => {
+await caso('errores de nuevo: en_curso, tope; no_habilitado lo deja en la cola y sale al volver', async () => {
   let d = doble({ proximasNuevo: [{ ok: false, error: 'en_curso', id: 'z' }] });
   let m = await modelo(d);
   await m.enviar(base());
@@ -236,6 +236,10 @@ await caso('errores de nuevo: en_curso, tope, no_habilitado', async () => {
   await m.enviar(base());
   await hasta(() => m.estado === null);
   assert.deepEqual(d.subidas, []);
+  assert.equal(m.cola.length, 1, 'no_habilitado: el video queda en la cola');
+  await m.refrescar();
+  m.reanudar();
+  await hasta(() => d.subidas.length === 1 && !m.cola.length);
 });
 await caso('nuevo con «reintentar»: una vez más y sale', async () => {
   const d = doble({ proximasNuevo: [{ ok: false, error: 'reintentar' }] });

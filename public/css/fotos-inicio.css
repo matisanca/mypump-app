@@ -90,3 +90,6 @@
 .fi-listo{display:flex;flex-direction:column;align-items:center;gap:var(--space-2);padding:var(--space-4) 0 var(--space-2);text-align:center}
 .fi-grande{color:var(--color-brand-text)}
 .fi-grande svg{width:48px;height:48px}
+
+/* Sistema 2.3.0 (palanca web_230): letra de 13 px o más, como el resto de la web con el upgrade. */
+:where(html.w230) .fi-chip,:where(html.w230) .fi-mini-est,:where(html.w230) .fi-cuenta{font-size:13px}

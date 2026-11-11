@@ -102,17 +102,41 @@
     return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
   }
 
+  /* Hash corto y estable del token (cyrb53, el mismo de fotos-inicio-cola.js): las claves locales no llevan el token. */
+  function cuentaDe(token) {
+    const t = String(token || '');
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < t.length; i++) {
+      const c = t.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 2654435761);
+      h2 = Math.imul(h2 ^ c, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  }
+
   const noExiste = (r) => r.status === 404 || r.codigo === 'PGRST202' || r.clase === 'permanente';
 
   /* deps: { token, rpc(fn, params) → {ok, data} | {ok:false, status, codigo, clase}, almacen {leer, guardar, borrar}, nuevoId? } */
   function crearModelo(deps) {
     const { token, almacen } = deps;
     const nuevoId = deps.nuevoId || uuid;
-    const K = { estado: `mypump_recorrido_${token}`, borrador: `mypump_recorrido_borrador_${token}`,
-      pedido: `mypump_recorrido_pedido_${token}`, sola: `mypump_recorrido_sola_${token}` };
+    const cuenta = cuentaDe(token);
+    const K = { estado: `mypump_recorrido_${cuenta}`, borrador: `mypump_recorrido_borrador_${cuenta}`,
+      pedido: `mypump_recorrido_pedido_${cuenta}`, sola: `mypump_recorrido_sola_${cuenta}` };
     const leer = (k) => { try { return almacen.leer(k); } catch (_) { return null; } };
     const guardar = (k, v) => { try { almacen.guardar(k, v); } catch (_) {} };
     const borrar = (k) => { try { almacen.borrar(k); } catch (_) {} };
+    // Las claves de antes llevaban el token entero: se pasan a las nuevas una vez y se borran.
+    for (const [n, prefijo] of [['estado', 'mypump_recorrido_'], ['borrador', 'mypump_recorrido_borrador_'], ['pedido', 'mypump_recorrido_pedido_'], ['sola', 'mypump_recorrido_sola_']]) {
+      const vieja = prefijo + token;
+      if (!token || vieja === K[n]) continue;
+      const v = leer(vieja);
+      if (v == null) continue;
+      if (leer(K[n]) == null) guardar(K[n], v);
+      borrar(vieja);
+    }
     const leerJson = (k) => { try { return JSON.parse(leer(k) || 'null'); } catch (_) { return null; } };
     const rpc = async (fn, params) => { try { return (await deps.rpc(fn, params)) || { ok: false }; } catch (_) { return { ok: false, status: 0, codigo: 'NETWORK', clase: 'red' }; } };
 
@@ -218,7 +242,7 @@
     return m;
   }
 
-  const API = { MAX_TEXTO, MAX_LOGROS, ESTADOS, CAMPOS, T, PALANCA, decodificar, textoTarjeta, textoListo, recortar, respuestasParaEnviar, uuid, crearModelo };
+  const API = { MAX_TEXTO, MAX_LOGROS, ESTADOS, CAMPOS, T, PALANCA, decodificar, textoTarjeta, textoListo, recortar, respuestasParaEnviar, uuid, cuentaDe, crearModelo };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.Recorrido = API;
 })(typeof window !== 'undefined' ? window : globalThis);

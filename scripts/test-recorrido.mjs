@@ -14,6 +14,7 @@ const RESUMEN = { titulo: 'Tus 3 meses', mensaje: 'Mensaje de prueba.', logros: 
   { titulo: 'Fuerza en sentadilla', valor: '+15 kg' }] };
 const visible = (estado = 'publicado', mas = {}) => ({ habilitado: true, visible: true, estado, resumen: RESUMEN, respuestas: {}, agenda: 'mati', ...mas });
 const TOKEN = 'token-de-prueba';
+const CTA = R.cuentaDe(TOKEN);
 const UUID = '11111111-2222-4333-8444-555555555555';
 const nuevo = (resp, alm = almacen(), ids = [UUID]) => {
   const rpc = rpcDoble(resp);
@@ -74,7 +75,7 @@ for (const cfg of [{}, { fin_plan: false }, { fin_plan: 'true' }, { fin_plan: 1 
   await m.refrescar();
   eq([m.estado.estado, rpc.nombres(), rpc.llamadas[0].params], ['publicado', ['mypump_fin_plan_get'], { p_token: TOKEN }], 'solo viaja el token');
   si(avisos > 0, 'avisa');
-  si(alm.m.has(`mypump_recorrido_${TOKEN}`), 'queda la copia');
+  si(alm.m.has(`mypump_recorrido_${CTA}`), 'queda la copia');
   // Se abre sola una vez por cuenta.
   eq(m.debeAbrirseSola, true, 'la primera vez se abre sola');
   m.marcarAbiertaSola();
@@ -100,11 +101,11 @@ for (const cfg of [{}, { fin_plan: false }, { fin_plan: 'true' }, { fin_plan: 1 
     const x = R.crearModelo({ token: TOKEN, rpc: rpcDoble({ mypump_fin_plan_get: r }), almacen: a2 });
     x.aplicarConfig({ fin_plan: true });
     await x.refrescar();
-    eq([x.estado, a2.m.has(`mypump_recorrido_${TOKEN}`)], [null, false], `no se ve con ${JSON.stringify(r).slice(0, 60)}`);
+    eq([x.estado, a2.m.has(`mypump_recorrido_${CTA}`)], [null, false], `no se ve con ${JSON.stringify(r).slice(0, 60)}`);
   }
   // Se apaga la palanca: deja de verse y se borra la copia.
   m.aplicarConfig({ fin_plan: false });
-  eq([m.estado, alm.m.has(`mypump_recorrido_${TOKEN}`)], [null, false], 'al apagarla desaparece');
+  eq([m.estado, alm.m.has(`mypump_recorrido_${CTA}`)], [null, false], 'al apagarla desaparece');
 }
 for (const e of ['pedido', 'agendado']) {
   const { m } = nuevo({ mypump_fin_plan_get: ok(visible(e)) });
@@ -115,7 +116,7 @@ for (const e of ['pedido', 'agendado']) {
 
 // ---- El pedido: el id queda en disco ANTES de mandar y los reintentos usan el mismo.
 {
-  const kId = `mypump_recorrido_pedido_${TOKEN}`, kBorr = `mypump_recorrido_borrador_${TOKEN}`;
+  const kId = `mypump_recorrido_pedido_${CTA}`, kBorr = `mypump_recorrido_borrador_${CTA}`;
   let enDiscoAlMandar = null;
   const alm = almacen();
   const { m, rpc } = nuevo({ mypump_fin_plan_get: ok(visible()), mypump_fin_plan_pedir: () => { enDiscoAlMandar = alm.leer(kId); return RED; } }, alm, [UUID, 'otro-id']);
@@ -146,7 +147,7 @@ for (const e of ['pedido', 'agendado']) {
   eq([m2.estado.estado, m2.estado.respuestas.mejor, m2.error, alm.m.has(kId), alm.m.has(kBorr)], ['pedido', 'Aprendí a comer', false, false, false], 'pedido: sin id ni borrador');
   eq(await m2.pedir(), 'nada', 'ya pedido no se manda de nuevo');
   eq(rpc2.de('mypump_fin_plan_pedir').length, 1, 'una sola vez');
-  eq(R.decodificar(JSON.parse(alm.leer(`mypump_recorrido_${TOKEN}`))).estado, 'pedido', 'la copia queda en pedido');
+  eq(R.decodificar(JSON.parse(alm.leer(`mypump_recorrido_${CTA}`))).estado, 'pedido', 'la copia queda en pedido');
 }
 {
   // No se puede tocar dos veces: mientras manda, el segundo toque no sale.
@@ -178,7 +179,7 @@ for (const error of ['apagado', 'no_disponible']) {
   const { m } = nuevo({ mypump_fin_plan_get: ok(visible()), mypump_fin_plan_pedir: ok({ ok: false, error }) }, alm);
   m.aplicarConfig({ fin_plan: true });
   await m.refrescar();
-  eq([await m.pedir(), m.estado, m.error, alm.m.has(`mypump_recorrido_${TOKEN}`), alm.m.has(`mypump_recorrido_pedido_${TOKEN}`)], ['cerrar', null, false, false, false], `${error}: se cierra y deja de verse`);
+  eq([await m.pedir(), m.estado, m.error, alm.m.has(`mypump_recorrido_${CTA}`), alm.m.has(`mypump_recorrido_pedido_${CTA}`)], ['cerrar', null, false, false, false], `${error}: se cierra y deja de verse`);
 }
 {
   // El servidor contesta «agendado»; y uno que llega pedido desde otro teléfono limpia lo que quedaba a medio escribir.
@@ -193,7 +194,7 @@ for (const error of ['apagado', 'no_disponible']) {
   b.m.escribir('mejor', 'a medias');
   b.rpc.respuestas.mypump_fin_plan_get = ok(visible('pedido', { respuestas: { mejor: 'desde el teléfono' } }));
   await b.m.refrescar();
-  eq([b.m.estado.estado, b.m.textos.mejor, alm.m.has(`mypump_recorrido_borrador_${TOKEN}`)], ['pedido', 'desde el teléfono', false], 'pedido en otro lado');
+  eq([b.m.estado.estado, b.m.textos.mejor, alm.m.has(`mypump_recorrido_borrador_${CTA}`)], ['pedido', 'desde el teléfono', false], 'pedido en otro lado');
 }
 {
   // Un almacén que falla (modo privado) no rompe: el id vive en memoria y el reintento usa el mismo.
@@ -226,6 +227,17 @@ for (const error of ['apagado', 'no_disponible']) {
   const pos = (a) => html.indexOf(`src="${a}"`);
   si(pos('/js/casa.js') < pos('/js/casa-ui.js') && pos('/js/casa-ui.js') < pos('/js/gimnasio-ui.js'), 'orden de casa');
   si(pos('/js/recorrido.js') < pos('/js/recorrido-ui.js') && pos('/js/compras.js') < pos('/js/compras-ui.js'), 'orden de recorrido y compras');
+}
+
+{
+  // Las claves locales llevan un hash del token, no el token; las viejas se pasan una vez y se borran.
+  const alm = almacen();
+  alm.guardar(`mypump_recorrido_pedido_${TOKEN}`, 'id-viejo');
+  alm.guardar(`mypump_recorrido_sola_${TOKEN}`, '1');
+  R.crearModelo({ token: TOKEN, rpc: rpcDoble({}), almacen: alm });
+  eq([alm.leer(`mypump_recorrido_pedido_${CTA}`), alm.leer(`mypump_recorrido_sola_${CTA}`)], ['id-viejo', '1'], 'migra las claves viejas');
+  si(![...alm.m.keys()].some(k => k.includes(TOKEN)), 'ninguna clave lleva el token');
+  si(R.cuentaDe(TOKEN) !== R.cuentaDe('otra-cuenta') && !CTA.includes(TOKEN), 'hash por cuenta');
 }
 
 console.log(`recorrido: ${n} ok`);

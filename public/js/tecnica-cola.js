@@ -431,7 +431,7 @@
       switch (j.error) {
         case 'en_curso': return this._descartarLocal(item, T.enRevision, true);
         case 'tope_semanal': return this._descartarLocal(item, T.topeSemana(this.topes.porSemana), true);
-        case 'no_habilitado': this.apagar(); return this._descartarLocal(item, null);
+        case 'no_habilitado': this.apagar(); this._avisar(); return 'corta';   // queda en la cola (como Gimnasio y Estudios): si la vuelven a habilitar, sale
         case 'reintentar':
           if (reintentos > 0) return this._crearEnServidor(item, reintentos - 1);
           this._programarReintento(ESPERA_SIN_SENAL_MS);

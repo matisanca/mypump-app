@@ -91,3 +91,6 @@ button.est-fila{cursor:pointer}
 .est-pildora:focus-visible,.est-opcion:focus-visible,.est-x:focus-visible,button.est-fila:focus-visible,.est .btn-primary:focus-visible,.est-fecha:focus-visible,.est .sd-volver:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
 button.est-fila:focus-visible{outline-offset:-2px}
 @media (prefers-reduced-motion:reduce){.est .spinner{animation-duration:2s}}
+
+/* Sistema 2.3.0 (palanca web_230): letra de 13 px o más, como el resto de la web con el upgrade. */
+:where(html.w230) .est-ceja,:where(html.w230) .est-aviso-ceja{font-size:.8125rem}

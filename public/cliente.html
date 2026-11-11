@@ -618,12 +618,12 @@ main{padding:var(--space-4)}
 .chat-adj-foto.is-cargando::after,.chat-msg.is-tmp:not(.is-fallo) .chat-adj-foto::after{content:"";position:absolute;inset:0;margin:auto;width:24px;height:24px;border-radius:50%;border:2.5px solid color-mix(in oklab,var(--color-text-muted) 40%,transparent);border-top-color:var(--color-text-muted);animation:chatGira .8s linear infinite}
 .chat-adj-foto .chat-adj-nocarga{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;font-size:12px;color:var(--color-text-secondary);text-align:center}
 @keyframes chatGira{to{transform:rotate(360deg)}}
-.chat-adj-audio{display:flex;align-items:center;gap:10px;width:232px;max-width:100%;padding:8px 14px 8px 8px;border-radius:18px;border:1px solid var(--color-border);background:var(--color-bg-tertiary)}
+.chat-adj-audio{display:flex;flex-wrap:wrap;align-items:center;gap:10px;width:272px;max-width:100%;padding:8px 14px 8px 8px;border-radius:18px;border:1px solid var(--color-border);background:var(--color-bg-tertiary)}
 .chat-msg.is-cliente .chat-adj-audio{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
 .chat-msg.is-coach .chat-adj-audio{background:var(--color-brand-subtle);border-color:var(--color-brand)}
-.chat-adj-play{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;background:color-mix(in oklab,currentColor 16%,transparent);color:inherit}
+.chat-adj-play{flex:0 0 auto;min-width:44px;min-height:44px;padding:0 14px 0 10px;gap:6px;border-radius:22px;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font:inherit;font-size:15px;font-weight:600;background:color-mix(in oklab,currentColor 16%,transparent);color:inherit}
 .chat-msg.is-coach .chat-adj-play{color:var(--color-brand)}
-.chat-adj-onda{flex:1;display:flex;align-items:center;gap:2px;height:22px}
+.chat-adj-onda{flex:1 1 60px;display:flex;align-items:center;gap:2px;height:22px}
 .chat-adj-onda i{flex:1;border-radius:2px;background:currentColor;opacity:.35;min-height:3px}
 .chat-adj-onda i.on{opacity:1}
 .chat-adj-dur{font-family:var(--font-num);font-size:12px;opacity:.85;min-width:30px;text-align:right}
@@ -647,7 +647,7 @@ main{padding:var(--space-4)}
 .chat-aviso{position:fixed;left:0;right:0;bottom:calc(132px + env(safe-area-inset-bottom));margin-inline:auto;max-width:440px;width:calc(100% - 32px);z-index:37;padding:8px 12px;border-radius:12px;background:var(--color-bg-tertiary);border:1px solid var(--color-border);font-size:13px;color:var(--color-text-secondary);text-align:center}
 .chat-visor{position:fixed;inset:0;z-index:200;background:#000;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom}
 .chat-visor img{max-width:100%;max-height:100%;object-fit:contain}
-.chat-visor button{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.chat-visor button{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;min-width:44px;min-height:44px;padding:0 16px 0 12px;gap:6px;border-radius:22px;border:0;background:rgba(255,255,255,.22);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font:inherit;font-size:16px;font-weight:600}
 @media (prefers-reduced-motion:reduce){.chat-grabando .punto,.chat-adj-foto::after{animation:none}.chat-btn.is-grabando{transform:none}}
 /* Botón del header. El chat NO es un 6º tab: seis tabs dejan cada uno en
    ~62px en un iPhone SE. Mismo criterio que la escena Salud. */
@@ -988,6 +988,7 @@ main{padding:var(--space-4)}
 
 .error-demo-btn{display:block;width:100%;margin-top:12px;background:transparent;border:0;color:var(--color-text-muted);font-size:13px;text-decoration:underline;cursor:pointer;font-family:inherit}
 .error-demo-btn:hover{color:var(--color-text-secondary)}
+.error-icon svg,#misDatosBtn .md-txt{display:none}   /* piezas del sistema 2.3.0: solo con la palanca (bloque de abajo) */
 /* DEMO BANNER */
 .demo-banner{margin:var(--space-4) 0 0;padding:var(--space-3) var(--space-4);background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));border-radius:var(--radius-md);font-size:12px;color:var(--color-text-secondary);font-family:var(--font-sans)}
 .demo-banner strong{color:var(--color-text-primary)}
@@ -1529,9 +1530,10 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .cs-progreso{display:flex;gap:4px}
 .cs-progreso i{flex:1;height:4px;border-radius:2px;background:var(--color-bg-tertiary);transition:background .3s}
 .cs-progreso i.is-hecha{background:var(--color-brand)}
-/* Sin verdes a medias (sobre negro, el verde al 36 % daba 1,9:1 y quedaba oliva): hecha, verde lleno; lo demás, riel. */
-.cs-progreso i,.cs-progreso i.is-actual{background:var(--riel)}
-.cs-progreso i.is-hecha{background:var(--avance)}
+.cs-progreso i.is-actual{background:color-mix(in oklab,var(--color-brand) 36%,transparent)}
+/* 2.3.0 (con la palanca): sin verdes a medias (sobre negro, el verde al 36 % daba 1,9:1 y quedaba oliva): hecha, verde lleno; lo demás, riel. */
+:where(html.w230) .cs-progreso i,:where(html.w230) .cs-progreso i.is-actual{background:var(--riel)}
+:where(html.w230) .cs-progreso i.is-hecha{background:var(--avance)}
 .cs-p-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;font-size:15px}
 .cs-p-top b{font-family:var(--font-num);font-weight:800}
 .cs-record{color:var(--color-record)}
@@ -1674,6 +1676,8 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 .dz-res small{color:var(--color-text-muted);font-size:13px;white-space:nowrap}
 .dz-resultados .dz-hoja-nota{padding:16px}
 
+/* Todo este bloque va con la palanca `web_230` (clase w230 en <html>, la pone _aplicarW230): apagada, la web se ve
+   como antes del upgrade. :where() no suma especificidad, así que prendida el orden de la cascada es el mismo. */
 /* ═══════════════════════════════════════════════════════════════════════════
    Sistema 2.3.0 — gemelo de apps/ios/MyPump/Diseno/Sistema.swift.
    · Un foco por pantalla: la tarjeta principal (.heroe), oscura en los dos modos.
@@ -1683,7 +1687,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
      de avance, y sobre verde vivo el texto va casi negro (--sobre-marca).
    Va al final de la hoja a propósito: pisa las capas viejas de arriba.
    ═══════════════════════════════════════════════════════════════════════════ */
-.heroe{
+:where(html.w230) .heroe{
   /* Adentro rige siempre el modo oscuro: se redeclaran los colores para todo lo que vive en la tarjeta. */
   --color-text-primary:#ffffff;--color-text-secondary:rgba(235,235,245,.78);--color-text-muted:rgba(235,235,245,.6);
   --color-brand:#5bbe62;--color-brand-hover:#6fcb75;--color-on-brand:#040e04;--color-brand-text:#5bbe62;--color-brand-subtle:rgba(91,190,98,.16);
@@ -1695,236 +1699,238 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
   background:var(--superficie-heroe);color:var(--color-text-primary);
   border:1px solid rgba(255,255,255,.08);border-radius:28px;box-shadow:0 10px 20px rgba(0,0,0,.22)
 }
-[data-theme="dark"] .heroe{box-shadow:none}
-.hr-cab{display:flex;flex-direction:column;gap:4px}
-.hr-ceja{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--apoyo)}
-.hr-titulo{margin:0;font-family:var(--font-display);font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05;overflow-wrap:anywhere}
-.hr-datos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.hr-dato{display:flex;flex-direction:column;gap:1px;min-width:0}
-.hr-dato b{font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap}
-.hr-dato b small{font-size:1em;font-weight:700}
-.hr-dato span{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--apoyo)}
-.hr-pie{margin:0;font-size:13px;line-height:1.4;color:var(--apoyo);text-align:center}
-.hr-pie::first-letter{text-transform:uppercase}
+:where(html.w230)[data-theme="dark"] .heroe{box-shadow:none}
+:where(html.w230) .hr-cab{display:flex;flex-direction:column;gap:4px}
+:where(html.w230) .hr-ceja{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--apoyo)}
+:where(html.w230) .hr-titulo{margin:0;font-family:var(--font-display);font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05;overflow-wrap:anywhere}
+:where(html.w230) .hr-datos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+:where(html.w230) .hr-dato{display:flex;flex-direction:column;gap:1px;min-width:0}
+:where(html.w230) .hr-dato b{font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap}
+:where(html.w230) .hr-dato b small{font-size:1em;font-weight:700}
+:where(html.w230) .hr-dato span{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--apoyo)}
+:where(html.w230) .hr-pie{margin:0;font-size:13px;line-height:1.4;color:var(--apoyo);text-align:center}
+:where(html.w230) .hr-pie::first-letter{text-transform:uppercase}
 
 /* AvanceSegmentos */
-.av-seg{display:flex;gap:4px;height:5px}
-.av-seg i{flex:1;min-width:0;border-radius:3px;background:var(--riel);transition:background .3s}
-.av-seg i.is-hecho{background:var(--avance)}
-.av-seg.is-barra{background:var(--riel);border-radius:3px;overflow:hidden}
-.av-seg.is-barra i{flex:none;background:var(--avance);transition:width .4s}
+:where(html.w230) .av-seg{display:flex;gap:4px;height:5px}
+:where(html.w230) .av-seg i{flex:1;min-width:0;border-radius:3px;background:var(--riel);transition:background .3s}
+:where(html.w230) .av-seg i.is-hecho{background:var(--avance)}
+:where(html.w230) .av-seg.is-barra{background:var(--riel);border-radius:3px;overflow:hidden}
+:where(html.w230) .av-seg.is-barra i{flex:none;background:var(--avance);transition:width .4s}
 
 /* BotonAccion: el que avanza. Texto de 19 px en negrita (texto grande para WCAG: 3:1 sobre el verde en claro; en oscuro, casi negro). */
-.btn-accion,.btn-primary,.error-paste-btn,.session-start{
+:where(html.w230) .btn-accion,:where(html.w230) .btn-primary,:where(html.w230) .error-paste-btn,:where(html.w230) .session-start{
   display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;height:auto;padding:8px 20px;
   border:0;border-radius:29px;background:var(--marca);color:var(--sobre-marca);
   font-family:var(--font-display);font-size:19px;font-weight:700;line-height:1.15;letter-spacing:0;text-align:center;cursor:pointer;
   box-shadow:0 6px 14px color-mix(in oklab,var(--marca) 30%,transparent);transition:transform .15s,filter .2s
 }
-.btn-accion:hover,.btn-primary:hover,.error-paste-btn:hover,.session-start:hover{background:var(--marca);filter:brightness(.96)}
-.btn-accion:active,.btn-primary:active,.error-paste-btn:active,.session-start:active{transform:scale(.975)}
-.btn-accion svg,.btn-primary svg{flex:none}
+:where(html.w230) .btn-accion:hover,:where(html.w230) .btn-primary:hover,:where(html.w230) .error-paste-btn:hover,:where(html.w230) .session-start:hover{background:var(--marca);filter:brightness(.96)}
+:where(html.w230) .btn-accion:active,:where(html.w230) .btn-primary:active,:where(html.w230) .error-paste-btn:active,:where(html.w230) .session-start:active{transform:scale(.975)}
+:where(html.w230) .btn-accion svg,:where(html.w230) .btn-primary svg{flex:none}
 /* Deshabilitado: gris pleno, nunca verde lavado. */
-.btn-accion:disabled,.btn-primary:disabled,.session-start:disabled{background:var(--campo);color:var(--color-text-secondary);border:0;box-shadow:none;opacity:1;transform:none;cursor:default}
-.session-start{margin:0}
-.session-start strong{font-size:inherit;font-weight:inherit}
-.session-start .ss-icon{display:inline-flex;font-size:0}
-.session-start .ss-icon svg{width:18px;height:18px}
+:where(html.w230) .btn-accion:disabled,:where(html.w230) .btn-primary:disabled,:where(html.w230) .session-start:disabled{background:var(--campo);color:var(--color-text-secondary);border:0;box-shadow:none;opacity:1;transform:none;cursor:default}
+:where(html.w230) .session-start{margin:0}
+:where(html.w230) .session-start strong{font-size:inherit;font-weight:inherit}
+:where(html.w230) .session-start .ss-icon{display:inline-flex;font-size:0}
+:where(html.w230) .session-start .ss-icon svg{width:18px;height:18px}
 
 /* Entreno: la sesión en curso dentro de la tarjeta principal */
-.heroe .session-crono{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 12px;margin:0;padding:0;background:none;border:0;border-radius:0;font-family:var(--font-sans)}
-.sc-reloj{display:flex;flex-direction:column;gap:2px;min-width:0}
-.sc-estado{display:flex;align-items:center;gap:8px}
-.heroe .session-crono .sc-lbl{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--apoyo)}
-.heroe .session-crono .sc-dot{width:9px;height:9px;background:var(--marca);box-shadow:none}
-.heroe .session-crono .sc-time{font-family:var(--font-display);font-size:44px;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
-.heroe .session-crono .sc-hint{margin:0;font-size:13px;line-height:1.4;color:var(--apoyo)}
-.heroe .session-crono.is-vieja{flex-direction:column;align-items:stretch}
-.heroe .session-crono.is-vieja .sc-dot{background:var(--color-alerta);animation:none}
-.heroe .session-crono .sc-reset{margin:0;padding:8px 20px;border:0;font-family:var(--font-display);font-size:19px;font-weight:700;background:var(--marca);color:var(--sobre-marca);border-radius:29px}
-.hr-terminar{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border:0;border-radius:24px;background:var(--campo);color:var(--color-text-primary);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer}
-.hr-terminar:active{transform:scale(.97)}
+:where(html.w230) .heroe .session-crono{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 12px;margin:0;padding:0;background:none;border:0;border-radius:0;font-family:var(--font-sans)}
+:where(html.w230) .sc-reloj{display:flex;flex-direction:column;gap:2px;min-width:0}
+:where(html.w230) .sc-estado{display:flex;align-items:center;gap:8px}
+:where(html.w230) .heroe .session-crono .sc-lbl{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--apoyo)}
+:where(html.w230) .heroe .session-crono .sc-dot{width:9px;height:9px;background:var(--marca);box-shadow:none}
+:where(html.w230) .heroe .session-crono .sc-time{font-family:var(--font-display);font-size:44px;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+:where(html.w230) .heroe .session-crono .sc-hint{margin:0;font-size:13px;line-height:1.4;color:var(--apoyo)}
+:where(html.w230) .heroe .session-crono.is-vieja{flex-direction:column;align-items:stretch}
+:where(html.w230) .heroe .session-crono.is-vieja .sc-dot{background:var(--color-alerta);animation:none}
+:where(html.w230) .heroe .session-crono .sc-reset{margin:0;padding:8px 20px;border:0;font-family:var(--font-display);font-size:19px;font-weight:700;background:var(--marca);color:var(--sobre-marca);border-radius:29px}
+:where(html.w230) .hr-terminar{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border:0;border-radius:24px;background:var(--campo);color:var(--color-text-primary);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer}
+:where(html.w230) .hr-terminar:active{transform:scale(.97)}
 /* El día cerrado o completo es la misma tarjeta */
-.finish-card.heroe{margin-top:0;border:1px solid rgba(255,255,255,.08);border-radius:28px;gap:14px}
-.finish-card.heroe .eyebrow{font-size:12px;letter-spacing:.08em;color:var(--marca-texto)}
-.finish-card.heroe h2{font-size:30px;line-height:1.08}
-.finish-card.heroe .finish-summary{padding:0;background:none;border:0}
-.finish-card.heroe .fs-cell .lbl{font-size:11px;color:var(--apoyo)}
-.finish-card.heroe .fs-cell .val{font-family:var(--font-display);font-size:22px;font-weight:700}
-.finish-card.heroe .fs-cell .val small{font-size:13px;color:var(--apoyo)}
-.finish-card.heroe .finish-cerrado-msg{color:var(--marca-texto);text-align:left;padding:0}
-.finish-pie{margin-top:var(--space-4)}
-.finish-pie .btn-secondary-outline{min-height:52px;border-radius:26px;font-size:16px;font-weight:600;color:var(--color-text-primary);border-color:var(--color-border-strong)}
+:where(html.w230) .finish-card.heroe{margin-top:0;border:1px solid rgba(255,255,255,.08);border-radius:28px;gap:14px}
+:where(html.w230) .finish-card.heroe .eyebrow{font-size:12px;letter-spacing:.08em;color:var(--marca-texto)}
+:where(html.w230) .finish-card.heroe h2{font-size:30px;line-height:1.08}
+:where(html.w230) .finish-card.heroe .finish-summary{padding:0;background:none;border:0}
+:where(html.w230) .finish-card.heroe .fs-cell .lbl{font-size:11px;color:var(--apoyo)}
+:where(html.w230) .finish-card.heroe .fs-cell .val{font-family:var(--font-display);font-size:22px;font-weight:700}
+:where(html.w230) .finish-card.heroe .fs-cell .val small{font-size:13px;color:var(--apoyo)}
+:where(html.w230) .finish-card.heroe .finish-cerrado-msg{color:var(--marca-texto);text-align:left;padding:0}
+:where(html.w230) .finish-pie{margin-top:var(--space-4)}
+:where(html.w230) .finish-pie .btn-secondary-outline{min-height:52px;border-radius:26px;font-size:16px;font-weight:600;color:var(--color-text-primary);border-color:var(--color-border-strong)}
 
 /* Entreno: con la tarjeta, la cabecera deja solo los días (el nombre, la semana y el avance están en la tarjeta). */
-.app:has(#scene-train.is-active .hr-entreno) .hdr-row,
-.app:has(#scene-train.is-active .hr-entreno) .hdr-progress{display:none}
-.app:has(#scene-train.is-active .hr-entreno) .day-picker{padding-top:var(--space-3)}
+:where(html.w230) .app:has(#scene-train.is-active .hr-entreno) .hdr-row,
+:where(html.w230) .app:has(#scene-train.is-active .hr-entreno) .hdr-progress{display:none}
+:where(html.w230) .app:has(#scene-train.is-active .hr-entreno) .day-picker{padding-top:var(--space-3)}
 /* Los días: el elegido con anillo verde (el negro es de la tarjeta principal); el hecho, verde suave con tilde. */
-.day-pill{min-height:48px;justify-content:center;border:2px solid transparent;background:var(--color-bg-primary);color:var(--color-text-primary);box-shadow:none}
-.day-pill .dp-n{font-size:10px;opacity:1;color:var(--apoyo)}
-.day-pill .dp-name{font-size:14px}
-.day-pill.is-active,.day-pill.is-active.is-done{background:var(--color-bg-primary);color:var(--color-text-primary);border-color:var(--marca);box-shadow:none}
-.day-pill.is-active .dp-n{opacity:1;color:var(--marca-texto)}
-.day-pill.is-done{background:var(--marca-suave);color:var(--color-text-primary);border-color:transparent}
-.day-pill.is-active.is-done{background:var(--marca-suave);border-color:var(--marca)}
-.day-pill.is-done .dp-n,.day-pill .dp-check,.day-pill.is-active.is-done .dp-check{color:var(--marca-texto);opacity:1}
-.rest-bar.is-done{background:var(--marca);box-shadow:0 14px 40px rgba(0,0,0,.18)}
+:where(html.w230) .day-pill{min-height:48px;justify-content:center;border:2px solid transparent;background:var(--color-bg-primary);color:var(--color-text-primary);box-shadow:none}
+:where(html.w230) .day-pill .dp-n{font-size:10px;opacity:1;color:var(--apoyo)}
+:where(html.w230) .day-pill .dp-name{font-size:14px}
+:where(html.w230) .day-pill.is-active,:where(html.w230) .day-pill.is-active.is-done{background:var(--color-bg-primary);color:var(--color-text-primary);border-color:var(--marca);box-shadow:none}
+:where(html.w230) .day-pill.is-active .dp-n{opacity:1;color:var(--marca-texto)}
+:where(html.w230) .day-pill.is-done{background:var(--marca-suave);color:var(--color-text-primary);border-color:transparent}
+:where(html.w230) .day-pill.is-active.is-done{background:var(--marca-suave);border-color:var(--marca)}
+:where(html.w230) .day-pill.is-done .dp-n,:where(html.w230) .day-pill .dp-check,:where(html.w230) .day-pill.is-active.is-done .dp-check{color:var(--marca-texto);opacity:1}
+:where(html.w230) .rest-bar.is-done{background:var(--marca);box-shadow:0 14px 40px rgba(0,0,0,.18)}
 
 /* NotaDiscreta: contexto sin caja */
-.nota-discreta,.prog-banner.nota-discreta,.prog-banner.is-calibracion.nota-discreta{display:flex;align-items:flex-start;gap:8px;margin:0 0 var(--space-4);padding:0 4px;background:none;border:0;border-radius:0;font-size:13px;line-height:1.45;color:var(--apoyo)}
-.nota-discreta>svg{flex:none;width:17px;height:17px;margin-top:1px;color:var(--marca-texto)}
-.nota-discreta strong,.nota-discreta b{color:var(--color-text-primary)}
+:where(html.w230) .nota-discreta,:where(html.w230) .prog-banner.nota-discreta,:where(html.w230) .prog-banner.is-calibracion.nota-discreta{display:flex;align-items:flex-start;gap:8px;margin:0 0 var(--space-4);padding:0 4px;background:none;border:0;border-radius:0;font-size:13px;line-height:1.45;color:var(--apoyo)}
+:where(html.w230) .nota-discreta>svg{flex:none;width:17px;height:17px;margin-top:1px;color:var(--marca-texto)}
+:where(html.w230) .nota-discreta strong,:where(html.w230) .nota-discreta b{color:var(--color-text-primary)}
 
 /* EncabezadoAvance: «Fotos de la semana · 0 de 3» con sus segmentos */
-.enc-avance{display:flex;flex-direction:column;gap:8px;margin:var(--space-5) 0 var(--space-3);padding:0 4px}
-.enc-avance-fila{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.enc-avance h3{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--color-text-primary)}
-.ea-cuenta{font-size:15px;font-weight:500;color:var(--apoyo);white-space:nowrap}
-.ea-cuenta b{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--color-text-primary)}
-.ea-listo{font-size:15px;font-weight:600;color:var(--marca-texto);white-space:nowrap}
+:where(html.w230) .enc-avance{display:flex;flex-direction:column;gap:8px;margin:var(--space-5) 0 var(--space-3);padding:0 4px}
+:where(html.w230) .enc-avance-fila{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+:where(html.w230) .enc-avance h3{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--color-text-primary)}
+:where(html.w230) .ea-cuenta{font-size:15px;font-weight:500;color:var(--apoyo);white-space:nowrap}
+:where(html.w230) .ea-cuenta b{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--color-text-primary)}
+:where(html.w230) .ea-listo{font-size:15px;font-weight:600;color:var(--marca-texto);white-space:nowrap}
 
 /* FilaDestino con AzulejoSuave */
-.tarjeta-filas{background:var(--color-bg-primary);border-radius:24px;overflow:hidden}
-.fila-destino{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:14px 16px;cursor:pointer}
-.fila-destino+.fila-destino{border-top:1px solid var(--color-border)}
-.fila-destino:focus-visible{outline:2px solid var(--marca);outline-offset:-2px}
-.azulejo{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--marca-suave);color:var(--marca-texto)}
-.azulejo svg{width:20px;height:20px}
-.fd-cuerpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.fd-tit{font-size:17px;font-weight:600;color:var(--color-text-primary)}
-.fd-chev{flex:none;display:inline-flex;color:var(--color-text-muted)}
-.solo-lector{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+:where(html.w230) .tarjeta-filas{background:var(--color-bg-primary);border-radius:24px;overflow:hidden}
+:where(html.w230) .fila-destino{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:14px 16px;cursor:pointer}
+:where(html.w230) .fila-destino+.fila-destino{border-top:1px solid var(--color-border)}
+:where(html.w230) .fila-destino:focus-visible{outline:2px solid var(--marca);outline-offset:-2px}
+:where(html.w230) .azulejo{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--marca-suave);color:var(--marca-texto)}
+:where(html.w230) .azulejo svg{width:20px;height:20px}
+:where(html.w230) .fd-cuerpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+:where(html.w230) .fd-tit{font-size:17px;font-weight:600;color:var(--color-text-primary)}
+:where(html.w230) .fd-chev{flex:none;display:inline-flex;color:var(--color-text-muted)}
+:where(html.w230) .solo-lector{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* Dieta: lo que comí hoy en la tarjeta principal (kcal grandes, barra gruesa, tres macros sin cajas) */
-.dz-hdr.heroe{margin:var(--space-3) 0;padding:20px;gap:16px;border-radius:28px;background:var(--superficie-heroe)}
-.dz-kcal{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 10px}
-.dz-kcal b{font-family:var(--font-display);font-size:68px;font-weight:800;line-height:.95;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.dz-kcal span{font-size:16px;color:var(--apoyo)}
-.dz-kcal-bar{height:12px;border-radius:6px;background:var(--riel);overflow:hidden}
-.dz-kcal-bar span{display:block;height:100%;border-radius:6px;background:var(--avance);transition:width .5s}
-.heroe .dz-cajas{gap:14px}
-.heroe .dz-caja{padding:0;background:none;border-radius:0;gap:5px;min-width:0}
-.heroe .dz-caja-lbl{font-size:13px;color:var(--apoyo)}
-.heroe .dz-caja-val{display:flex;align-items:baseline;flex-wrap:wrap;font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}
-.heroe .dz-caja-val b{font-weight:700}
-.heroe .dz-caja-val span{font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--apoyo);white-space:nowrap}
-.heroe .dz-caja-bar{height:5px;margin-top:0;background:var(--riel)}
+:where(html.w230) .dz-hdr.heroe{margin:var(--space-3) 0;padding:20px;gap:16px;border-radius:28px;background:var(--superficie-heroe)}
+:where(html.w230) .dz-kcal{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 10px}
+:where(html.w230) .dz-kcal b{font-family:var(--font-display);font-size:68px;font-weight:800;line-height:.95;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+:where(html.w230) .dz-kcal span{font-size:16px;color:var(--apoyo)}
+:where(html.w230) .dz-kcal-bar{height:12px;border-radius:6px;background:var(--riel);overflow:hidden}
+:where(html.w230) .dz-kcal-bar span{display:block;height:100%;border-radius:6px;background:var(--avance);transition:width .5s}
+:where(html.w230) .heroe .dz-cajas{gap:14px}
+:where(html.w230) .heroe .dz-caja{padding:0;background:none;border-radius:0;gap:5px;min-width:0}
+:where(html.w230) .heroe .dz-caja-lbl{font-size:13px;color:var(--apoyo)}
+:where(html.w230) .heroe .dz-caja-val{display:flex;align-items:baseline;flex-wrap:wrap;font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}
+:where(html.w230) .heroe .dz-caja-val b{font-weight:700}
+:where(html.w230) .heroe .dz-caja-val span{font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--apoyo);white-space:nowrap}
+:where(html.w230) .heroe .dz-caja-bar{height:5px;margin-top:0;background:var(--riel)}
 /* Con poco ancho (teléfono chico o letra grande) los macros pasan a filas */
-@media (max-width:339px){.heroe .dz-cajas{grid-template-columns:1fr}.dz-kcal b{font-size:56px}.hr-titulo{font-size:28px}}
-.dz-notas{display:flex;flex-direction:column;gap:6px;margin:0 0 var(--space-4);padding:0 4px}
-.dz-notas .dz-linea{margin:0;padding:0;font-size:13px;line-height:1.45}
-.dz-notas .dz-elegidas{color:var(--color-text-primary)}
-.dz-notas .dz-elegidas.is-ok{color:var(--marca-texto)}
-.dz-notas .diet-cite{margin:0;padding:0;border:0;font-size:12px;color:var(--apoyo)}
-.dz-notas .diet-cite .cite-link{color:var(--color-text-secondary)}
+@media (max-width:339px){:where(html.w230) .heroe .dz-cajas{grid-template-columns:1fr}:where(html.w230) .dz-kcal b{font-size:56px}:where(html.w230) .hr-titulo{font-size:28px}}
+:where(html.w230) .dz-notas{display:flex;flex-direction:column;gap:6px;margin:0 0 var(--space-4);padding:0 4px}
+:where(html.w230) .dz-notas .dz-linea{margin:0;padding:0;font-size:13px;line-height:1.45}
+:where(html.w230) .dz-notas .dz-elegidas{color:var(--color-text-primary)}
+:where(html.w230) .dz-notas .dz-elegidas.is-ok{color:var(--marca-texto)}
+:where(html.w230) .dz-notas .diet-cite{margin:0;padding:0;border:0;font-size:12px;color:var(--apoyo)}
+:where(html.w230) .dz-notas .diet-cite .cite-link{color:var(--color-text-secondary)}
 /* Comí / Salté: verde lleno solo en la próxima comida sin marcar; neutro en las demás; marcada, verde suave con tilde. */
-.dz-track{display:flex;align-items:center;gap:10px}
-.dz-track-btn{min-height:48px;height:auto;padding:0 18px;border:0;border-radius:24px;background:var(--campo);color:var(--color-text-primary);font-size:16px;font-weight:600}
-.dz-track-btn.yes{flex:1}
-.dz-track-btn.yes.is-proxima{min-height:54px;border-radius:27px;background:var(--marca);color:var(--sobre-marca);font-family:var(--font-display);font-size:19px;font-weight:700;box-shadow:0 6px 14px color-mix(in oklab,var(--marca) 30%,transparent)}
-.dz-track-btn.yes.is-active{background:var(--marca-suave);color:var(--marca-texto);box-shadow:none}
-.dz-track-btn.no{flex:none;padding:0 14px;background:none;color:var(--apoyo)}
-.dz-track-btn.no.is-active{background:color-mix(in oklab,var(--color-alerta) 16%,transparent);color:var(--color-text-primary)}
-.dz-aviso{padding:0 2px;background:none;border-radius:0}
+:where(html.w230) .dz-track{display:flex;align-items:center;gap:10px}
+:where(html.w230) .dz-track-btn{min-height:48px;height:auto;padding:0 18px;border:0;border-radius:24px;background:var(--campo);color:var(--color-text-primary);font-size:16px;font-weight:600}
+:where(html.w230) .dz-track-btn.yes{flex:1}
+:where(html.w230) .dz-track-btn.yes.is-proxima{min-height:54px;border-radius:27px;background:var(--marca);color:var(--sobre-marca);font-family:var(--font-display);font-size:19px;font-weight:700;box-shadow:0 6px 14px color-mix(in oklab,var(--marca) 30%,transparent)}
+:where(html.w230) .dz-track-btn.yes.is-active{background:var(--marca-suave);color:var(--marca-texto);box-shadow:none}
+:where(html.w230) .dz-track-btn.no{flex:none;padding:0 14px;background:none;color:var(--apoyo)}
+:where(html.w230) .dz-track-btn.no.is-active{background:color-mix(in oklab,var(--color-alerta) 16%,transparent);color:var(--color-text-primary)}
+:where(html.w230) .dz-aviso{padding:0 2px;background:none;border-radius:0}
 
 /* Revisión */
-.rv-tarjetas{margin-bottom:0}
-.rv-card.fila-destino .rv-tit{font-size:17px;font-weight:600}
-.rv-card.fila-destino .rv-txt{font-size:15px;line-height:1.35;color:var(--apoyo)}
-.rv-card.fila-destino .rv-num{font-family:var(--font-display)}
-.rv-nota{font-size:14px;line-height:1.45;color:var(--apoyo);margin:0 0 var(--space-3);padding:0 4px}
-.fp-seccion,.ck-seccion{border:0;border-radius:24px;box-shadow:none}
-.fp-seccion .myday-section-body,.ck-seccion .myday-section-body{padding:16px}
+:where(html.w230) .rv-tarjetas{margin-bottom:0}
+:where(html.w230) .rv-card.fila-destino .rv-tit{font-size:17px;font-weight:600}
+:where(html.w230) .rv-card.fila-destino .rv-txt{font-size:15px;line-height:1.35;color:var(--apoyo)}
+:where(html.w230) .rv-card.fila-destino .rv-num{font-family:var(--font-display)}
+:where(html.w230) .rv-nota{font-size:14px;line-height:1.45;color:var(--apoyo);margin:0 0 var(--space-3);padding:0 4px}
+:where(html.w230) .fp-seccion,:where(html.w230) .ck-seccion{border:0;border-radius:24px;box-shadow:none}
+:where(html.w230) .fp-seccion .myday-section-body,:where(html.w230) .ck-seccion .myday-section-body{padding:16px}
 /* Fotos: los tres marcos primero; la guía para sacarlas debajo y sin caja */
-.fp-slots{gap:10px}
-.fp-slot{min-height:132px;gap:6px;padding:10px 4px;border:1.5px dashed color-mix(in oklab,var(--apoyo) 70%,transparent);border-radius:18px;background:none;color:var(--color-text-primary)}
-.fp-slot-ico{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--marca-suave);color:var(--marca-texto);font-size:18px;font-weight:700}
-.fp-slot-ico svg{width:20px;height:20px}
-.fp-slot-lbl{font-size:16px;font-weight:600}
-.fp-slot-acc,.fp-slot-sub{font-size:13px;font-family:var(--font-sans);color:var(--apoyo)}
-.fp-slot.is-done{border-style:solid;border-color:var(--marca);background:var(--marca-suave);color:var(--color-text-primary)}
-.fp-slot.is-done .fp-slot-ico{background:none}
-.fp-slot.has-thumb{padding:0}
-.fp-aviso{margin:var(--space-4) 0 0;padding:0;border-radius:0;background:none;gap:6px;font-size:15px;line-height:1.45;color:var(--apoyo)}
-.fp-aviso b{font-size:17px;color:var(--color-text-primary)}
-.fp-intro{margin:var(--space-3) 0 0;font-size:13px;line-height:1.45;color:var(--apoyo)}
-.fp-intro b{color:var(--color-text-primary)}
-.fp-bloqueado{margin-top:var(--space-3);padding:0;border:0;border-radius:0;text-align:left;font-size:13px;line-height:1.45;color:var(--apoyo)}
-.fp-serie,.fp-msg.is-ok,.fp-link{color:var(--marca-texto)}
-@media (max-width:339px){.fp-slots{grid-template-columns:1fr}.fp-slot{min-height:64px;flex-direction:row;justify-content:flex-start;gap:12px;padding:10px 14px}.fp-slot-acc{margin-left:auto}}
+:where(html.w230) .fp-slots{gap:10px}
+:where(html.w230) .fp-slot{min-height:132px;gap:6px;padding:10px 4px;border:1.5px dashed color-mix(in oklab,var(--apoyo) 70%,transparent);border-radius:18px;background:none;color:var(--color-text-primary)}
+:where(html.w230) .fp-slot-ico{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--marca-suave);color:var(--marca-texto);font-size:18px;font-weight:700}
+:where(html.w230) .fp-slot-ico svg{width:20px;height:20px}
+:where(html.w230) .fp-slot-lbl{font-size:16px;font-weight:600}
+:where(html.w230) .fp-slot-acc,:where(html.w230) .fp-slot-sub{font-size:13px;font-family:var(--font-sans);color:var(--apoyo)}
+:where(html.w230) .fp-slot.is-done{border-style:solid;border-color:var(--marca);background:var(--marca-suave);color:var(--color-text-primary)}
+:where(html.w230) .fp-slot.is-done .fp-slot-ico{background:none}
+:where(html.w230) .fp-slot.has-thumb{padding:0}
+:where(html.w230) .fp-aviso{margin:var(--space-4) 0 0;padding:0;border-radius:0;background:none;gap:6px;font-size:15px;line-height:1.45;color:var(--apoyo)}
+:where(html.w230) .fp-aviso b{font-size:17px;color:var(--color-text-primary)}
+:where(html.w230) .fp-intro{margin:var(--space-3) 0 0;font-size:13px;line-height:1.45;color:var(--apoyo)}
+:where(html.w230) .fp-intro b{color:var(--color-text-primary)}
+:where(html.w230) .fp-bloqueado{margin-top:var(--space-3);padding:0;border:0;border-radius:0;text-align:left;font-size:13px;line-height:1.45;color:var(--apoyo)}
+:where(html.w230) .fp-serie,:where(html.w230) .fp-msg.is-ok,:where(html.w230) .fp-link{color:var(--marca-texto)}
+@media (max-width:339px){:where(html.w230) .fp-slots{grid-template-columns:1fr}:where(html.w230) .fp-slot{min-height:64px;flex-direction:row;justify-content:flex-start;gap:12px;padding:10px 14px}:where(html.w230) .fp-slot-acc{margin-left:auto}}
 /* Check: números en Archivo; el verde queda para el elegido */
-.ck-intro{font-size:15px;line-height:1.4;color:var(--apoyo)}
-.ck-metric{margin-bottom:var(--space-4)}
-.ck-metric-lbl{font-size:16px}
-.ck-metric-hint{font-size:12px;color:var(--apoyo)}
-.ck-scale{gap:8px}
-.ck-dot{height:48px;border:0;border-radius:24px;background:var(--campo);color:var(--color-text-primary);font-family:var(--font-display);font-size:19px;font-weight:700}
-.ck-dot.is-on{background:var(--marca);color:var(--sobre-marca)}
-.ck-nota{font-size:16px;border:0;border-radius:14px;background:var(--campo)}
-.ck-saved{color:var(--marca-texto)}
+:where(html.w230) .ck-intro{font-size:15px;line-height:1.4;color:var(--apoyo)}
+:where(html.w230) .ck-metric{margin-bottom:var(--space-4)}
+:where(html.w230) .ck-metric-lbl{font-size:16px}
+:where(html.w230) .ck-metric-hint{font-size:12px;color:var(--apoyo)}
+:where(html.w230) .ck-scale{gap:8px}
+:where(html.w230) .ck-dot{height:48px;border:0;border-radius:24px;background:var(--campo);color:var(--color-text-primary);font-family:var(--font-display);font-size:19px;font-weight:700}
+:where(html.w230) .ck-dot.is-on{background:var(--marca);color:var(--sobre-marca)}
+:where(html.w230) .ck-nota{font-size:16px;border:0;border-radius:14px;background:var(--campo)}
+:where(html.w230) .ck-saved{color:var(--marca-texto)}
 
-[data-theme="dark"] .fp-seccion,[data-theme="dark"] .ck-seccion{background:var(--color-bg-primary);border:0}
+:where(html.w230)[data-theme="dark"] .fp-seccion,:where(html.w230)[data-theme="dark"] .ck-seccion{background:var(--color-bg-primary);border:0}
 /* Acceso: «Entrar» es el botón que avanza; sin link espera en gris pleno (no un verde lavado, que parece roto).
    «Ver demo» es un botón, no un link chico. */
-.error-icon{display:grid;place-items:center;width:72px;height:72px;border-radius:22px;background:var(--marca-suave);color:var(--marca-texto);font-size:0}
-.error-icon svg{width:34px;height:34px}
-.error-title{font-size:26px;font-weight:800;letter-spacing:-.02em}
-.error-sub{font-size:16px;line-height:1.5;color:var(--apoyo);max-width:320px}
-.error-paste-hint{font-size:15px;color:var(--apoyo)}
-.error-paste-input{height:52px;padding:0 16px;border-radius:14px;font-family:var(--font-sans);font-size:16px}
-.error-paste-input:focus{border-color:var(--marca)}
-.error-paste-input:placeholder-shown~.error-paste-btn{background:var(--campo);color:var(--color-text-secondary);box-shadow:none}
-.error-paste-err{font-size:14px;color:var(--color-danger);border-color:var(--color-danger)}
-.error-demo-btn{display:block;width:auto;min-height:48px;margin:var(--space-3) auto 0;padding:0 28px;border:1px solid var(--color-border-strong);border-radius:24px;background:var(--color-bg-primary);color:var(--marca-texto);font-size:16px;font-weight:600;text-decoration:none}
-.error-demo-btn:hover{color:var(--marca-texto)}
-.error-demo-btn[hidden]{display:none}
-.error-code:empty{display:none}
-#guiaHost:not([hidden]){margin-bottom:var(--space-3)}
+:where(html.w230) .error-icon{display:grid;place-items:center;width:72px;height:72px;border-radius:22px;background:var(--marca-suave);color:var(--marca-texto);font-size:0}
+:where(html.w230) .error-icon svg{display:block;width:34px;height:34px}
+:where(html.w230) .error-icon .ei-viejo{display:none}
+:where(html.w230) #misDatosBtn .md-txt{display:inline}
+:where(html.w230) .error-title{font-size:26px;font-weight:800;letter-spacing:-.02em}
+:where(html.w230) .error-sub{font-size:16px;line-height:1.5;color:var(--apoyo);max-width:320px}
+:where(html.w230) .error-paste-hint{font-size:15px;color:var(--apoyo)}
+:where(html.w230) .error-paste-input{height:52px;padding:0 16px;border-radius:14px;font-family:var(--font-sans);font-size:16px}
+:where(html.w230) .error-paste-input:focus{border-color:var(--marca)}
+:where(html.w230) .error-paste-input:placeholder-shown~.error-paste-btn{background:var(--campo);color:var(--color-text-secondary);box-shadow:none}
+:where(html.w230) .error-paste-err{font-size:14px;color:var(--color-danger);border-color:var(--color-danger)}
+:where(html.w230) .error-demo-btn{display:block;width:auto;min-height:48px;margin:var(--space-3) auto 0;padding:0 28px;border:1px solid var(--color-border-strong);border-radius:24px;background:var(--color-bg-primary);color:var(--marca-texto);font-size:16px;font-weight:600;text-decoration:none}
+:where(html.w230) .error-demo-btn:hover{color:var(--marca-texto)}
+:where(html.w230) .error-demo-btn[hidden]{display:none}
+:where(html.w230) .error-code:empty{display:none}
+:where(html.w230) #guiaHost:not([hidden]){margin-bottom:var(--space-3)}
 
 /* ═══ Regla de visibilidad de la 2.3.0 (hay alumnos mayores): botones con texto, 44 px de toque, letra de 13 px o más ═══ */
 /* La barra de pestañas: `button svg:not([width]){width:1em}` dejaba los íconos en 10 px. */
-.tabbar .tab svg{width:24px;height:24px;stroke-width:1.9}
-.tabbar .tab{font-size:11px;letter-spacing:0;font-weight:600}
+:where(html.w230) .tabbar .tab svg{width:24px;height:24px;stroke-width:1.9}
+:where(html.w230) .tabbar .tab{font-size:11px;letter-spacing:0;font-weight:600}
 /* Mis datos (por ahí se llega a Documentos, Novedades y la guía oculta): con su nombre, no solo el ícono. */
-#misDatosBtn{width:auto;min-height:44px;padding:0 14px;gap:8px;border-radius:22px;font-family:inherit;font-size:15px;font-weight:600;color:var(--color-text-primary)}
-#misDatosBtn svg{width:20px;height:20px}
-#misDatosBtn[hidden]{display:none}
-.fila-destino .azulejo svg{width:20px;height:20px}
-.fp-slot .fp-slot-ico svg{width:20px;height:20px}
-.sd-volver{min-height:44px;font-size:16px;font-weight:600;color:var(--marca-texto)}
+:where(html.w230) #misDatosBtn{width:auto;min-height:44px;padding:0 14px;gap:8px;border-radius:22px;font-family:inherit;font-size:15px;font-weight:600;color:var(--color-text-primary)}
+:where(html.w230) #misDatosBtn svg{width:20px;height:20px}
+:where(html.w230) #misDatosBtn[hidden]{display:none}
+:where(html.w230) .fila-destino .azulejo svg{width:20px;height:20px}
+:where(html.w230) .fp-slot .fp-slot-ico svg{width:20px;height:20px}
+:where(html.w230) .sd-volver{min-height:44px;font-size:16px;font-weight:600;color:var(--marca-texto)}
 /* Avisos de arriba (revisión pendiente, contrato) */
-.recordatorio-semanal,.aviso-contrato{padding:12px;gap:12px;border:0;border-radius:18px}
-.recordatorio-semanal .rs-ico,.aviso-contrato .rs-ico{width:36px;height:36px;border-radius:10px;background:var(--marca-suave);color:var(--marca-texto)}
-.recordatorio-semanal .rs-tit,.aviso-contrato .rs-tit{font-size:16px}
-.recordatorio-semanal .rs-sub,.aviso-contrato .rs-sub{font-size:13px;color:var(--apoyo)}
-.recordatorio-semanal .rs-chev,.aviso-contrato .rs-chev{opacity:1}
-.doc-btn{min-height:48px;font-size:16px}
+:where(html.w230) .recordatorio-semanal,:where(html.w230) .aviso-contrato{padding:12px;gap:12px;border:0;border-radius:18px}
+:where(html.w230) .recordatorio-semanal .rs-ico,:where(html.w230) .aviso-contrato .rs-ico{width:36px;height:36px;border-radius:10px;background:var(--marca-suave);color:var(--marca-texto)}
+:where(html.w230) .recordatorio-semanal .rs-tit,:where(html.w230) .aviso-contrato .rs-tit{font-size:16px}
+:where(html.w230) .recordatorio-semanal .rs-sub,:where(html.w230) .aviso-contrato .rs-sub{font-size:13px;color:var(--apoyo)}
+:where(html.w230) .recordatorio-semanal .rs-chev,:where(html.w230) .aviso-contrato .rs-chev{opacity:1}
+:where(html.w230) .doc-btn{min-height:48px;font-size:16px}
 /* Novedades del plan y devolución */
-.nov-ver{min-height:44px;padding:0 10px;display:inline-flex;align-items:center}
-.nov-ceja,.nov-chip,.nov-tarjeta-ceja,.dv-nueva{font-size:13px}
+:where(html.w230) .nov-ver{min-height:44px;padding:0 10px;display:inline-flex;align-items:center}
+:where(html.w230) .nov-ceja,:where(html.w230) .nov-chip,:where(html.w230) .nov-tarjeta-ceja,:where(html.w230) .dv-nueva{font-size:13px}
 /* Pump del día */
-.pump-eyebrow{font-size:13px;color:var(--marca-texto)}
-.pump-sub{font-size:13px;color:var(--apoyo)}
-.ps-dia{font-size:12px;color:var(--apoyo)}
+:where(html.w230) .pump-eyebrow{font-size:13px;color:var(--marca-texto)}
+:where(html.w230) .pump-sub{font-size:13px;color:var(--apoyo)}
+:where(html.w230) .ps-dia{font-size:12px;color:var(--apoyo)}
 /* Chat: foto, audio y enviar con su nombre debajo del ícono; enviar sin texto espera en gris pleno */
-.chat-btn,.chat-send{flex-direction:column;gap:1px;width:54px;height:52px;border-radius:16px}
-#chatFoto::after{content:"Foto"}
-#chatMic::after{content:"Audio"}
-#chatSend::after{content:"Enviar"}
-#chatFoto::after,#chatMic::after,#chatSend::after{font-family:var(--font-sans);font-size:12px;font-weight:600;line-height:1.1}
-.chat-btn{color:var(--marca-texto)}
-.chat-btn.is-grabando::after{content:none}
-.chat-send:disabled{opacity:1;background:var(--campo);color:var(--color-text-secondary)}
-.chat-reintentar{min-height:44px;padding:0 16px;font-size:14px}
-.chat-adj-play{width:44px;height:44px}
-.chat-adj-dur,.chat-adj-fallo,.chat-adj-nocarga{font-size:13px}
+:where(html.w230) .chat-btn,:where(html.w230) .chat-send{flex-direction:column;gap:1px;width:54px;height:52px;border-radius:16px}
+:where(html.w230) #chatFoto::after{content:"Foto"}
+:where(html.w230) #chatMic::after{content:"Audio"}
+:where(html.w230) #chatSend::after{content:"Enviar"}
+:where(html.w230) #chatFoto::after,:where(html.w230) #chatMic::after,:where(html.w230) #chatSend::after{font-family:var(--font-sans);font-size:12px;font-weight:600;line-height:1.1}
+:where(html.w230) .chat-btn{color:var(--marca-texto)}
+:where(html.w230) .chat-btn.is-grabando::after{content:none}
+:where(html.w230) .chat-send:disabled{opacity:1;background:var(--campo);color:var(--color-text-secondary)}
+:where(html.w230) .chat-reintentar{min-height:44px;padding:0 16px;font-size:14px}
+:where(html.w230) .chat-adj-play{min-height:44px}
+:where(html.w230) .chat-adj-dur,:where(html.w230) .chat-adj-fallo,:where(html.w230) .chat-adj-nocarga{font-size:13px}
 /* Me duele y estado de suplementos */
-.ex-swap-btn{min-height:44px;font-size:15px}
-.fb-duele-btn{color:var(--color-text-primary);border-style:solid;border-color:var(--color-border-strong)}
-.fb-marca,.fb-seg-b{min-height:44px}
-.fb-supl-resumen{font-size:13px}
-.fb-supl .supl-ceja{font-size:13px}
+:where(html.w230) .ex-swap-btn{min-height:44px;font-size:15px}
+:where(html.w230) .fb-duele-btn{color:var(--color-text-primary);border-style:solid;border-color:var(--color-border-strong)}
+:where(html.w230) .fb-marca,:where(html.w230) .fb-seg-b{min-height:44px}
+:where(html.w230) .fb-supl-resumen{font-size:13px}
+:where(html.w230) .fb-supl .supl-ceja{font-size:13px}
 </style>
 <link rel="preload" href="/fonts/archivo-var-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
@@ -1958,7 +1964,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 
 <!-- PANTALLA DE ERROR -->
 <div id="errorScreen" hidden>
-  <div class="error-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
+  <div class="error-icon"><span class="ei-viejo">🔒</span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
   <div class="error-title" id="errTitle">Enlace inválido</div>
   <div class="error-sub" id="errSub">Este enlace no existe o fue revocado. Escribile a Mati por WhatsApp para que te mande uno nuevo.</div>
   <div class="error-code" id="errCode"></div>
@@ -1987,7 +1993,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
       </div>
       <button class="icon-btn" id="misDatosBtn" aria-label="Mis datos" hidden>
         <span class="est-punto est-punto-flota" id="estPuntoMisDatos" role="img" aria-label="Novedad" hidden></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg><span>Mis datos</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg><span class="md-txt">Mis datos</span>
       </button>
       <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -2323,6 +2329,9 @@ let _web230 = (() => {
   } catch (_) { return false; }
 })();
 function web230() { return _web230; }
+/* El sistema visual 2.3.0 (bloque «Sistema 2.3.0» de la hoja) cuelga de la clase w230 en <html>: va y viene con la palanca. */
+function _aplicarW230() { try { document.documentElement.classList.toggle('w230', !!_web230); } catch (_) {} }
+_aplicarW230();
 /* El check guiado (2.3.0), detrás de `check_guiado`. Apagada o sin la clave: el check de siempre, sin una llamada nueva.
    Sin red queda lo último que se supo. En la demo no va: no hay a quién mandarle nada. */
 const _CG_PALANCA_KEY = 'mypump_palanca_check_guiado';
@@ -2681,6 +2690,7 @@ async function leerPalancaWeb230() {
   _fiPalanca(cfg);
   _winsPalanca(cfg);
   _listaPalanca(cfg);
+  _docPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   _cgAplicarPalanca(cfg.check_guiado === true);
@@ -2690,6 +2700,7 @@ async function leerPalancaWeb230() {
   if (typeof _dietaVolverAHoy === 'function') _dietaVolverAHoy(true);
   if (typeof _csVaciarDeshacer === 'function') _csVaciarDeshacer();
   _web230 = v;
+  _aplicarW230();
   try { localStorage.setItem(_WEB230_KEY, v ? '1' : '0'); } catch (_) {}
   if (typeof _csLeer === 'function') _csLeer();
   if (typeof setScene === 'function' && STATE.scene) setScene(STATE.scene);
@@ -3940,7 +3951,7 @@ function chatAdjBurbuja(m, mio, estado) {
     const dur = a.duracion_s != null ? a.duracion_s : null;
     const suena = _chatAdjAudio.id === a.id && _chatAdjAudio.el && !_chatAdjAudio.el.paused;
     cuerpo = `<div class="chat-adj-audio" data-adj-caja="${id}">
-      <button class="chat-adj-play" type="button" data-adj-audio="${id}" aria-label="${escapeHtml(suena ? CA.T.PAUSAR : CA.T.REPRODUCIR)}">${suena ? _CHAT_ICONOS.pausa : _CHAT_ICONOS.play}</button>
+      <button class="chat-adj-play" type="button" data-adj-audio="${id}" aria-label="${escapeHtml(suena ? CA.T.PAUSAR : CA.T.REPRODUCIR)}">${suena ? _CHAT_ICONOS.pausa : _CHAT_ICONOS.play}<span>${escapeHtml(suena ? CA.T.PAUSAR : CA.T.REPRODUCIR)}</span></button>
       <div class="chat-adj-onda" aria-hidden="true">${_CHAT_ONDA.map(h => `<i style="height:${Math.round(h * 100)}%"></i>`).join('')}</div>
       <span class="chat-adj-dur" data-adj-dur="${id}" data-total="${dur != null ? dur : ''}">${dur != null ? CA.duracion(dur) : ''}</span>
     </div>`;
@@ -4000,7 +4011,7 @@ async function chatAdjCargarFoto(boton, id, visibles) {
 function chatAdjVisor(url) {
   const v = document.createElement('div');
   v.className = 'chat-visor'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', window.ChatAdjuntos.T.FOTO);
-  v.innerHTML = `<img src="${escapeHtml(url)}" alt="${escapeHtml(window.ChatAdjuntos.T.FOTO)}"><button type="button" aria-label="${escapeHtml(window.ChatAdjuntos.T.CERRAR)}">${_CHAT_ICONOS.cerrar}</button>`;
+  v.innerHTML = `<img src="${escapeHtml(url)}" alt="${escapeHtml(window.ChatAdjuntos.T.FOTO)}"><button type="button" aria-label="${escapeHtml(window.ChatAdjuntos.T.CERRAR)}">${_CHAT_ICONOS.cerrar}<span>${escapeHtml(window.ChatAdjuntos.T.CERRAR)}</span></button>`;
   const antes = document.activeElement;
   const cerrar = () => { v.remove(); document.removeEventListener('keydown', tecla); try { antes && antes.focus(); } catch (_) {} };
   const tecla = (e) => { if (e.key === 'Escape') cerrar(); };
@@ -4054,7 +4065,7 @@ function chatAdjPintarAvance() {
     caja.querySelectorAll('.chat-adj-onda i').forEach((b, i, t) => b.classList.toggle('on', i / t.length < avance));
     if (total) durEl.textContent = CA.duracion(suena ? Math.max(0, total - a.currentTime) : total);
     const btn = caja.querySelector('[data-adj-audio]');
-    btn.innerHTML = suena ? _CHAT_ICONOS.pausa : _CHAT_ICONOS.play;
+    btn.innerHTML = (suena ? _CHAT_ICONOS.pausa : _CHAT_ICONOS.play) + `<span>${escapeHtml(suena ? CA.T.PAUSAR : CA.T.REPRODUCIR)}</span>`;
     btn.setAttribute('aria-label', suena ? CA.T.PAUSAR : CA.T.REPRODUCIR);
   });
 }
@@ -5446,6 +5457,7 @@ function _encabezadoAvance(titulo, hechos, total, completo) {
 
 function renderTrain() {
   const root = $('#scene-train');
+  const _w = web230();   // el sistema visual 2.3.0 va con la palanca; apagada, la pantalla de antes
   const allEx = DATA.dia.bloques.flatMap(b => b.ejercicios);
   const TERMINAL = new Set(['completo','completo_sin_datos','saltado']);
   const completedCount = allEx.filter(ex => TERMINAL.has(getExStatus(ex.id))).length;
@@ -5486,7 +5498,7 @@ function renderTrain() {
       }
     }
     html += `
-    <div class="finish-card heroe">
+    <div class="finish-card${_w ? ' heroe' : ''}">
       <div class="eyebrow">${_diaFinalizado ? '✓ DÍA CERRADO' : 'SESIÓN COMPLETA'}</div>
       <h2>${completedCount}/${totalEx} ejercicios listos</h2>
       <div class="finish-summary">
@@ -5507,7 +5519,13 @@ function renderTrain() {
   // Calibración solo en la semana 1 del PRIMER macrociclo (fase 2+ continúa cargas)
   const _esCalibracion = (DATA.rutina.semana_actual || 1) <= 1 && !(DATA.rutina.semana_offset || 0);
   let notaSemana = '';
-  if (_nCambian > 0) {
+  if (!_w) {
+    if (_nCambian > 0) {
+      html += `<div class="prog-banner">Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</div>`;
+    } else if (_esCalibracion) {
+      html += `<div class="prog-banner is-calibracion">Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto.</div>`;
+    }
+  } else if (_nCambian > 0) {
     notaSemana = `<div class="prog-banner nota-discreta">${_ICO_NOTA}<span>Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</span></div>`;
   } else if (_esCalibracion) {
     notaSemana = `<div class="prog-banner is-calibracion nota-discreta">${_ICO_NOTA}<span>Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto.</span></div>`;
@@ -5518,7 +5536,32 @@ function renderTrain() {
   // F3 — Inicio claro del cronómetro de sesión (el timer de DESCANSO es otro y
   // no se toca). Si el cliente no toca Start, arranca solo con la primera serie
   // (comportamiento histórico) y el cronómetro lo aclara.
-  if (!_diaFinalizado && !allDone) {
+  if (!_diaFinalizado && !allDone && !_w) {
+    if (!_sessionStart) {
+      html += `
+      <button class="session-start" id="btnStartSesion">
+        <span class="ss-icon">▶</span>
+        <span class="ss-txt"><strong>Empezar entrenamiento</strong>
+        <small>arranca el cronómetro de la sesión — o empezá directo: corre solo con tu primera serie</small></span>
+      </button>`;
+    } else if (Date.now() - _sessionStart > SESION_MAX_H * 3600000) {
+      html += `
+      <div class="session-crono is-vieja" id="sessionCrono">
+        <span class="sc-dot"></span>
+        <span class="sc-lbl">SIN CERRAR</span>
+        <span class="sc-hint">quedó abierta de antes — no te preocupes, no perdiste nada</span>
+        <button class="sc-reset" id="btnReiniciarCrono">Empezar de nuevo</button>
+      </div>`;
+    } else {
+      html += `
+      <div class="session-crono" id="sessionCrono">
+        <span class="sc-dot"></span>
+        <span class="sc-lbl">EN CURSO</span>
+        <span class="sc-time" id="cronoTime">${fmtCrono(Date.now() - _sessionStart)}</span>
+        ${_startedByButton ? '' : '<span class="sc-hint">⏱ arrancó con tu primera serie</span>'}
+      </div>`;
+    }
+  } else if (!_diaFinalizado && !allDone) {
     const _diasH = DATA._dias || [DATA.dia];
     const _semH = (DATA.rutina.semana_actual || 1) + (DATA.rutina.semana_offset || 0);
     const _semTotH = (DATA.rutina.semanas_total || 0) + (DATA.rutina.semana_offset || 0);
@@ -5609,8 +5652,18 @@ function renderTrain() {
   // Pie: los tres datos (hechos, tiempo, restan) subieron a la tarjeta principal; acá queda la salida.
   if (!allDone) {
     const hasStarted = _sesionIniciada || completedCount > 0;
-    html += `
+    html += _w ? `
     <div class="finish-pie">
+      <button class="btn-secondary-outline" id="earlyFinishBtn" ${!hasStarted?'style="opacity:.5"':''}>
+        ${ICONS.flag} Terminar el entrenamiento de hoy
+      </button>
+    </div>` : `
+    <div class="finish-card" style="margin-top:0">
+      <div class="finish-summary">
+        <div class="fs-cell"><span class="lbl">Hechos</span><span class="val">${completedCount}/${totalEx}</span></div>
+        <div class="fs-cell"><span class="lbl">Tiempo</span><span class="val">${mins||'—'}<small>min</small></span></div>
+        <div class="fs-cell"><span class="lbl">Restan</span><span class="val">${pendingCount}<small>ej</small></span></div>
+      </div>
       <button class="btn-secondary-outline" id="earlyFinishBtn" ${!hasStarted?'style="opacity:.5"':''}>
         ${ICONS.flag} Terminar el entrenamiento de hoy
       </button>
@@ -8750,7 +8803,16 @@ function renderDiet() {
   const kcalElegidas = delDia.reduce((s, c) => s + dia[c.id].kcal, 0);
   const desvio = tg.kcal > 0 ? (kcalElegidas - tg.kcal) / tg.kcal * 100 : 0;
   const okDesvio = Math.abs(desvio) <= 5;
-  const caja = (cls, label, val, meta) => `
+  const _w = web230();   // el sistema visual 2.3.0 va con la palanca; apagada, el anillo de antes
+  const RING_CIRC = 2 * Math.PI * 58;
+  const ringOffset = RING_CIRC * (1 - pctKcal / 100);
+  const caja = (cls, label, val, meta) => !_w ? `
+    <div class="dz-caja ${cls}">
+      <div class="dz-caja-lbl"><span class="dz-dot"></span>${label}</div>
+      <div class="dz-caja-val">${Math.round(val)} g</div>
+      <div class="dz-caja-meta">de ${meta} g</div>
+      <div class="dz-caja-bar"><span style="width:${meta > 0 ? Math.min(100, val / meta * 100).toFixed(1) : 0}%"></span></div>
+    </div>` : `
     <div class="dz-caja ${cls}">
       <div class="dz-caja-lbl"><span class="dz-dot"></span>${label}</div>
       <div class="dz-caja-val"><b>${Math.round(val)}</b><span>&nbsp;/ ${meta} g</span></div>
@@ -8758,9 +8820,26 @@ function renderDiet() {
     </div>`;
   const nHechas = consumido.nComidasMarcadas, nSalt = consumido.nSalteadas;
 
-  root.innerHTML = `
-  ${barraDias}
-  ${tipoDiaHtml}
+  const lineaComidas = nHechas || nSalt
+    ? `Comiste ${nHechas} de ${consumido.nComidas} comidas${nSalt ? ` · salteaste ${nSalt}` : ''}`
+    : (esHoy ? 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.' : 'Tocá «Comí» en lo que comiste ese día y acá se va sumando.');
+  const lineaElegidas = `<div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? (esHoy ? 'Con tus ajustes de hoy' : 'Con tus ajustes de ese día') : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>`;
+  const cabecera = !_w ? `
+  <div class="dz-hdr">
+    <div class="dz-ring">
+      <svg viewBox="0 0 132 132"><circle class="track" cx="66" cy="66" r="58"/>
+        <circle class="ring" cx="66" cy="66" r="58" stroke-dasharray="${RING_CIRC.toFixed(2)}" stroke-dashoffset="${ringOffset.toFixed(2)}"/></svg>
+      <div class="dz-ring-c"><b>${Math.round(consumido.kcal).toLocaleString('es-AR')}</b><span>de ${Number(tg.kcal).toLocaleString('es-AR')} kcal</span></div>
+    </div>
+    <div class="dz-cajas">
+      ${caja('p', 'Proteínas', consumido.prot, tg.prot)}
+      ${caja('c', 'Carbos', consumido.carb, tg.carb)}
+      ${caja('f', 'Grasas', consumido.fat, tg.fat)}
+    </div>
+    <div class="dz-linea">${lineaComidas}</div>
+    ${lineaElegidas}
+    ${renderDietCite()}
+  </div>` : `
   <div class="dz-hdr heroe" role="group" aria-label="${esHoy ? 'Lo que comiste hoy' : 'Lo que comiste ese día'}">
     <div class="dz-kcal"><b>${Math.round(consumido.kcal).toLocaleString('es-AR')}</b><span>de ${Number(tg.kcal).toLocaleString('es-AR')} kcal</span></div>
     <div class="dz-kcal-bar" aria-hidden="true"><span style="width:${pctKcal > 0 ? Math.max(3, pctKcal).toFixed(1) : 0}%"></span></div>
@@ -8771,18 +8850,21 @@ function renderDiet() {
     </div>
   </div>
   <div class="dz-notas">
-    <div class="dz-linea nota-discreta">${_ICO_NOTA}<span>${nHechas || nSalt
-      ? `Comiste ${nHechas} de ${consumido.nComidas} comidas${nSalt ? ` · salteaste ${nSalt}` : ''}`
-      : (esHoy ? 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.' : 'Tocá «Comí» en lo que comiste ese día y acá se va sumando.')}</span></div>
-    <div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? (esHoy ? 'Con tus ajustes de hoy' : 'Con tus ajustes de ese día') : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>
+    <div class="dz-linea nota-discreta">${_ICO_NOTA}<span>${lineaComidas}</span></div>
+    ${lineaElegidas}
     ${renderDietCite()}
-  </div>
+  </div>`;
+
+  root.innerHTML = `
+  ${barraDias}
+  ${tipoDiaHtml}
+  ${cabecera}
   ${esHoy && barraDias ? '<button class="dz-copiar-otro" data-dia-copiar-otro>Copiar de otro día</button>' : ''}
   ${DATA && DATA._dietaEjemplo ? '<div class="dz-ejemplo">Ejemplo: todavía no tenés dieta. Cuando Mati publique la tuya, la vas a ver acá.</div>' : ''}
   ${renderComidasLibres()}
   ${plan.comidas.map((c, i) => renderMeal(c, i, delDia, dia)).join('')}
   ${renderFuentesFooter('dieta')}`;
-  _marcarProximaComida(root);
+  if (_w) _marcarProximaComida(root);
   bindDietEvents();
   _bindBarraDias();
 }
@@ -11862,6 +11944,8 @@ function _pendientesSemana() {
    (meta_pasos_dia, ritmo_peso_kg_semana en la raíz de la dieta), no hay nada: la
    web nunca inventa una meta. Reglas y textos en js/metas.js (vectores comunes con
    las apps); esto es solo la pantalla. Gemelo de PumpDelDiaVistas.swift. */
+/* Sin respuesta de la config vale lo último que se supo (como las demás palancas). */
+const _METAS_PALANCA_KEY = 'mypump_palanca_metas_pasos';
 let _metasOn = false;
 // Solo en hosts de prueba, para capturas: ?metas=muestra|sinsalud[&pasos=N&pasosLuego=M].
 const _metasMuestra = (() => {
@@ -11878,7 +11962,13 @@ const _metasMuestra = (() => {
   } catch (_) { return null; }
 })();
 function _metasPalanca(cfg) {
-  const on = !!(cfg && typeof cfg === 'object' && cfg.metas_pasos === true);
+  let on;
+  if (cfg && typeof cfg === 'object') {
+    on = cfg.metas_pasos === true;
+    try { if (on) localStorage.setItem(_METAS_PALANCA_KEY, '1'); else localStorage.removeItem(_METAS_PALANCA_KEY); } catch (_) {}
+  } else {
+    try { on = localStorage.getItem(_METAS_PALANCA_KEY) === '1'; } catch (_) { on = _metasOn; }
+  }
   if (on === _metasOn) return;
   _metasOn = on;
   if (on && !(STATE.salud || []).some(r => r.tipo === 'pasos')) loadSalud().then(_pumpRepintar).catch(() => {});
@@ -12184,15 +12274,16 @@ function renderMydayFotos() {
 
   // Miniatura de la foto de ESTA semana (si ya llegaron las URLs firmadas).
   const urls = (STATE.fotosUrls && STATE.fotosUrls.mapa) || {};
+  const _w = web230();   // el sistema visual 2.3.0 va con la palanca; apagada, la sección de antes
   const slots = POSES.map(p => {
     const lista = deEstaSemana.has(p.k);
     const subiendo = Object.values(pendientes).some(x => x.pose === p.k && _lunesISO(x.fecha) === semanaAct);
     const thumb = urls[`${semanaAct}|${p.k}`];
     return `<button class="fp-slot${lista ? ' is-done' : ''}${thumb ? ' has-thumb' : ''}" data-pose="${p.k}">
       ${thumb ? `<img class="fp-slot-img" src="${thumb}" alt="" loading="lazy">` : ''}
-      ${thumb ? '' : `<span class="fp-slot-ico">${lista ? '✓' : _ICO_CAMARA}</span>`}
+      ${thumb ? '' : `<span class="fp-slot-ico">${lista ? '✓' : (_w ? _ICO_CAMARA : '+')}</span>`}
       <span class="fp-slot-lbl">${p.label}</span>
-      ${subiendo ? '<span class="fp-slot-sub">subiendo…</span>' : (lista ? '' : '<span class="fp-slot-acc">Agregar</span>')}
+      ${subiendo ? '<span class="fp-slot-sub">subiendo…</span>' : (lista || !_w ? '' : '<span class="fp-slot-acc">Agregar</span>')}
     </button>`;
   }).join('');
 
@@ -12202,7 +12293,8 @@ function renderMydayFotos() {
   // retencion de liquido), no cambios reales.
   const faltan = 4 - semanas.length;
   const comparador = semanas.length === 0
-    ? `<div class="fp-bloqueado">Con la primera foto arranca tu historial.</div>`
+    ? (_w ? `<div class="fp-bloqueado">Con la primera foto arranca tu historial.</div>`
+      : `<div class="fp-bloqueado">Con la primera foto arranca tu historial.<br><small>Mismo lugar y misma luz cada semana: asi la comparacion muestra tu cambio y no el del ambiente.</small></div>`)
     : `<button class="fp-vergaleria" id="fpVerGaleria">Ver mis fotos · ${semanas.length} semana${semanas.length === 1 ? '' : 's'}</button>` +
       (semanas.length < 4
         ? `<div class="fp-nota-comp">El comparador antes/después se abre en ${faltan} semana${faltan > 1 ? 's' : ''} más.</div>`
@@ -12211,7 +12303,24 @@ function renderMydayFotos() {
   // «Mismo lugar, misma luz» se dice UNA sola vez: en la guía para sacarlas cuando está, y si no en la línea de privacidad.
   // Los tres marcos van primero (es lo que se toca) y la guía debajo, sin caja.
   const conGuia = web230() && STATE.fotosCargadas && deEstaSemana.size < 3;
-  el.innerHTML = `
+  el.innerHTML = !_w ? `
+    <div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">📸</span>
+        <span class="myday-section-title">Fotos de la semana</span>
+        ${deEstaSemana.size === 3 ? '<span class="ck-saved">✓ completas</span>' : ''}
+      </div>
+      <div class="myday-section-body">
+        <p class="fp-intro">Mismo lugar, misma luz, en ayunas. Las ve <b>solo Mati</b>: no se publican ni salen de la app.</p>
+        <div class="fp-slots">${slots}</div>
+        ${serie >= 2 ? `<div class="fp-serie">${serie} semanas seguidas registradas</div>` : ''}
+        ${comparador}
+        ${Object.keys(_fotosRechazadas()).sort().map(k => `<div class="fp-msg is-err" data-foto-rechazada="${_claveFotoSegura(k)}">Esta foto no se pudo subir
+          <button class="fp-link" data-foto-reintentar="${_claveFotoSegura(k)}">Reintentar</button>
+          <button class="fp-link" data-foto-descartar="${_claveFotoSegura(k)}">Descartar</button></div>`).join('')}
+        <div class="fp-msg" id="fpMsg"></div>
+      </div>
+    </div>` : `
     ${_encabezadoAvance('Fotos de la semana', deEstaSemana.size, 3, 'completas')}
     <div class="myday-section fp-seccion">
       <div class="myday-section-body">
@@ -12475,9 +12584,16 @@ function renderMydayCheckin() {
     </div>`;
 
   const nMarcadas = CHECKIN_METRICAS.filter(m => ck[m.k]).length;
-  el.innerHTML = `
+  // El sistema visual 2.3.0 va con la palanca; apagada, la cabecera de antes.
+  el.innerHTML = (web230() ? `
     ${_encabezadoAvance('Check de la semana', yaGuardado && !STATE.checkinDraft ? CHECKIN_METRICAS.length : nMarcadas, CHECKIN_METRICAS.length, 'enviado')}
-    <div class="myday-section ck-seccion">
+    <div class="myday-section ck-seccion">` : `
+    <div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">📝</span>
+        <span class="myday-section-title">Check de la semana</span>
+        ${yaGuardado ? '<span class="ck-saved">✓ enviado</span>' : ''}
+      </div>`) + `
       <div class="myday-section-body">
         <p class="ck-intro">Contame en 10 segundos cómo venís. Mati lo ve antes de tu devolución.</p>
         ${CHECKIN_METRICAS.map(escala).join('')}
@@ -13096,9 +13212,9 @@ function renderRevision() {
   root.innerHTML = `
     <div id="rv-devolucion" hidden></div>
     ${guiado ? '<div id="myday-checkin"></div>' : ''}
-    ${web230() ? '<p class="rv-nota" id="rv-semanal">La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días.</p>' : ''}
+    ${web230() ? '<p class="rv-nota" id="rv-semanal">La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días.</p>' : '<div id="rv-tarjetas" class="rv-tarjetas"></div>'}
     <div id="rv-dia" class="rv-nota" hidden></div>
-    <div id="rv-tarjetas" class="rv-tarjetas"></div>
+    ${web230() ? '<div id="rv-tarjetas" class="rv-tarjetas"></div>' : ''}
     ${_avisoPlanHtml()}
     <div id="myday-fotos"></div>
     <div id="fpGaleria" class="fp-galeria"></div>
@@ -13220,7 +13336,16 @@ function _renderRevTarjetas() {
       <div class="fd-cuerpo"><div class="rv-tit fd-tit">${titulo}</div>${cuerpo}</div>
       <span class="solo-lector">${pie}</span><span class="fd-chev" aria-hidden="true">${_CHEV_DER}</span>
     </button>`;
-  el.innerHTML = `<div class="tarjeta-filas">${tarjeta('rvRecup', _ICO_BATERIA, 'Recuperación', rec, 'Ver sueño, corazón y cuerpo')
+  // Con la palanca 2.3.0 apagada, las dos tarjetas de antes.
+  const tarjetaVieja = (id, titulo, cuerpo, pie) => `
+    <button class="rv-card" id="${id}">
+      <div class="rv-tit">${titulo}</div>
+      ${cuerpo}
+      <div class="rv-pie"><span>${pie}</span>${_CHEV_DER}</div>
+    </button>`;
+  el.innerHTML = !web230()
+    ? tarjetaVieja('rvRecup', 'Recuperación', rec, 'Ver sueño, corazón y cuerpo') + tarjetaVieja('rvProg', 'Tu progreso', prog, 'Ver fuerza y récords')
+    : `<div class="tarjeta-filas">${tarjeta('rvRecup', _ICO_BATERIA, 'Recuperación', rec, 'Ver sueño, corazón y cuerpo')
                }${tarjeta('rvProg', _ICO_PROGRESO, 'Tu progreso', prog, 'Ver fuerza y récords')}</div>`;
   document.getElementById('rvRecup').onclick = () => setScene('salud');
   document.getElementById('rvProg').onclick = () => setScene('progress');
@@ -13541,12 +13666,32 @@ STATE.documentos = [];
 STATE.mdDocs = false;
 STATE.docError = false;
 STATE.docAbriendo = null;
+/* Detrás de `contrato_app` (como las demás palancas de leerPalancaWeb230): apagada, o sin la clave, no se llama a
+   mypump_contrato_get ni se muestran el aviso ni la fila. Si la config no contesta, vale lo último que se supo. */
+const _DOC_PALANCA_KEY = 'mypump_palanca_contrato_app';
+let _docOn = (() => { try { return localStorage.getItem(_DOC_PALANCA_KEY) === '1'; } catch (_) { return false; } })();
+function _docPalanca(cfg) {
+  let on;
+  if (cfg && typeof cfg === 'object') {
+    on = cfg.contrato_app === true;
+    try { if (on) localStorage.setItem(_DOC_PALANCA_KEY, '1'); else localStorage.removeItem(_DOC_PALANCA_KEY); } catch (_) {}
+  } else {
+    try { on = localStorage.getItem(_DOC_PALANCA_KEY) === '1'; } catch (_) { on = _docOn; }
+  }
+  if (on === _docOn) return;
+  _docOn = on;
+  if (on) { loadDocumentos().catch(() => {}); return; }
+  STATE.documentos = [];
+  STATE.mdDocs = false;
+  if (STATE.scene === 'misdatos') renderMisDatos();
+  renderAvisoContrato();
+}
 
 async function loadDocumentos() {
   const D = window.MyPumpDocumentos;
-  if (!D || !TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getContrato) return;
+  if (!_docOn || !D || !TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getContrato) return;
   const resp = await window.mypumpDB.getContrato(TOKEN).catch(() => null);
-  const docs = D.decodificar(resp);
+  const docs = _docOn ? D.decodificar(resp) : [];
   if (JSON.stringify(docs) === JSON.stringify(STATE.documentos)) return;
   STATE.documentos = docs;
   if (STATE.scene === 'misdatos') renderMisDatos();
@@ -13621,7 +13766,7 @@ async function abrirDocumento(id) {
 function renderAvisoContrato() {
   document.querySelectorAll('.aviso-contrato').forEach(el => el.remove());
   const D = window.MyPumpDocumentos;
-  if (!D || (DATA && DATA._isDemo) || STATE.scene !== 'train' || !D.hayContratoPendiente(STATE.documentos)) return;
+  if (!_docOn || !D || (DATA && DATA._isDemo) || STATE.scene !== 'train' || !D.hayContratoPendiente(STATE.documentos)) return;
   const host = document.getElementById('scene-train');
   if (!host) return;
   const div = document.createElement('div');
@@ -13644,7 +13789,7 @@ function renderMisDatos() {
   const root = document.getElementById('scene-misdatos');
   if (!root) return;
   const D = window.MyPumpDocumentos;
-  const docs = (D && STATE.documentos) || [];
+  const docs = (_docOn && D && STATE.documentos) || [];
   // Documentos, dentro de Mis datos (como la app): con «‹ Mis datos» para volver.
   if (STATE.mdDocs && docs.length) { renderDocumentos(root); return; }
   STATE.mdDocs = false;

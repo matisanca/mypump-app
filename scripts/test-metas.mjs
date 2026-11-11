@@ -64,6 +64,10 @@ t('sw guarda metas.js', sw.includes("'/js/metas.js'"));
 const html = fs.readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8');
 t('cliente carga metas.js', html.includes('<script src="/js/metas.js"></script>'));
 t('palanca estricta', /metas_pasos === true/.test(html));
+{
+  const i = html.indexOf('function _metasPalanca('), cuerpo = html.slice(i, html.indexOf('\n}\n', i));
+  t('sin respuesta de la config: lo último guardado', i > 0 && /getItem\(_METAS_PALANCA_KEY\) === '1'/.test(cuerpo) && /removeItem\(_METAS_PALANCA_KEY\)/.test(cuerpo));
+}
 
 console.log(`test-metas: ${ok} ok, ${fail} fallas`);
 process.exit(fail ? 1 : 0);

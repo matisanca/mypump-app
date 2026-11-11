@@ -369,15 +369,12 @@ window.mypumpDB = {
     return rows && rows.length > 0 ? rows[0] : null;
   },
 
-  // Todas las sesiones de una semana (una por día, la de más actividad).
-  // Filas: {dia_id, iniciada_en, finalizada_en}. Para marcar días completados
-  // en el day picker.
-  // La palanca remota (mypump_get_app_config): null si no se pudo preguntar.
   // El día de revisión del alumno (1 = lunes … 7 = domingo). null si no se pudo leer.
   async getRevisionDia(token) {
     return await rpc('mypump_get_revision_dia', { p_token: token });
   },
 
+  // La palanca remota (mypump_get_app_config): null si no se pudo preguntar.
   async getAppConfig() {
     return await rpc('mypump_get_app_config', {});
   },
@@ -395,6 +392,9 @@ window.mypumpDB = {
     }
   },
 
+  // Todas las sesiones de una semana (una por día, la de más actividad).
+  // Filas: {dia_id, iniciada_en, finalizada_en}. Para marcar días completados
+  // en el day picker.
   async getSesionesSemana(token, semana) {
     return await rpc('mypump_get_sesiones_semana', { p_token: token, p_semana: semana });
   },

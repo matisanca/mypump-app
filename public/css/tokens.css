@@ -15,7 +15,7 @@
   /* --- Texto --- */
   --color-text-primary:   #0a0a0a;
   --color-text-secondary: #4a4a4a;
-  --color-text-muted:     #636369;   /* = --apoyo: 6:1 sobre blanco (el #888 de antes, 3,5:1) */
+  --color-text-muted:     #888888;   /* con la palanca 2.3.0, #636369 (abajo, html.w230) */
 
   /* --- Bordes --- */
   --color-border:       #e5e5e5;
@@ -156,7 +156,7 @@
   /* --- Texto --- */
   --color-text-primary:   #f5f5f5;
   --color-text-secondary: #b5b5b5;
-  --color-text-muted:     #99999e;   /* = --apoyo: 6:1 sobre la tarjeta (el #757575 de antes, 3,7:1) */
+  --color-text-muted:     #757575;   /* con la palanca 2.3.0, #99999e (abajo, html.w230) */
 
   /* --- Bordes --- */
   --color-border:       #2a2a2a;
@@ -191,3 +191,8 @@
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.32);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.48);
 }
+
+/* Sistema 2.3.0 (palanca web_230, clase w230 en <html>): el gris de apoyo pasa AA.
+   Claro: #636369, 6:1 sobre blanco (el #888 de antes, 3,5:1). Oscuro: #99999e, 6:1 sobre la tarjeta (el #757575, 3,7:1). */
+html.w230 { --color-text-muted: #636369; }
+html.w230[data-theme="dark"] { --color-text-muted: #99999e; }

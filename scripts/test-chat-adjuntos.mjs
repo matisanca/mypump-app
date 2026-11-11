@@ -345,4 +345,12 @@ await caso('dos pestañas: lo que mandó la otra no queda como no salió ni vuel
   assert.equal(d.subidas.filter((s) => s.headers['x-chat-id'] === id && s.largo).length >= 1, true);
 });
 
+await caso('botones del audio y del visor con texto visible, no solo ícono', async () => {
+  const fs = await import('node:fs');
+  const html = fs.readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8');
+  assert.ok(html.includes('${suena ? _CHAT_ICONOS.pausa : _CHAT_ICONOS.play}<span>${escapeHtml(suena ? CA.T.PAUSAR : CA.T.REPRODUCIR)}</span></button>'));
+  assert.ok(html.includes("+ `<span>${escapeHtml(suena ? CA.T.PAUSAR : CA.T.REPRODUCIR)}</span>`"));
+  assert.ok(html.includes('${_CHAT_ICONOS.cerrar}<span>${escapeHtml(window.ChatAdjuntos.T.CERRAR)}</span></button>'));
+});
+
 console.log(`chat-adjuntos: ${ok} casos OK${process.exitCode ? ' (con fallas)' : ''}`);
