@@ -1,0 +1,622 @@
+{
+ "fuente": "scripts/nativa/generar-vectores-cola-a.py (referencia en Python)",
+ "textos": {
+  "titulo": "Antes de la videollamada",
+  "todo_listo": "Ya tenés todo listo",
+  "consejo": "Ese día buscá un lugar tranquilo y con buena conexión.",
+  "opcional": "Opcional",
+  "hecho": "Hecho",
+  "falta": "Falta"
+ },
+ "titulos": {
+  "guia": "Mirar los videos de tu guía",
+  "dudas": "Dejarle tus dudas a Mati",
+  "formulario": "Responder las preguntas de Mati",
+  "fotos": "Subir tus fotos de inicio",
+  "estudios": "Subir tus estudios",
+  "contrato": "Firmar el contrato"
+ },
+ "destinos": {
+  "guia": "guia",
+  "dudas": "guia",
+  "fotos": "fotos"
+ },
+ "casos": [
+  {
+   "nombre": "la de la demo",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "guia",
+      "estado": "falta",
+      "faltan": 2
+     },
+     {
+      "clave": "dudas",
+      "estado": "falta",
+      "opcional": true
+     },
+     {
+      "clave": "formulario",
+      "estado": "hecho"
+     },
+     {
+      "clave": "fotos",
+      "estado": "falta"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "guia",
+      "titulo": "Mirar los videos de tu guía",
+      "hecho": false,
+      "opcional": false,
+      "detalle": "Te faltan 2 videos",
+      "destino": "guia",
+      "accesible": "Mirar los videos de tu guía, Falta, Te faltan 2 videos"
+     },
+     {
+      "clave": "dudas",
+      "titulo": "Dejarle tus dudas a Mati",
+      "hecho": false,
+      "opcional": true,
+      "detalle": "Opcional",
+      "destino": "guia",
+      "accesible": "Dejarle tus dudas a Mati, Opcional"
+     },
+     {
+      "clave": "formulario",
+      "titulo": "Responder las preguntas de Mati",
+      "hecho": true,
+      "opcional": false,
+      "detalle": null,
+      "destino": null,
+      "accesible": "Responder las preguntas de Mati, Hecho"
+     },
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "fotos",
+      "accesible": "Subir tus fotos de inicio, Falta"
+     }
+    ],
+    "resumen": "Llevás 1 de 3",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "todo listo, con la duda opcional sin hacer",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "guia",
+      "estado": "hecho",
+      "faltan": 0
+     },
+     {
+      "clave": "dudas",
+      "estado": "falta",
+      "opcional": true
+     },
+     {
+      "clave": "fotos",
+      "estado": "hecho"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "guia",
+      "titulo": "Mirar los videos de tu guía",
+      "hecho": true,
+      "opcional": false,
+      "detalle": null,
+      "destino": null,
+      "accesible": "Mirar los videos de tu guía, Hecho"
+     },
+     {
+      "clave": "dudas",
+      "titulo": "Dejarle tus dudas a Mati",
+      "hecho": false,
+      "opcional": true,
+      "detalle": "Opcional",
+      "destino": "guia",
+      "accesible": "Dejarle tus dudas a Mati, Opcional"
+     },
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": true,
+      "opcional": false,
+      "detalle": null,
+      "destino": null,
+      "accesible": "Subir tus fotos de inicio, Hecho"
+     }
+    ],
+    "resumen": "Ya tenés todo listo",
+    "todo_listo": true
+   }
+  },
+  {
+   "nombre": "falta un video",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "guia",
+      "estado": "falta",
+      "faltan": 1
+     },
+     {
+      "clave": "fotos",
+      "estado": "hecho"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "guia",
+      "titulo": "Mirar los videos de tu guía",
+      "hecho": false,
+      "opcional": false,
+      "detalle": "Te falta 1 video",
+      "destino": "guia",
+      "accesible": "Mirar los videos de tu guía, Falta, Te falta 1 video"
+     },
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": true,
+      "opcional": false,
+      "detalle": null,
+      "destino": null,
+      "accesible": "Subir tus fotos de inicio, Hecho"
+     }
+    ],
+    "resumen": "Llevás 1 de 2",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "faltan sin número",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "guia",
+      "estado": "falta"
+     },
+     {
+      "clave": "fotos",
+      "estado": "falta"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "guia",
+      "titulo": "Mirar los videos de tu guía",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "guia",
+      "accesible": "Mirar los videos de tu guía, Falta"
+     },
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "fotos",
+      "accesible": "Subir tus fotos de inicio, Falta"
+     }
+    ],
+    "resumen": "Llevás 0 de 2",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "faltan con decimales o en texto no se muestra",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "guia",
+      "estado": "falta",
+      "faltan": 2.5
+     },
+     {
+      "clave": "fotos",
+      "estado": "falta",
+      "faltan": "3"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "guia",
+      "titulo": "Mirar los videos de tu guía",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "guia",
+      "accesible": "Mirar los videos de tu guía, Falta"
+     },
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "fotos",
+      "accesible": "Subir tus fotos de inicio, Falta"
+     }
+    ],
+    "resumen": "Llevás 0 de 2",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "faltan solo vale en la guía",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "fotos",
+      "estado": "falta",
+      "faltan": 2
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "fotos",
+      "accesible": "Subir tus fotos de inicio, Falta"
+     }
+    ],
+    "resumen": "Llevás 0 de 1",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "claves del futuro que la app ya conoce",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "estudios",
+      "estado": "falta"
+     },
+     {
+      "clave": "contrato",
+      "estado": "hecho"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "estudios",
+      "titulo": "Subir tus estudios",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": null,
+      "accesible": "Subir tus estudios, Falta"
+     },
+     {
+      "clave": "contrato",
+      "titulo": "Firmar el contrato",
+      "hecho": true,
+      "opcional": false,
+      "detalle": null,
+      "destino": null,
+      "accesible": "Firmar el contrato, Hecho"
+     }
+    ],
+    "resumen": "Llevás 1 de 2",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "clave desconocida se descarta",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "pago",
+      "estado": "falta"
+     },
+     {
+      "clave": "fotos",
+      "estado": "hecho"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": true,
+      "opcional": false,
+      "detalle": null,
+      "destino": null,
+      "accesible": "Subir tus fotos de inicio, Hecho"
+     }
+    ],
+    "resumen": "Ya tenés todo listo",
+    "todo_listo": true
+   }
+  },
+  {
+   "nombre": "estado desconocido se descarta",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "guia",
+      "estado": "en_curso"
+     },
+     {
+      "clave": "fotos",
+      "estado": "falta"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "fotos",
+      "accesible": "Subir tus fotos de inicio, Falta"
+     }
+    ],
+    "resumen": "Llevás 0 de 1",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "clave repetida: la primera",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "fotos",
+      "estado": "falta"
+     },
+     {
+      "clave": "fotos",
+      "estado": "hecho"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "fotos",
+      "accesible": "Subir tus fotos de inicio, Falta"
+     }
+    ],
+    "resumen": "Llevás 0 de 1",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "opcional que no es true no es opcional",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "dudas",
+      "estado": "falta",
+      "opcional": "si"
+     },
+     {
+      "clave": "fotos",
+      "estado": "hecho"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "dudas",
+      "titulo": "Dejarle tus dudas a Mati",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "guia",
+      "accesible": "Dejarle tus dudas a Mati, Falta"
+     },
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": true,
+      "opcional": false,
+      "detalle": null,
+      "destino": null,
+      "accesible": "Subir tus fotos de inicio, Hecho"
+     }
+    ],
+    "resumen": "Llevás 1 de 2",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "solo opcionales: sin resumen",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "dudas",
+      "estado": "hecho",
+      "opcional": true
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "dudas",
+      "titulo": "Dejarle tus dudas a Mati",
+      "hecho": true,
+      "opcional": true,
+      "detalle": null,
+      "destino": null,
+      "accesible": "Dejarle tus dudas a Mati, Hecho"
+     }
+    ],
+    "resumen": null,
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "ítems que no son objetos",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     "guia",
+     null,
+     3,
+     {
+      "clave": "fotos",
+      "estado": "falta"
+     }
+    ]
+   },
+   "salida": {
+    "items": [
+     {
+      "clave": "fotos",
+      "titulo": "Subir tus fotos de inicio",
+      "hecho": false,
+      "opcional": false,
+      "detalle": null,
+      "destino": "fotos",
+      "accesible": "Subir tus fotos de inicio, Falta"
+     }
+    ],
+    "resumen": "Llevás 0 de 1",
+    "todo_listo": false
+   }
+  },
+  {
+   "nombre": "sin ítems válidos: nada",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": [
+     {
+      "clave": "pago",
+      "estado": "falta"
+     }
+    ]
+   },
+   "salida": null
+  },
+  {
+   "nombre": "lista vacía: nada",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": []
+   },
+   "salida": null
+  },
+  {
+   "nombre": "inactiva: nada",
+   "respuesta": {
+    "ok": true,
+    "activa": false,
+    "items": [
+     {
+      "clave": "fotos",
+      "estado": "falta"
+     }
+    ]
+   },
+   "salida": null
+  },
+  {
+   "nombre": "sin activa: nada",
+   "respuesta": {
+    "ok": true,
+    "items": [
+     {
+      "clave": "fotos",
+      "estado": "falta"
+     }
+    ]
+   },
+   "salida": null
+  },
+  {
+   "nombre": "ok en false: nada",
+   "respuesta": {
+    "ok": false,
+    "motivo": "token"
+   },
+   "salida": null
+  },
+  {
+   "nombre": "items que no es lista: nada",
+   "respuesta": {
+    "ok": true,
+    "activa": true,
+    "items": {
+     "clave": "fotos"
+    }
+   },
+   "salida": null
+  },
+  {
+   "nombre": "no es un objeto: nada",
+   "respuesta": [
+    1,
+    2
+   ],
+   "salida": null
+  }
+ ]
+}
