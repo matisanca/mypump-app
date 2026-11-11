@@ -1219,6 +1219,16 @@ html.cg-abierto,html.cg-abierto body{overflow:hidden}
 .cg-op{width:100%;min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:.75em;padding:.8em 1em;border:1.5px solid transparent;border-radius:16px;background:var(--cg-sup);color:var(--color-text-primary);font:inherit;font-size:1.0625em;font-weight:600;line-height:1.25;text-align:left;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background-color .12s,border-color .12s}
 .cg-op.is-on{background:var(--color-brand-subtle);border-color:var(--color-brand)}
 .cg-tilde{flex:0 0 auto;width:1.5em;height:1.5em;border-radius:50%;border:1.5px solid var(--cg-borde);display:grid;place-items:center;color:transparent}
+.cg-int{margin:-.15em 0 .35em;padding:0 .15em}
+.cg-int[hidden]{display:none}
+.cg-int-et{margin:0 0 .45em .1em;font-size:.9375em;font-weight:600;line-height:1.3;color:var(--color-text-secondary)}
+.cg-int.is-falta .cg-int-et{color:var(--color-danger)}
+.cg-int-fila{display:grid;grid-template-columns:repeat(auto-fit,minmax(5em,1fr));gap:.5em}
+.cg-int-btn{min-height:48px;padding:.5em .25em;border:1.5px solid var(--cg-borde);border-radius:14px;background:transparent;color:var(--color-text-primary);font:inherit;font-size:.9375em;font-weight:700;line-height:1.2;text-align:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background-color .15s,border-color .15s,color .15s}
+.cg-int.is-falta .cg-int-btn{border-color:var(--color-danger)}
+.cg-int-btn.is-on,.cg-int.is-falta .cg-int-btn.is-on{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
+.cg-pie .cg-aviso{min-height:0;margin:0 0 .6em}
+.cg-pie .cg-aviso:empty{display:none}
 .cg-op.is-on .cg-tilde{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
 
 .cg-nota{display:block;width:100%;min-height:9em;padding:1em;border:1.5px solid transparent;border-radius:16px;background:var(--cg-sup);color:var(--color-text-primary);font:inherit;font-size:1.0625em;line-height:1.4;resize:none;outline:none}
@@ -1244,7 +1254,7 @@ button.cg-res-fila{cursor:pointer;min-height:48px}
 .cg-listo-ico svg{width:2.4em;height:2.4em}
 .cg-cuerpo.is-listo .cg-apoyo{margin-bottom:0}
 @media (max-height:700px){.cg-cuerpo{padding-top:.75em}.cg-titulo{font-size:1.875em}.cg-apoyo{margin-bottom:1.1em}.cg-esc{margin-bottom:1em}.cg-peso{margin-top:1em}}
-@media (prefers-reduced-motion:reduce){.cg-cuerpo>*{animation:none}.cg-btn,.cg-punto,.cg-op{transition:none}.cg-btn:active:not(:disabled),.cg-punto:active{transform:none}}
+@media (prefers-reduced-motion:reduce){.cg-cuerpo>*{animation:none}.cg-btn,.cg-punto,.cg-op,.cg-int-btn{transition:none}.cg-btn:active:not(:disabled),.cg-punto:active{transform:none}}
 
 /* ── Accesibilidad: sin animaciones decorativas si el sistema lo pide ── */
 @media (prefers-reduced-motion:reduce){
@@ -10033,15 +10043,32 @@ const CheckGuiado = (() => {
       ['libido', 'Cambios en el deseo sexual'],
       ['sueno', 'Insomnio o sudor de noche'],
       ['aplicacion', 'Dolor en la zona de aplicación'],
+      ['nauseas', 'Náuseas'],
+      ['vomitos', 'Vómitos'],
+      ['estrenimiento', 'Estreñimiento'],
+      ['diarrea', 'Diarrea'],
+      ['acidez', 'Acidez o reflujo'],
       [NINGUNO, 'Nada de esto'],
     ],
   };
+  // Los efectos digestivos de la lista de ciclo: se muestran solo a quien usa un GLP-1 (lo dice el servidor).
+  const DIGESTIVAS = ['nauseas', 'vomitos', 'estrenimiento', 'diarrea', 'acidez'];
+  // Cuánto molesta cada efecto marcado (solo en la lista de ciclo; la general no lleva).
+  const INTENSIDADES = [['leve', 'Leve'], ['moderado', 'Moderado'], ['fuerte', 'Fuerte']];
+  const PREGUNTA_INTENSIDAD = '¿Cuánto te molesta?';
+  const AVISO_INTENSIDAD = 'Elegí cuánto te molesta';
   const AVISO_RANGO = 'Revisá el peso: tiene que estar entre 30 y 300 kg.';
 
   // Qué lista le toca: la de ciclo solo si el servidor dice explícitamente que está en ciclo.
   const catalogoDe = (enCiclo) => (enCiclo === true ? 'ciclo' : 'general');
   const esCatalogo = (c) => c === 'general' || c === 'ciclo';
-  const opciones = (c) => (CATALOGOS[c] || CATALOGOS.general).map(([clave, etiqueta]) => ({ clave, etiqueta }));
+  /* Las opciones de una lista. `glp1` decide solo lo que se MUESTRA de la de ciclo: sin GLP-1 no aparecen las
+     digestivas. Sin ese dato (normalizar, el resumen) va la lista entera: lo ya marcado se acepta siempre. */
+  const opciones = (c, glp1 = true) => (CATALOGOS[c] || CATALOGOS.general)
+    .filter(([clave]) => glp1 === true || c !== 'ciclo' || !DIGESTIVAS.includes(clave))
+    .map(([clave, etiqueta]) => ({ clave, etiqueta }));
+  const intensidades = () => INTENSIDADES.map(([clave, etiqueta]) => ({ clave, etiqueta }));
+  const llevaIntensidad = (c) => c === 'ciclo';
 
   function titulo(p, catalogo = 'general') {
     switch (p) {
@@ -10083,6 +10110,23 @@ const CheckGuiado = (() => {
     const validas = opciones(c).map(o => o.clave).filter(k => (senales || []).includes(k));
     return validas.length > 1 ? validas.filter(k => k !== NINGUNO) : validas;
   }
+  /* Las intensidades que valen: solo de la lista de ciclo, solo de efectos marcados (nunca de «Nada de esto») y
+     solo con un valor conocido. En el orden del catálogo. */
+  function normalizarIntensidades(senales, ints, c) {
+    const queda = {};
+    if (!llevaIntensidad(c)) return queda;
+    const o = ints && typeof ints === 'object' ? ints : {};
+    for (const k of normalizar(senales, c)) {
+      if (k !== NINGUNO && INTENSIDADES.some(([v]) => v === o[k])) queda[k] = o[k];
+    }
+    return queda;
+  }
+  // ¿Hay algún efecto marcado sin decir cuánto molesta? (Con eso no se sigue ni se envía.)
+  function faltaIntensidad(b) {
+    if (!llevaIntensidad(b.catalogo)) return false;
+    const ints = normalizarIntensidades(b.senales, b.intensidades, b.catalogo);
+    return normalizar(b.senales, b.catalogo).some(k => k !== NINGUNO && !ints[k]);
+  }
 
   // «Faltan: Energía, Hambre» (el mismo texto del check de siempre), o null si están las cuatro escalas.
   function faltan(valores) {
@@ -10107,6 +10151,13 @@ const CheckGuiado = (() => {
     if (o.valores && typeof o.valores === 'object') {
       for (const k of Object.keys(o.valores)) { const n = Number(o.valores[k]); if (Number.isInteger(n)) valores[k] = n; }
     }
+    // Un borrador guardado antes de que existieran las intensidades no trae el campo: queda vacío.
+    const intensidades = {};
+    if (o.intensidades && typeof o.intensidades === 'object' && !Array.isArray(o.intensidades)) {
+      for (const k of Object.keys(o.intensidades)) {
+        if (INTENSIDADES.some(([v]) => v === o.intensidades[k])) intensidades[k] = o.intensidades[k];
+      }
+    }
     return {
       semana: String(o.semana || ''),
       paso: PASOS.includes(o.paso) ? o.paso : 'peso',
@@ -10114,6 +10165,7 @@ const CheckGuiado = (() => {
       valores,
       catalogo: esCatalogo(o.catalogo) ? o.catalogo : 'general',
       senales: Array.isArray(o.senales) ? o.senales.filter(s => typeof s === 'string') : [],
+      intensidades,
       nota: typeof o.nota === 'string' ? o.nota : '',
     };
   }
@@ -10124,10 +10176,10 @@ const CheckGuiado = (() => {
 
   /* El borrador con el que se abre: el guardado si es de esta semana; si no, uno nuevo con lo que ya está enviado.
      Si el perfil cambió (otro catálogo), lo marcado con la lista anterior no vale. */
-  function abrir({ guardado, semana, catalogo, enviado, senalesEnviadas, catalogoEnviado }) {
+  function abrir({ guardado, semana, catalogo, enviado, senalesEnviadas, catalogoEnviado, intensidadesEnviadas }) {
     if (guardado && guardado.semana === semana) {
       const b = borrador(guardado);
-      if (b.catalogo !== catalogo) { b.catalogo = catalogo; b.senales = []; }
+      if (b.catalogo !== catalogo) { b.catalogo = catalogo; b.senales = []; b.intensidades = {}; }
       return b;
     }
     const b = borrador({ semana, catalogo });
@@ -10136,7 +10188,10 @@ const CheckGuiado = (() => {
       b.nota = typeof enviado.nota === 'string' ? enviado.nota : '';
       b.paso = 'resumen';
     }
-    if (Array.isArray(senalesEnviadas) && catalogoEnviado === catalogo) b.senales = normalizar(senalesEnviadas, catalogo);
+    if (Array.isArray(senalesEnviadas) && catalogoEnviado === catalogo) {
+      b.senales = normalizar(senalesEnviadas, catalogo);
+      b.intensidades = normalizarIntensidades(b.senales, intensidadesEnviadas, catalogo);
+    }
     return b;
   }
 
@@ -10159,18 +10214,22 @@ const CheckGuiado = (() => {
     const f = faltan(b.valores);
     if (f) return f;
     if (!normalizar(b.senales, b.catalogo).length) return `Falta: ${titulo('senales', b.catalogo)}`;
+    if (faltaIntensidad(b)) return AVISO_INTENSIDAD;
     return null;
   }
   // El primer paso al que hay que volver para completar lo que falta.
   function pasoQueFalta(b) {
     if (faltan(b.valores) !== null) return 'escalas';
-    if (!normalizar(b.senales, b.catalogo).length) return 'senales';
+    if (!normalizar(b.senales, b.catalogo).length || faltaIntensidad(b)) return 'senales';
     return null;
   }
-  // «Acné o piel grasa, Retención de líquido o hinchazón» para la fila del resumen.
-  function textoSenales(senales, c) {
+  // «Acné o piel grasa · Leve, Náuseas · Moderado» para la fila del resumen (sin intensidad, solo el efecto).
+  function textoSenales(senales, c, ints) {
     const n = normalizar(senales, c);
-    return opciones(c).filter(o => n.includes(o.clave)).map(o => o.etiqueta).join(', ');
+    const cuanto = normalizarIntensidades(senales, ints, c);
+    const nombre = (v) => (INTENSIDADES.find(([k]) => k === v) || [])[1];
+    return opciones(c).filter(o => n.includes(o.clave))
+      .map(o => (cuanto[o.clave] ? `${o.etiqueta} · ${nombre(cuanto[o.clave])}` : o.etiqueta)).join(', ');
   }
 
   // La tarjeta de Revisión.
@@ -10202,14 +10261,16 @@ const CheckGuiado = (() => {
     const ops = [{ kind: 'checkin', dedupeKey: `checkin_${fecha}`, payload: { fecha, datos } }];
     if (valor !== null && valor !== pesoDeHoy) ops.push({ kind: 'peso', dedupeKey: `peso_${fecha}`, payload: { fecha, valor } });
     ops.push({ kind: 'check_guiado', dedupeKey: `check_guiado_${fecha}`,
-      payload: { fecha, respuestas: { catalogo: b.catalogo, senales: normalizar(b.senales, b.catalogo) } } });
+      payload: { fecha, respuestas: { catalogo: b.catalogo, senales: normalizar(b.senales, b.catalogo),
+        intensidades: normalizarIntensidades(b.senales, b.intensidades, b.catalogo) } } });
     return ops;
   }
   // La llamada que guarda lo marcado (el ejecutor `check_guiado` de la cola).
   const rpcGuardar = (token, p) => ({ funcion: 'mypump_check_guiado_guardar',
     parametros: { p_token: token, p_fecha: (p && p.fecha) || null, p_respuestas: (p && p.respuestas) || {} } });
 
-  return { PASOS, NINGUNO, AVISO_RANGO, catalogoDe, esCatalogo, opciones, titulo, apoyo, omitir, pasos, alternar, normalizar, faltan,
+  return { PASOS, NINGUNO, AVISO_RANGO, DIGESTIVAS, PREGUNTA_INTENSIDAD, AVISO_INTENSIDAD, catalogoDe, esCatalogo, opciones,
+    intensidades, llevaIntensidad, normalizarIntensidades, faltaIntensidad, titulo, apoyo, omitir, pasos, alternar, normalizar, faltan,
     leerPeso, borrador, empezado, abrir, retomar, puedeSeguir, faltaParaEnviar, pasoQueFalta, textoSenales, estado,
     textoTarjeta, botonTarjeta, opsDeEnvio, rpcGuardar };
 })();
@@ -10862,7 +10923,7 @@ function _cgAplicarPalanca(v) {
   try { renderRecordatorio(); } catch (_) {}
 }
 
-/* Lo último que dijo `mypump_check_guiado_get` ({enCiclo, semana, catalogo, senales}). Queda en el navegador: sin
+/* Lo último que dijo `mypump_check_guiado_get` ({enCiclo, glp1, semana, catalogo, senales, intensidades}). Queda en el navegador: sin
    señal, la lista de «¿Notaste algo?» no cambia. */
 function _cgSrv() {
   if (!_cgSrvLeido) {
@@ -10878,6 +10939,8 @@ function _cgSrvGuardar(v) {
   try { if (v) localStorage.setItem(_CG_SRV_KEY(), JSON.stringify(v)); else localStorage.removeItem(_CG_SRV_KEY()); } catch (_) {}
 }
 const _cgSemana = () => _lunesISO(hoyLocal());
+// Un objeto simple o null (lo que venga del servidor o de la cola puede no traerlo).
+const _cgObjeto = (o) => (o && typeof o === 'object' && !Array.isArray(o) ? o : null);
 
 /* Solo con la palanca prendida. Sin red o con un error pasajero queda lo último que se supo; sin la función en la
    base, o con `activo:false`, nadie está en ciclo: la lista general. */
@@ -10888,9 +10951,11 @@ async function loadCheckGuiado() {
     const j = r.data;
     _cgSrvGuardar(j && typeof j === 'object' && j.activo === true ? {
       enCiclo: j.en_ciclo === true,
+      glp1: j.glp1 === true,   // falta o false = no usa GLP-1: no ve los efectos digestivos
       semana: typeof j.semana === 'string' ? j.semana.slice(0, 10) : null,
       catalogo: CheckGuiado.esCatalogo(j.catalogo) ? j.catalogo : null,
       senales: Array.isArray(j.senales) ? j.senales.filter(s => typeof s === 'string') : null,
+      intensidades: _cgObjeto(j.intensidades),
     } : null);
   } else if (r && (r.codigo === 'PGRST202' || r.status === 404)) {
     _cgSrvGuardar(null);
@@ -10916,8 +10981,9 @@ function _cgAplicarPendiente() {
   const r = op && op.payload.respuestas;
   if (!r || !Array.isArray(r.senales)) return;
   const s = _cgSrv();
-  STATE.cgServidor = { enCiclo: !!(s && s.enCiclo), semana: _cgSemana(),
-    catalogo: CheckGuiado.esCatalogo(r.catalogo) ? r.catalogo : null, senales: r.senales.filter(x => typeof x === 'string') };
+  STATE.cgServidor = { enCiclo: !!(s && s.enCiclo), glp1: !!(s && s.glp1), semana: _cgSemana(),
+    catalogo: CheckGuiado.esCatalogo(r.catalogo) ? r.catalogo : null, senales: r.senales.filter(x => typeof x === 'string'),
+    intensidades: _cgObjeto(r.intensidades) };
 }
 // El check enviado de esta semana (el que espera en la cola gana), o null.
 function _cgCheckin() {
@@ -11026,6 +11092,7 @@ function _cgAbrir(pasoPedido) {
     enviado: ck ? { valores, nota: ck.nota || '' } : null,
     senalesEnviadas: deEstaSemana ? srv.senales : null,
     catalogoEnviado: deEstaSemana ? srv.catalogo : null,
+    intensidadesEnviadas: deEstaSemana ? _cgObjeto(srv.intensidades) : null,
   });
   // Si hoy ya hay peso cargado, viene puesto.
   const pesoHoy = _cgPesoDeHoy();
@@ -11034,6 +11101,9 @@ function _cgAbrir(pasoPedido) {
   if (!b.peso.trim() && pesoHoy != null) b.peso = _cgKg(pesoHoy);
   const pasos = CheckGuiado.pasos(_pendientesSemana().faltanFotos);
   _cg = { b, pasos, listo: false, tocado: !!guardado, yaEnviado: !!ck, aviso: '', foco: document.activeElement,
+    glp1: !!srv && srv.glp1 === true,   // se fija al abrir: la lista no cambia con el check abierto
+    // Un efecto digestivo que ya venía marcado (dejó el GLP-1 esta semana) se sigue viendo, para poder cambiarlo o sacarlo.
+    yaMarcadas: b.senales.filter(k => CheckGuiado.DIGESTIVAS.includes(k)),
     paso: pasoPedido && pasos.includes(pasoPedido) ? pasoPedido : CheckGuiado.retomar(b, pasos) };
 
   const ov = document.createElement('div');
@@ -11133,6 +11203,17 @@ function _cgSeguir() {
     if (valor === null) { _cg.aviso = CheckGuiado.AVISO_RANGO; _cgRefrescar(); return; }
     _cgGuardarPeso(valor);
   }
+  // Un efecto marcado sin decir cuánto molesta: no avanza, lo dice y lleva al primero que falta.
+  if (paso === 'senales' && CheckGuiado.faltaIntensidad(b)) {
+    _cg.aviso = CheckGuiado.AVISO_INTENSIDAD;
+    _cgRefrescar();
+    const ov = document.getElementById('cgOv');
+    const falta = ov && ov.querySelector('.cg-int.is-falta');
+    // El foco va al primero que falta (en Safari, tocar un botón no le da foco y quedaría fuera del check).
+    if (falta) { const primero = falta.querySelector('button'); if (primero) primero.focus({ preventScroll: true }); }
+    if (falta) falta.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    return;
+  }
   _cg.tocado = true;
   _cgMover(1);
 }
@@ -11144,7 +11225,11 @@ function _cgEnviar() {
   // Quedó abierto de la semana pasada: no se manda con la fecha de esta. Se cierra y se empieza de nuevo.
   if (b.semana !== _cgSemana()) { _cg.tocado = false; _cgCerrar(); _cgBorrarBorrador(); return; }
   const falta = CheckGuiado.pasoQueFalta(b);
-  if (falta) { _cgIr(falta); return; }
+  if (falta) {
+    _cgIr(falta);
+    if (falta === 'senales' && CheckGuiado.faltaIntensidad(b)) { _cg.aviso = CheckGuiado.AVISO_INTENSIDAD; _cgRefrescar(); }
+    return;
+  }
   const hoy = hoyLocal();
   const ops = CheckGuiado.opsDeEnvio(b, hoy, _cgPesoDeHoy());
   if (!ops.length) {   // lo único que puede frenarlo acá es un peso que no es válido
@@ -11156,7 +11241,8 @@ function _cgEnviar() {
     else if (op.kind === 'peso') _cgPonerPeso(op.payload.valor);
     else if (op.kind === 'check_guiado') {
       const s = _cgSrv();
-      _cgSrvGuardar({ enCiclo: !!(s && s.enCiclo), semana: _lunesISO(hoy), catalogo: op.payload.respuestas.catalogo, senales: op.payload.respuestas.senales });
+      _cgSrvGuardar({ enCiclo: !!(s && s.enCiclo), glp1: !!(s && s.glp1), semana: _lunesISO(hoy), catalogo: op.payload.respuestas.catalogo,
+        senales: op.payload.respuestas.senales, intensidades: op.payload.respuestas.intensidades });
     }
     Outbox.enqueue(op.kind, op.payload, op.dedupeKey);
   }
@@ -11186,11 +11272,28 @@ function _cgAlTocar(e) {
       break;
     case 'senal':
       b.senales = CheckGuiado.alternar(b.senales, t.dataset.k);
+      // Lo que se desmarca (o «Nada de esto») pierde su intensidad.
+      b.intensidades = CheckGuiado.normalizarIntensidades(b.senales, b.intensidades, b.catalogo);
+      if (!CheckGuiado.faltaIntensidad(b)) _cg.aviso = '';
+      _cg.tocado = true; _cgGuardarBorrador(); _cgRefrescar();
+      // Si el foco estaba en una intensidad que se acaba de esconder, vuelve a la opción (no queda fuera del check).
+      { const f = document.activeElement;
+        if (!f || !t.closest('.cg-ov').contains(f) || (f.closest && f.closest('.cg-int[hidden]'))) t.focus({ preventScroll: true }); }
+      break;
+    case 'intensidad':
+      b.intensidades = CheckGuiado.normalizarIntensidades(b.senales, { ...b.intensidades, [t.dataset.k]: t.dataset.v }, b.catalogo);
+      if (!CheckGuiado.faltaIntensidad(b)) _cg.aviso = '';
       _cg.tocado = true; _cgGuardarBorrador(); _cgRefrescar();
       break;
     case 'fila': _cgIr(t.dataset.paso); break;
     case 'foto': _pedirFoto(t.dataset.pose); break;
   }
+}
+// Las opciones del paso «¿Notaste algo?»: las de su lista y, sin GLP-1, las digestivas que ya tenía marcadas.
+function _cgOpciones() {
+  const { b, glp1, yaMarcadas } = _cg;
+  const suyas = CheckGuiado.opciones(b.catalogo, glp1).map(o => o.clave);
+  return CheckGuiado.opciones(b.catalogo).filter(o => suyas.includes(o.clave) || yaMarcadas.includes(o.clave));
 }
 function _cgAlEscribir(e) {
   if (!_cg) return;
@@ -11254,10 +11357,15 @@ function _cgCuerpoHtml() {
     case 'fotos':
       return `<div id="cgFotosHost">${_cgFotosHtml()}</div>`;
     case 'senales':
-      return `<div class="cg-ops" role="group" aria-labelledby="cgTitulo">${CheckGuiado.opciones(b.catalogo).map(o => `
+      // Debajo de cada efecto de la lista de ciclo, cuánto molesta: aparece al marcarlo.
+      return `<div class="cg-ops" role="group" aria-labelledby="cgTitulo">${_cgOpciones().map(o => `
         <button type="button" class="cg-op" role="checkbox" data-cg="senal" data-k="${o.clave}" data-testid="cg-senal-${o.clave}">
           <span>${escapeHtml(o.etiqueta)}</span><span class="cg-tilde">${_CG_ICO.tilde}</span>
-        </button>`).join('')}</div>`;
+        </button>${CheckGuiado.llevaIntensidad(b.catalogo) && o.clave !== CheckGuiado.NINGUNO ? `
+        <div class="cg-int" data-int="${o.clave}" role="group" aria-label="${escapeHtml(o.etiqueta)}: ${escapeHtml(CheckGuiado.PREGUNTA_INTENSIDAD)}" hidden>
+          <p class="cg-int-et" aria-hidden="true">${escapeHtml(CheckGuiado.PREGUNTA_INTENSIDAD)}</p>
+          <div class="cg-int-fila">${CheckGuiado.intensidades().map(n => `<button type="button" class="cg-int-btn" data-cg="intensidad" data-k="${o.clave}" data-v="${n.clave}" data-testid="cg-intensidad-${o.clave}-${n.clave}" aria-pressed="false">${n.etiqueta}</button>`).join('')}</div>
+        </div>` : ''}`).join('')}</div>`;
     case 'nota':
       return `<textarea class="cg-nota" id="cgNota" data-testid="cg-nota" rows="5" maxlength="2000" placeholder="Escribí acá (opcional)" aria-labelledby="cgTitulo"></textarea>`;
     default: {
@@ -11271,7 +11379,7 @@ function _cgCuerpoHtml() {
       };
       const kilos = b.peso.trim();
       const kg = kilos ? CheckGuiado.leerPeso(kilos) : null;
-      const senales = CheckGuiado.textoSenales(b.senales, b.catalogo);
+      const senales = CheckGuiado.textoSenales(b.senales, b.catalogo, b.intensidades);
       const nota = b.nota.trim();
       const falta = CheckGuiado.faltaParaEnviar(b);
       const salud = _saludSemanaHtml();
@@ -11323,6 +11431,7 @@ function _cgPintar() {
   const omitir = CheckGuiado.omitir(paso);
   pie.innerHTML = `
     ${paso === 'escalas' ? '<p class="cg-falta" id="cgFalta" data-testid="cg-falta" role="status"></p>' : ''}
+    ${paso === 'senales' ? '<p class="cg-aviso" id="cgAviso" data-testid="cg-aviso-intensidad" role="alert"></p>' : ''}
     ${paso === 'resumen'
       ? `<button type="button" class="cg-btn" data-cg="enviar" data-testid="cg-enviar">${_cg.yaEnviado ? 'Actualizar mi check' : 'Enviar mi check'}</button>`
       : '<button type="button" class="cg-btn" data-cg="seguir" data-testid="cg-seguir">Seguir</button>'}
@@ -11350,6 +11459,18 @@ function _cgRefrescar() {
     const on = b.senales.includes(x.dataset.k);
     x.classList.toggle('is-on', on);
     x.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  ov.querySelectorAll('.cg-int').forEach(x => {
+    const k = x.dataset.int;
+    const on = b.senales.includes(k);
+    x.hidden = !on;
+    // Recién después de tocar «Seguir» se marca cuál falta.
+    x.classList.toggle('is-falta', on && !!_cg.aviso && !b.intensidades[k]);
+    x.querySelectorAll('[data-cg="intensidad"]').forEach(y => {
+      const elegido = on && b.intensidades[k] === y.dataset.v;
+      y.classList.toggle('is-on', elegido);
+      y.setAttribute('aria-pressed', elegido ? 'true' : 'false');
+    });
   });
   const peso = ov.querySelector('#cgPeso');
   if (peso) _cgAnchoPeso(peso);

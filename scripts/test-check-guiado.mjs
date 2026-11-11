@@ -67,7 +67,52 @@ for (const [e, [texto, boton]] of Object.entries(V.tarjeta)) {
 V.pasos.forEach((c, i) => caso(`pasos ${i}`, () => assert.deepEqual(CG.pasos(c.faltanFotos), c.pasos)));
 V.alternar.forEach((c, i) => caso(`alternar ${i}`, () => assert.deepEqual(CG.alternar(c.senales, c.clave), c.queda)));
 V.normalizar.forEach((c, i) => caso(`normalizar ${i}`, () => assert.deepEqual(CG.normalizar(c.senales, c.catalogo), c.queda)));
-V.textoSenales.forEach((c, i) => caso(`textoSenales ${i}`, () => assert.equal(CG.textoSenales(c.senales, c.catalogo), c.texto)));
+V.textoSenales.forEach((c, i) => caso(`textoSenales ${i}`, () => assert.equal(CG.textoSenales(c.senales, c.catalogo, c.intensidades), c.texto)));
+caso('textoSenales sin intensidades (o con algo que no es un objeto) da solo los efectos', () => {
+  for (const x of [undefined, null, 'x', []]) assert.equal(CG.textoSenales(['acne'], 'ciclo', x), 'Acné o piel grasa');
+});
+
+// v3: efectos digestivos solo con GLP-1, e intensidad por efecto.
+caso('las digestivas son las del vector y están todas en la lista de ciclo', () => {
+  assert.deepEqual(CG.DIGESTIVAS, V.digestivas);
+  const claves = V.catalogos.ciclo.map(([k]) => k);
+  for (const k of V.digestivas) assert.ok(claves.includes(k), k);
+});
+V.opcionesCiclo.forEach((c) => caso(`opciones de ciclo con glp1=${c.glp1}`, () =>
+  assert.deepEqual(CG.opciones('ciclo', c.glp1).map(o => o.clave), c.claves)));
+caso('sin el dato de GLP-1 (falta, null, texto) no se muestran las digestivas', () => {
+  const sin = V.opcionesCiclo.find(c => c.glp1 === false).claves;
+  for (const x of [false, null, 'true', 1]) assert.deepEqual(CG.opciones('ciclo', x).map(o => o.clave), sin);
+});
+caso('la lista general no depende de GLP-1', () => {
+  for (const x of [true, false]) assert.deepEqual(CG.opciones('general', x).map(o => [o.clave, o.etiqueta]), V.catalogos.general);
+});
+caso('las intensidades y sus textos son los del vector', () => {
+  assert.deepEqual(CG.intensidades().map(o => [o.clave, o.etiqueta]), V.intensidades.opciones);
+  assert.equal(CG.AVISO_INTENSIDAD, V.intensidades.aviso);
+  assert.equal(CG.PREGUNTA_INTENSIDAD, V.intensidades.pregunta);
+  assert.equal(CG.llevaIntensidad('ciclo'), true);
+  assert.equal(CG.llevaIntensidad('general'), false);
+});
+V.normalizarIntensidades.forEach((c, i) => caso(`normalizarIntensidades ${i}`, () =>
+  assert.deepEqual(CG.normalizarIntensidades(c.senales, c.intensidades, c.catalogo), c.queda)));
+caso('normalizarIntensidades aguanta lo que no es un objeto', () => {
+  for (const x of [undefined, null, 'x', 3, []]) assert.deepEqual(CG.normalizarIntensidades(['acne'], x, 'ciclo'), {});
+});
+V.faltaIntensidad.forEach((c, i) => caso(`faltaIntensidad ${i}`, () =>
+  assert.equal(CG.faltaIntensidad(CG.borrador(c.borrador)), c.falta)));
+caso('desmarcar un efecto o tocar «Nada de esto» le borra la intensidad', () => {
+  const ints = { acne: 'leve', sueno: 'fuerte' };
+  const sinAcne = CG.alternar(['acne', 'sueno'], 'acne');
+  assert.deepEqual(CG.normalizarIntensidades(sinAcne, ints, 'ciclo'), { sueno: 'fuerte' });
+  assert.deepEqual(CG.normalizarIntensidades(CG.alternar(['acne', 'sueno'], 'ninguno'), ints, 'ciclo'), {});
+});
+caso('un borrador viejo, sin intensidades, se lee con el campo vacío', () => {
+  const { intensidades, ...viejo } = V.payload.borrador;
+  assert.deepEqual(CG.borrador(viejo).intensidades, {});
+  assert.deepEqual(CG.borrador({ ...viejo, intensidades: { acne: 'leve', sueno: 'muchisimo', pecho: 4 } }).intensidades, { acne: 'leve' });
+  for (const x of [null, 'x', [], 3]) assert.deepEqual(CG.borrador({ ...viejo, intensidades: x }).intensidades, {});
+});
 V.puedeSeguir.forEach((c, i) => caso(`puedeSeguir ${i} (${c.paso})`, () =>
   assert.equal(CG.puedeSeguir(c.paso, CG.borrador(c.borrador), c.fotosHechas), c.puede)));
 V.faltaParaEnviar.forEach((c, i) => caso(`faltaParaEnviar ${i}`, () => {
@@ -77,7 +122,7 @@ V.faltaParaEnviar.forEach((c, i) => caso(`faltaParaEnviar ${i}`, () => {
 }));
 V.abrir.forEach((c) => caso(`abrir: ${c.caso}`, () => {
   const queda = CG.abrir({ guardado: c.guardado, semana: c.semana, catalogo: c.catalogo, enviado: c.enviado,
-    senalesEnviadas: c.senalesEnviadas, catalogoEnviado: c.catalogoEnviado });
+    senalesEnviadas: c.senalesEnviadas, catalogoEnviado: c.catalogoEnviado, intensidadesEnviadas: c.intensidadesEnviadas });
   assert.deepEqual(queda, c.queda);
 }));
 V.retomar.forEach((c, i) => caso(`retomar ${i}`, () => assert.equal(CG.retomar(CG.borrador({ semana: '2026-11-09', paso: c.paso }), c.pasos), c.abre)));
@@ -92,7 +137,7 @@ caso('el borrador pasa por JSON sin cambiar (así se guarda en el navegador)', (
 caso('un borrador roto no rompe: queda uno vacío', () => {
   for (const x of [null, 3, 'x', [], { paso: 'otro', valores: 'x', senales: 4, peso: 7, catalogo: 'raro' }]) {
     const b = CG.borrador(x);
-    assert.deepEqual({ ...b, semana: '' }, { semana: '', paso: 'peso', peso: '', valores: {}, catalogo: 'general', senales: [], nota: '' });
+    assert.deepEqual({ ...b, semana: '' }, { semana: '', paso: 'peso', peso: '', valores: {}, catalogo: 'general', senales: [], intensidades: {}, nota: '' });
   }
 });
 caso('faltan: el mismo texto del check de siempre', () => {
@@ -210,7 +255,7 @@ const textos = [
   ...CG.PASOS.flatMap(p => ['general', 'ciclo'].flatMap(c => [CG.titulo(p, c), CG.apoyo(p, c), CG.omitir(p) || ''])),
   ...['general', 'ciclo'].flatMap(c => CG.opciones(c).map(o => o.etiqueta)),
   ...Object.keys(V.tarjeta).flatMap(e => [CG.textoTarjeta(e), CG.botonTarjeta(e)]),
-  CG.AVISO_RANGO, CG.faltan({}), ...METRICAS.flatMap(m => [m.label, m.lo, m.hi]),
+  CG.AVISO_RANGO, CG.AVISO_INTENSIDAD, CG.PREGUNTA_INTENSIDAD, ...CG.intensidades().map(o => o.etiqueta), CG.faltan({}), ...METRICAS.flatMap(m => [m.label, m.lo, m.hi]),
   ...literales(reglas), ...literales(pantalla),
 ];
 const PROHIBIDO = [/\bIA\b/, /inteligencia artificial/i, /\bcoach\b/i, /entrenador/i, /\bRIR\b/i, /repeticiones en reserva/i];
@@ -226,7 +271,7 @@ caso('la pantalla dice lo que pide la especificación', () => {
 });
 caso('los identificadores de prueba son los de las tres plataformas', () => {
   for (const id of ['check-guiado-tarjeta', 'check-guiado-abrir', 'cg-cerrar', 'cg-avance', 'cg-atras', 'cg-seguir', 'cg-omitir',
-    'cg-titulo', 'cg-peso', 'cg-escala-${m.k}-${n}', 'cg-senal-${o.clave}', 'cg-nota', 'cg-fila-${p}', 'cg-enviar', 'cg-falta',
+    'cg-titulo', 'cg-peso', 'cg-escala-${m.k}-${n}', 'cg-senal-${o.clave}', 'cg-intensidad-${o.clave}-${n.clave}', 'cg-nota', 'cg-fila-${p}', 'cg-enviar', 'cg-falta',
     'cg-listo', 'cg-cerrar-listo']) {
     assert.ok(pantalla.includes(id), `falta ${id}`);
   }
