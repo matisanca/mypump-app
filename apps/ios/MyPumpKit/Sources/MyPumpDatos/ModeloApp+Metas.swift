@@ -7,6 +7,8 @@ import MyPumpReglas
 extension ModeloApp {
     /// Las metas del plan, o nil con la palanca apagada o sin ninguna meta (planes viejos: no se inventa nada).
     public var metas: MetasPlan? {
+        // La demo trae las suyas (`historial.json`), sin palanca: nada de esto sale de una cuenta.
+        if esDemo { return demoHistorial?.metas }
         guard palanca.metasPasos, let e = dieta?.estructura else { return nil }
         let m = MetasPlan(e)
         return m.vacio ? nil : m
@@ -15,11 +17,11 @@ extension ModeloApp {
     /// El «Pump del día» de hoy con los pasos de Salud. nil sin meta de pasos. `conectado` dice si hay de dónde sacarlos.
     public func pumpDelDia(hoy: String = FechaLocal.hoy()) -> (vista: PumpDelDia.Vista, conectado: Bool)? {
         guard let meta = metas?.metaPasos else { return nil }
-        let filas = salud?.salud ?? []
+        let filas = esDemo ? (demoHistorial?.salud ?? []) : (salud?.salud ?? [])
         let p = PumpDelDia.pasosPorDia(filas)
         guard let v = PumpDelDia.vista(pasosPorDia: p, meta: meta, hoy: hoy) else { return nil }
         // Conectado: Salud sincroniza desde este teléfono, o llegaron pasos de otro lado (otro teléfono, un reloj) esta semana.
-        let conectado = salud?.conectado == true || SaludVista.tieneReciente(filas, tipos: ["pasos"], dias: 7, hoy: hoy)
+        let conectado = esDemo || salud?.conectado == true || SaludVista.tieneReciente(filas, tipos: ["pasos"], dias: 7, hoy: hoy)
         return (v, conectado)
     }
 

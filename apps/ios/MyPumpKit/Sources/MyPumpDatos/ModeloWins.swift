@@ -1,0 +1,187 @@
+import Foundation
+import Observation
+import MyPumpModelos
+import MyPumpReglas
+
+/// «Récords y logros» (2.3.0, palanca `wins_app`): el permiso del alumno para que Mati se entere de sus logros y la cola
+/// local de los que faltan dejar en el servidor. Contrato: `supabase/propuestas/nativa_wins_lista_previa.sql`.
+///
+/// - Con la palanca apagada `ModeloApp` no llama a nada de esto: queda lo último que se supo del permiso (para que el
+///   interruptor de Mis datos se siga viendo y se pueda apagar) y nada más.
+/// - Un logro solo se encola con la palanca prendida y el último permiso conocido en true.
+/// - La app nunca publica ni manda mensajes: deja filas `pendiente` con `mypump_wins_registrar`. No usa el Outbox general.
+@MainActor @Observable
+public final class ModeloWins {
+    /// Un logro en la cola local.
+    public struct Logro: Codable, Equatable, Sendable, Identifiable {
+        /// UUID propio: un reintento no duplica.
+        public let id: String
+        public let tipo: ReglasWins.Tipo
+        public let clave: String
+        /// Fecha local YYYY-MM-DD.
+        public let dia: String
+        public let datos: JSONValue
+    }
+
+    /// Lo que queda en el teléfono, por cuenta.
+    struct Guardado: Codable {
+        var permiso: Bool
+        var cola: [Logro]
+    }
+
+    /// El servidor dijo que la función está prendida (`activa` de `mypump_wins_estado`).
+    public private(set) var activa = false
+    /// El último permiso conocido (se recuerda en disco para decidir sin red).
+    public private(set) var permiso = false
+    public private(set) var cola: [Logro] = []
+
+    @ObservationIgnored let cliente: ClienteRPC
+    @ObservationIgnored let token: String
+    @ObservationIgnored let disco: Disco?
+    /// La palanca `wins_app`, como la leyó `ModeloApp`.
+    @ObservationIgnored private var palanca = false
+    @ObservationIgnored private var vaciando = false
+
+    static let archivo = "wins.json"
+    public static let topeCola = 50
+    public static let plataforma = "ios"
+
+    public init(cliente: ClienteRPC, token: String, disco: Disco?) {
+        self.cliente = cliente; self.token = token; self.disco = disco
+        if let g = disco?.leer(Guardado.self, Self.archivo) {
+            permiso = g.permiso
+            cola = g.cola
+        }
+    }
+
+    /// Lo que decide la pantalla: prendida = la palanca y lo que dijo el servidor (sin red, la palanca recordada).
+    public var prendida: Bool { palanca }
+    /// El interruptor de Mis datos: con la palanca prendida, o apagada si el permiso quedó dado (para poder sacarlo).
+    public var visibleEnMisDatos: Bool { palanca || permiso }
+
+    // MARK: - Estado
+
+    /// Al abrir y al volver al frente, con la palanca prendida.
+    public func refrescar() async {
+        palanca = true
+        switch await cliente.llamar("mypump_wins_estado", ["p_token": .texto(token)]) {
+        case .success(let j):
+            guard j["ok"] == .bool(true) else { activa = false; return }   // token caído: no se toca lo guardado
+            activa = j["activa"] == .bool(true)
+            fijarPermiso(j["permiso"] == .bool(true))
+        case .failure(let e) where e.funcionInexistente:
+            // El servidor todavía no tiene la función: nada que mostrar ni que mandar.
+            activa = false
+            fijarPermiso(false)
+        case .failure:
+            break   // sin red: vale lo último que se supo
+        }
+    }
+
+    /// La palanca se apagó: no se llama a nada. El permiso recordado queda (el interruptor sigue para poder apagarlo).
+    public func apagar() {
+        palanca = false
+        activa = false
+    }
+
+    private func fijarPermiso(_ nuevo: Bool) {
+        if !nuevo { cola = [] }
+        permiso = nuevo
+        guardar()
+    }
+
+    private func guardar() { disco?.guardar(Guardado(permiso: permiso, cola: cola), Self.archivo) }
+
+    // MARK: - Permiso
+
+    /// «Sí, compartir». true si el servidor lo dejó dado; ahí los récords del festejo entran a la cola. Sin red o con un
+    /// error no queda dado.
+    public func darPermiso(records: [ReglasWins.Record] = [], dia: String = FechaLocal.hoy()) async -> Bool {
+        guard palanca else { return false }
+        let r = await cliente.llamar("mypump_wins_permiso", [
+            "p_token": .texto(token), "p_otorga": .bool(true), "p_version": .numero(Double(ReglasWins.permisoVersion)),
+            "p_plataforma": .texto(Self.plataforma),
+        ])
+        guard case .success(let j) = r, j["ok"] == .bool(true), j["permiso"] == .bool(true) else { return false }
+        permiso = true
+        guardar()
+        encolar(records, dia: dia)
+        return true
+    }
+
+    /// Apagar el interruptor. true si el servidor lo sacó: la cola local se vacía. Anda también con la palanca apagada.
+    public func revocar() async -> Bool {
+        let r = await cliente.llamar("mypump_wins_permiso", ["p_token": .texto(token), "p_otorga": .bool(false)])
+        guard case .success(let j) = r, j["ok"] == .bool(true) else { return false }
+        fijarPermiso(false)
+        return true
+    }
+
+    // MARK: - Cola
+
+    /// Los récords de un festejo. No encola nada sin la palanca o sin el permiso. Devuelve si quedaron en la cola.
+    @discardableResult
+    public func encolar(_ records: [ReglasWins.Record], dia: String = FechaLocal.hoy()) -> Bool {
+        guard palanca, permiso, !records.isEmpty else { return false }
+        for r in records { agregar(tipo: r.tipo, clave: r.clave, dia: dia, datos: r.datos) }
+        guardar()
+        Task { await vaciar() }
+        return true
+    }
+
+    /// La racha de pasos, si es un hito y hay permiso. Devuelve si quedó en la cola (la celebración suma su línea).
+    @discardableResult
+    public func encolarRacha(dias: Int, meta: Int, dia: String = FechaLocal.hoy()) -> Bool {
+        guard palanca, permiso, ReglasWins.esHito(dias) else { return false }
+        agregar(tipo: .rachaPasos, clave: "pasos", dia: dia, datos: ReglasWins.datosRacha(dias: dias, meta: meta))
+        guardar()
+        Task { await vaciar() }
+        return true
+    }
+
+    /// Uno por tipo, clave y día (como el servidor): el mismo logro otra vez reemplaza al que todavía no salió.
+    private func agregar(tipo: ReglasWins.Tipo, clave: String, dia: String, datos: JSONValue) {
+        cola.removeAll { $0.tipo == tipo && $0.clave == clave && $0.dia == dia }
+        cola.append(Logro(id: UUID().uuidString.lowercased(), tipo: tipo, clave: clave, dia: dia, datos: datos))
+        // Tope: lo más viejo se descarta.
+        if cola.count > Self.topeCola { cola.removeFirst(cola.count - Self.topeCola) }
+    }
+
+    /// Manda lo que haya: al encolar, al abrir la app y al volver al frente. Lo que el servidor contesta (guardado o no) sale
+    /// de la cola; un corte o un 5xx lo deja para después.
+    public func vaciar() async {
+        guard palanca, !vaciando else { return }
+        vaciando = true
+        defer { vaciando = false }
+        while let l = cola.first {
+            let r = await cliente.llamar("mypump_wins_registrar", [
+                "p_token": .texto(token), "p_id": .texto(l.id), "p_tipo": .texto(l.tipo.rawValue), "p_clave": .texto(l.clave),
+                "p_dia": .texto(l.dia), "p_datos": l.datos,
+            ])
+            switch r {
+            case .success(let j):
+                if j["ok"] == .bool(true) {
+                    if j["motivo"]?.comoTexto == "sin_permiso" { fijarPermiso(false); return }
+                    quitar(l)
+                } else if j["motivo"]?.comoTexto == "datos" {
+                    quitar(l)
+                } else {
+                    return   // token caído u otra respuesta: no se pierde nada, se verá en la próxima
+                }
+            case .failure(let e) where e.funcionInexistente:
+                cola = []
+                guardar()
+                return
+            case .failure(let e) where e.clase == .permanente:
+                quitar(l)   // el servidor lo rechazó: reintentar no lo arregla
+            case .failure:
+                return
+            }
+        }
+    }
+
+    private func quitar(_ l: Logro) {
+        cola.removeAll { $0.id == l.id }
+        guardar()
+    }
+}

@@ -100,6 +100,13 @@ public final class ModeloApp {
     public private(set) var tecnica: ModeloTecnica?
     /// Devolución de Mati: existe con cuenta, pero solo llama al servidor con la palanca `devolucion_semanal` prendida.
     public private(set) var devolucion: ModeloDevolucion?
+    /// Récords y logros (2.3.0): existe con cuenta, pero solo llama al servidor con la palanca `wins_app` prendida.
+    public private(set) var wins: ModeloWins?
+    /// La lista previa a la videollamada (2.3.0): con cuenta, solo llama con la palanca `lista_previa`; en la demo, la de
+    /// `historial.json`, fija.
+    public private(set) var listaPrevia: ModeloListaPrevia?
+    /// El historial inventado de la demo (2.3.0, `Demo.bundle/historial.json`). Solo con `esDemo`: nunca con una cuenta.
+    public private(set) var demoHistorial: HistorialDemo?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
     /// El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada).
@@ -235,6 +242,7 @@ public final class ModeloApp {
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        wins = nil; listaPrevia = nil; demoHistorial = nil
         suplementacion = nil
         esDemo = false
         sinRedEn = []
@@ -246,8 +254,10 @@ public final class ModeloApp {
     /// muestra (los clips genéricos de «Tu app», sin fecha de entrega), con el avance en memoria. `suplementacion`: la fila
     /// de `mypump_suplementacion` de muestra (`Demo.bundle/suplementacion.json`), así la revisión de Apple ve la pestaña.
     /// `agenda`: la de la demo (`Demo.bundle/agenda.json`, 2.2.0), con las franjas corridas al próximo día hábil; reservar confirma sin
-    /// crear ninguna videollamada.
-    public func entrarEnDemo(rutina: Data, dieta: Data, guia: Data? = nil, suplementacion: Data? = nil, agenda: Data? = nil) {
+    /// crear ninguna videollamada. `historial`: las ocho semanas inventadas (`Demo.bundle/historial.json`, 2.3.0): series, peso,
+    /// pasos, chat, devoluciones, metas y la lista previa. Sin él, la demo queda sin historial, como hasta la 2.2.0.
+    public func entrarEnDemo(rutina: Data, dieta: Data, guia: Data? = nil, suplementacion: Data? = nil, agenda: Data? = nil,
+                             historial: Data? = nil) {
         func envolver(_ estructura: Data, id: String) -> Data? {
             guard let e = try? JSONDecoder().decode(JSONValue.self, from: estructura) else { return nil }
             return try? JSONEncoder().encode(JSONValue.objeto(["id": .texto(id), "version": .numero(1), "estructura": e,
@@ -275,8 +285,12 @@ public final class ModeloApp {
             }
         self.suplementacion = suplementacion.flatMap { try? JSONDecoder().decode(RespuestaSuplementacion.self, from: $0) }
             .flatMap { $0.hay ? ModeloSuplementacion(muestra: $0) : nil }
+        demoHistorial = historial.flatMap { HistorialDemo(json: $0) }
+        listaPrevia = demoHistorial?.listaPrevia.map { ModeloListaPrevia(muestra: $0) }
         if let r = self.rutina {
-            entreno = ModeloEntreno(cliente: cliente, token: nil, outbox: nil, disco: nil, rutina: r, catalogo: catalogoVigente)
+            let e = ModeloEntreno(cliente: cliente, token: nil, outbox: nil, disco: nil, rutina: r, catalogo: catalogoVigente)
+            e.historialDemo = demoHistorial?.porClave
+            entreno = e
         }
         fase = .listo
         if let e = entreno { Task { await e.cargar() } }
@@ -287,6 +301,8 @@ public final class ModeloApp {
         esDemo = false
         rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; entreno = nil; guia = nil
         suplementacion = nil
+        demoHistorial = nil; listaPrevia = nil
+        registroMetas = PumpDelDia.Registro()
         token = almacen.leer()
         if let t = token {
             prepararCuenta(t)
@@ -305,6 +321,7 @@ public final class ModeloApp {
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        wins = nil; listaPrevia = nil; demoHistorial = nil
         suplementacion = nil
     }
 
@@ -341,6 +358,8 @@ public final class ModeloApp {
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
         tecnica = ModeloTecnica(cliente: cliente, token: t, disco: disco)
         devolucion = ModeloDevolucion(cliente: cliente, token: t, disco: disco)
+        wins = ModeloWins(cliente: cliente, token: t, disco: disco)
+        listaPrevia = ModeloListaPrevia(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
@@ -457,7 +476,7 @@ public final class ModeloApp {
         let (rr, dd, palancaLeida) = await (r, d, cfg)
         guard vigente() else { return }
         if let palancaLeida {
-            palanca = palancaLeida
+            palanca = palancaLeida.conArgumentosDePrueba()
             palancaLeida.recordar()
             await outbox?.usarPalanca(opsLegadas: palancaLeida.opsLegadas)
         }
@@ -519,6 +538,8 @@ public final class ModeloApp {
         await sincronizarGimnasio()
         await sincronizarTecnica()
         await sincronizarDevolucion()
+        await sincronizarWins()
+        await sincronizarListaPrevia()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -636,6 +657,24 @@ public final class ModeloApp {
         if palanca.devolucionSemanal { await devolucion.refrescar() } else { devolucion.apagar() }
     }
 
+    /// Récords y logros: con la palanca, el permiso al día y lo que quedó en la cola local. Apagada, ni una llamada.
+    private func sincronizarWins() async {
+        guard let wins else { return }
+        if palanca.winsApp {
+            await wins.refrescar()
+            await wins.vaciar()
+        } else {
+            wins.apagar()
+        }
+    }
+
+    /// La lista previa a la videollamada: solo lee. Apagada, se borra lo guardado. También la pide Entreno cuando cambia la
+    /// guía o la agenda (el modelo no pide más de una vez por minuto).
+    public func sincronizarListaPrevia() async {
+        guard !esDemo, let listaPrevia else { return }
+        if palanca.listaPrevia { await listaPrevia.refrescar() } else { listaPrevia.apagar() }
+    }
+
     private func sincronizarGimnasio() async {
         guard let gimnasio else { return }
         if palanca.gimnasioFotos {
@@ -690,6 +729,8 @@ public final class ModeloApp {
         await sincronizarGimnasio()
         await sincronizarTecnica()
         await sincronizarDevolucion()
+        await sincronizarWins()
+        await sincronizarListaPrevia()
         await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
         _ = await entreno?.alVolverAPrimerPlano()
     }

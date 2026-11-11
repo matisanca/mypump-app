@@ -81,6 +81,10 @@ public final class ModeloEntreno {
     /// historial que devuelve la demo, que no tiene red. nil = sin historial, como siempre.
     nonisolated(unsafe) public static var historialDeMuestra: (@Sendable (String) -> [RegistroHistorico])?
 
+    /// La demo sin cuenta (2.3.0): el historial inventado por clave (`HistorialDemo`). Lo pone `ModeloApp.entrarEnDemo`; solo
+    /// se mira sin token. nil = sin historial.
+    @ObservationIgnored public var historialDemo: [String: [RegistroHistorico]]?
+
     /// Se llama cuando el modelo cambia la rutina (avanzar de semana, bloque nuevo, recargar).
     @ObservationIgnored public var alCambiarRutina: ((CambioRutina) -> Void)?
 
@@ -876,6 +880,12 @@ public final class ModeloEntreno {
         return .cerrado
     }
 
+    /// Los récords del día (2.3.0, `ReglasWins`): lo que se festeja después de cerrar la sesión. Las marcas de antes salen
+    /// del historial por clave de días anteriores (lo mismo que usa el aviso de récord al confirmar una serie).
+    public func recordsDeHoy() -> [ReglasWins.Record] {
+        ReglasWins.records(dia.entradasDeRecords(hoy: FechaJS.ymd(reloj(), zona: zona)) { self.efectivo($0).ejercicio })
+    }
+
     // MARK: - Semana nueva y bloque nuevo (ENT-14/15)
 
     public enum ResultadoAvance: Equatable, Sendable {
@@ -1029,7 +1039,10 @@ public final class ModeloEntreno {
     }
 
     func traerHistorial(clave: String?, lugar: String) async -> Historial {
-        guard let token else { return .filas(Self.historialDeMuestra?(clave ?? "") ?? []) }
+        guard let token else {
+            if let muestra = Self.historialDeMuestra { return .filas(muestra(clave ?? "")) }
+            return .filas(demo ? (historialDemo?[clave ?? ""] ?? []) : [])
+        }
         if let clave, !sinHistorialPorClave {
             switch await porClave([clave]) {
             case .some(.some(let m)): return .filas(m[clave] ?? [])

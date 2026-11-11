@@ -29,6 +29,11 @@ public struct PalancaRemota: Equatable, Sendable {
     public var metasPasos = false
     /// Devolución de Mati en Revisión (`devolucion_semanal`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo.
     public var devolucionSemanal = false
+    /// Récords y logros (`wins_app`, 2.3.0): el festejo al cerrar la sesión y, con permiso, la cola para Mati. Sin la clave,
+    /// apagada: ni se muestra ni se llama a nada nuevo.
+    public var winsApp = false
+    /// La lista previa a la videollamada de comienzo (`lista_previa`, 2.3.0). Sin la clave, apagada.
+    public var listaPrevia = false
 
     public init() {}
 
@@ -46,6 +51,10 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveMetasPasos = "mypump-palanca-metas-pasos"
     /// El último valor leído de `devolucion_semanal`: prendida, sin red se sigue viendo la última devolución guardada.
     static let claveDevolucion = "mypump-palanca-devolucion-semanal"
+    /// El último valor leído de `wins_app`: prendida, sin red en el gimnasio el festejo sale igual al cerrar la sesión.
+    static let claveWins = "mypump-palanca-wins-app"
+    /// El último valor leído de `lista_previa`: sin red al arrancar, la lista guardada no aparece y desaparece.
+    static let claveListaPrevia = "mypump-palanca-lista-previa"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
@@ -58,6 +67,13 @@ public struct PalancaRemota: Equatable, Sendable {
         #endif
         if defaults.bool(forKey: claveMetasPasos) { p.metasPasos = true }
         if defaults.bool(forKey: claveDevolucion) { p.devolucionSemanal = true }
+        if defaults.bool(forKey: claveWins) { p.winsApp = true }
+        if defaults.bool(forKey: claveListaPrevia) { p.listaPrevia = true }
+        #if DEBUG
+        // Pruebas de interfaz y capturas: `-winsApp YES` y `-listaPrevia YES` (como `-elegirHorario`).
+        if let v = defaults.string(forKey: "winsApp") { p.winsApp = v == "YES" }
+        if let v = defaults.string(forKey: "listaPrevia") { p.listaPrevia = v == "YES" }
+        #endif
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
@@ -67,6 +83,8 @@ public struct PalancaRemota: Equatable, Sendable {
         defaults.set(elegirHorario, forKey: Self.claveElegirHorario)
         defaults.set(metasPasos, forKey: Self.claveMetasPasos)
         defaults.set(devolucionSemanal, forKey: Self.claveDevolucion)
+        defaults.set(winsApp, forKey: Self.claveWins)
+        defaults.set(listaPrevia, forKey: Self.claveListaPrevia)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
@@ -80,9 +98,24 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["elegir_horario"] { elegirHorario = b }
         if case .bool(let b)? = j["metas_pasos"] { metasPasos = b }
         if case .bool(let b)? = j["devolucion_semanal"] { devolucionSemanal = b }
+        if case .bool(let b)? = j["wins_app"] { winsApp = b }
+        if case .bool(let b)? = j["lista_previa"] { listaPrevia = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }
+    }
+
+    /// Pruebas de interfaz y capturas (solo DEBUG): `-winsApp YES` y `-listaPrevia YES` valen también sobre lo que contestó
+    /// el servidor. En la tienda no hace nada.
+    func conArgumentosDePrueba(defaults: UserDefaults = .standard) -> PalancaRemota {
+        #if DEBUG
+        var p = self
+        if let v = defaults.string(forKey: "winsApp") { p.winsApp = v == "YES" }
+        if let v = defaults.string(forKey: "listaPrevia") { p.listaPrevia = v == "YES" }
+        return p
+        #else
+        return self
+        #endif
     }
 
     /// nil = no se pudo preguntar (red o servicio caído): quien llama decide si espera.
