@@ -113,6 +113,8 @@ public final class ModeloApp {
     public private(set) var tecnica: ModeloTecnica?
     /// Devolución de Mati: existe con cuenta, pero solo llama al servidor con la palanca `devolucion_semanal` prendida.
     public private(set) var devolucion: ModeloDevolucion?
+    /// Feedback del alumno: existe con cuenta, pero solo llama al servidor con `me_duele` o `suple_estado` prendidas.
+    public private(set) var feedback: ModeloFeedback?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
     /// El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada).
@@ -261,7 +263,7 @@ public final class ModeloApp {
         registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; feedback = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         novedades = nil
         esDemo = false
@@ -339,7 +341,7 @@ public final class ModeloApp {
         registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; feedback = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         novedades = nil
     }
@@ -403,6 +405,7 @@ public final class ModeloApp {
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
         tecnica = ModeloTecnica(cliente: cliente, token: t, disco: disco)
         devolucion = ModeloDevolucion(cliente: cliente, token: t, disco: disco)
+        feedback = ModeloFeedback(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
@@ -637,6 +640,7 @@ public final class ModeloApp {
         await sincronizarTecnica()
         await sincronizarDevolucion()
         await chat?.consultarAdjuntos(palanca: palanca.chatAdjuntos)
+        await sincronizarFeedback()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         anotarCargaCompleta()
@@ -754,6 +758,11 @@ public final class ModeloApp {
         guard let devolucion else { return }
         if palanca.devolucionSemanal { await devolucion.refrescar() } else { devolucion.apagar() }
     }
+    /// Con las dos palancas apagadas no se llama a nada: la app es la de siempre.
+    private func sincronizarFeedback() async {
+        guard let feedback else { return }
+        if palanca.meDuele || palanca.supleEstado { await feedback.refrescar() } else { feedback.apagar() }
+    }
 
     private func sincronizarGimnasio() async {
         guard let gimnasio else { return }
@@ -822,6 +831,7 @@ public final class ModeloApp {
             await sincronizarTecnica()
             await sincronizarDevolucion()
             await chat?.consultarAdjuntos(palanca: palanca.chatAdjuntos)
+            await sincronizarFeedback()
         }
         if toca(.salud) { await salud?.alVolver() }   // con Apple Health conectada: 7 días y retomar el historial
         _ = await entreno?.alVolverAPrimerPlano()

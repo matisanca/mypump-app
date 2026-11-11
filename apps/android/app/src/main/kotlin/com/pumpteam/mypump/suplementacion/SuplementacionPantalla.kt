@@ -108,6 +108,9 @@ fun SuplementacionPantalla(m: ModeloSuplementacion, modelo: ModeloApp) {
                 EncabezadoSeccion("Tu día", Modifier.padding(top = Espacio.xs))
                 for (momento in vista.momentos) Momento(momento, ::abrir)
             }
+            // «¿Ya lo tenés?» (palanca `suple_estado`): con la palanca apagada o sin el servidor nuevo, no existe.
+            val feedback by modelo.feedback.collectAsStateWithLifecycle()
+            SeccionYaLoTenes(feedback, s.items)
             vista.sigue?.let { TextoRotulado("Sigue igual.", it, Modifier.padding(horizontal = 4.dp), tonoTexto = MyPump.colores.texto) }
             if (vista.sale.isNotEmpty()) {
                 EncabezadoSeccion("Dejás de tomar", Modifier.padding(top = Espacio.xs))

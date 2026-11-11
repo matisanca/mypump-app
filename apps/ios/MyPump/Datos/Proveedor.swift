@@ -1,5 +1,6 @@
 import Foundation
 import MyPumpDatos
+import MyPumpModelos
 import MyPumpReglas
 import UIKit
 
@@ -38,6 +39,8 @@ enum Proveedor {
             // `-devolucionDePrueba <escenario>`: la devolución de mentira y lo demás de las muestras (ver `DobleDevolucion`).
             else if let caso = d.string(forKey: "devolucionDePrueba") { transporte = DevolucionDePrueba(doble: .escenario(caso)) }
             else if let caso = d.string(forKey: "tecnicaDePrueba") { transporte = TecnicaDePrueba(doble: .escenario(caso)) }
+            // `-feedbackDePrueba <escenario>`: «Me duele» y las marcas de suplementos contra el doble (ver `FeedbackDePrueba`).
+            else if let caso = d.string(forKey: "feedbackDePrueba") { transporte = FeedbackDePrueba(doble: .escenario(caso, ejercicios: FeedbackDePrueba.ejercicios)) }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
             else if let caso = d.string(forKey: "recuperacionDePrueba") { transporte = RecuperacionDePrueba(caso: caso) }
             // `-semanaDePrueba completa|incompleta`: el check y las fotos de esta semana inventados (ver `SemanaDePrueba`).
@@ -92,6 +95,37 @@ private struct DevolucionDePrueba: Transporte {
         var cuerpo = Data("[]".utf8)
         if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
            let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }
+        return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
+/// `-feedbackDePrueba`: el feedback lo contesta el doble (sin red); la cuenta y el plan salen de las muestras y la
+/// suplementación, de la demo (más un protector, que no se tiene que poder marcar).
+private struct FeedbackDePrueba: Transporte {
+    let doble: DobleFeedback
+
+    private static func muestra(_ f: String) -> Data? {
+        Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:))?
+            .url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json").flatMap { try? Data(contentsOf: $0) }
+    }
+
+    /// Los ejercicios de la rutina de muestra: en los escenarios `avisada` y `resuelta` todos traen una molestia, así el que
+    /// abra la prueba la tiene.
+    static var ejercicios: [String] {
+        guard let d = muestra("mypump_get_rutina_activa"), let r = (try? JSONDecoder().decode([RutinaActiva].self, from: d))?.first else { return [] }
+        return r.estructura.dias.flatMap(\.bloques).flatMap(\.ejercicios).map(\.id)
+    }
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let f = pedido.url?.path.components(separatedBy: "/").last ?? ""
+        if f == "mypump_get_app_config" || f == "mypump_feedback_get" || f == "mypump_molestia_registrar" || f == "mypump_suple_marcar" { return try await doble.enviar(pedido) }
+        var cuerpo = Self.muestra(f) ?? Data("[]".utf8)
+        if f == "mypump_suplementacion", let u = Bundle.main.url(forResource: "Demo", withExtension: "bundle").flatMap(Bundle.init(url:))?.url(forResource: "suplementacion", withExtension: "json"),
+           let d = try? Data(contentsOf: u), var o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any], var s = o["suplementacion"] as? [String: Any], var items = s["items"] as? [[String: Any]] {
+            items.append(["nombre": "Telmisartán", "cantidad": "40 mg", "momento": "desayuno", "protector": true])
+            s["items"] = items; o["suplementacion"] = s
+            cuerpo = (try? JSONSerialization.data(withJSONObject: [o])) ?? cuerpo
+        }
         return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
 }

@@ -541,3 +541,31 @@ web `mypump_novedades_base_<token>`), porque publicar pisa la versión anterior 
 (`apps/shared/fixtures/novedades/casos.json`). Palanca `novedades_plan` en `mypump_app_config`: sin la clave o distinta de
 `true`, apagada (`supabase/propuestas/nativa_novedades_plan.sql` la crea en `false`). La suplementación farmacológica no
 llega al teléfono (el RPC la filtra), así que un cambio solo ahí no se anuncia.
+## 14. Feedback del alumno (2.3.0, propuesta sin aplicar)
+
+`supabase/propuestas/nativa_feedback_alumno.sql`. Hasta aplicarla, `mypump_feedback_get` contesta PGRST202 y las apps no muestran
+nada. Palancas `me_duele`, `suple_estado` y `datos_brief` en `mypump_app_config`, apagadas. Con `me_duele` y `suple_estado`
+apagadas las apps no llaman a ninguna de estas RPC. Todo campo nuevo es opcional.
+
+| RPC | Parámetros | Devuelve |
+|---|---|---|
+| `mypump_feedback_get` | `p_token` | jsonb `{me_duele:{habilitado,molestias[]}, suple_estado:{habilitado,items[]}}`; `null` token caído |
+| `mypump_molestia_registrar` | `p_token`, `p_id` (uuid que pone la app y repite al reintentar), `p_ejercicio_id`, `p_ejercicio_nombre`, `p_dia_id`, `p_zona`, `p_lado`, `p_desde`, `p_cuando`, `p_tipo`, `p_intensidad` (0 a 10), `p_nota`, `p_plataforma` (`ios`, `android`, `web`), `p_version` | jsonb `{ok,ya,molestia}` o `{ok:false,error}` con `apagado`, `datos`, `tope` o `reintentar` |
+| `mypump_suple_marcar` | `p_token`, `p_item` (el nombre del ítem), `p_estado`, `p_nota` | jsonb `{ok,ya,item,estado,marcado_en}` o `{ok:false,error}` con `apagado`, `datos` o `item` |
+
+- **Molestia** (lo que ve el alumno): `id`, `ejercicio_id`, `ejercicio_nombre`, `zona`, `lado`, `desde`, `cuando`, `tipo`, `intensidad`, `nota`,
+  `estado` (`avisada` o `resuelta`), `creado_en`, `resuelto_en`. Nunca llega el destino, si es clínica ni la resolución.
+- **Valores**: `zona` es una de `cuello`, `hombro`, `pecho`, `brazo`, `codo`, `antebrazo`, `muneca`, `abdomen`, `espalda_alta`, `espalda_baja`,
+  `cadera`, `gluteo`, `muslo_frente`, `muslo_atras`, `rodilla`, `pantorrilla`, `tobillo`. `lado`: `izquierdo`, `derecho`, `ambos`, `centro`.
+  `desde`: `hoy`, `esta_semana`, `semanas`, `mas_de_un_mes`. `cuando`: `al_bajar`, `al_subir`, `todo_el_recorrido`, `despues`, `al_dia_siguiente`.
+  `tipo`: `punzante`, `sordo`, `hormigueo`. La escala simple de las apps guarda 2, 5, 7 o 9.
+- Una molestia abierta por ejercicio: volver a avisar la corrige. «Me duele» no escribe en `mypump_comentarios`.
+  Topes (`error: tope`): 8 molestias nuevas por día, 6 correcciones por molestia y 10 cambios por día en un suplemento.
+  La nota y el nombre del ejercicio se guardan en una sola línea (el servidor cambia los saltos por un espacio).
+- **Suplementos**: `estado` es `comprado`, `tomando`, `no_lo_consigo` o `lo_deje`. `item` en la respuesta es la clave: el nombre en minúsculas,
+  sin tildes y con un solo espacio. Los ítems con `protector: true` (campo nuevo y opcional de `mypump_suplementacion`) no se marcan: las
+  apps no los muestran en «¿Ya lo tenés?» y el servidor contesta `item`.
+- El dibujo del cuerpo y los casos compartidos: `apps/shared/fixtures/feedback/cuerpo.json` y `casos.json`
+  (se regenera con `scripts/nativa/generar-cuerpo.py`).
+- **Datos de vuelta** (`datos_brief`): no hay RPC para las apps. La Mini lee la vista `mypump_datos_brief` o `mypump_datos_resumen(fecha)` con la
+  service key, sobre lo que las apps ya suben a `mypump_salud_diaria` y `mypump_checkin_semanal`.

@@ -98,6 +98,7 @@ import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.EstadosEjercicio
 import com.pumpteam.mypump.reglas.IndiceComentarios
+import com.pumpteam.mypump.reglas.TextosFeedback
 import com.pumpteam.mypump.reglas.NotaProgresion
 import com.pumpteam.mypump.reglas.ReglasEjercicio
 import com.pumpteam.mypump.reglas.Pauta
@@ -125,6 +126,8 @@ fun EjercicioPantalla(
     alCompletarDia: (ModeloEntreno.DiaCompletado) -> Unit,
     tecnica: com.pumpteam.mypump.datos.ModeloTecnica? = null,
     alMandarTecnica: (slug: String, nombre: String) -> Unit = { _, _ -> },
+    feedback: com.pumpteam.mypump.datos.ModeloFeedback? = null,
+    versionApp: String? = null,
 ) {
     val alcance = LocalAlcanceApp.current
     // Al entrar, la card queda abierta: pide el historial y marca leídos los comentarios (SES-08). Si el motor ya la abrió
@@ -160,6 +163,7 @@ fun EjercicioPantalla(
     val tituloEnBarra by remember { derivedStateOf { desplazamiento.value > altoEncabezado } }
     var sustituyendo by rememberSaveable { mutableStateOf(false) }
     var eligiendoDescanso by rememberSaveable { mutableStateOf(false) }
+    var doliendo by rememberSaveable(lugar) { mutableStateOf(false) }
     val alcanceUi = rememberCoroutineScope()
     val pedirMovimiento = remember { BringIntoViewRequester() }
     val pedirComentarios = remember { BringIntoViewRequester() }
@@ -210,7 +214,10 @@ fun EjercicioPantalla(
                             focoComentario.requestFocus()
                         }
                     },
+                    // «Me duele» (palanca `me_duele`): con una molestia ya avisada se corrige desde su tarjeta, acá abajo.
+                    alDoler = if (ofreceMeDuele(feedback, lugar, t.efectivo.ejercicio.tipo)) ({ doliendo = true }) else null,
                 )
+                EstadoMolestia(feedback, lugar) { doliendo = true }
                 com.pumpteam.mypump.tecnica.BotonMandarTecnica(tecnica, t.efectivo.ejercicio, alMandarTecnica)
                 ComoSeHace(t, Modifier.bringIntoViewRequester(pedirMovimiento))
                 Comentarios(motor, lugar, t, focoComentario, Modifier.bringIntoViewRequester(pedirComentarios))
@@ -220,6 +227,9 @@ fun EjercicioPantalla(
     }
     if (sustituyendo) HojaSustituir(motor, v, lugar, alCerrar = { sustituyendo = false })
     if (eligiendoDescanso) motor.tarjeta(lugar)?.let { HojaDescanso(motor, it, alCerrar = { eligiendoDescanso = false }) }
+    if (doliendo && feedback != null) {
+        HojaMeDuele(feedback, lugar, nombreParaAvisar(t.efectivo), v.dia.dia.id, versionApp, alCerrar = { doliendo = false })
+    }
 }
 
 // ── Secciones ──
@@ -387,13 +397,17 @@ private fun ASuperar(t: ModeloEntreno.Tarjeta, buscando: Boolean) {
     }
 }
 
-/** Sustituir (o cambiar el sustituto), comentar y el video. */
+/** Sustituir (o cambiar el sustituto), comentar, el video y «Me duele» ([alDoler] null = no se ofrece). */
 @Composable
-private fun Acciones(t: ModeloEntreno.Tarjeta, alSustituir: () -> Unit, alDescanso: () -> Unit, alComentar: () -> Unit) {
+private fun Acciones(t: ModeloEntreno.Tarjeta, alSustituir: () -> Unit, alDescanso: () -> Unit, alComentar: () -> Unit, alDoler: (() -> Unit)? = null) {
     val c = MyPump.colores
     val contexto = LocalContext.current
     val puede = t.puedeSustituir || t.efectivo.sustituido
     val tipo = t.efectivo.ejercicio.tipo
+    val conDescanso = t.filas.isNotEmpty() && tipo != "calentamiento"
+    val video = t.efectivo.ejercicio.videoUrl?.takeIf { it.startsWith("http") }
+    // Cinco botones en un renglón no entran en un teléfono (ni cuatro con la letra grande): ahí «Me duele» va en el suyo.
+    val dueleAparte = alDoler != null && (2 + (if (conDescanso) 1 else 0) + (if (video != null) 1 else 0) >= 4 || LocalDensity.current.fontScale > 1.3f)
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
             AccionTarjeta(
@@ -413,6 +427,12 @@ private fun Acciones(t: ModeloEntreno.Tarjeta, alSustituir: () -> Unit, alDescan
             t.efectivo.ejercicio.videoUrl?.takeIf { it.startsWith("http") }?.let { url ->
                 AccionTarjeta("Video", Iconos.Video, alTocar = { abrirEnNavegador(contexto, url) }, modifier = Modifier.weight(1f).testTag("video"))
             }
+            if (alDoler != null && !dueleAparte) {
+                AccionTarjeta(TextosFeedback.dueleBoton, Iconos.Curita, alTocar = alDoler, modifier = Modifier.weight(1f).testTag("duele-abrir"))
+            }
+        }
+        if (alDoler != null && dueleAparte) {
+            AccionEnFila(TextosFeedback.dueleBoton, Iconos.Curita, alTocar = alDoler, modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("duele-abrir"))
         }
         if (!puede && tipo != "calentamiento" && tipo != "cardio") {
             Text(TextosEntreno.SIN_VARIANTES, style = Letras.caption, color = c.textoSecundario, modifier = Modifier.padding(horizontal = 4.dp))

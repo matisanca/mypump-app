@@ -30,6 +30,10 @@ data class PalancaRemota(
     val metasPasos: Boolean = false,
     /** Fotos y audios en el chat (`chat_adjuntos`). Sin la clave, apagado. Prendida, igual decide el servidor por cliente. */
     val chatAdjuntos: Boolean = false,
+    /** «Me duele» por ejercicio (`me_duele`). Sin la clave, apagado: ni se muestra ni se llama a nada nuevo. */
+    val meDuele: Boolean = false,
+    /** «Lo compré / lo estoy tomando» (`suple_estado`). Sin la clave, apagado. */
+    val supleEstado: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -48,6 +52,8 @@ data class PalancaRemota(
             devolucionSemanal = (j["devolucion_semanal"] as? ValorJson.Booleano)?.valor ?: false,
             metasPasos = (j["metas_pasos"] as? ValorJson.Booleano)?.valor ?: false,
             chatAdjuntos = (j["chat_adjuntos"] as? ValorJson.Booleano)?.valor ?: false,
+            meDuele = (j["me_duele"] as? ValorJson.Booleano)?.valor ?: false,
+            supleEstado = (j["suple_estado"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

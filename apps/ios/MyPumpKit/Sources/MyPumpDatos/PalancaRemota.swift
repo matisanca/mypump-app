@@ -30,6 +30,10 @@ public struct PalancaRemota: Equatable, Sendable {
     public var metasPasos = false
     /// Fotos y audios en el chat (`chat_adjuntos`). Sin la clave, apagado. Prendida, igual decide el servidor por cliente.
     public var chatAdjuntos = false
+    /// «Me duele» por ejercicio (`me_duele`). Sin la clave, apagado: ni se muestra ni se llama a nada nuevo.
+    public var meDuele = false
+    /// «Lo compré / lo estoy tomando» (`suple_estado`). Sin la clave, apagado.
+    public var supleEstado = false
 
     public init() {}
 
@@ -82,6 +86,8 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["devolucion_semanal"] { devolucionSemanal = b }
         if case .bool(let b)? = j["metas_pasos"] { metasPasos = b }
         if case .bool(let b)? = j["chat_adjuntos"] { chatAdjuntos = b }
+        if case .bool(let b)? = j["me_duele"] { meDuele = b }
+        if case .bool(let b)? = j["suple_estado"] { supleEstado = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

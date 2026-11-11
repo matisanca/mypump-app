@@ -1493,6 +1493,118 @@
    "la_usa_el_cliente": true,
    "outbox_kind": null,
    "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_tecnica.sql"
+  },
+  {
+   "nombre": "mypump_feedback_get",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "jsonb",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null,
+   "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_feedback_alumno.sql"
+  },
+  {
+   "nombre": "mypump_molestia_registrar",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_id",
+     "tipo": "uuid"
+    },
+    {
+     "nombre": "p_ejercicio_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_ejercicio_nombre",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dia_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_zona",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_lado",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_desde",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_cuando",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_tipo",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_intensidad",
+     "tipo": "integer"
+    },
+    {
+     "nombre": "p_nota",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_plataforma",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_version",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "jsonb",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null,
+   "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_feedback_alumno.sql"
+  },
+  {
+   "nombre": "mypump_suple_marcar",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_item",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_estado",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_nota",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "jsonb",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null,
+   "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_feedback_alumno.sql"
   }
  ]
 }

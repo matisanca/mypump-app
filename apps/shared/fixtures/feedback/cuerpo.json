@@ -1,0 +1,560 @@
+{
+ "ancho": 200,
+ "alto": 420,
+ "vistas": {
+  "frente": [
+   {
+    "zona": null,
+    "lado": null,
+    "forma": "elipse",
+    "a": [
+     100,
+     27,
+     17,
+     21
+    ]
+   },
+   {
+    "zona": "cuello",
+    "lado": "centro",
+    "forma": "caja",
+    "a": [
+     90,
+     52,
+     20,
+     16,
+     7
+    ]
+   },
+   {
+    "zona": "pecho",
+    "lado": "centro",
+    "forma": "caja",
+    "a": [
+     76,
+     70,
+     48,
+     40,
+     14
+    ]
+   },
+   {
+    "zona": "abdomen",
+    "lado": "centro",
+    "forma": "caja",
+    "a": [
+     79,
+     112,
+     42,
+     50,
+     12
+    ]
+   },
+   {
+    "zona": "hombro",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     64,
+     84,
+     15,
+     14
+    ]
+   },
+   {
+    "zona": "hombro",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     136,
+     84,
+     15,
+     14
+    ]
+   },
+   {
+    "zona": "cadera",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     86,
+     180,
+     14,
+     15
+    ]
+   },
+   {
+    "zona": "cadera",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     114,
+     180,
+     14,
+     15
+    ]
+   },
+   {
+    "zona": "muslo_frente",
+    "lado": "derecho",
+    "forma": "capsula",
+    "a": [
+     84,
+     208,
+     83,
+     262,
+     14.5
+    ]
+   },
+   {
+    "zona": "muslo_frente",
+    "lado": "izquierdo",
+    "forma": "capsula",
+    "a": [
+     116,
+     208,
+     117,
+     262,
+     14.5
+    ]
+   },
+   {
+    "zona": "brazo",
+    "lado": "derecho",
+    "forma": "capsula",
+    "a": [
+     57,
+     106,
+     52,
+     138,
+     10.5
+    ]
+   },
+   {
+    "zona": "brazo",
+    "lado": "izquierdo",
+    "forma": "capsula",
+    "a": [
+     143,
+     106,
+     148,
+     138,
+     10.5
+    ]
+   },
+   {
+    "zona": "codo",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     49,
+     156,
+     10,
+     10
+    ]
+   },
+   {
+    "zona": "codo",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     151,
+     156,
+     10,
+     10
+    ]
+   },
+   {
+    "zona": "antebrazo",
+    "lado": "derecho",
+    "forma": "capsula",
+    "a": [
+     46,
+     174,
+     41,
+     202,
+     8.5
+    ]
+   },
+   {
+    "zona": "antebrazo",
+    "lado": "izquierdo",
+    "forma": "capsula",
+    "a": [
+     154,
+     174,
+     159,
+     202,
+     8.5
+    ]
+   },
+   {
+    "zona": "muneca",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     38,
+     222,
+     9,
+     12
+    ]
+   },
+   {
+    "zona": "muneca",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     162,
+     222,
+     9,
+     12
+    ]
+   },
+   {
+    "zona": "rodilla",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     83,
+     290,
+     13,
+     13
+    ]
+   },
+   {
+    "zona": "rodilla",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     117,
+     290,
+     13,
+     13
+    ]
+   },
+   {
+    "zona": "pantorrilla",
+    "lado": "derecho",
+    "forma": "capsula",
+    "a": [
+     83,
+     314,
+     84,
+     358,
+     10.5
+    ]
+   },
+   {
+    "zona": "pantorrilla",
+    "lado": "izquierdo",
+    "forma": "capsula",
+    "a": [
+     117,
+     314,
+     116,
+     358,
+     10.5
+    ]
+   },
+   {
+    "zona": "tobillo",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     84,
+     388,
+     10,
+     13
+    ]
+   },
+   {
+    "zona": "tobillo",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     116,
+     388,
+     10,
+     13
+    ]
+   }
+  ],
+  "espalda": [
+   {
+    "zona": null,
+    "lado": null,
+    "forma": "elipse",
+    "a": [
+     100,
+     27,
+     17,
+     21
+    ]
+   },
+   {
+    "zona": "cuello",
+    "lado": "centro",
+    "forma": "caja",
+    "a": [
+     90,
+     52,
+     20,
+     16,
+     7
+    ]
+   },
+   {
+    "zona": "espalda_alta",
+    "lado": "centro",
+    "forma": "caja",
+    "a": [
+     76,
+     70,
+     48,
+     46,
+     14
+    ]
+   },
+   {
+    "zona": "espalda_baja",
+    "lado": "centro",
+    "forma": "caja",
+    "a": [
+     79,
+     118,
+     42,
+     44,
+     12
+    ]
+   },
+   {
+    "zona": "hombro",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     64,
+     84,
+     15,
+     14
+    ]
+   },
+   {
+    "zona": "hombro",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     136,
+     84,
+     15,
+     14
+    ]
+   },
+   {
+    "zona": "gluteo",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     86,
+     180,
+     14,
+     15
+    ]
+   },
+   {
+    "zona": "gluteo",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     114,
+     180,
+     14,
+     15
+    ]
+   },
+   {
+    "zona": "muslo_atras",
+    "lado": "izquierdo",
+    "forma": "capsula",
+    "a": [
+     84,
+     208,
+     83,
+     262,
+     14.5
+    ]
+   },
+   {
+    "zona": "muslo_atras",
+    "lado": "derecho",
+    "forma": "capsula",
+    "a": [
+     116,
+     208,
+     117,
+     262,
+     14.5
+    ]
+   },
+   {
+    "zona": "brazo",
+    "lado": "izquierdo",
+    "forma": "capsula",
+    "a": [
+     57,
+     106,
+     52,
+     138,
+     10.5
+    ]
+   },
+   {
+    "zona": "brazo",
+    "lado": "derecho",
+    "forma": "capsula",
+    "a": [
+     143,
+     106,
+     148,
+     138,
+     10.5
+    ]
+   },
+   {
+    "zona": "codo",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     49,
+     156,
+     10,
+     10
+    ]
+   },
+   {
+    "zona": "codo",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     151,
+     156,
+     10,
+     10
+    ]
+   },
+   {
+    "zona": "antebrazo",
+    "lado": "izquierdo",
+    "forma": "capsula",
+    "a": [
+     46,
+     174,
+     41,
+     202,
+     8.5
+    ]
+   },
+   {
+    "zona": "antebrazo",
+    "lado": "derecho",
+    "forma": "capsula",
+    "a": [
+     154,
+     174,
+     159,
+     202,
+     8.5
+    ]
+   },
+   {
+    "zona": "muneca",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     38,
+     222,
+     9,
+     12
+    ]
+   },
+   {
+    "zona": "muneca",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     162,
+     222,
+     9,
+     12
+    ]
+   },
+   {
+    "zona": "rodilla",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     83,
+     290,
+     13,
+     13
+    ]
+   },
+   {
+    "zona": "rodilla",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     117,
+     290,
+     13,
+     13
+    ]
+   },
+   {
+    "zona": "pantorrilla",
+    "lado": "izquierdo",
+    "forma": "capsula",
+    "a": [
+     83,
+     314,
+     84,
+     358,
+     10.5
+    ]
+   },
+   {
+    "zona": "pantorrilla",
+    "lado": "derecho",
+    "forma": "capsula",
+    "a": [
+     117,
+     314,
+     116,
+     358,
+     10.5
+    ]
+   },
+   {
+    "zona": "tobillo",
+    "lado": "izquierdo",
+    "forma": "elipse",
+    "a": [
+     84,
+     388,
+     10,
+     13
+    ]
+   },
+   {
+    "zona": "tobillo",
+    "lado": "derecho",
+    "forma": "elipse",
+    "a": [
+     116,
+     388,
+     10,
+     13
+    ]
+   }
+  ]
+ }
+}
