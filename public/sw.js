@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v58-20261110-230';
+const VERSION       = 'v59-20261110-230';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = '/js/vendor/supabase-js.min.js';   // vendorizada el 20-sep-2026 (antes CDN)
@@ -65,6 +65,10 @@ const SHELL = [
   '/js/estudios-cola.js',
   '/js/estudios-ui.js',
   '/css/estudios.css',
+  '/js/fotos-inicio.js',
+  '/js/fotos-inicio-cola.js',
+  '/js/fotos-inicio-ui.js',
+  '/css/fotos-inicio.css',
   '/js/healthkit-bridge.js',
   '/js/notificaciones.js',
   '/js/app.js',
@@ -107,6 +111,8 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/chat/') || url.pathname.includes('/storage/v1/object/sign/chat-adjuntos/')) return;
   // Estudios y órdenes: datos médicos. Sus llamadas son POST y los archivos firmados, de otro origen; nada de eso se guarda.
   if (url.pathname.startsWith('/estudios/')) return;
+  // Fotos de inicio: lo mismo. Son fotos del cuerpo: nunca a un cache.
+  if (url.pathname.startsWith('/inicio/')) return;
   // Lib de Supabase (vendorizada, mismo origen) → cache-first: cambia solo
   // cuando se reemplaza el archivo (y con él, VERSION).
   if (url.origin === location.origin && url.pathname === SUPABASE_LIB) {

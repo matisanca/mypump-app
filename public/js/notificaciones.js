@@ -330,6 +330,11 @@
       const d = ev && ev.notification && ev.notification.data;
       const destino = d && d.destino;
       if (destino && typeof window.setScene === 'function') {
+        // «Subí tus fotos de inicio»: no es una escena; va a Revisión con la pantalla abierta.
+        if (destino === 'fotos_inicio') {
+          try { window.setScene('revision'); if (window.FotosInicioUI) window.FotosInicioUI.abrirPorAviso(); } catch (e) {}
+          return;
+        }
         try { window.setScene(destino); } catch (e) {}
       }
     });

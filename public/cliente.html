@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/gimnasio.css">
 <link rel="stylesheet" href="/css/novedades.css">
+<link rel="stylesheet" href="/css/fotos-inicio.css">
 <link rel="stylesheet" href="/css/tecnica.css">
 <link rel="stylesheet" href="/css/devolucion.css">
 <link rel="stylesheet" href="/css/feedback.css">
@@ -1913,6 +1914,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
     <section class="scene" id="scene-cuerpo"></section>
     <section class="scene" id="scene-misdatos"></section>
     <section class="scene" id="scene-gimnasio"></section>
+    <section class="scene" id="scene-fotosinicio"></section>
     <section class="scene" id="scene-tecnica"></section>
     <section class="scene" id="scene-estudios"></section>
   </main>
@@ -2023,6 +2025,9 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/gimnasio-cola.js"></script>
 <script src="/js/gimnasio-ui.js"></script>
 <script src="/js/metas.js"></script>
+<script src="/js/fotos-inicio.js"></script>
+<script src="/js/fotos-inicio-cola.js"></script>
+<script src="/js/fotos-inicio-ui.js"></script>
 <script src="/js/tecnica.js"></script>
 <script src="/js/tecnica-cola.js"></script>
 <script src="/js/tecnica-ui.js"></script>
@@ -2218,6 +2223,18 @@ function _gimPalanca(cfg) {
   });
   window.GimnasioUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.gimnasio_fotos === true : null);
 }
+/* «Fotos de inicio» (js/fotos-inicio*.js), detrás de `fotos_inicio`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada. */
+function _fiPalanca(cfg) {
+  if (!window.FotosInicioUI || !TOKEN || DEMO) return;
+  window.FotosInicioUI.configurar({
+    token: TOKEN,
+    visionUrl: (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '',
+    rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
+    irA: (escena) => setScene(escena),
+    alCambiarEntrada: () => { if (STATE.scene === 'misdatos') renderMisDatos(); },
+  });
+  window.FotosInicioUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.fotos_inicio === true : null);
+}
 /* «Técnica por video» (js/tecnica*.js), detrás de `tecnica_video`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada. */
 function _tecPalanca(cfg) {
   if (!window.TecnicaUI || !TOKEN || DEMO) return;
@@ -2349,6 +2366,7 @@ async function leerPalancaWeb230() {
   _fbPalanca(cfg);
   _elegirHorarioPalanca(cfg);
   _estPalanca(cfg);
+  _fiPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -11546,7 +11564,7 @@ function renderRecordatorio() {
   }
 
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
-  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica' || STATE.scene === 'estudios') return;
+  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica' || STATE.scene === 'estudios' || STATE.scene === 'fotosinicio') return;
 
   const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan tu check y tus fotos de la semana'
               : p.faltaCheck ? 'Te falta tu check de la semana'
@@ -12551,6 +12569,7 @@ function renderMisDatos() {
       ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? fila('mdTecnica', window.Tecnica.T.titulo) : ''}
       ${docs.length ? fila('mdDocumentos', D.T.entradaMisDatos, D.hayContratoPendiente(docs) ? `<span class="md-det">${D.T.pendiente}</span>` : '') : ''}
       ${window.EstudiosUI && window.EstudiosUI.entradaVisible() ? `<button class="md-fila" id="mdEstudios"><span class="gim-zona-txt"><span>${window.Estudios.T.entradaMisDatos}</span><small>${window.EstudiosUI.subtitulo()}</small></span>${window.EstudiosUI.novedad() ? `<span class="est-punto" role="img" aria-label="${window.Estudios.T.novedad}"></span>` : ''}<span class="md-chev">${_CHEV_DER}</span></button>` : ''}
+      ${window.FotosInicioUI && window.FotosInicioUI.entradaVisible() ? `<button class="md-fila" id="mdFotosInicio" data-test="mis-datos-fotos-inicio"><span>${escapeHtml(window.FotosInicio.T.entradaMisDatos)}</span><span class="md-chev">${_CHEV_DER}</span></button>` : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
@@ -12567,6 +12586,8 @@ function renderMisDatos() {
   if (md) md.onclick = () => { STATE.mdDocs = true; STATE.docError = false; renderMisDatos(); window.scrollTo(0, 0); };
   const est = document.getElementById('mdEstudios');
   if (est) est.onclick = () => window.EstudiosUI.abrir({ desde: 'misdatos' });
+  const fi = document.getElementById('mdFotosInicio');
+  if (fi) fi.onclick = () => window.FotosInicioUI.abrir('misdatos');
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
   const sw = document.getElementById('mdOscuro');
@@ -12832,7 +12853,8 @@ function setScene(scene) {
     const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision'
       : scene === 'estudios' ? (window.EstudiosUI.origen === 'train' ? 'train' : 'revision')
       : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train')
-      : scene === 'tecnica' ? (window.TecnicaUI.origen === 'train' ? 'train' : 'revision') : scene;
+      : scene === 'tecnica' ? (window.TecnicaUI.origen === 'train' ? 'train' : 'revision')
+      : scene === 'fotosinicio' ? 'revision' : scene;
     const active = t.getAttribute('data-scene') === tabDe;
     t.classList.toggle('is-active', active);
     t.setAttribute('aria-selected', active);
@@ -12907,6 +12929,9 @@ function setScene(scene) {
   } else if (scene === 'estudios') {
     $('#hdrEyebrow').textContent = window.EstudiosUI.origen === 'train' ? 'ENTRENAMIENTO' : 'REVISIÓN';
     $('#hdrTitle').textContent = window.EstudiosUI.titulo();
+  } else if (scene === 'fotosinicio') {
+    $('#hdrEyebrow').textContent = 'REVISIÓN';
+    $('#hdrTitle').textContent = window.FotosInicioUI.titulo();
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
   }
@@ -12923,6 +12948,7 @@ function setScene(scene) {
   if (scene === 'gimnasio') window.GimnasioUI.renderEscena();
   if (scene === 'tecnica') window.TecnicaUI.renderEscena();
   if (scene === 'estudios') window.EstudiosUI.renderEscena();
+  if (scene === 'fotosinicio') window.FotosInicioUI.renderEscena();
   if (scene === 'supl') { STATE.suplAbierto = null; renderSupl(); }
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
@@ -12979,6 +13005,15 @@ function _bienvenidaGuia() {
     if (r && window.NovedadesUI) window.NovedadesUI.montarTarjeta(r, document.getElementById('gimHost') || _guiaHost);
     try { renderAvisoContrato(); } catch (_) {}
     _estArriba();
+    // «Fotos de inicio»: arriba de todo también acá, mientras falte alguna (lo primero que se ve al abrir).
+    if (r && window.FotosInicioUI) window.FotosInicioUI.montarTarjeta(r, true);
+  };
+  // «Fotos de inicio»: la tarjeta va arriba de todo en Revisión (solo con la sección habilitada).
+  const _rr = renderRevision;
+  renderRevision = function () {
+    _rr.apply(this, arguments);
+    const r = document.getElementById('scene-revision');
+    if (r && window.FotosInicioUI) window.FotosInicioUI.montarTarjeta(r);
   };
   renderProgress = function () {
     _rp.apply(this, arguments);
@@ -13030,6 +13065,8 @@ function _aplicarSceneDeURL() {
   try {
     const s = new URLSearchParams(location.search).get('scene');
     if (!s) return;
+    // El aviso «subí tus fotos de inicio»: Revisión con la pantalla abierta (si la sección está habilitada).
+    if (s === 'fotos_inicio') { setScene('revision'); if (window.FotosInicioUI) window.FotosInicioUI.abrirPorAviso(); return; }
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
     if (validas.indexOf(s) === -1) return;
     // Destino `estudios` (el clic del aviso al teléfono llega así, también al abrir en frío): la escena no se prende
@@ -13043,7 +13080,7 @@ function _aplicarSceneDeURL() {
       window.EstudiosUI.destino(caida);
       return;
     }
-    if (s !== 'gimnasio' && s !== 'tecnica') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
+    if (s !== 'gimnasio' && s !== 'tecnica' && s !== 'fotosinicio') setScene(s);   // al gimnasio y a las fotos de inicio se entra por la tarjeta o Mis datos
   } catch (e) {}
 }
 
@@ -13338,7 +13375,7 @@ async function init() {
   aplicarPendientesEntreno();
   if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {}).finally(() => _novResolver(null));
   // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio y los estudios también van, como en la app.
-  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _metasPalanca(c); _elegirHorarioPalanca(c); _estPalanca(c); }).catch(() => {});
+  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _metasPalanca(c); _elegirHorarioPalanca(c); _estPalanca(c); _fiPalanca(c); }).catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;
