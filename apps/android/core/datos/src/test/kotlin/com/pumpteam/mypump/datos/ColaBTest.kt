@@ -583,7 +583,7 @@ class ColaBTest {
         assertEquals(2, registro.count { it == "mypump_fin_plan_get" })
         // Las compras van con la suplementación, que al volver no se relee antes de su intervalo (arreglos F11): sigue en 1.
         assertEquals(1, registro.count { it == "mypump_compras_get" })
-        assertEquals(2, registro.count { it == "mypump_casa_get" })
+        assertEquals(1, registro.count { it == "mypump_casa_get" })   // va con el gimnasio, que tampoco se relee antes de su intervalo
 
         // Se apagan: la carga siguiente no llama a nada nuevo y deja de verse todo, también lo guardado.
         // Con su propio registro: lo que la primera todavía tenga en vuelo no cuenta acá.
