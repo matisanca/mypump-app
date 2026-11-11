@@ -138,7 +138,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     // «Tu cambio»: con cuenta y con la palanca `check_guiado`. Apagada, nada de esto existe (ni se lee nada).
     val inicio by modelo.fotosInicio.collectAsStateWithLifecycle()
     val fotosDeLaCuenta = fotos
-    val tuCambio = if (conCheckGuiado && fotosDeLaCuenta != null) recordarFuentesTuCambio(fotosDeLaCuenta, inicio, pesoParaLasFotos) else null
+    // Con `fotos_inicio` apagada no se mira nada de esa sección, tampoco lo que quedó en el teléfono.
+    val tuCambio = if (conCheckGuiado && fotosDeLaCuenta != null) recordarFuentesTuCambio(fotosDeLaCuenta, inicio?.takeIf { it.palancaRecordada }, pesoParaLasFotos) else null
 
     // Un aviso o el banner de las otras pestañas piden una sección: se va y se consume.
     val ancla = navegacion?.anclaRevision
