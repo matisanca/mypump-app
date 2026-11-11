@@ -40,7 +40,7 @@ const D = { };
 function reiniciar(o = {}) {
   Object.assign(D, {
     config: {}, permiso: false, filas: [], llamadas: [], cortar: new Set(), sinFuncion: new Set(),
-    lista: VL.casos[0].respuesta, reserva: null, metaPasos: null, pasos: null,
+    lista: VL.casos[0].respuesta, reserva: null, metaPasos: null, pasos: null, sinRutina: false,
   }, o);
 }
 reiniciar();
@@ -56,12 +56,13 @@ function responder(fn, p) {
   const palanca = D.config.wins_app === true;
   switch (fn) {
     case 'mypump_get_cliente_info': return { json: [{ cliente_id: 'cli_prueba', nombre: 'Alumno De Prueba', perfil: 'natural' }] };
-    case 'mypump_get_rutina_activa': return { json: [{ id: 'rut_prueba', version: 1, estructura: RUTINA, semana_actual: 2 }] };
+    case 'mypump_get_rutina_activa': if (D.sinRutina) return { json: [] }; return { json: [{ id: 'rut_prueba', version: 1, estructura: RUTINA, semana_actual: 2 }] };
     case 'mypump_get_dieta_activa': { const e = dieta({ seed: 3 }); if (D.metaPasos) e.meta_pasos_dia = D.metaPasos; return { json: [{ id: 'die_prueba', version: 1, estructura: e }] }; }
     case 'mypump_get_app_config': return { json: D.config };
     case 'mypump_get_historico_por_clave': {
       // Dos sesiones anteriores por ejercicio, 50 kg × 8 y × 8.
       const filas = [];
+      if (D.sinRutina) return { json: [] };   // esta cuenta todavía no entrenó
       for (const clave of p.p_claves || []) for (const dias of [7, 14]) for (const serie of [1, 2]) {
         const t = diasAtras(dias); t.setHours(18, 30 + serie * 3, 0, 0);
         filas.push({ clave, serie_numero: serie, peso_kg: 50, reps_realizadas: 8, rir_real: 0, notas: null, registrado_en: t.toISOString() });
@@ -503,6 +504,61 @@ try {
     comprobar(D.llamadas.length === 0, `la demo no llama al servidor (${D.llamadas.map((l) => l.fn).join(', ') || 'cero llamadas'})`);
     comprobar(await evaluar('!Object.keys(localStorage).some((k) => /^mypump-wins-|^mypump_outbox/.test(k) && /cola|\\[\\{/.test(localStorage.getItem(k)) && JSON.stringify(localStorage.getItem(k)).includes("record"))'), 'y no deja nada en cola');
   }
+
+  // ── 8 bis. Una cuenta REAL sin rutina publicada (ve el plan de ejemplo): lista previa y Logros sí; historia inventada no ──
+  console.log('\n▸ cuenta real sin rutina publicada');
+  reiniciar({ config: { wins_app: true, lista_previa: true }, permiso: true, sinRutina: true });
+  await limpiar(); pedidosDemo.length = 0; await abrir(Q);
+  comprobar(await evaluar('DATA._isDemo === true && !DEMO'), 'cae al plan de ejemplo (sin ser la demo sin cuenta)');
+  await esperar('!!document.querySelector("#listaPreviaHost [data-test=lista-previa]")', 8000);
+  comprobar((await hay('#listaPreviaHost .lp-sola')) && de('mypump_lista_previa').length === 1, 've la lista previa (pedida al servidor con su token)');
+  comprobar(de('mypump_wins_estado').length === 1, 'y se lee el estado de sus logros');
+  comprobar(!pedidosDemo.includes('/demo/historial.json') && (await evaluar('_demoHist === null && STATE.chat.msgs.length === 0 && !(STATE.salud || []).length')), 'no ve la historia inventada de la demo (ni chat, ni peso, ni pasos)');
+  comprobar(!(await evaluar('[...document.querySelectorAll("#scene-train .ex-historic")].some((e) => /Récord/.test(e.textContent))')), 'ni récords inventados en Entreno');
+  await clic('[data-test="lista-previa-guia"]');
+  await sleep(800);
+  console.log('  la fila de la guía abre la guía: ' + await evaluar('!!(window.MyPumpGuia && window.MyPumpGuia.abierta())'));
+  await evaluar('(window.MyPumpGuia && window.MyPumpGuia.cerrar && window.MyPumpGuia.cerrar(), true)');
+  await evaluar('(setScene("misdatos"), renderMisDatos(), true)');
+  comprobar((await hay('#mdWins')) && (await evaluar('document.querySelector("#mdWins").checked')), 'Mis datos: el interruptor de Logros se ve, prendido');
+  await clic('#mdWins');
+  await esperar('!!document.querySelector("[data-test=wins-ajuste-msg]:not(.is-error)")', 6000);
+  comprobar(!D.permiso && (await hay('#mdWins')) && (await texto('[data-test="wins-ajuste-msg"]')) === F.desactivado, 'lo apaga, y la sección sigue a la vista con «' + F.desactivado + '»');
+  await evaluar('(setScene("train"), true)');
+  await cerrarConRecords().catch(() => {});
+  comprobar(!(await hay('.wn-capa')), 'con el plan de ejemplo no hay festejo');
+
+  // ── 8 ter. La demo con una cuenta guardada en este navegador: no manda ni trae nada de esa cuenta ──
+  console.log('\n▸ demo con un token guardado');
+  reiniciar({ config: { wins_app: true, lista_previa: true }, permiso: true });
+  await limpiar(); await evaluar(`(localStorage.setItem('mypump_token', ${JSON.stringify(TOKEN)}), true)`);
+  await cmd('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+  await cmd('Page.navigate', { url: `${BASE}/cliente.html?demo=1` });
+  await esperar('typeof DATA !== "undefined" && !!DATA && !!document.querySelector("#scene-train .block")', 15000);
+  await sleep(1200);
+  await evaluar('(setScene("revision"), true)'); await sleep(600);
+  const res = await evaluar('_subirFoto("frente", "data:image/jpeg;base64,AAAA", hoyLocal())');
+  comprobar(res && res.ok === false && res.fatal === true, 'subir una foto en la demo no manda nada');
+  comprobar(nuevas().length === 0 && !D.llamadas.some((l) => /salud|checkin|foto|chat|habito/.test(l.fn)), `ni pide logros, lista, salud, check o chat de esa cuenta (${[...new Set(D.llamadas.map((l) => l.fn))].join(', ') || 'cero llamadas'})`);
+  await limpiar();
+
+  // ── El foco: entra al festejo, Tab no sale de él, Escape cierra y vuelve ──
+  console.log('\n▸ foco y teclado');
+  reiniciar({ config: { wins_app: true } });
+  await limpiar(); await abrir(Q);
+  await cerrarConRecords();
+  comprobar(await evaluar('document.activeElement === document.querySelector("[data-test=wins-seguir]")'), 'al abrir, el foco está en «Seguir»');
+  const tab = (shift) => cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, modifiers: shift ? 8 : 0 }).then(() => cmd('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 }));
+  const dentro = () => evaluar('!!document.activeElement.closest(".wn-festejo")');
+  await tab(); const a1 = await dentro(); await tab(); const a2 = await dentro(); await tab(true); const a3 = await dentro();
+  comprobar(a1 && a2 && a3, 'Tab y Mayús+Tab dan la vuelta adentro del festejo');
+  await clic('[data-test="wins-contarle"]'); await sleep(300);
+  await tab(); await tab(); await tab();
+  comprobar(await evaluar('!!document.activeElement.closest(".wn-permiso")'), 'con la hoja de permiso arriba, el foco queda en ella');
+  await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }); await sleep(200);
+  comprobar(!(await hay('.wn-permiso')) && (await hay('.wn-festejo')), 'Escape cierra la hoja de permiso y deja el festejo');
+  await cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }); await sleep(400);
+  comprobar(!(await hay('.wn-capa')), 'Escape cierra el festejo');
 
   // ── 9. Letra grande (el navegador al 200 %) ──
   console.log('\n▸ letra grande (200 %)');

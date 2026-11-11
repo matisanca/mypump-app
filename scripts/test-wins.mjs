@@ -180,6 +180,69 @@ await caso('PGRST202: se vacía la cola y no se muestra nada', async () => {
   d.sinFuncion = true; await W.vaciar();
   assert.deepEqual(W.cola, []); assert.equal(W.puedeFestejar(), false);
 });
+await caso('sin_permiso vacía TODA la cola (no solo ese logro) con una sola llamada', async () => {
+  mem.clear(); const d = doble({ permiso: true }); armar(d); await W.aplicarPalanca(true);
+  d.sinRed = true; W.encolarRecords(REC, DIA); W.encolarRecords(REC2, DIA); await W.vaciar(); d.sinRed = false;
+  assert.equal(W.cola.length, 2);
+  d.permiso = false; d.llamadas.length = 0; await W.vaciar();
+  assert.deepEqual(W.cola, []); assert.equal(W.permiso, false); assert.equal(d.de('mypump_wins_registrar').length, 1);
+});
+await caso('PGRST202 al registrar además baja el permiso; y al leer el estado también', async () => {
+  mem.clear(); const d = doble({ permiso: true }); armar(d); await W.aplicarPalanca(true);
+  d.sinRed = true; W.encolarRecords(REC, DIA); await W.vaciar(); d.sinRed = false;
+  d.sinFuncion = true; await W.vaciar();
+  assert.equal(W.permiso, false); assert.equal(W.ajusteVisible(), false);
+  mem.clear(); const e = doble({ permiso: true }); armar(e); await W.aplicarPalanca(true); assert.equal(W.permiso, true);
+  e.sinFuncion = true; await W.refrescar();
+  assert.equal(W.permiso, false); assert.deepEqual(W.cola, []);
+});
+await caso('motivo datos: se saca al primer intento; token: al tercero; sin red no cuenta intentos', async () => {
+  mem.clear(); const d = doble({ permiso: true }); armar(d); await W.aplicarPalanca(true);
+  W.encolar({ tipo: 'record_kg', clave: 'x', dia: DIA, datos: { ejercicio: 'X', kg: 999, reps: 8, antes_kg: 900, antes_reps: 8 } }); await W.vaciar();
+  assert.deepEqual(W.cola, []); assert.equal(d.de('mypump_wins_registrar').length, 1);
+  d.sinRed = true; W.encolarRecords(REC, DIA); for (let i = 0; i < 5; i++) await W.vaciar();
+  assert.equal(W.cola.length, 1); assert.equal(W.cola[0].intentos, 0);
+  d.sinRed = false; d.tokenCaido = true;
+  await W.vaciar(); assert.equal(W.cola.length, 1); await W.vaciar(); assert.equal(W.cola.length, 1); await W.vaciar();
+  assert.deepEqual(W.cola, []);
+});
+await caso('lo ya enviado en esta sesión no se encola otra vez; una marca mejor sí, con id nuevo', async () => {
+  mem.clear(); const d = doble({ permiso: true }); armar(d); await W.aplicarPalanca(true);
+  W.encolarRecords(REC, DIA); await W.vaciar(); assert.equal(d.filas.length, 1);
+  assert.equal(W.encolarRecords(REC, DIA), 1); await W.vaciar();          // reabrir el festejo: dice que sí, pero no manda otro
+  assert.equal(d.filas.length, 1); assert.equal(d.de('mypump_wins_registrar').length, 1);
+  W.encolarRecords([{ ...REC[0], kg: 70 }], DIA); await W.vaciar();
+  assert.equal(d.filas.length, 2); assert.notEqual(d.filas[0].p_id, d.filas[1].p_id);
+});
+await caso('dos pestañas: si la otra revoca mientras esta manda, no se reescribe el permiso ni queda cola', async () => {
+  mem.clear(); const d = doble({ permiso: true }); const rpc = d.rpc; let despues = null, n = 0;
+  d.rpc = async (fn, p) => { const r = await rpc(fn, p); if (fn === 'mypump_wins_registrar') { n++; if (despues) { despues(); despues = null; } } return r; };
+  armar(d); await W.aplicarPalanca(true);
+  d.sinRed = true; W.encolarRecords(REC, DIA); W.encolarRecords(REC2, DIA); await W.vaciar(); d.sinRed = false;
+  const k = [...mem.keys()].find((x) => x.startsWith('mypump-wins-'));
+  n = 0; despues = () => mem.set(k, JSON.stringify({ activa: true, permiso: false, cola: [] }));
+  await W.vaciar();
+  assert.equal(W.permiso, false); assert.deepEqual(W.cola, []); assert.equal(n, 1);
+  assert.equal(JSON.parse(mem.get(k)).permiso, false); assert.deepEqual(JSON.parse(mem.get(k)).cola, []);
+  assert.equal(W.encolarRecords(REC, DIA), 0);
+});
+await caso('dos pestañas: lo que la otra encoló mientras esta mandaba no se pierde', async () => {
+  mem.clear(); const d = doble({ permiso: true }); armar(d); await W.aplicarPalanca(true);
+  const k = [...mem.keys()].find((x) => x.startsWith('mypump-wins-'));
+  const otro = { id: '11111111-1111-4111-8111-111111111111', tipo: 'racha_pasos', clave: 'pasos', dia: DIA, datos: { dias: 7, meta: 9000 }, intentos: 0 };
+  const rpc = d.rpc; let hecho = false;
+  d.rpc = async (fn, p) => { if (fn === 'mypump_wins_registrar' && !hecho) { hecho = true; const j = JSON.parse(mem.get(k)); j.cola.push(otro); mem.set(k, JSON.stringify(j)); } return rpc(fn, p); };
+  W.configurar({ token: 'tok-wins-1', rpc: d.rpc, alCambiar() {} }); await W.aplicarPalanca(true);
+  W.encolarRecords(REC, DIA); await W.vaciar(); await W.vaciar();
+  assert.deepEqual(d.filas.map((f) => f.p_tipo).sort(), ['racha_pasos', 'record_kg']); assert.deepEqual(W.cola, []);
+});
+await caso('la palanca se recuerda: el modelo arranca con lo último que se supo, sin llamar', async () => {
+  mem.clear(); const d = doble({ permiso: true }); armar(d); await W.aplicarPalanca(true);
+  d.llamadas.length = 0; d.sinRed = true; armar(d);
+  assert.equal(W.puedeFestejar(), true); assert.equal(W.permiso, true); assert.deepEqual(d.llamadas, []);
+  assert.equal(W.encolarRecords(REC, DIA), 1); await W.vaciar(); assert.equal(W.cola.length, 1);
+  await W.aplicarPalanca(false); armar(d); assert.equal(W.puedeFestejar(), false);
+});
 await caso('la función no existe al abrir: nada, sin romper', async () => {
   mem.clear(); const d = doble({ sinFuncion: true }); armar(d);
   await W.aplicarPalanca(true);

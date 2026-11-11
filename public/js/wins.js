@@ -33,14 +33,14 @@
     permiso_titulo: '¿Compartir tus logros con Mati?',
     permiso_cuerpo: [
       'Cuando logres un récord o una racha de pasos, Mati lo va a ver y lo puede compartir con el equipo de Pump Team.',
-      'Se comparte tu nombre, el ejercicio y la marca. Nunca tus fotos, tu peso ni tus datos de salud.',
+      'Se comparte tu nombre y el logro: el ejercicio y la marca, o los días de tu racha. Nunca tus fotos, tu peso ni otros datos de salud.',
       'Lo podés desactivar cuando quieras en Mis datos. Lo ya compartido no se puede borrar.',
     ],
     permiso_si: 'Sí, compartir',
     permiso_no: 'Ahora no',
     ajuste_seccion: 'Logros',
     ajuste_interruptor: 'Compartir mis logros con Mati',
-    ajuste_pie: 'Mati ve tus récords y tus rachas de pasos, y los puede compartir con el equipo de Pump Team. Nunca tus fotos, tu peso ni tus datos de salud.',
+    ajuste_pie: 'Mati ve tus récords y tus rachas de pasos, y los puede compartir con el equipo de Pump Team. Nunca tus fotos, tu peso ni otros datos de salud.',
     desactivado: 'Listo, no se comparte nada más.',
     sin_red: 'No se pudo guardar. Probá de nuevo cuando tengas conexión.',
     demo: 'En la demo no se envía nada.',
@@ -92,7 +92,7 @@
   const esHito = (dias) => HITOS.includes(dias);
 
   // ───────────────────────── El estado y la cola ─────────────────────────
-  const ui = { op: null, prendida: false, activa: false, permiso: null, cola: [], vaciando: null };
+  const ui = { op: null, prendida: false, activa: false, permiso: null, cola: [], vaciando: null, enviados: new Set() };
 
   function hash(t) { let h = 5381; for (const c of String(t || '')) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return h.toString(36); }
   const clave = () => `mypump-wins-${hash(ui.op && ui.op.token)}`;
@@ -121,14 +121,37 @@
 
   /** op: { token, rpc(fn, params) → {ok,data}|{ok:false,status,codigo,clase}, alCambiar() } */
   function configurar(op) {
-    ui.op = op; ui.prendida = false; ui.activa = false; ui.permiso = null; ui.cola = []; ui.vaciando = null;
+    ui.op = op; ui.prendida = false; ui.activa = false; ui.permiso = null; ui.cola = []; ui.vaciando = null; ui.enviados = new Set();
     leerDisco();
+    // La palanca se recuerda: arranca con lo último que se supo (cerrar la sesión con mala señal festeja igual).
+    try { ui.prendida = localStorage.getItem(FLAG) === '1'; } catch (_) { /* sin almacenamiento */ }
     // Otra pestaña de la misma cuenta cambió el permiso o la cola: esta toma lo que quedó en el disco.
     if (!ui.oyente && typeof window !== 'undefined' && window.addEventListener) {
       ui.oyente = true;
-      window.addEventListener('storage', (e) => { if (ui.op && e && e.key === clave() && !ui.vaciando) { leerDisco(); avisar(); } });
+      window.addEventListener('storage', (e) => { if (ui.op && e && e.key === clave()) { if (ui.vaciando) tomarRevocado(); else leerDisco(); avisar(); } });
     }
   }
+
+  /** Si otra pestaña sacó el permiso (quedó `false` en el disco), esta lo respeta: sin permiso y sin cola. */
+  function tomarRevocado() {
+    try {
+      const j = JSON.parse(localStorage.getItem(clave()) || 'null');
+      if (j && j.permiso === false && ui.permiso === true) { ui.permiso = false; ui.cola = []; ui.enviados.clear(); return true; }
+    } catch (_) { /* sin almacenamiento */ }
+    return false;
+  }
+  /** Al terminar de mandar: lo que otra pestaña encoló mientras tanto no se pierde. */
+  function sumarDelDisco(sacados) {
+    try {
+      const j = JSON.parse(localStorage.getItem(clave()) || 'null');
+      if (!j || !Array.isArray(j.cola) || ui.permiso !== true) return;
+      for (const x of j.cola) {
+        if (x && typeof x.id === 'string' && typeof x.tipo === 'string' && !sacados.has(x.id) && !ui.cola.some((y) => y.id === x.id)) ui.cola.push(x);
+      }
+      ui.cola = ui.cola.slice(-TOPE_COLA);
+    } catch (_) { /* sin almacenamiento */ }
+  }
+  const huella = (x) => `${x.tipo}|${x.clave}|${x.dia}|${JSON.stringify(x.datos)}`;
 
   const noExiste = (r) => r && !r.ok && (r.status === 404 || r.codigo === 'PGRST202');
 
@@ -139,11 +162,11 @@
     if (r && r.ok && r.data && r.data.ok === true) {
       ui.activa = r.data.activa === true;
       ui.permiso = r.data.permiso === true;
-      if (!ui.permiso) ui.cola = [];
+      if (!ui.permiso) { ui.cola = []; ui.enviados.clear(); }
       guardarDisco();
     } else if (noExiste(r)) {
       // La función no está: nada de esto existe todavía. Cualquier otro error deja todo como estaba.
-      ui.activa = false; ui.cola = [];
+      ui.activa = false; ui.permiso = false; ui.cola = []; ui.enviados.clear();
       guardarDisco();
     }
     avisar();
@@ -184,7 +207,7 @@
     if (!ui.op) return false;
     const r = await ui.op.rpc('mypump_wins_permiso', { p_token: ui.op.token, p_otorga: false });
     if (!(r && r.ok && r.data && r.data.ok === true)) return false;
-    ui.permiso = false; ui.cola = [];
+    ui.permiso = false; ui.cola = []; ui.enviados.clear();
     guardarDisco(); avisar();
     return true;
   }
@@ -200,8 +223,9 @@
     const i = ui.cola.findIndex((x) => x.clave === k && x.dia === dia && (x.tipo === 'racha_pasos') === esRacha);
     // El mismo id solo si es exactamente el mismo logro (un reintento); una marca nueva lleva id nuevo, porque el
     // servidor contesta «ya» por id y se quedaría con la vieja.
+    // Lo mismo que ya está en la cola o que ya salió en esta sesión no se encola otra vez.
     const igual = i >= 0 && ui.cola[i].tipo === tipo && JSON.stringify(ui.cola[i].datos) === JSON.stringify(datos);
-    if (igual) { vaciar().catch(() => {}); return true; }
+    if (igual || ui.enviados.has(huella({ tipo, clave: k, dia, datos }))) { vaciar().catch(() => {}); return true; }
     const item = { id: uuid(), tipo, clave: k, dia, datos, intentos: 0 };
     if (i >= 0) ui.cola[i] = item; else ui.cola.push(item);
     if (ui.cola.length > TOPE_COLA) ui.cola = ui.cola.slice(-TOPE_COLA);
@@ -229,39 +253,46 @@
     if (ui.vaciando) return ui.vaciando;
     if (!ui.op || !ui.prendida || !ui.cola.length) return Promise.resolve();
     const op = ui.op;
+    const sacados = new Set();
     ui.vaciando = (async () => {
       while (ui.op === op && ui.cola.length) {
+        if (tomarRevocado()) { avisar(); break; }
         const x = ui.cola[0];
         const r = await op.rpc('mypump_wins_registrar', { p_token: op.token, p_id: x.id, p_tipo: x.tipo, p_clave: x.clave, p_dia: x.dia, p_datos: x.datos });
         if (ui.op !== op) return;
-        const sacar = () => { ui.cola = ui.cola.filter((y) => y.id !== x.id); };
+        if (tomarRevocado()) { avisar(); break; }
+        const sacar = () => { sacados.add(x.id); ui.cola = ui.cola.filter((y) => y.id !== x.id); };
+        const unIntento = () => { const y = ui.cola.find((z) => z.id === x.id); if (y) { y.intentos = (y.intentos || 0) + 1; if (y.intentos >= INTENTOS_MAX) sacar(); } };
         if (r && r.ok) {
           const d = r.data;
           if (d && d.ok === true) {
             sacar();
-            if (d.motivo === 'sin_permiso') { ui.permiso = false; guardarDisco(); avisar(); continue; }
+            if (d.motivo === 'sin_permiso') {
+              // El servidor dice que no hay permiso: se recuerda y no queda nada pendiente.
+              for (const y of ui.cola) sacados.add(y.id);
+              ui.permiso = false; ui.cola = []; ui.enviados.clear(); avisar();
+              break;
+            }
+            if (d.guardado !== false) ui.enviados.add(huella(x));
           } else if (d && d.ok === false && d.motivo === 'datos') {
             sacar();
           } else {
-            // Token caído o una respuesta que no se entiende: queda para después, pero no para siempre.
-            const y = ui.cola.find((z) => z.id === x.id);
-            if (y) { y.intentos = (y.intentos || 0) + 1; if (y.intentos >= INTENTOS_MAX) sacar(); }
-            guardarDisco();
+            unIntento();   // token caído o una respuesta que no se entiende: se reintenta, hasta el tercero
             break;
           }
         } else if (noExiste(r)) {
-          ui.cola = []; ui.activa = false; guardarDisco(); avisar();
-          return;
+          for (const y of ui.cola) sacados.add(y.id);
+          ui.cola = []; ui.activa = false; ui.permiso = false; ui.enviados.clear(); avisar();
+          break;
         } else if (r && r.clase === 'permanente') {
-          const y = ui.cola.find((z) => z.id === x.id);
-          if (y) { y.intentos = (y.intentos || 0) + 1; if (y.intentos >= INTENTOS_MAX) sacar(); }
-          guardarDisco();
+          unIntento();
           break;
         } else {
-          break;     // sin red o el servidor caído: después
+          break;     // sin red o el servidor caído: después, sin contar intentos
         }
-        guardarDisco();
+        sumarDelDisco(sacados); guardarDisco();
       }
+      if (ui.op === op) { sumarDelDisco(sacados); guardarDisco(); }
     })().finally(() => { ui.vaciando = null; });
     return ui.vaciando;
   }
@@ -320,6 +351,15 @@
     document.body.appendChild(el);
     return el;
   }
+  /** El foco no sale de la hoja: Tab da la vuelta adentro. */
+  function atrapar(el, ev) {
+    if (ev.key !== 'Tab') return;
+    const f = [...el.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null || x === document.activeElement);
+    if (!f.length) { ev.preventDefault(); return; }
+    const i = f.indexOf(document.activeElement);
+    if (ev.shiftKey && i <= 0) { ev.preventDefault(); f[f.length - 1].focus(); }
+    else if (!ev.shiftKey && (i < 0 || i === f.length - 1)) { ev.preventDefault(); f[0].focus(); }
+  }
   function vibrar() {
     try {
       // Sin un toque previo, el navegador la bloquea. En iPhone la web no vibra.
@@ -339,7 +379,7 @@
       try { if (previo && previo.isConnected) previo.focus({ preventScroll: true }); } catch (_) {}
       if (o.alCerrar) o.alCerrar();
     };
-    const tecla = (ev) => { if (ev.key === 'Escape' && !ocupado) cerrar(); };
+    const tecla = (ev) => { if (ev.key === 'Escape' && !ocupado) cerrar(); else atrapar(el, ev); };
     let ocupado = false;
     el.addEventListener('click', async (ev) => {
       const b = ev.target.closest('[data-wn]');
@@ -380,7 +420,7 @@
       try { if (previo && previo.isConnected) previo.focus({ preventScroll: true }); } catch (_) {}
       if (o.alCerrar) o.alCerrar();
     };
-    const tecla = (ev) => { if (ev.key === 'Escape' && !document.querySelector('.wn-capa.wn-permiso')) cerrar(); };
+    const tecla = (ev) => { if (document.querySelector('.wn-capa.wn-permiso')) return; if (ev.key === 'Escape') cerrar(); else atrapar(el, ev); };
     const pie = (m) => { const p = el.querySelector('.wn-pie-estado'); if (p) p.innerHTML = htmlPie(n, m); };
     el.addEventListener('click', (ev) => {
       const b = ev.target.closest('[data-wn]');
@@ -393,13 +433,15 @@
     document.addEventListener('keydown', tecla);
     vibrar();
     const seguir = el.querySelector('[data-wn="seguir"]');
-    if (seguir) setTimeout(() => { if (seguir.isConnected) seguir.focus({ preventScroll: true }); }, reducir() ? 0 : 500);
+    // El foco entra al diálogo en el momento (no después de la animación) y vuelve a donde estaba al cerrar.
+    if (seguir) seguir.focus({ preventScroll: true });
     return true;
   }
 
   const api = {
     TOPE, TOPE_COLA, HITOS, PERMISO_VERSION, PLATAFORMA, FIJOS,
     records, titulo, subtitulo, conPermiso, esHito, kilos,
+    cuenta: (t) => hash(t),
     configurar, aplicarPalanca, refrescar, darPermiso, revocar, encolar, encolarRecords, encolarRacha, vaciar,
     puedeFestejar, ajusteVisible,
     htmlFestejo, htmlPermiso, abrirFestejo, abrirPermiso,

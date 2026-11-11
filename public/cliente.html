@@ -1902,8 +1902,9 @@ function _winsPalanca(cfg) {
 }
 let _winsEnganchado = false;
 /* Las series raras que se confirmaron igual, por día: para que una recarga no las vuelva un récord. Solo en este navegador. */
+const _winsDudosasClave = () => 'mypump-wins-dudosas-' + (window.Wins ? window.Wins.cuenta(TOKEN) : '');
 function _winsDudosas() {
-  try { const j = JSON.parse(localStorage.getItem('mypump-wins-dudosas') || 'null'); return j && j.dia === hoyLocal() && Array.isArray(j.series) ? j.series : []; } catch (_) { return []; }
+  try { const j = JSON.parse(localStorage.getItem(_winsDudosasClave()) || 'null'); return j && j.dia === hoyLocal() && Array.isArray(j.series) ? j.series : []; } catch (_) { return []; }
 }
 function _winsDudosa(exId, idx, dudosa) {
   if (DEMO) return;
@@ -1911,7 +1912,7 @@ function _winsDudosa(exId, idx, dudosa) {
     const k = exId + ':' + idx, antes = _winsDudosas();
     if (!dudosa && !antes.includes(k)) return;
     const series = antes.filter(x => x !== k); if (dudosa) series.push(k);
-    localStorage.setItem('mypump-wins-dudosas', JSON.stringify({ dia: hoyLocal(), series }));
+    localStorage.setItem(_winsDudosasClave(), JSON.stringify({ dia: hoyLocal(), series }));
   } catch (_) {}
 }
 /* Los récords del día, al cerrar la sesión: por ejercicio (misma clave en todo el día), las marcas de días anteriores
@@ -1969,7 +1970,8 @@ function _listaSalida() {
     const s = window.ListaPrevia.lista(_demoHist.listaPrevia);
     return s && { ...s, items: s.items.map(i => (i.destino === 'guia' ? { ...i, destino: null } : i)) };
   }
-  if (!TOKEN || DEMO || (DATA && DATA._isDemo)) return null;
+  // Una cuenta real sin rutina publicada también la ve (es quien espera su videollamada); solo la demo sin cuenta no pide nada.
+  if (!TOKEN || DEMO) return null;
   return window.ListaPrevia.salida;
 }
 function _listaPintar() {
@@ -1986,7 +1988,7 @@ function _listaPintar() {
   try { if (window.MyPumpGuia && window.MyPumpGuia.repintarTarjetas) window.MyPumpGuia.repintarTarjetas(); } catch (_) {}
 }
 function _listaRefrescar() {
-  if (!window.ListaPrevia || !TOKEN || DEMO || (DATA && DATA._isDemo) || !window.ListaPrevia.prendida) return;
+  if (!window.ListaPrevia || !TOKEN || DEMO || !window.ListaPrevia.prendida) return;
   if (STATE.scene !== 'train' || document.visibilityState !== 'visible') return;
   window.ListaPrevia.refrescar().catch(() => {});
 }
@@ -10243,6 +10245,7 @@ function _fpPintarMsg() {
 }
 
 async function _subirFoto(pose, dataUrl, fecha) {
+  if (typeof DEMO !== 'undefined' && DEMO) return { ok: false, fatal: true, error: 'demo' };   // la demo no manda nada, aunque haya una cuenta guardada en este navegador
   const base = FOTOS_URL();
   if (!base) return { ok: false, error: 'servicio no configurado' };
   try {
@@ -10800,6 +10803,7 @@ async function _tomarFoto(pose, origen) {
     if (!file) return;
     // Al #fpMsg que está en pantalla, no al de antes del render (ver _fpMsg).
     const setMsg = _fpMsg;
+    if (typeof DEMO !== 'undefined' && DEMO) return setMsg((window.Wins && window.Wins.FIJOS.demo) || '', 'is-err');
     setMsg('Preparando la foto…');
     let dataUrl;
     try { dataUrl = await _fotoAJpeg(file); }
@@ -11546,7 +11550,7 @@ function renderMisDatos() {
 let _winsAjusteMsg = null;   // {texto, error}: lo que pasó con el último toque, mientras se esté en Mis datos
 function _winsAjusteHtml() {
   const W = window.Wins;
-  if (!W || !TOKEN || (DATA && DATA._isDemo) || !(W.ajusteVisible() || _winsAjusteMsg)) return '';
+  if (!W || !TOKEN || DEMO || !(W.ajusteVisible() || _winsAjusteMsg)) return '';
   const F = W.FIJOS;
   return `
     <div class="md-ceja" data-test="wins-ajuste">${escapeHtml(F.ajuste_seccion)}</div>
@@ -12298,7 +12302,7 @@ async function init() {
   aplicarPendientesEntreno();
   if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
   // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio también va, como en la app.
-  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _elegirHorarioPalanca(c); _metasPalanca(c); }).catch(() => {});
+  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _elegirHorarioPalanca(c); _metasPalanca(c); _winsPalanca(c); _listaPalanca(c); }).catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;
