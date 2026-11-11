@@ -220,7 +220,7 @@ caso(`ningún texto dice IA, coach, entrenador ni RIR (${textos.length} textos)`
 });
 caso('la pantalla dice lo que pide la especificación', () => {
   for (const t of ['Check de la semana', 'Enviar mi check', 'Actualizar mi check', 'Listo', 'Mati lo ve antes de tu devolución.',
-    'Cerrar', 'Seguir', 'Atrás', 'Ej: 78,4', 'Escribí acá (opcional)', 'Media de 7 días: ']) {
+    'Cerrar', 'Salir', 'Seguir', 'Atrás', 'Paso ', 'Ej: 78,4', 'Escribí acá (opcional)', 'Media de 7 días: ']) {
     assert.ok(sinComentarios(pantalla).includes(t), `falta «${t}»`);
   }
 });

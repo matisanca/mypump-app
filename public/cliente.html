@@ -1161,8 +1161,8 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .cg-btn:disabled{background:var(--color-bg-tertiary);color:var(--color-text-muted);box-shadow:none;cursor:default}
 .cg-btn.is-suave{background:var(--color-bg-tertiary);color:var(--color-text-primary);box-shadow:none}
 [data-theme="dark"] .cg-btn:disabled{background:#2c2c2e;color:#8a8a8e}
-.cg-tarjeta .cg-btn{min-height:52px;font-size:17px}
-.cg-btn:focus-visible,.cg-ov :focus-visible:not(.cg-peso-num):not(.cg-nota){outline:3px solid color-mix(in oklab,var(--color-brand) 65%,var(--color-text-primary));outline-offset:2px}
+.cg-tarjeta .cg-btn{min-height:58px;font-size:19px}
+.cg-btn:focus-visible,.cg-ov :focus-visible:not(.cg-peso-num):not(.cg-nota):not(.cg-titulo){outline:3px solid color-mix(in oklab,var(--color-brand) 65%,var(--color-text-primary));outline-offset:2px}
 html.cg-abierto,html.cg-abierto body{overflow:hidden}
 
 .cg-ov{position:fixed;inset:0;z-index:55;font-size:16px;color:var(--color-text-primary);background:var(--cg-fondo);--cg-fondo:var(--color-bg-primary);--cg-sup:var(--color-bg-secondary);--cg-borde:var(--color-border-strong)}
@@ -1172,8 +1172,10 @@ html.cg-abierto,html.cg-abierto body{overflow:hidden}
 .cg-in{height:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column}
 .cg-cab{flex:0 0 auto;display:flex;align-items:center;gap:.75em;padding:calc(.5em + env(safe-area-inset-top,0px)) 1em .25em}
 .cg-cab[hidden]{display:none}
-.cg-x{flex:0 0 auto;width:2.75em;height:2.75em;min-width:44px;min-height:44px;border:0;border-radius:50%;background:var(--cg-sup);color:var(--color-text-primary);display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.cg-cuenta{flex:0 0 auto;font-family:var(--font-num);font-size:.875em;font-weight:600;color:var(--color-text-secondary);white-space:nowrap}
+.cg-x{flex:0 0 auto;min-height:48px;padding:.4em 1em .4em .75em;border:0;border-radius:999px;background:var(--cg-sup);color:var(--color-text-primary);font:inherit;font-size:1em;font-weight:600;display:flex;align-items:center;gap:.4em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cg-avance{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:.4em}
+.cg-cuenta{font-family:var(--font-num);font-size:.9375em;font-weight:700;line-height:1.2;color:var(--color-text-primary);text-align:right}
+.cg-avance .cg-seg{flex:0 0 auto}
 .cg-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:1.25em 1.25em 1.5em}
 .cg-cuerpo>*{animation:cg-entra .22s ease-out both}
 @keyframes cg-entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -1181,8 +1183,8 @@ html.cg-abierto,html.cg-abierto body{overflow:hidden}
 .cg-apoyo{font-size:1em;line-height:1.4;color:var(--color-text-secondary);margin:0 0 1.5em}
 .cg-pie{flex:0 0 auto;padding:.75em 1.25em calc(.6em + env(safe-area-inset-bottom,0px));background:var(--cg-fondo)}
 .cg-ov .cg-btn{font-size:1.1875em;min-height:3.05em}
-.cg-pie-sec{display:flex;justify-content:space-between;align-items:center;gap:1em;margin-top:.25em}
-.cg-txt{min-height:48px;min-width:48px;padding:.4em .5em;border:0;background:transparent;color:var(--color-text-secondary);font:inherit;font-size:.9375em;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cg-sec{width:100%;min-height:52px;margin-top:.6em;padding:.5em 1em;border:0;border-radius:999px;background:var(--cg-sup);color:var(--color-text-primary);font:inherit;font-size:1.0625em;font-weight:600;line-height:1.2;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.cg-txt{width:100%;min-height:48px;margin-top:.15em;padding:.4em .5em;border:0;background:transparent;color:var(--color-text-primary);font:inherit;font-size:1em;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.3em;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .cg-aviso{min-height:1.4em;margin:.9em 0 0;font-size:.9375em;font-weight:600;color:var(--color-danger);text-align:center}
 .cg-falta{margin:.9em 0 0;font-size:.9375em;font-weight:600;line-height:1.3;color:var(--color-alerta)}
 .cg-pie .cg-falta{margin:0 0 .6em;text-align:center}
@@ -10409,7 +10411,8 @@ async function fotosFirmadas() {
    Entreno y Dieta. Reusa los patrones .tab-badge y .prog-banner. */
 function _pendientesSemana() {
   const sem = _lunesISO(hoyLocal());
-  const faltaCheck = !(STATE.checkin && STATE.checkin.energia);
+  // Con el check guiado, el check que espera en la cola ya está enviado (como en su tarjeta). Apagado, lo de siempre.
+  const faltaCheck = checkGuiadoPrendido() ? !_cgCheckin() : !(STATE.checkin && STATE.checkin.energia);
   let faltanFotos = false;
   if (FOTOS_URL()) {
     const puestas = new Set((STATE.fotos || []).filter(f => f.semana_lunes === sem).map(f => f.pose));
@@ -10443,6 +10446,8 @@ function renderRecordatorio() {
   // Mismo texto que la app 2.1.0 (BannerRevision): sin emoji ni guion.
   div.innerHTML = `<span class="rs-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 2 2 4-4"/><path d="m3 17 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span><span class="rs-txt"><span class="rs-tit">${texto}</span><span class="rs-sub">Entrá a Revisión: es un minuto y Mati lo ve antes de tu devolución.</span></span><span class="rs-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span>`;
   div.addEventListener('click', () => {
+    // Con el check guiado, si falta el check el aviso lo abre directo en el paso que toca (las fotos son uno de sus pasos).
+    if (checkGuiadoPrendido() && p.faltaCheck) { _cgIrAlCheck(); return; }
     setScene('revision');
     // Como la app: si solo falta el check, al check; si no, a las fotos.
     const destino = (p.faltaCheck && !p.faltanFotos) ? 'myday-checkin' : 'myday-fotos';
@@ -10853,7 +10858,8 @@ function _cgAplicarPalanca(v) {
   try { localStorage.setItem(_CG_PALANCA_KEY, v ? '1' : '0'); } catch (_) {}
   if (!v && _cg) _cgCerrar();
   if (v) loadCheckGuiado().catch(() => {});
-  if (STATE.scene === 'revision') renderMydayCheckin();
+  if (STATE.scene === 'revision') renderRevision();   // la tarjeta va primera: cambia el orden de la pantalla
+  try { renderRecordatorio(); } catch (_) {}
 }
 
 /* Lo último que dijo `mypump_check_guiado_get` ({enCiclo, semana, catalogo, senales}). Queda en el navegador: sin
@@ -10969,6 +10975,7 @@ const _CG_ICO = {
   x: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   tilde: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
   va: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>',
+  atras: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>',
   mas: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
 };
 const _cgSegmentos = (total, hechos) => Array.from({ length: total }, (_, i) => `<i${i < hechos ? ' class="is-on"' : ''}></i>`).join('');
@@ -10990,9 +10997,18 @@ function _cgRenderTarjeta(el) {
       <p class="cg-t-txt">${escapeHtml(CheckGuiado.textoTarjeta(e))}</p>
       <div class="cg-seg" aria-hidden="true">${_cgSegmentos(pasos.length, hechos)}</div>
       <button type="button" class="cg-btn${e === 'enviado' ? ' is-suave' : ''}" id="cgAbrir" data-testid="check-guiado-abrir">${escapeHtml(CheckGuiado.botonTarjeta(e))}</button>
-    </section>
-    <div id="ss-host">${_saludSemanaHtml()}</div>`;
+    </section>`;
+  _repintarSaludSemana();
   el.querySelector('#cgAbrir').addEventListener('click', () => _cgAbrir(e === 'enviadoSinFotos' ? 'fotos' : null));
+}
+
+/* A dónde llevan los avisos de «te falta tu check»: a Revisión y, si todavía no lo mandó, directo al check abierto en el
+   paso que toca. Con el check ya enviado, solo muestra la tarjeta. */
+function _cgIrAlCheck() {
+  setScene('revision');
+  const el = document.getElementById('myday-checkin');
+  if (el) el.scrollIntoView({ block: 'start' });
+  if (!_cgCheckin()) _cgAbrir(null);
 }
 
 // Abre el check: donde lo dejó, en el resumen si ya lo mandó, o en el paso que se pide («Subir fotos»).
@@ -11027,9 +11043,11 @@ function _cgAbrir(pasoPedido) {
   ov.innerHTML = `
     <div class="cg-in">
       <div class="cg-cab" id="cgCab">
-        <button type="button" class="cg-x" data-cg="cerrar" data-testid="cg-cerrar" aria-label="Cerrar. Lo que llevás queda guardado">${_CG_ICO.x}</button>
-        <div class="cg-seg" id="cgAvance" data-testid="cg-avance" role="progressbar" aria-label="Avance del check" aria-valuemin="1"></div>
-        <span class="cg-cuenta" id="cgCuenta" aria-hidden="true"></span>
+        <button type="button" class="cg-x" data-cg="cerrar" data-testid="cg-cerrar" aria-label="Salir. Lo que llevás queda guardado">${_CG_ICO.x}<span>Salir</span></button>
+        <div class="cg-avance" id="cgAvance" data-testid="cg-avance" role="progressbar" aria-label="Avance del check" aria-valuemin="1">
+          <span class="cg-cuenta" id="cgCuenta"></span>
+          <div class="cg-seg" id="cgSeg" aria-hidden="true"></div>
+        </div>
       </div>
       <div class="cg-cuerpo" id="cgCuerpo"></div>
       <div class="cg-pie" id="cgPie"></div>
@@ -11287,11 +11305,11 @@ function _cgPintar() {
   const { b, paso, pasos } = _cg;
   const i = pasos.indexOf(paso);
   const av = ov.querySelector('#cgAvance');
-  av.innerHTML = _cgSegmentos(pasos.length, i + 1);
+  ov.querySelector('#cgSeg').innerHTML = _cgSegmentos(pasos.length, i + 1);
   av.setAttribute('aria-valuemax', pasos.length);
   av.setAttribute('aria-valuenow', i + 1);
   av.setAttribute('aria-valuetext', `Paso ${i + 1} de ${pasos.length}`);
-  ov.querySelector('#cgCuenta').textContent = `${i + 1} de ${pasos.length}`;
+  ov.querySelector('#cgCuenta').textContent = `Paso ${i + 1} de ${pasos.length}`;
   cuerpo.className = 'cg-cuerpo';
   cuerpo.innerHTML = `
     <h2 class="cg-titulo" id="cgTitulo" data-testid="cg-titulo" tabindex="-1">${escapeHtml(CheckGuiado.titulo(paso, b.catalogo))}</h2>
@@ -11303,10 +11321,8 @@ function _cgPintar() {
     ${paso === 'resumen'
       ? `<button type="button" class="cg-btn" data-cg="enviar" data-testid="cg-enviar">${_cg.yaEnviado ? 'Actualizar mi check' : 'Enviar mi check'}</button>`
       : '<button type="button" class="cg-btn" data-cg="seguir" data-testid="cg-seguir">Seguir</button>'}
-    ${i > 0 || omitir ? `<div class="cg-pie-sec">
-      ${i > 0 ? '<button type="button" class="cg-txt" data-cg="atras" data-testid="cg-atras">Atrás</button>' : '<span></span>'}
-      ${omitir ? `<button type="button" class="cg-txt" data-cg="omitir" data-testid="cg-omitir">${omitir}</button>` : ''}
-    </div>` : ''}`;
+    ${omitir ? `<button type="button" class="cg-sec" data-cg="omitir" data-testid="cg-omitir">${omitir}</button>` : ''}
+    ${i > 0 ? `<button type="button" class="cg-txt" data-cg="atras" data-testid="cg-atras">${_CG_ICO.atras}<span>Atrás</span></button>` : ''}`;
   const peso = cuerpo.querySelector('#cgPeso');
   if (peso) peso.value = b.peso;
   const nota = cuerpo.querySelector('#cgNota');
@@ -11366,14 +11382,17 @@ function renderRevision() {
   // Mismo orden que la app 2.1.0 (RevisionView): Recuperación, Tu progreso,
   // fotos y check. El peso, el reloj y la salud del día viven en Salud
   // (se entra por la tarjeta Recuperación); el peso de la semana va en el check.
+  // Con el check guiado, su tarjeta va primera, arriba de todo; «Tu salud, últimos 7 días» queda al final, donde estaba.
+  const guiado = checkGuiadoPrendido();
   root.innerHTML = `
+    ${guiado ? '<div id="myday-checkin"></div>' : ''}
     <div id="rv-tarjetas" class="rv-tarjetas"></div>
     <div id="rv-dia" class="rv-nota" hidden></div>
     ${_avisoPlanHtml()}
     ${web230() ? '<p class="rv-nota" id="rv-semanal">La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días.</p>' : ''}
     <div id="myday-fotos"></div>
     <div id="fpGaleria" class="fp-galeria"></div>
-    <div id="myday-checkin"></div>`;
+    ${guiado ? '<div id="ss-host"></div>' : '<div id="myday-checkin"></div>'}`;
 
   _renderRevTarjetas();
   _pintarDiaRevision();
