@@ -141,6 +141,10 @@ struct DietaView: View {
         let opciones = opcionesVigentes
         let dia = modelo.diaAjustado(opciones: opciones)
         let consumo = modelo.consumo(opciones: opciones)
+        // La próxima comida sin marcar (la primera sin «Comí» ni «Salté» que hoy se come): la única con «Comí» en verde
+        // lleno (decisión de Mati, 10/11). Un solo botón verde a la vista.
+        let marcas = modelo.marcasVista
+        let proxima = modelo.vistaPuedeMarcar ? modelo.comidasVista.first { marcas[$0.id] == nil && dia[$0.id]?.omitida != true }?.id : nil
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 LazyVStack(alignment: .leading, spacing: 16) {
@@ -162,7 +166,7 @@ struct DietaView: View {
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(Color.marcaTexto)
-                            .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
+                            .background(Color.campo, in: .capsule)   // neutro: el verde lleno queda para «Comí»
                             .accessibilityIdentifier("copiar-de-otro-dia")
                         }
                     }
@@ -185,7 +189,7 @@ struct DietaView: View {
                 }
                 LazyVStack(alignment: .leading, spacing: 16) {
                     ForEach(Array(modelo.comidasVista.enumerated()), id: \.element.id) { n, c in
-                        tarjeta(c, numero: n + 1, ajustada: dia[c.id])
+                        tarjeta(c, numero: n + 1, ajustada: dia[c.id], proxima: c.id == proxima)
                     }
                 }
                 PieRespaldo(origen: .dieta)
@@ -268,7 +272,7 @@ struct DietaView: View {
 
     // MARK: - Comida
 
-    private func tarjeta(_ c: Comida, numero: Int, ajustada: AjustePorciones.ComidaAjustada?) -> some View {
+    private func tarjeta(_ c: Comida, numero: Int, ajustada: AjustePorciones.ComidaAjustada?, proxima: Bool) -> some View {
         let o = min(opcionesVigentes[c.id] ?? 0, max(c.opciones.count - 1, 0))
         let alimentos = (c.opciones[safe: o]?.alimentos ?? []).enumerated().map { i, a in
             let e = modelo.efectivoVista(a, comidaId: c.id, opt: o, idx: i)
@@ -316,9 +320,9 @@ struct DietaView: View {
                         Image(systemName: marca?.estado == .comido ? "checkmark" : marca?.estado == .saltado ? "xmark" : Self.iconoComida(c.nombre))
                             .font(.system(size: 17, weight: .semibold))
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(marca?.estado == .comido ? Color.sobreMarca : marca?.estado == .saltado ? Color.secondary : Color.marcaTexto)
+                            .foregroundStyle(marca?.estado == .saltado ? Color.secondary : Color.marcaTexto)
                             .frame(width: 38, height: 38)
-                            .background(marca?.estado == .comido ? Color.marca : marca?.estado == .saltado ? Color.campo : Color.marcaSuave,
+                            .background(marca?.estado == .saltado ? Color.campo : Color.marcaSuave,   // hecha: verde suave con tilde, no verde lleno
                                         in: .rect(cornerRadius: 11, style: .continuous))
                             .contentTransition(.symbolEffect(.replace))
                             .accessibilityHidden(true)
@@ -355,7 +359,7 @@ struct DietaView: View {
                     }
                 }
                 if !omitida {
-                    BotonesMarca(estado: marca?.estado, comidaId: c.id) { nuevo in
+                    BotonesMarca(estado: marca?.estado, comidaId: c.id, proxima: proxima) { nuevo in
                         // La opción que se ve queda fija: si venía de la marca, desmarcar o «Salté» no la cambian (en la web
                         // tampoco salta) y un «Comí» después es con la que se está mirando.
                         if opcion[c.id] == nil { opcion[c.id] = o }
@@ -765,6 +769,8 @@ private struct BotonCircular: View {
 private struct BotonesMarca: View {
     let estado: MarcaComida.Estado?
     let comidaId: String
+    /// La próxima comida sin marcar: solo en ella «Comí» va en verde lleno. En las demás, discreto.
+    var proxima = true
     let alElegir: (MarcaComida.Estado?) -> Void
     @Environment(\.dynamicTypeSize) private var tamañoLetra
     /// El último toque: la háptica va con él y no con `estado`, que también cambia con lo que llega de la web.
@@ -800,7 +806,7 @@ private struct BotonesMarca: View {
             alElegir(nuevo)
         } label: {
             Label(texto, systemImage: activo ? "\(icono).circle.fill" : icono)
-                .font(principal && estado == nil ? .headline : .subheadline.weight(.semibold))
+                .font(principal && estado == nil && proxima ? .headline : .subheadline.weight(.semibold))
                 .contentTransition(.symbolEffect(.replace))
                 .padding(.horizontal, principal ? 0 : 18)
                 .frame(maxWidth: principal || grande ? .infinity : nil, minHeight: 48)
@@ -816,7 +822,7 @@ private struct BotonesMarca: View {
 
     private func tinta(_ e: MarcaComida.Estado, activo: Bool) -> Color {
         switch (e, estado) {
-        case (.comido, nil): .sobreMarca                    // sin marcar: el botón que avanza
+        case (.comido, nil): proxima ? .sobreMarca : .primary   // la próxima sin marcar: el botón que avanza
         case (.comido, .comido?): .marcaTexto               // hecha: tranquila, en verde suave
         case (.saltado, .saltado?): .primary                // el naranja como texto chico no llega a 4,5:1 sobre su fondo
         default: .apoyo
@@ -825,7 +831,7 @@ private struct BotonesMarca: View {
 
     private func fondo(_ e: MarcaComida.Estado, activo: Bool) -> Color {
         switch (e, estado) {
-        case (.comido, nil): .marca
+        case (.comido, nil): proxima ? .marca : .campo
         case (.comido, .comido?): .marcaSuave
         case (.saltado, .saltado?): Color.alerta.opacity(0.16)
         case (.comido, _): .campo

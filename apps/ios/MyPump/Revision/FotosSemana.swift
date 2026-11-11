@@ -110,7 +110,7 @@ struct FotosSemana: View {
                 }
 
                 if semanas.isEmpty {
-                    Text("Con la primera foto arranca tu historial. Mismo lugar y misma luz cada semana: así la comparación muestra tu cambio y no el del ambiente.")
+                    Text("Con la primera foto arranca tu historial.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {

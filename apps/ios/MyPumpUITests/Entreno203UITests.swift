@@ -13,7 +13,8 @@ final class Entreno203UITests: XCTestCase {
 
     private func lanzar(historial: Bool) {
         app.launchArguments = ["-entrar", "demo", "-sinOnboarding", "YES", "-pestana", "entreno", "-captura", "YES"]
-            + (historial ? ["-historial", "muestra"] : [])
+            // Sin historial de verdad: desde que la demo trae su historial de ejemplo, hay que apagarlo a mano.
+            + (historial ? ["-historial", "muestra"] : ["-demoHistorial", "NO"])
         app.launch()
         // A veces el primer arranque después de cambiar la apariencia queda en el acceso.
         let demo = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Ver demo'")).firstMatch

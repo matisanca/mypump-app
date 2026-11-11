@@ -328,9 +328,9 @@ final class ColaAUITests: XCTestCase {
         let atras = app.navigationBars.buttons.element(boundBy: 0)
         XCTAssertTrue(atras.waitForExistence(timeout: 10))
         atras.tap()
-        let cerrar = app.buttons.matching(NSPredicate(format: "label == 'Cerrar sesión de hoy'")).firstMatch
+        let cerrar = app.buttons.matching(NSPredicate(format: "label == 'Terminar el entrenamiento de hoy'")).firstMatch
         for _ in 0..<14 where !(cerrar.exists && cerrar.isHittable) { app.swipeUp() }
-        XCTAssertTrue(cerrar.isHittable, "No está «Cerrar sesión de hoy»")
+        XCTAssertTrue(cerrar.isHittable, "No está «Terminar el entrenamiento de hoy»")
         cerrar.tap()
         XCTAssertTrue(app.buttons["confirmar-cierre"].waitForExistence(timeout: 30))
         app.buttons["confirmar-cierre"].tap()

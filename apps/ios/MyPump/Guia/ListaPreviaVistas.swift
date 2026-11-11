@@ -194,7 +194,7 @@ private struct FilaListaPrevia: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(sobreVerde ? Color.sobreMarca.opacity(0.18) : Color.marcaSuave, in: .rect(cornerRadius: Radio.control + 4, style: .continuous))
+            .background(sobreVerde ? Color.sobreMarca.opacity(0.18) : Color.campo, in: .rect(cornerRadius: Radio.control + 4, style: .continuous))   // neutro: el verde suave queda para lo ya hecho
             .contentShape(.rect(cornerRadius: Radio.control + 4, style: .continuous))
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
