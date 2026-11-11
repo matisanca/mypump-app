@@ -66,6 +66,8 @@ public final class ModeloFotosInicio {
     @ObservationIgnored private var urlsVencen: Date?
     @ObservationIgnored private var reintentoProgramado = false
     @ObservationIgnored private var reintentosDeFondo = 0
+    /// Se cerró sesión: no se vuelve a pedir, mostrar, subir ni guardar nada de esta cuenta en esta instancia.
+    @ObservationIgnored private var cerrada = false
 
     static let archivoEstado = "fotos-inicio-estado.json"
     static let maxIntentosSeguidos = 3
@@ -136,7 +138,10 @@ public final class ModeloFotosInicio {
     /// `get`. null es token caído; `habilitado:false`, sin el servidor nuevo (PGRST202, 404) o un rechazo: apagado. Sin red, lo
     /// último que se supo.
     public func refrescar() async {
-        switch await cliente.llamar("mypump_fotos_inicio_get", ["p_token": .texto(token)]) {
+        if cerrada { return }
+        let r = await cliente.llamar("mypump_fotos_inicio_get", ["p_token": .texto(token)])
+        if cerrada { return }
+        switch r {
         case .success(.null):
             estado = nil
             tokenCaido = true
@@ -154,6 +159,20 @@ public final class ModeloFotosInicio {
     }
 
     public func apagar() { estado = nil }
+
+    /// Cerrar sesión, con el mismo criterio que el outbox: lo que se ve (el estado del servidor con las fotos ya subidas, la
+    /// nota guardada y las miniaturas firmadas) se borra del teléfono; las fotos que todavía no subieron (su índice y su JPEG)
+    /// y la nota sin mandar quedan en la carpeta de esa cuenta y salen al volver a entrar con el mismo link. Con otro link es
+    /// otra carpeta: no se ven ni se mandan. Una pasada en curso se corta en el próximo paso.
+    public func olvidarAlSalir() {
+        cerrada = true
+        estado = nil
+        urls = [:]
+        urlsVencen = nil
+        aviso = nil
+        subiendo = nil
+        disco?.borrar(Self.archivoEstado)
+    }
 
     // MARK: Fotos
 
@@ -215,7 +234,7 @@ public final class ModeloFotosInicio {
 
     /// nil: se está mandando (otra pasada), o no hay nada que mandar.
     private func mandarNota() async -> Salida? {
-        guard let n = notaPendiente, !mandandoNota else { return nil }
+        guard let n = notaPendiente, !mandandoNota, !cerrada else { return nil }
         mandandoNota = true
         defer { mandandoNota = false }
         switch await cliente.llamar("mypump_fotos_inicio_nota", ["p_token": .texto(token), "p_nota": .texto(n)]) {
@@ -252,12 +271,12 @@ public final class ModeloFotosInicio {
     /// pasada y vuelve a probar al minuto. Todo otro 4xx es definitivo. Al vaciarse la cola se refresca el estado y sale la nota
     /// que había quedado guardada.
     public func drenar() async {
-        guard !drenando, estado != nil else { return }
+        guard !drenando, !cerrada, estado != nil else { return }
         drenando = true
         defer { drenando = false }
         var refrescarAlFinal = false, subioAlguna = false
         var seguidas = 0
-        pasada: while true {
+        pasada: while !cerrada {
             sacarReemplazadas()
             guard let item = cola.first(where: { !conError.contains($0.id) }) ?? cola.first else { break }
             subiendo = item.id
@@ -360,7 +379,7 @@ public final class ModeloFotosInicio {
     }
 
     private func actualizarEstado(_ cambio: (inout EstadoFotosInicio) -> Void) {
-        guard var e = estado else { return }
+        guard !cerrada, var e = estado else { return }
         cambio(&e)
         estado = e
         disco?.guardar(Self.aJSON(e), Self.archivoEstado)
@@ -370,7 +389,7 @@ public final class ModeloFotosInicio {
 
     /// URLs firmadas por 1 h: se piden de nuevo a los 50 min, o si aparece una foto que no estaba.
     public func firmar(forzar: Bool = false) async {
-        guard let e = estado, !e.fotos.isEmpty else { return }
+        guard !cerrada, let e = estado, !e.fotos.isEmpty else { return }
         if !forzar, e.fotos.allSatisfy({ urls[$0.id] != nil }), let v = urlsVencen, v > ahora() { return }
         guard let r = await postVision("inicio/urls", ["token": .texto(token)]), r.json?["ok"] == .bool(true),
               case .lista(let filas)? = r.json?["fotos"] else { return }

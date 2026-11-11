@@ -41,11 +41,14 @@ class ModeloFeedback(
 
     /** Cuenta las escrituras: una lectura que salió antes de una escritura no pisa lo que esa escritura dejó. */
     private val escrituras = java.util.concurrent.atomic.AtomicInteger(0)
+    /** Se cerró sesión: no se vuelve a pedir ni a guardar nada de esta cuenta. */
+    @Volatile private var cerrada = false
 
     suspend fun refrescar() {
+        if (cerrada) return
         val antes = escrituras.get()
         val r = cliente.llamar("mypump_feedback_get", mapOf("p_token" to ValorJson.Texto(token)))
-        if (escrituras.get() != antes || _marcando.value.isNotEmpty()) return   // la próxima lectura trae lo nuevo
+        if (cerrada || escrituras.get() != antes || _marcando.value.isNotEmpty()) return   // la próxima lectura trae lo nuevo
         when (r) {
             is Resultado.Ok -> {
                 if (r.valor == ValorJson.Nulo) {
@@ -76,6 +79,16 @@ class ModeloFeedback(
     fun apagar() {
         _estado.value = null
         _marcando.value = emptySet()
+    }
+
+    /**
+     * Cerrar sesión: las molestias avisadas y las marcas de suplementos (lo que se ve) se borran del teléfono. No hay nada
+     * pendiente que conservar: «Me duele» y las marcas salen directo, sin cola (si no salen, se avisa en la pantalla).
+     */
+    fun olvidarAlSalir() {
+        cerrada = true
+        apagar()
+        disco?.borrar(ARCHIVO)
     }
 
     /** Avisa una molestia. [id] lo pone quien llama y lo repite en cada reintento: el servidor no duplica. */

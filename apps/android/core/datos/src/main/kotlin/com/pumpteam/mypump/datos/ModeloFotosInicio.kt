@@ -114,6 +114,8 @@ class ModeloFotosInicio(
     private val borrarAlSubir = ConcurrentHashMap.newKeySet<String>()
     @Volatile private var urlsVencen: Long? = null
     @Volatile private var reintentosDeFondo = 0
+    /** Se cerró sesión: no se vuelve a pedir, mostrar, subir ni guardar nada de esta cuenta en esta instancia. */
+    @Volatile private var cerrada = false
 
     /** La palanca `fotos_inicio` que se leyó por última vez: prendida, sin red se pueden seguir sacando las fotos. */
     val palancaRecordada: Boolean get() = disco?.leer(ARCHIVO_PALANCA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true)
@@ -176,7 +178,10 @@ class ModeloFotosInicio(
      * último que se supo.
      */
     suspend fun refrescar() {
-        when (val r = cliente.llamar("mypump_fotos_inicio_get", mapOf("p_token" to ValorJson.Texto(token)))) {
+        if (cerrada) return
+        val r = cliente.llamar("mypump_fotos_inicio_get", mapOf("p_token" to ValorJson.Texto(token)))
+        if (cerrada) return
+        when (r) {
             is Resultado.Ok -> {
                 if (r.valor == ValorJson.Nulo) {
                     _tokenCaido.value = true
@@ -206,6 +211,22 @@ class ModeloFotosInicio(
 
     fun apagar() {
         _estado.value = null
+    }
+
+    /**
+     * Cerrar sesión, con el mismo criterio que el outbox: lo que se ve (el estado del servidor con las fotos ya subidas, la
+     * nota guardada y las miniaturas firmadas) se borra del teléfono; las fotos que todavía no subieron (su índice y su JPEG)
+     * y la nota sin mandar quedan en la carpeta de esa cuenta y salen al volver a entrar con el mismo link. Con otro link es
+     * otra carpeta: no se ven ni se mandan. Una pasada en curso se corta en el próximo paso. Gemelo de ModeloFotosInicio.swift.
+     */
+    fun olvidarAlSalir() {
+        cerrada = true
+        _estado.value = null
+        _urls.value = emptyMap()
+        urlsVencen = null
+        _aviso.value = null
+        _subiendo.value = null
+        disco?.borrar(ARCHIVO_ESTADO)
     }
 
     // ── Fotos ──
@@ -288,6 +309,7 @@ class ModeloFotosInicio(
     /** null: se está mandando (otra pasada), o no hay nada que mandar. */
     private suspend fun mandarNota(): Salida? {
         val n = _notaPendiente.value ?: return null
+        if (cerrada) return null
         if (!mandandoNota.compareAndSet(false, true)) return null
         try {
             return when (val r = cliente.llamar("mypump_fotos_inicio_nota", mapOf("p_token" to ValorJson.Texto(token), "p_nota" to ValorJson.Texto(n)))) {
@@ -346,12 +368,12 @@ class ModeloFotosInicio(
      * que había quedado guardada.
      */
     suspend fun drenar() {
-        if (_estado.value == null || !drenando.tryLock()) return
+        if (cerrada || _estado.value == null || !drenando.tryLock()) return
         try {
             var refrescarAlFinal = false
             var subioAlguna = false
             var seguidas = 0
-            pasada@ while (true) {
+            pasada@ while (!cerrada) {
                 sacarReemplazadas()
                 val item = _cola.value.sortedBy { if (it.id in conError) 1 else 0 }.firstOrNull() ?: break
                 _subiendo.value = item.id
@@ -474,6 +496,7 @@ class ModeloFotosInicio(
     }
 
     private fun actualizarEstado(cambio: (EstadoFotosInicio) -> EstadoFotosInicio) {
+        if (cerrada) return
         _estado.update { e -> e?.let(cambio) }
         val e = _estado.value ?: return
         disco?.guardar(ARCHIVO_ESTADO, aValor(e))
@@ -483,6 +506,7 @@ class ModeloFotosInicio(
 
     /** URLs firmadas por 1 h: se piden de nuevo a los 50 min, o si aparece una foto que no estaba. */
     suspend fun firmar(forzar: Boolean = false) {
+        if (cerrada) return
         val e = _estado.value ?: return
         val ids = e.fotos.map { it.id }
         if (ids.isEmpty()) return
