@@ -1,6 +1,7 @@
 // Prueba los endpoints propuestos pegados al server.mjs REAL contra un doble local de PostgREST y Storage.
 // No habla con ningún servicio vivo: SUPABASE_URL apunta a 127.0.0.1 y HOME a una carpeta temporal.
 //   node --test supabase/propuestas/nativa_estudios_minivision.test.mjs
+// Con SERVIDOR_FINAL=<server.mjs ya armado para producción> prueba ese archivo tal cual.
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request } from 'node:http';
@@ -81,6 +82,11 @@ const doble = createServer(async (req, res) => {
 
 let hijo, puerto, puertoDoble, salida = '', murio = null, dir;
 function armarServidor(d) {
+  if (process.env.SERVIDOR_FINAL) {   // la versión final armada para producción, tal cual
+    const f = join(d, 'server.mjs');
+    writeFileSync(f, readFileSync(process.env.SERVIDOR_FINAL));
+    return f;
+  }
   let s = readFileSync(join(aqui, '../../mini-vision/server.mjs'), 'utf8');
   const tope = "const tope = feature === 'fotos' ? RATE_FOTOS : RATE_LIMIT;";
   assert.ok(s.includes(tope));
@@ -313,6 +319,13 @@ test('urls: negativas de la base y pedidos inválidos', async () => {
   db.paths = { resultado: 'no_encontrado' };
   assert.equal((await urls({ token: TOK_A, clase: 'estudio', id: randomUUID(), path: 'cli-b/x.pdf' })).status, 404, 'un path en el pedido se ignora');
   assert.equal(db.firmas.length, 0);
+  vivo();
+});
+
+test('preflight de la web: CORS con los encabezados x-estudios-*', async () => {
+  const r = await pedir('/estudios/upload', { metodo: 'OPTIONS', headers: { origin: 'https://app.mypumpteam.com' } });
+  assert.equal(r.status, 204);
+  for (const h of ['x-estudios-token', 'x-estudios-envio', 'x-estudios-archivo']) assert.ok(String(r.headers['access-control-allow-headers']).toLowerCase().includes(h), h);
   vivo();
 });
 
