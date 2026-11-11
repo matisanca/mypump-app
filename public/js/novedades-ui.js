@@ -179,10 +179,15 @@
     const h = ui.op.host();
     if (!h) return;
     const l = ui.modelo.lista;
-    const filas = l.length ? l.map((n) => `<button type="button" class="nov-fila" data-nov-id="${e(n.id)}">
+    // Estudios y órdenes: un pedido o una orden sin ver también es una novedad, y lleva directo a Estudios.
+    let est = null;
+    try { est = global.EstudiosUI && global.EstudiosUI.novedad ? global.EstudiosUI.novedad() : null; } catch (_) { est = null; }
+    const filaEst = est && est.titulo ? `<button type="button" class="nov-fila" data-nov-estudios>
+        <span class="nov-tarjeta-ic">${IC.chispas}</span><span class="nov-tarjeta-txt"><strong>${e(est.titulo)}</strong></span><span class="md-chev">${IC.chev}</span></button>` : '';
+    const filas = filaEst + (l.length ? l.map((n) => `<button type="button" class="nov-fila" data-nov-id="${e(n.id)}">
         <span class="nov-tarjeta-ic">${IC.chispas}</span><span class="nov-tarjeta-txt"><span class="nov-tarjeta-ceja">${e(cuando(n.fecha))}</span>
         <strong>${e(n.titular)}</strong><span>${e(n.resumen)}</span></span><span class="md-chev">${IC.chev}</span></button>`).join('')
-      : `<div class="nov-vacio"><span class="nov-icono">${IC.chispas}</span><p>${e(T.vacio)}</p></div>`;
+      : (filaEst ? '' : `<div class="nov-vacio"><span class="nov-icono">${IC.chispas}</span><p>${e(T.vacio)}</p></div>`));
     h.innerHTML = `<div class="modal-back" id="novBack"><div class="modal-sheet nov-hoja" role="dialog" aria-modal="true" aria-labelledby="novListaTit">
       <div class="modal-handle"></div><h2 class="nov-titular" id="novListaTit">${e(T.ceja)}</h2>
       <div class="nov-lista">${filas}</div>
@@ -190,6 +195,7 @@
     const back = h.querySelector('#novBack');
     back.addEventListener('click', (ev) => {
       if (ev.target === back || ev.target.closest('[data-nov-listo]')) { cerrar(); return; }
+      if (ev.target.closest('[data-nov-estudios]')) { cerrar(); global.EstudiosUI.abrir({ desde: 'misdatos', llegada: true }); return; }
       const f = ev.target.closest('[data-nov-id]');
       if (f) { const n = ui.modelo.lista.find((x) => x.id === f.getAttribute('data-nov-id')); if (n) abrirHoja(n); }
     });
