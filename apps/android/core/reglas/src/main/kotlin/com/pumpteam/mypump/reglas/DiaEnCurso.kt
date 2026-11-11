@@ -416,6 +416,44 @@ class DiaEnCurso(
         return marcas
     }
 
+    /**
+     * Lo que entra a la regla de los récords del día ([ReglasWins.records], 2.3.0), un ejercicio por clave y en el orden del
+     * día. `anteriores`: las marcas del historial de días anteriores a [hoy]. `hoy`: las series confirmadas y verosímiles del
+     * ejercicio que se hace (misma clave en todo el día). Sin kg (peso corporal, calentamiento, cardio), nunca hay récord.
+     * [efectivo] da el ejercicio que se hace en un lugar (el sustituto, si hay). Gemelo de `entradasDeRecords` de iOS.
+     */
+    fun entradasDeRecords(hoy: String, efectivo: (Ejercicio) -> Ejercicio): List<ReglasWins.Ejercicio> {
+        val vistas = HashSet<String>()
+        val entradas = mutableListOf<ReglasWins.Ejercicio>()
+        for (ex in lista) {
+            val ef = efectivo(ex)
+            val nombre = nombreEfectivo(ex.id) ?: ef.nombre
+            val clave = ClaveEjercicio.de(nombre)
+            if (clave.isEmpty() || clave.length > 120 || !vistas.add(clave)) continue
+            val h = historial[ex.id] ?: emptyList()
+            val anteriores = RecordSerie.anteriores(h, hoy, zona)
+            val recordKg = anteriores.map { it.kg }.filter { it.isFinite() }.maxOrNull() ?: 0.0
+            val marcas = mutableListOf<RecordSerie.Marca>()
+            for (l in lista) {
+                if (ClaveEjercicio.de(nombreEfectivo(l.id)) != clave) continue
+                val repsPlan = Progresiones.pauta(efectivo(l), semana).reps
+                ejercicios[l.id]?.series?.forEachIndexed { i, s ->
+                    if (!s.confirmada || !esDelEjercicioActual(l.id, s)) return@forEachIndexed
+                    val m = RecordSerie.marca(s) ?: return@forEachIndexed
+                    // Lo que hubo que preguntar («¿Está bien cargado?») no cuenta como récord, igual que al confirmar.
+                    if (Verosimilitud.evaluar(s.reps, s.kg, false, recordKg, repsUltimaVez(l.id, i), repsPlan) != Verosimilitud.Resultado.Ok) return@forEachIndexed
+                    marcas += m
+                }
+            }
+            entradas += ReglasWins.Ejercicio(
+                clave, nombre, anteriores, marcas,
+                sinKg = ReglasEjercicio.sinKg(ef) || ReglasEjercicio.esCardio(ef) || ex.tipo == "calentamiento",
+                suficiente = RecordSerie.historiaSuficiente(h, hoy, zona),
+            )
+        }
+        return entradas
+    }
+
     /** "Marcar ejercicio completo": solo con todas las series confirmadas. */
     fun marcarCompleto(id: String): List<Efecto> {
         val e = ejercicios[id] ?: return emptyList()
