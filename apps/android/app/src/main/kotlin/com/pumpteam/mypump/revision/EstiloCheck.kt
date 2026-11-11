@@ -44,6 +44,9 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
+import com.pumpteam.mypump.reglas.CheckGuiado
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.diseno.Archivo
@@ -212,6 +215,64 @@ internal fun FilaSeleccionCheck(texto: String, elegida: Boolean, alTocar: () -> 
             contentAlignment = Alignment.Center,
         ) {
             if (elegida) Icon(Iconos.Tilde, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+/**
+ * Cuánto molesta un efecto marcado (solo en la lista de efectos): «Leve / Moderado / Fuerte», tres botones grandes con
+ * texto debajo de la opción. Uno al lado del otro si entran; con letra grande (o poco ancho), apilados. El elegido va
+ * relleno de verde. Con [falta] (se quiso seguir sin elegir), el rótulo de los que faltan pasa al color de alerta.
+ */
+@Composable
+internal fun IntensidadCheck(efecto: CheckGuiado.Opcion, elegida: String?, falta: Boolean, alElegir: (String) -> Unit, modifier: Modifier = Modifier) {
+    val c = MyPump.colores
+    val letra = LocalDensity.current.fontScale
+    Column(
+        modifier.fillMaxWidth().padding(start = Espacio.s, bottom = Espacio.xs).testTag("cg-intensidad-${efecto.clave}"),
+        verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+    ) {
+        Text(
+            CheckGuiado.ROTULO_INTENSIDAD,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = if (falta && elegida == null) c.alerta else c.textoSecundario,
+        )
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val apilados = letra >= 1.5f || maxWidth < 300.dp
+            val boton: @Composable (CheckGuiado.Opcion, Modifier) -> Unit = { o, m ->
+                val marcado = o.clave == elegida
+                val forma = RoundedCornerShape(Radio.control + 4.dp)
+                Box(
+                    m
+                        .heightIn(min = 52.dp)
+                        .clip(forma)
+                        .background(if (marcado) c.marca else c.tarjeta)
+                        .border(if (marcado) 2.dp else 1.dp, if (marcado) c.marca else c.textoTerciario, forma)
+                        .clickable(role = Role.Button, onClick = { alElegir(o.clave) })
+                        .semantics { selected = marcado }
+                        .padding(horizontal = 8.dp, vertical = 10.dp)
+                        .testTag("cg-intensidad-${efecto.clave}-${o.clave}"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        o.etiqueta,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (marcado) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (marcado) c.sobreMarca else c.texto,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+            if (apilados) {
+                Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                    for (o in CheckGuiado.INTENSIDADES) boton(o, Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                    for (o in CheckGuiado.INTENSIDADES) boton(o, Modifier.weight(1f))
+                }
+            }
         }
     }
 }

@@ -159,6 +159,67 @@ class CheckGuiadoModeloTest {
         assertTrue(a.m.checkinEnviado)
         assertNull(a.m.borradorGuiado.value)
         assertEquals(listOf("acne", "sueno"), a.m.guiado.value?.senales)
+        // v3: las intensidades salen normalizadas (solo de lo marcado, en el orden de la lista) y quedan recordadas.
+        assertEquals(mapOf("acne" to "leve", "sueno" to "moderado"), a.m.guiado.value?.intensidades)
+        assertEquals(
+            """{"catalogo":"ciclo","senales":["acne","sueno"],"intensidades":{"acne":"leve","sueno":"moderado"}}""",
+            ops[2].payload["respuestas"]!!.serializar(),
+        )
+    }
+
+    /** v3: el servidor dice si usa un GLP-1 y con cuánta intensidad marcó; sin los campos, ni digestivas ni intensidades. */
+    @Test
+    fun leeGlp1EIntensidadesYToleraQueFalten() = enUnHilo { alcance ->
+        val s = Servidor()
+        s.guiado = """{"activo":true,"en_ciclo":true,"glp1":true,"semana":"$LUNES","catalogo":"ciclo","senales":["acne","nauseas"],"intensidades":{"nauseas":"moderado","acne":"leve","sueno":"fuerte"}}"""
+        s.check = """[{"semana_lunes":"$LUNES","energia":4,"descanso":3,"hambre":2,"adherencia":5,"nota":""}]"""
+        val disco = discoNuevo()
+        val a = armar(s, alcance, disco = disco)
+        a.m.cargarRevision()
+        assertTrue(a.m.glp1Guiado)
+        // Lo enviado vuelve al abrir, ya normalizado (la intensidad de algo sin marcar no vale).
+        val b = a.m.abrirGuiado()
+        assertEquals(listOf("acne", "nauseas"), b.senales)
+        assertEquals(mapOf("acne" to "leve", "nauseas" to "moderado"), b.intensidades)
+        // Queda recordado en el teléfono: sin señal, otro arranque lo sabe igual.
+        val otro = armar(Servidor().also { it.conRed = false }, alcance, disco = disco)
+        assertTrue(otro.m.glp1Guiado)
+        assertEquals(mapOf("nauseas" to "moderado", "acne" to "leve", "sueno" to "fuerte"), otro.m.guiado.value?.intensidades)
+
+        // El servidor de antes (sin `glp1` ni `intensidades`), o con basura en los campos: no y nada.
+        for (cuerpo in listOf(
+            """{"activo":true,"en_ciclo":true,"semana":"$LUNES","catalogo":"ciclo","senales":["acne"]}""",
+            """{"activo":true,"en_ciclo":true,"glp1":"si","semana":"$LUNES","catalogo":"ciclo","senales":["acne"],"intensidades":[1,2]}""",
+            """{"activo":true,"en_ciclo":true,"glp1":null,"semana":"$LUNES","catalogo":"ciclo","senales":["acne"],"intensidades":null}""",
+        )) {
+            val v = Servidor()
+            v.guiado = cuerpo
+            v.check = s.check
+            val m = armar(v, alcance).m
+            m.cargarRevision()
+            assertFalse(m.glp1Guiado, cuerpo)
+            assertNull(m.guiado.value?.intensidades, cuerpo)
+            assertEquals(emptyMap<String, String>(), m.abrirGuiado().intensidades, cuerpo)
+            assertEquals(listOf("acne"), m.abrirGuiado().senales, cuerpo)
+        }
+        // Lo guardado en el teléfono por la versión anterior (sin los campos) se lee igual.
+        assertEquals(
+            GuiadoServidor(true, LUNES, Catalogo.CICLO, listOf("acne")),
+            GuiadoServidor.desde(ValorJson.parsear("""{"enCiclo":true,"semana":"$LUNES","catalogo":"ciclo","senales":["acne"]}""")),
+        )
+    }
+
+    /** v3: con un efecto marcado sin intensidad no se manda nada; la lista general manda `intensidades` vacío. */
+    @Test
+    fun sinIntensidadNoSeEnviaYLaListaGeneralLaMandaVacia() = enUnHilo { alcance ->
+        val a = armar(Servidor(), alcance)
+        val falta = Borrador(LUNES, valores = llenas, catalogo = Catalogo.CICLO, senales = listOf("acne", "sueno"), intensidades = mapOf("acne" to "leve"))
+        assertEquals(CheckGuiado.AVISO_INTENSIDAD, a.m.enviarGuiado(falta))
+        assertTrue(a.cola.operaciones().isEmpty())
+        assertNull(a.m.enviarGuiado(Borrador(LUNES, valores = llenas, catalogo = Catalogo.GENERAL, senales = listOf("dolor"), intensidades = mapOf("dolor" to "fuerte"))))
+        val op = a.cola.operaciones().first { it.kind == "check_guiado" }
+        assertEquals("""{"catalogo":"general","senales":["dolor"],"intensidades":{}}""", op.payload["respuestas"]!!.serializar())
+        assertEquals(emptyMap<String, String>(), a.m.guiado.value?.intensidades)
     }
 
     @Test
@@ -170,7 +231,7 @@ class CheckGuiadoModeloTest {
         assertTrue("mypump_guardar_checkin" in a.t.llamadas)
         val c = s.cuerpos["mypump_check_guiado_guardar"]
         assertEquals(ValorJson.Texto(HOY), c?.get("p_fecha"))
-        assertEquals(ValorJson.parsear("""{"catalogo":"general","senales":["ninguno"]}"""), c?.get("p_respuestas"))
+        assertEquals(ValorJson.parsear("""{"catalogo":"general","senales":["ninguno"],"intensidades":{}}"""), c?.get("p_respuestas"))
         assertEquals(ValorJson.Texto(TOKEN), c?.get("p_token"))
         assertEquals(setOf("p_token", "p_fecha", "p_respuestas"), (c as ValorJson.Objeto).campos.keys)
         assertTrue(a.cola.operaciones().isEmpty())

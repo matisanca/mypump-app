@@ -19,11 +19,14 @@ class CheckGuiadoTest {
     private fun textosONull(j: ValorJson?) = (j as? ValorJson.Lista)?.elementos?.map { it.comoTexto!! }
     private fun bool(j: ValorJson?) = j == ValorJson.Booleano(true)
     private fun cat(j: ValorJson?) = Catalogo.desde(j?.comoTexto)
+    private fun mapa(j: ValorJson?) = (j as? ValorJson.Objeto)?.campos?.mapValues { it.value.comoTexto!! } ?: emptyMap()
+    private fun mapaONull(j: ValorJson?) = (j as? ValorJson.Objeto)?.campos?.mapValues { it.value.comoTexto!! }
     private fun borrador(j: ValorJson?) = if (j == null || j == ValorJson.Nulo) null else Borrador.desde(j)!!
 
     @Test
     fun losCatalogosYLosTextosSonLosAcordados() {
         for ((nombre, esperado) in (v["catalogos"] as ValorJson.Objeto).campos) {
+            if (nombre == "_") continue
             val o = CheckGuiado.opciones(Catalogo.desde(nombre)!!)
             assertEquals(lista(esperado).map { textos(it) }, o.map { listOf(it.clave, it.etiqueta) }, nombre)
             assertEquals(CheckGuiado.NINGUNO, o.last().clave)
@@ -59,6 +62,7 @@ class CheckGuiadoTest {
         }
         for (e in Estado.entries) todos += listOf(CheckGuiado.textoTarjeta(e), CheckGuiado.botonTarjeta(e))
         todos += CheckGuiado.AVISO_RANGO_PESO
+        todos += CheckGuiado.INTENSIDADES.map { it.etiqueta } + CheckGuiado.ROTULO_INTENSIDAD + CheckGuiado.AVISO_INTENSIDAD
         for (t in todos) {
             val m = " ${t.lowercase()} "
             for (prohibido in listOf(" ia ", "inteligencia artificial", "coach", "entrenador", " rir", "esteroide", "testosterona", "anabólic")) {
@@ -76,7 +80,31 @@ class CheckGuiadoTest {
     fun alternarYNormalizar() {
         for (c in casos("alternar")) assertEquals(textos(c["queda"]), CheckGuiado.alternar(textos(c["senales"]), c["clave"]!!.comoTexto!!))
         for (c in casos("normalizar")) assertEquals(textos(c["queda"]), CheckGuiado.normalizar(textos(c["senales"]), cat(c["catalogo"])!!))
-        for (c in casos("textoSenales")) assertEquals(c["texto"]?.comoTexto, CheckGuiado.textoSenales(textos(c["senales"]), cat(c["catalogo"])!!))
+        for (c in casos("textoSenales")) {
+            assertEquals(c["texto"]?.comoTexto, CheckGuiado.textoSenales(textos(c["senales"]), cat(c["catalogo"])!!, mapa(c["intensidades"])))
+        }
+    }
+
+    /** v3: las digestivas se muestran solo con GLP-1, y cada efecto marcado lleva cuánto molesta. */
+    @Test
+    fun digestivasEIntensidades() {
+        assertEquals(textos(v["digestivas"]), CheckGuiado.DIGESTIVAS)
+        for (c in casos("opcionesCiclo")) {
+            assertEquals(textos(c["claves"]), CheckGuiado.opciones(Catalogo.CICLO, bool(c["glp1"])).map { it.clave })
+        }
+        // La lista general no cambia con GLP-1.
+        assertEquals(CheckGuiado.opciones(Catalogo.GENERAL), CheckGuiado.opciones(Catalogo.GENERAL, true))
+        assertEquals(CheckGuiado.opciones(Catalogo.GENERAL), CheckGuiado.opciones(Catalogo.GENERAL, false))
+        val i = v["intensidades"]!!
+        assertEquals(lista(i["opciones"]).map { textos(it) }, CheckGuiado.INTENSIDADES.map { listOf(it.clave, it.etiqueta) })
+        assertEquals(i["aviso"]?.comoTexto, CheckGuiado.AVISO_INTENSIDAD)
+        casos("normalizarIntensidades").forEachIndexed { n, c ->
+            val queda = CheckGuiado.normalizarIntensidades(textos(c["senales"]), mapa(c["intensidades"]), cat(c["catalogo"])!!)
+            assertEquals(mapa(c["queda"]), queda, "caso $n")
+            // Sale en el orden del catálogo (así el payload es el mismo en todas las plataformas).
+            assertEquals(CheckGuiado.opciones(cat(c["catalogo"])!!).map { it.clave }.filter { it in queda }, queda.keys.toList(), "caso $n")
+        }
+        casos("faltaIntensidad").forEachIndexed { n, c -> assertEquals(bool(c["falta"]), CheckGuiado.faltaIntensidad(borrador(c["borrador"])!!), "caso $n") }
     }
 
     @Test
@@ -98,7 +126,7 @@ class CheckGuiadoTest {
             val e = (c["enviado"] as? ValorJson.Objeto)?.let { o ->
                 CheckGuiado.Enviado((o["valores"] as ValorJson.Objeto).campos.mapValues { it.value.comoNumero!!.toInt() }, o["nota"]!!.comoTexto!!)
             }
-            val r = CheckGuiado.abrir(borrador(c["guardado"]), c["semana"]!!.comoTexto!!, cat(c["catalogo"])!!, e, textosONull(c["senalesEnviadas"]), cat(c["catalogoEnviado"]))
+            val r = CheckGuiado.abrir(borrador(c["guardado"]), c["semana"]!!.comoTexto!!, cat(c["catalogo"])!!, e, textosONull(c["senalesEnviadas"]), cat(c["catalogoEnviado"]), mapaONull(c["intensidadesEnviadas"]))
             assertEquals(borrador(c["queda"]), r, c["caso"]?.comoTexto)
         }
         for (c in casos("retomar")) {
@@ -114,10 +142,13 @@ class CheckGuiadoTest {
     /** El borrador va y vuelve del disco sin perder nada, y uno roto no se retoma. */
     @Test
     fun elBorradorSeGuardaYSeLeeIgual() {
-        val b = Borrador("2026-11-09", Paso.SENALES, "78,4", mapOf("energia" to 4, "descanso" to 3), Catalogo.CICLO, listOf("acne"), "hola\nchau")
+        val b = Borrador("2026-11-09", Paso.SENALES, "78,4", mapOf("energia" to 4, "descanso" to 3), Catalogo.CICLO, listOf("acne"), "hola\nchau", mapOf("acne" to "moderado"))
         assertEquals(b, Borrador.desde(ValorJson.parsear(b.aValor().serializar())))
         assertNull(Borrador.desde(ValorJson.parsear("""{"semana":"2026-11-09","paso":"inventado","peso":"","valores":{},"catalogo":"general","senales":[],"nota":""}""")))
         assertNull(Borrador.desde(ValorJson.Nulo))
+        // Un borrador guardado antes de las intensidades (sin el campo) se retoma, con intensidades vacías.
+        val viejo = Borrador.desde(ValorJson.parsear("""{"semana":"2026-11-09","paso":"senales","peso":"","valores":{},"catalogo":"ciclo","senales":["acne"],"nota":""}"""))
+        assertEquals(Borrador("2026-11-09", Paso.SENALES, catalogo = Catalogo.CICLO, senales = listOf("acne")), viejo)
         // Los nombres de los casos son los que guarda iOS.
         assertEquals(listOf("peso", "escalas", "fotos", "senales", "nota", "resumen"), Paso.entries.map { it.clave })
     }
