@@ -308,6 +308,19 @@
   // reserva, aviso_min, textos}. Todo tolerante: una franja rota se descarta,
   // no la agenda.
   const ESTADOS_RESERVA = ['pendiente', 'confirmada', 'fallo'];
+  // De comienzo o de revisión (videollamada 2.3.0). Sin el campo, o con uno
+  // que no se conoce, es la de comienzo (la única que existía).
+  const tipoVideollamada = v => ((texto(v) || '').trim().toLowerCase() === 'revision' ? 'revision' : 'comienzo');
+  // Si la reserva se puede cambiar desde la app (`cambio` de la agenda). Sin el objeto, no.
+  function normalizarCambio(o) {
+    if (!esObjeto(o)) return null;
+    const n = entero(o.restantes);
+    return {
+      permitido: booleano(o.permitido) || false,
+      restantes: n == null ? null : Math.max(0, n),
+      hasta: textoRecortado(o.hasta),
+    };
+  }
 
   // Un horario libre. Sin id no se puede reservar; sin horas no se puede mostrar.
   function normalizarFranja(o) {
@@ -332,6 +345,7 @@
       inicio, fin, estado, meetUrl,
       motivo: noVacio(texto(o.motivo)),
       salaAbiertaEn: textoRecortado(o.sala_abierta_en),
+      tipo: tipoVideollamada(o.tipo),
     };
   }
   // El p_id de la reserva (como las dudas y los audios): solo un uuid.
@@ -340,7 +354,7 @@
 
   function normalizarAgenda(j) {
     const nada = { ok: false, motivo: null, autorizada: false, habilitada: false, faltan: null, zona: null, franjas: [],
-                   reserva: null, avisoMin: null, textos: {} };
+                   reserva: null, avisoMin: null, textos: {}, tipo: 'comienzo', cambio: null, entrarDesdeMin: null };
     if (!esObjeto(j)) return nada;
     const autorizada = booleano(j.autorizada) || false;
     // Sin autorización no hay agenda habilitada, diga lo que diga el campo.
@@ -348,6 +362,11 @@
     const reserva = normalizarReserva(j.reserva);
     const f = entero(j.faltan);
     const aviso = entero(j.aviso_min);
+    const cambio = normalizarCambio(j.cambio);
+    const desde = entero(j.entrar_desde_min);
+    // Con una reserva vigente, las franjas solo valen si el servidor deja
+    // cambiarla (`cambio.permitido`): son los horarios para el cambio.
+    const paraCambio = !!reserva && reserva.estado === 'confirmada' && !!cambio && cambio.permitido;
     const vistas = new Set();
     const textos = {};
     if (esObjeto(j.textos)) {
@@ -359,14 +378,18 @@
       autorizada, habilitada,
       faltan: f == null ? null : Math.max(0, f),
       zona: noVacio(texto(j.zona)),
-      // Las franjas solo valen con la agenda habilitada y sin una reserva vigente.
-      franjas: habilitada && !reservaVigente(reserva)
+      // Las franjas solo valen con la agenda habilitada y sin una reserva vigente (o para el cambio).
+      franjas: habilitada && (!reservaVigente(reserva) || paraCambio)
         ? lista(j.franjas).map(normalizarFranja).filter(x => x && !vistas.has(x.id) && vistas.add(x.id))
         : [],
       reserva,
       // Hasta un día antes; lo que no tiene sentido queda en los 30 de la app.
       avisoMin: aviso != null && aviso >= 0 && aviso <= 1440 ? aviso : null,
       textos,
+      tipo: tipoVideollamada(j.tipo),
+      cambio,
+      // Desde cuántos minutos antes se habilita «Entrar» (1 a 60; si no, los 10 de la app).
+      entrarDesdeMin: desde != null && desde >= 1 && desde <= 60 ? desde : null,
     };
   }
 
@@ -825,6 +848,7 @@
     vencida: 'Ese horario ya no está disponible, elegí otro.',
     error: 'No pudimos reservar ese horario, elegí otro.',
     demo: 'En la demo no se crea ninguna videollamada.',
+    sinCambio: 'Ese cambio ya no se puede hacer desde la app. Escribinos por el chat.',
   };
   const CLAVES_TEXTOS = ['bloqueada', 'no_autorizada', 'titulo', 'encabezado', 'confirmar', 'pendiente', 'confirmada',
     'hoy_sin_sala', 'sala_abierta', 'fallo', 'sin_franjas', 'cambiar', 'entreno_aviso'];
@@ -834,11 +858,11 @@
     SALA_CADA_MS: 30000,        // en la franja, sin la sala abierta: la agenda cada 30 s
     SONDEO_CADA_MS: 5000,       // una reserva pendiente: cada 5 s…
     SONDEO_MAXIMO_MS: 60000,    // …durante 60 s (después, al volver a primer plano)
-    ETIQUETA_OBLIGATORIO: 'Para ver antes de la entrega',
+    ETIQUETA_OBLIGATORIO: 'Para ver antes de la videollamada',
     TEXTO_NO_AUTORIZADA: 'Cuando termines de ver todo te habilitamos la agenda.',
-    TEXTO_SIN_FRANJAS: 'Ahora no hay horarios libres. Te escribimos por WhatsApp para coordinar.',
+    TEXTO_SIN_FRANJAS: 'Ahora no hay horarios libres. Mirá de nuevo más tarde o escribinos por el chat.',
     TEXTO_RESERVANDO: 'Estamos reservando tu horario…',
-    TEXTO_CAMBIAR: '¿Necesitás cambiarla? Escribinos por WhatsApp',
+    TEXTO_CAMBIAR: '¿Necesitás cambiarla? Escribinos por el chat.',
     TEXTO_ZONA_TELEFONO: 'Horario de tu teléfono',
     TEXTO_AVISO,
     CLAVES_TEXTOS,
@@ -927,13 +951,13 @@
     },
     textoDuracion(inicio, fin) { const d = RA.duracion(inicio, fin); return d ? `Dura ${d}.` : null; },
 
-    // «¿Confirmás la entrega el jueves 12 a las 10:00? Dura unas 2 horas.» Si el
-    // teléfono está en otra zona, también la hora de Argentina. La duración
-    // sale de la franja.
-    textoConfirmar(c, zona) {
+    // «¿Confirmás tu videollamada de comienzo el jueves 12 a las 10:00? Dura
+    // alrededor de 1 hora.» Si el teléfono está en otra zona, también la hora
+    // de Argentina. La duración sale de la franja.
+    textoConfirmar(c, zona, tipo) {
       const ar = RA.difiereDeArgentina([c.inicio], zona) ? ` (${RA.hora(c.inicio, ZONA_BA)} en Argentina)` : '';
       const dura = RA.textoDuracion(c.inicio, c.fin);
-      return `¿Confirmás la entrega el ${RA.diaCorto(c.inicio, zona)} a las ${RA.hora(c.inicio, zona)}${ar}?${dura ? ' ' + dura : ''}`;
+      return `¿Confirmás tu ${RA.nombre(tipo)} el ${RA.diaCorto(c.inicio, zona)} a las ${RA.hora(c.inicio, zona)}${ar}?${dura ? ' ' + dura : ''}`;
     },
 
     // El encabezado de las franjas, con la duración si todas duran lo mismo.
@@ -945,12 +969,125 @@
       return d ? `${base} ${d}` : base;
     },
 
-    // «Tu entrega: jueves 12 de noviembre, 10:00 a 12:00».
+    // «Jueves 12 de noviembre, de 10:00 a 11:00» (sin dos puntos: regla de los textos del alumno).
     textoConfirmada(r, zona) {
       const i = R.instante(r.inicio), f = R.instante(r.fin);
       if (!i || !f) return null;
-      return `Tu entrega: ${RA.diaLargo(i, zona)}, ${RA.hora(i, zona)} a ${RA.hora(f, zona)}`;
+      return `${mayuscula(RA.diaLargo(i, zona))}, de ${RA.hora(i, zona)} a ${RA.hora(f, zona)}`;
     },
+
+    // ── La videollamada (2.3.0): cómo se nombra, la tarjeta fija y la cuenta regresiva ──
+    // Al alumno nunca se le dice «entrega»: «de comienzo» o «de revisión».
+    nombre: t => (t === 'revision' ? 'videollamada de revisión' : 'videollamada de comienzo'),
+    tituloTarjeta: t => `Tu ${RA.nombre(t)}`,
+    // Desde cuántos minutos antes del inicio se habilita «Entrar» (Mati, 10/11:
+    // Meet restringido, Mati lo admite y el alumno espera en la sala). El
+    // servidor lo puede cambiar con `entrar_desde_min`.
+    ENTRAR_DESDE_MIN: 10,
+    TEXTO_DESDE_ACA: 'Vas a entrar a la videollamada desde acá.',
+    TEXTO_ADMITE: 'Mati te admite en la sala. Si tarda un poco, esperá ahí sin salir.',
+    // «¿Cómo entro?», en el orden en que pasan las cosas.
+    AYUDA_ENTRAR: [
+      'Tocás Entrar y se abre Google Meet. Si no lo tenés instalado, se abre en el navegador y funciona igual.',
+      'Mati te admite en la sala. Esperá ahí, no hace falta salir y volver a entrar.',
+      'Si se corta, volvé a la app y tocá Entrar de nuevo.',
+      'Si no podés entrar, escribinos por el chat.',
+    ],
+    TEXTO_LISTO_AVISO: 'Mati te admite en la sala. Si tarda un poco, esperá ahí sin salir.',
+    textoListoEntrar: desdeMin => `Vas a entrar a la videollamada desde la app, en Entreno. El botón se habilita ${desdeMin || RA.ENTRAR_DESDE_MIN} minutos antes.`,
+
+    // En qué está «Entrar»: {tipo: 'falta', segundos} | {tipo: 'habilitado'} |
+    // {tipo: 'preparando'} (en la ventana sin el link) | {tipo: 'nada'}.
+    estadoEntrar(r, ahora, desdeMin) {
+      if (!r || r.estado !== 'confirmada') return { tipo: 'nada' };
+      const i = R.instante(r.inicio), f = R.instante(r.fin);
+      const t = (ahora || new Date()).getTime();
+      if (!i || !f || !(t < f.getTime())) return { tipo: 'nada' };
+      const desde = i.getTime() - (desdeMin || RA.ENTRAR_DESDE_MIN) * 60000;
+      // Si Mati ya abrió la sala, se puede entrar antes (espera en la sala igual).
+      if (t < desde && (r.salaAbiertaEn == null || !r.meetUrl)) return { tipo: 'falta', segundos: (desde - t) / 1000 };
+      return r.meetUrl ? { tipo: 'habilitado' } : { tipo: 'preparando' };
+    },
+    // Debajo del botón apagado: lejos, «Se habilita 10 minutos antes de
+    // empezar»; a menos de un día, la cuenta regresiva.
+    textoCuenta(e, desdeMin) {
+      if (!e) return null;
+      if (e.tipo === 'falta') {
+        return e.segundos >= 24 * 3600 ? `Se habilita ${desdeMin || RA.ENTRAR_DESDE_MIN} minutos antes de empezar` : `Se habilita en ${RA.cuenta(e.segundos)}`;
+      }
+      if (e.tipo === 'preparando') return 'Estamos preparando la sala. El botón se activa en un momento.';
+      return null;
+    },
+    // «2 h 15 min», «25 min», «menos de 1 min». Redondea para arriba: nunca dice 0 antes de tiempo.
+    cuenta(segundos) {
+      if (!isFinite(segundos) || segundos < 60) return 'menos de 1 min';
+      const min = Math.ceil(segundos / 60);
+      if (min < 60) return `${min} min`;
+      const h = Math.floor(min / 60), m = min % 60;
+      return m === 0 ? `${h} h` : `${h} h ${m} min`;
+    },
+    // La etiqueta de arriba de la tarjeta: «Hoy», «Mañana», «En 3 días» (por
+    // día del calendario, en la zona del teléfono).
+    cuando(r, zona, ahora) {
+      const i = r && R.instante(r.inicio);
+      if (!i) return null;
+      const dia = d => { const [a, m, x] = RA.claveDia(d, zona).split('-').map(Number); return Date.UTC(a, m - 1, x) / 86400000; };
+      const d = Math.round(dia(i) - dia(ahora || new Date()));
+      if (d < 0) return null;
+      return d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : `En ${d} días`;
+    },
+    // «10:00 en Argentina», solo si el teléfono da otra hora.
+    horaArgentina: (d, zona) => (RA.difiereDeArgentina([d], zona) ? `${RA.hora(d, ZONA_BA)} en Argentina` : null),
+    // La reserva de la tarjeta fija de Entreno: confirmada (o reservándose) y que no terminó.
+    paraTarjeta(r, ahora) {
+      if (!reservaVigente(r)) return false;
+      const f = R.instante(r.fin);
+      return !!f && (ahora || new Date()).getTime() < f.getTime();
+    },
+
+    // ── Elegir y cambiar el horario (palanca `elegir_horario`) ──
+    tituloElegir: t => `Elegí el horario de tu ${RA.nombre(t)}`,
+    // «Dura alrededor de 1 hora y vas a entrar desde la app.»
+    textoElegirPantalla(chips) {
+      const ds = new Set(chips.map(c => RA.duracion(c.inicio, c.fin)));
+      const d = ds.size === 1 ? ds.values().next().value : null;
+      return d ? `Dura ${d} y vas a entrar desde la app.` : 'Vas a entrar desde la app.';
+    },
+    // «Confirmar jueves 12, 10:00» o «Cambiar al viernes 13, 12:00».
+    textoBotonElegir(c, cambiando, zona) {
+      const d = `${RA.diaCorto(c.inicio, zona)}, ${RA.hora(c.inicio, zona)}`;
+      return cambiando ? `Cambiar al ${d}` : `Confirmar ${d}`;
+    },
+    // «Elegí el día y el horario. Hay lugar desde el jueves 12.»
+    textoDesde(dias, zona) {
+      const c = dias.length && dias[0].chips[0];
+      return c ? `Elegí el día y el horario. Hay lugar desde el ${RA.diaCorto(c.inicio, zona)}.` : 'Elegí el día y el horario. Vas a entrar desde la app.';
+    },
+    // Se puede cambiar desde la app: lo dice el servidor, quedan cambios, no
+    // pasó el plazo, no empezó y hay horarios.
+    puedeCambiar(a, ahora) {
+      if (!a || !a.ok || !a.reserva || a.reserva.estado !== 'confirmada' || !a.cambio || !a.cambio.permitido || !a.franjas.length) return false;
+      const t = (ahora || new Date()).getTime();
+      if (a.cambio.restantes != null && a.cambio.restantes <= 0) return false;
+      const h = a.cambio.hasta ? R.instante(a.cambio.hasta) : null;
+      if (h && t >= h.getTime()) return false;
+      const i = R.instante(a.reserva.inicio);
+      if (i && t >= i.getTime()) return false;
+      return true;
+    },
+    // «Podés cambiarlo 1 vez, hasta el miércoles 11 a las 10:00.»
+    textoTope(c, zona) {
+      if (!c || !c.permitido) return null;
+      const veces = c.restantes == null ? '' : c.restantes === 1 ? ' 1 vez' : ` ${c.restantes} veces`;
+      const h = c.hasta ? R.instante(c.hasta) : null;
+      return `Podés cambiarlo${veces}${h ? `, hasta el ${RA.diaCorto(h, zona)} a las ${RA.hora(h, zona)}` : ''}.`;
+    },
+    // «Ahora es el jueves 12 a las 10:00.»
+    textoAhoraEs(r, zona) {
+      const i = r && R.instante(r.inicio);
+      return i ? `Ahora es el ${RA.diaCorto(i, zona)} a las ${RA.hora(i, zona)}.` : null;
+    },
+    mayuscula: s => mayuscula(s),
 
     // ── Entrar (Mati, 6/11: el cliente nunca entra directo) ──
     // La tarjeta de la entrega en Entreno: confirmada, desde `avisoMin` antes
@@ -963,18 +1100,14 @@
       const antes = avisoMin != null ? avisoMin : RA.MINUTOS_ANTES_ENTRAR;
       return t >= i.getTime() - antes * 60000 && t < f.getTime();
     },
-    // El botón para entrar: confirmada, con link, antes del fin y con
-    // `sala_abierta_en` (Mati ya está en el Meet). Respaldo: la hora de inicio.
-    puedeEntrar(r, ahora) {
-      if (!r || r.estado !== 'confirmada' || !r.meetUrl) return false;
-      const i = R.instante(r.inicio), f = R.instante(r.fin);
-      if (!i || !f) return false;
-      const t = (ahora || new Date()).getTime();
-      if (!(t < f.getTime())) return false;
-      return r.salaAbiertaEn != null || t >= i.getTime();
-    },
-    // En la franja y todavía sin el botón: se consulta la agenda cada 30 s.
-    esperandoSala: (r, ahora, avisoMin) => RA.enVentana(r, ahora, avisoMin) && !RA.puedeEntrar(r, ahora),
+    // El botón para entrar (Mati, 10/11): confirmada, con link, desde
+    // `desdeMin` (10) antes del inicio hasta el fin. El Meet es restringido:
+    // Mati lo admite y el alumno espera en la sala, así que ya no se espera
+    // `sala_abierta_en` (si viene, se puede entrar antes).
+    puedeEntrar: (r, ahora, desdeMin) => RA.estadoEntrar(r, ahora, desdeMin).tipo === 'habilitado',
+    // En la ventana y todavía sin el link o sin la sala abierta: la agenda
+    // cada 30 s (para el link que falta y para «Mati ya está en la sala»).
+    esperandoSala: (r, ahora, avisoMin) => RA.enVentana(r, ahora, avisoMin) && (!r.meetUrl || r.salaAbiertaEn == null),
     // Es el día de la entrega (en la zona del teléfono) y todavía no terminó.
     esHoy(r, zona, ahora) {
       const i = R.instante(r.inicio), f = R.instante(r.fin);
@@ -982,14 +1115,12 @@
       if (!i || !f || !(ya < f)) return false;
       return RA.claveDia(i, zona) === RA.claveDia(ya, zona) || ya >= i;
     },
-    textoEntrar(r, zona) {
-      if (r.salaAbiertaEn != null) return 'Mati ya está en la videollamada';
+    // Con el botón: «Mati ya está en la sala» o «Ya podés entrar».
+    textoEntrar: r => (r.salaAbiertaEn != null ? 'Mati ya está en la sala' : 'Ya podés entrar'),
+    // El día de la videollamada, sin el botón todavía.
+    textoEsperandoSala(r, zona, desdeMin) {
       const i = R.instante(r.inicio);
-      return i ? `Tu entrega empezó a las ${RA.hora(i, zona)}` : 'Tu entrega ya empezó';
-    },
-    textoEsperandoSala(r, zona) {
-      const i = R.instante(r.inicio);
-      return `Tu entrega es hoy a las ${i ? RA.hora(i, zona) : ''}. Cuando Mati abra la videollamada se habilita el botón para entrar.`;
+      return `Tu ${RA.nombre(r.tipo)} es hoy a las ${i ? RA.hora(i, zona) : ''}. El botón para entrar se habilita ${desdeMin || RA.ENTRAR_DESDE_MIN} minutos antes.`;
     },
 
     // ── Los textos que edita Mati (spec §7) ──
@@ -998,9 +1129,13 @@
     // que acá no hay, va el de la app: nunca se muestra una llave.
     textos(servidor) {
       const sv = servidor || {};
+      // 2.3.0: las claves de la sala con la semántica vieja («cuando Mati abra la videollamada») no se usan, y un
+      // texto del servidor que diga «entrega», WhatsApp, coach o entrenador no se muestra: va el de la app.
+      const VIEJAS = ['hoy_sin_sala', 'sala_abierta', 'entreno_aviso'];
+      const PROHIBIDO = /entrega|whatsapp|coach|entrenador/i;
       const texto = (clave, propio, v) => {
-        const t0 = sv[clave];
-        if (typeof t0 !== 'string' || !t0.trim()) return propio;
+        const t0 = VIEJAS.includes(clave) ? null : sv[clave];
+        if (typeof t0 !== 'string' || !t0.trim() || PROHIBIDO.test(t0)) return propio;
         let t = t0;
         const vals = v || {};
         for (const [llave, valor] of [['{hora}', vals.hora], ['{dia}', vals.dia], ['{duracion}', vals.duracion],
@@ -1013,7 +1148,9 @@
       };
       const horaInicio = (r, zona) => { const i = R.instante(r.inicio); return i ? RA.hora(i, zona) : null; };
       const T = {
-        titulo: texto('titulo', 'Agendá tu entrega'),
+        titulo: texto('titulo', `Agendá tu ${RA.nombre('comienzo')}`),
+        // El título de Mati es el de la de comienzo: la de revisión lleva el suyo.
+        tituloDe: t => (t === 'revision' ? `Agendá tu ${RA.nombre(t)}` : texto('titulo', `Agendá tu ${RA.nombre(t)}`)),
         noAutorizada: texto('no_autorizada', RA.TEXTO_NO_AUTORIZADA),
         sinFranjas: texto('sin_franjas', RA.TEXTO_SIN_FRANJAS),
         pendiente: texto('pendiente', RA.TEXTO_RESERVANDO),
@@ -1021,13 +1158,14 @@
         // Con 0 («Ya viste todo…») no hay clave: el servidor todavía no se enteró.
         bloqueada: n => (n > 0 ? texto('bloqueada', RA.textoBloqueada(n), { faltan: n }) : RA.textoBloqueada(0)),
         // Tomada, vencida o error: el mismo texto de Mati para todas. La demo no se pisa.
-        fallo: a => (a === 'demo' ? TEXTO_AVISO.demo : texto('fallo', TEXTO_AVISO[a] || TEXTO_AVISO.error)),
+        // «Ese cambio ya no se puede…» (tope o plazo) tampoco: no es «elegí otro».
+        fallo: a => (a === 'demo' || a === 'sinCambio' ? TEXTO_AVISO[a] : texto('fallo', TEXTO_AVISO[a] || TEXTO_AVISO.error)),
         encabezado(chips) {
           const ds = new Set(chips.map(c => RA.duracion(c.inicio, c.fin)));
           const una = ds.size === 1 ? ds.values().next().value : null;
           return texto('encabezado', RA.textoElegir(chips), { duracion: una });
         },
-        confirmar: (c, zona) => texto('confirmar', RA.textoConfirmar(c, zona),
+        confirmar: (c, zona, tipo) => texto('confirmar', RA.textoConfirmar(c, zona, tipo),
           { hora: RA.hora(c.inicio, zona), dia: RA.diaCorto(c.inicio, zona), duracion: RA.duracion(c.inicio, c.fin) }),
         confirmada(r, zona) {
           const propio = RA.textoConfirmada(r, zona);

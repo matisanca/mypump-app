@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- La tarjeta y la pantalla de la videollamada (2.3.0) con el doble de prueba (scripts/lib/doble-agenda.js): sin red, sin
+     producción, sin Meet real. Lo sirve scripts/capturas-videollamada.mjs en 127.0.0.1. ?escenario=elegir|diasAntes|porEntrar,
+     ?tema=dark, ?palanca=0 apaga elegir_horario. Datos inventados. -->
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Videollamada (prueba)</title>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/base.css">
+<style>
+@font-face{font-family:"Archivo";src:url("/fonts/archivo-var-latin.woff2") format("woff2");font-weight:400 800;font-style:normal;font-display:swap}
+body{margin:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans)}
+#scene-train{padding:16px;max-width:600px;margin:0 auto}
+.relleno{background:var(--color-bg-primary);border-radius:16px;padding:16px;margin-top:4px}
+.relleno h2{margin:0 0 4px;font-family:var(--font-display);font-size:1.5rem}
+.relleno p{margin:0;color:var(--color-text-secondary)}
+</style>
+<script>
+  const Q = new URLSearchParams(location.search);
+  if (Q.get('tema') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  try { localStorage.clear(); } catch (_) {}
+</script>
+</head>
+<body>
+<div id="scene-train">
+  <div id="host"></div>
+  <div class="relleno"><h2>Día 1</h2><p>Pecho y espalda</p></div>
+</div>
+<script src="/js/reglas-guia.js"></script>
+<script src="/prueba/doble-agenda.js"></script>
+<script>window.mypumpDB = DobleAgenda.crear(Q.get('escenario') || 'elegir');</script>
+<script src="/js/guia.js"></script>
+<script>
+  MyPumpGuia.aplicarPalanca(Q.get('palanca') !== '0');
+  MyPumpGuia.montarTarjeta(document.getElementById('host'), 'token-de-prueba');
+</script>
+</body>
+</html>
