@@ -11,6 +11,8 @@ struct AvisosTests {
         #expect(DestinoAviso(destino: "myday") == .recuperacion)
         #expect(DestinoAviso(destino: "revision") == .revision)
         #expect(DestinoAviso(destino: "salud") == .misDatos)
+        #expect(DestinoAviso(destino: "presion") == .presion)
+        #expect(DestinoAviso(escena: "presion") == .presion)
         #expect(DestinoAviso(destino: "chat") == .chat)
         #expect(DestinoAviso(destino: "comentarios") == .chat)
         #expect(DestinoAviso(destino: nil) == .chat)

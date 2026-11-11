@@ -243,6 +243,13 @@ class ModeloApp(
     private val _tecnica = MutableStateFlow<ModeloTecnica?>(null)
     val tecnica: StateFlow<ModeloTecnica?> = _tecnica.asStateFlow()
 
+    /**
+     * Presión arterial: existe con cuenta, pero solo llama al servidor con la palanca `presion_app` prendida. No toca Entreno ni
+     * la rutina: la presión nunca frena el entrenamiento.
+     */
+    private val _presion = MutableStateFlow<ModeloPresion?>(null)
+    val presion: StateFlow<ModeloPresion?> = _presion.asStateFlow()
+
     /** Progreso: se carga al abrir la pestaña (como la web). */
     private val _progreso = MutableStateFlow<ModeloProgreso?>(null)
     val progreso: StateFlow<ModeloProgreso?> = _progreso.asStateFlow()
@@ -495,6 +502,7 @@ class ModeloApp(
         _fotos.value = null
         _gimnasio.value = null
         _tecnica.value = null
+        _presion.value = null
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
@@ -534,6 +542,7 @@ class ModeloApp(
         _fotos.value = ModeloFotos(cliente, t, d)
         _gimnasio.value = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _tecnica.value = ModeloTecnica(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        _presion.value = ModeloPresion(cliente, t, d, version = { versionApp }, lanzar = { tarea -> alcance.launch { tarea() } })
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
@@ -702,6 +711,7 @@ class ModeloApp(
             _palanca.value = it
             _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
             _tecnica.value?.recordarPalanca(it.tecnicaVideo)
+            _presion.value?.recordarPalanca(it.presionApp)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -765,6 +775,7 @@ class ModeloApp(
         }
         sincronizarGimnasio()
         sincronizarTecnica()
+        sincronizarPresion()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -782,6 +793,18 @@ class ModeloApp(
         _fotos.value?.drenar()
         _gimnasio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
         _tecnica.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+        _presion.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+    }
+
+    /** Con la palanca apagada no se llama a nada de presión. */
+    private suspend fun sincronizarPresion() {
+        val x = _presion.value ?: return
+        if (x.palancaRecordada) {
+            x.refrescar()
+            x.drenarEnFondo()
+        } else {
+            x.apagar()
+        }
     }
 
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
@@ -851,6 +874,7 @@ class ModeloApp(
         _fotos.value?.drenar()
         sincronizarGimnasio()
         sincronizarTecnica()
+        sincronizarPresion()
         _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }

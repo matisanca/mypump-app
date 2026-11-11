@@ -22,6 +22,7 @@ class ReceptorAvisos : BroadcastReceiver() {
         when (intent.action) {
             CentroAvisos.ACCION_DOMINGO -> CentroAvisos.alSonarDomingo(c)
             CentroAvisos.ACCION_FIN_DESCANSO -> if (!CentroAvisos.enPrimerPlano) CentroAvisos.mostrarFinDescanso(c)
+            CentroAvisos.ACCION_REPETIR_PRESION -> CentroAvisos.mostrarRepetirPresion(c)
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIMEZONE_CHANGED,

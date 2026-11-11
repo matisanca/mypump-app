@@ -1,0 +1,48 @@
+-- Reverso de nativa_presion.sql. Borra TODO lo de presión, también las tomas cargadas: antes, apagar la palanca
+-- (`presion_app` en false) y, si hay tomas de alumnos, exportarlas (pg_dump -t 'mypump_presion_*').
+-- No toca nada más: ni la rutina, ni los avisos de otros circuitos, ni mypump_app_config fuera de sus dos claves.
+BEGIN;
+DROP FUNCTION IF EXISTS mypump_presion_pausa_actualizar(UUID, JSONB);
+DROP FUNCTION IF EXISTS mypump_presion_pausa_abrir(UUID, TEXT, TEXT[], TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_aviso_marcar(UUID, JSONB);
+DROP FUNCTION IF EXISTS mypump_presion_avisos_pendientes(INTEGER);
+DROP FUNCTION IF EXISTS mypump_presion_para_brief(TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_comparacion_cargar(UUID, JSONB, TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_aparato_validar(UUID, JSONB, TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_serie_cancelar(UUID, TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_serie_pedir(TEXT, TEXT, TEXT, JSONB);
+DROP FUNCTION IF EXISTS mypump_presion_sintoma(TEXT, JSONB);
+DROP FUNCTION IF EXISTS mypump_presion_sesion(TEXT, JSONB);
+DROP FUNCTION IF EXISTS mypump_presion_medida(TEXT, NUMERIC, TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_aparato(TEXT, JSONB);
+DROP FUNCTION IF EXISTS mypump_presion_get(TEXT, TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_estado(TEXT, TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_barrer(TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_recalcular(UUID, TIMESTAMPTZ);
+DROP FUNCTION IF EXISTS mypump_presion_recalcular_serie(UUID, TIMESTAMPTZ);
+DROP FUNCTION IF EXISTS mypump_presion_aviso_nuevo(TEXT, TEXT, TEXT, UUID, JSONB, TEXT, BOOLEAN, INTEGER);
+DROP FUNCTION IF EXISTS mypump_presion_sesion_json(mypump_presion_sesiones, TIMESTAMPTZ);
+DROP FUNCTION IF EXISTS mypump_presion_calza(NUMERIC, mypump_presion_aparatos);
+DROP FUNCTION IF EXISTS mypump_presion_tipo_serie(TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_zona(TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_habilitado(TEXT);
+DROP FUNCTION IF EXISTS mypump_presion_nivel_regla(TEXT, BOOLEAN);
+DROP FUNCTION IF EXISTS mypump_presion_resumen_serie(JSONB);
+DROP FUNCTION IF EXISTS mypump_presion_evaluar_sesion(JSONB);
+DROP FUNCTION IF EXISTS mypump_presion_categoria(INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS mypump_presion_validar(NUMERIC, NUMERIC, NUMERIC);
+DROP FUNCTION IF EXISTS mypump_presion_media(INTEGER[]);
+DROP TABLE IF EXISTS mypump_presion_pausas;
+DROP TABLE IF EXISTS mypump_presion_avisos;
+DROP TABLE IF EXISTS mypump_presion_sintomas;
+DROP TABLE IF EXISTS mypump_presion_tomas;
+DROP TABLE IF EXISTS mypump_presion_sesiones;
+DROP TABLE IF EXISTS mypump_presion_series;
+DROP TABLE IF EXISTS mypump_presion_comparaciones;
+DROP TABLE IF EXISTS mypump_presion_aparatos;
+DROP TABLE IF EXISTS mypump_presion_brazo;
+DROP TABLE IF EXISTS mypump_presion_tensiometros;
+DROP TABLE IF EXISTS mypump_presion_habilitados;
+DELETE FROM mypump_app_config WHERE clave IN ('presion_app', 'presion_para_todos');
+NOTIFY pgrst, 'reload schema';
+COMMIT;

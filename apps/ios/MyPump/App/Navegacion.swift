@@ -18,6 +18,10 @@ final class Navegacion {
     /// La hoja de Salud. Desde la 2.1.0 Salud no es una pestaña: se abre desde la tarjeta Recuperación de arriba de
     /// Revisión (pedido de Mati, 4-nov), un aviso o un link.
     var saludAbierta = false
+    /// Presión arterial, en una hoja sobre la pestaña en la que se esté (la tarjeta de arriba en Entreno o un aviso). `presionDirecta`:
+    /// se abre en lo que toca (la repetición, preparar o la toma de hoy), sin pasar por su pantalla de inicio.
+    var presionAbierta = false
+    var presionDirecta = false
     /// Abrir «Tu guía» en Entreno (el «Ver mi guía» de la bienvenida); Entreno lo consume al llegar.
     var abrirGuia = false
 
@@ -35,7 +39,16 @@ final class Navegacion {
         case .misDatos:
             pestaña = .revision
             misDatos = true
+        case .presion:
+            // El aviso de presión: a Entreno (donde vive la tarjeta) y, si la sección está habilitada, directo a lo pendiente.
+            pestaña = .entreno
+            Task { @MainActor in self.abrirPresion(directo: true) }
         }
+    }
+
+    func abrirPresion(directo: Bool) {
+        presionDirecta = directo
+        presionAbierta = true
     }
 
     /// Salud, en la hoja sobre Revisión (los avisos y `?scene=progress|myday` llegan acá). Primero la pestaña: cambiarla

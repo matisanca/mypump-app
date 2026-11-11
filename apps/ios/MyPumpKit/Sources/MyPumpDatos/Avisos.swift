@@ -7,11 +7,13 @@ import MyPumpReglas
 /// Fuerza (lo que era Progreso) y el viejo `myday` (Mi Día ya no existe) abre Salud → Recuperación.
 public enum DestinoAviso: String, Sendable, Equatable {
     case entreno, dieta, chat, revision, fuerza, recuperacion, misDatos
+    /// Presión arterial, abierta directo en lo pendiente (la repetición o la toma de hoy). Apagada o sin habilitar, queda en Entreno.
+    case presion
 
     /// `?scene=<escena>` del link (ACC-09): solo una escena que existe; cualquier otra cosa no hace nada (en la web,
     /// una escena inexistente dejaba la app en blanco).
     public init?(escena: String?) {
-        guard let escena, ["train", "diet", "chat", "revision", "progress", "salud", "myday"].contains(escena) else { return nil }
+        guard let escena, ["train", "diet", "chat", "revision", "progress", "salud", "myday", "presion"].contains(escena) else { return nil }
         self.init(destino: escena)
     }
 
@@ -23,6 +25,7 @@ public enum DestinoAviso: String, Sendable, Equatable {
         case "myday": self = .recuperacion
         case "revision": self = .revision
         case "salud": self = .misDatos
+        case "presion": self = .presion
         default: self = .chat
         }
     }

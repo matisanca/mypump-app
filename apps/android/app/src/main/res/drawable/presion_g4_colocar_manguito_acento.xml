@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generado por scripts/nativa/presion-dibujos.mjs. No editar a mano: cambiar el dibujo ahí y regenerar.
+     El negro es solo la máscara: se tiñe al usarlo (DibujoPresion.kt). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="360dp"
+    android:height="240dp"
+    android:viewportWidth="360"
+    android:viewportHeight="240">
+    <path
+        android:pathData="M160.49 97.29L162.03 97.57L163.44 98.24L164.64 99.25L165.53 100.54L166.05 102.02L166.18 103.58L163.73 152.52L163.45 154.06L162.78 155.47L161.77 156.67L160.48 157.56L159 158.08L157.44 158.21L99.51 155.31L97.97 155.03L96.56 154.36L95.36 153.35L94.47 152.06L93.95 150.58L93.82 149.02L96.27 100.08L96.55 98.54L97.22 97.13L98.23 95.93L99.52 95.04L101 94.52L102.56 94.39Z"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="3" />
+    <path
+        android:pathData="M104.41 97.49L101.66 152.42M158.34 100.18L155.59 155.11"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.8" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M124.6 126.2A3.4 3.4 0 1 0 131.4 126.2A3.4 3.4 0 1 0 124.6 126.2Z" />
+    <path
+        android:pathData="M128 126.2L149.98 127.3M145.24 123.62L149.98 127.3L144.89 130.49M165 141L173.49 142.43L177.82 143.24L186.54 145.14L190.89 146.26L195.2 147.52L199.45 148.92L203.63 150.5L207.7 152.26L211.64 154.23L215.44 156.41L219.08 158.82L222.53 161.49L225.76 164.43L228.77 167.64L231.52 171.16L234 175L235.58 178.08L236.97 181.32L238.2 184.7L239.27 188.22L240.19 191.87L240.96 195.63L241.6 199.5L242.11 203.46L242.5 207.5L242.78 211.62L243.04 220.04L243.03 224.32L242.8 232.96L242.14 244"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.2" />
+</vector>

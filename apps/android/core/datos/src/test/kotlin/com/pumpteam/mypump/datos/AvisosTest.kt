@@ -17,6 +17,8 @@ class AvisosTest {
         assertEquals(DestinoAviso.RECUPERACION, DestinoAviso.deDestino("myday"))
         assertEquals(DestinoAviso.REVISION, DestinoAviso.deDestino("revision"))
         assertEquals(DestinoAviso.MIS_DATOS, DestinoAviso.deDestino("salud"))
+        assertEquals(DestinoAviso.PRESION, DestinoAviso.deDestino("presion"))
+        assertEquals(DestinoAviso.PRESION, DestinoAviso.deEscena("presion"))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino("chat"))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino("comentarios"))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino(null))

@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import UserNotifications
 import MyPumpDatos
+import MyPumpReglas
 
 /// Notificaciones: la local del domingo (`AvisoDomingo`: llega como un mensaje de Mati y no se configura; id 1002, como
 /// la Capacitor: reprogramar la pisa y borra las viejas 1001/1003/1004 que siguen agendadas en los teléfonos que
@@ -106,6 +107,31 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         centro.removeDeliveredNotifications(withIdentifiers: [Self.idDescanso])
     }
 
+    // MARK: - Presión: repetición pendiente
+
+    static let idRepetirPresion = "mypump-presion-repetir"
+
+    /// A los 10 minutos de una toma que pide repetición y todavía no se hizo (PROTOCOLO §5.4). Solo con permiso de
+    /// notificaciones; nunca lo pide. Se cancela al repetir.
+    func programarRepetirPresion(_ cuando: Date) async {
+        guard [.authorized, .provisional, .ephemeral].contains(await permiso()), cuando.timeIntervalSinceNow > 1 else { return }
+        let c = UNMutableNotificationContent()
+        c.title = TextosPresion.N.entrada
+        c.body = TextosPresion.T.repetirPendiente
+        c.sound = .default
+        // Tocarlo abre Presión directo en la repetición pendiente, no la pantalla de inicio de la app.
+        c.userInfo = ["destino": "presion"]
+        let pedido = UNNotificationRequest(identifier: Self.idRepetirPresion, content: c,
+                                           trigger: UNTimeIntervalNotificationTrigger(timeInterval: cuando.timeIntervalSinceNow, repeats: false))
+        try? await UNUserNotificationCenter.current().add(pedido)
+    }
+
+    func cancelarRepetirPresion() {
+        let centro = UNUserNotificationCenter.current()
+        centro.removePendingNotificationRequests(withIdentifiers: [Self.idRepetirPresion])
+        centro.removeDeliveredNotifications(withIdentifiers: [Self.idRepetirPresion])
+    }
+
     /// Al arrancar con una cuenta: si ya hay permiso, reprograma y refresca el token de push.
     func alEntrar() async {
         guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { return }
@@ -158,6 +184,8 @@ final class DelegadoApp: NSObject, UIApplicationDelegate {
         MainActor.assumeIsolated { CentroAvisos.shared.configurar() }
         #if DEBUG
         if let d = UserDefaults.standard.string(forKey: "avisoDePrueba") { Task { await CentroAvisos.shared.agendarAvisoDePrueba(d) } }
+        // `-destinoDePrueba <destino>`: como haber tocado un aviso con ese destino en un arranque en frío (sin pasar por el sistema).
+        if let d = UserDefaults.standard.string(forKey: "destinoDePrueba") { MainActor.assumeIsolated { CentroAvisos.shared.destino = DestinoAviso(destino: d) } }
         // `-semanaDePrueba`: la prueba del aviso del domingo necesita el permiso para que haya algo agendado.
         if UserDefaults.standard.string(forKey: "semanaDePrueba") != nil {
             Task { @MainActor in

@@ -128,6 +128,15 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                     Separador(sangria = 58.dp)
                 }
             }
+            // Presión arterial: solo con la sección habilitada (palanca prendida y servidor nuevo).
+            val presion by modelo.presion.collectAsStateWithLifecycle()
+            presion?.let { x ->
+                val estadoPresion by x.estado.collectAsStateWithLifecycle()
+                if (estadoPresion != null) {
+                    FilaEnlace(Iconos.Corazon, c.marcaTexto, com.pumpteam.mypump.reglas.TextosPresion.N.entrada, etiqueta = "mis-datos-presion") { navegacion?.abrirPresion(directo = false) }
+                    Separador(sangria = 58.dp)
+                }
+            }
             FilaEnlace(Iconos.Libro, c.marcaTexto, "Respaldo científico del plan", etiqueta = "mis-datos-respaldo") { fuentes = true }
             Separador(sangria = 58.dp)
             FilaEnlace(Iconos.Privacidad, c.agua, "Política de privacidad") { abrirEnNavegador(contexto, URL_PRIVACIDAD) }

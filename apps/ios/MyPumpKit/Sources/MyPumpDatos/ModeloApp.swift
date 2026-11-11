@@ -98,6 +98,9 @@ public final class ModeloApp {
     public private(set) var gimnasio: ModeloGimnasio?
     /// Técnica por video: existe con cuenta, pero solo llama al servidor con la palanca `tecnica_video` prendida.
     public private(set) var tecnica: ModeloTecnica?
+    /// Presión arterial: existe con cuenta, pero solo llama al servidor con la palanca `presion_app` prendida. No toca Entreno
+    /// ni la rutina: la presión nunca frena el entrenamiento.
+    public private(set) var presion: ModeloPresion?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
     /// El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada).
@@ -229,7 +232,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; presion = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         esDemo = false
         sinRedEn = []
@@ -298,7 +301,7 @@ public final class ModeloApp {
         cacheCodigos = nil
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; presion = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
     }
 
@@ -333,6 +336,7 @@ public final class ModeloApp {
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
         tecnica = ModeloTecnica(cliente: cliente, token: t, disco: disco)
+        presion = ModeloPresion(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
@@ -510,6 +514,7 @@ public final class ModeloApp {
         _ = await (cargaChat, cargaRevision, cargaFotos)
         await sincronizarGimnasio()
         await sincronizarTecnica()
+        await sincronizarPresion()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -608,6 +613,7 @@ public final class ModeloApp {
         await fotos?.drenar()
         if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
         if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
+        if palanca.presionApp { presion?.drenarEnFondo() }
     }
 
     /// Con la palanca apagada no se llama a nada: la app es la de siempre.
@@ -618,6 +624,17 @@ public final class ModeloApp {
             tecnica.drenarEnFondo()   // un video grande no frena el resto de la carga
         } else {
             tecnica.apagar()
+        }
+    }
+
+    /// Con la palanca apagada no se llama a nada de presión.
+    private func sincronizarPresion() async {
+        guard let presion else { return }
+        if palanca.presionApp {
+            await presion.refrescar()
+            presion.drenarEnFondo()
+        } else {
+            presion.apagar()
         }
     }
 
@@ -674,6 +691,7 @@ public final class ModeloApp {
         await fotos?.drenar()
         await sincronizarGimnasio()
         await sincronizarTecnica()
+        await sincronizarPresion()
         await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
         _ = await entreno?.alVolverAPrimerPlano()
     }

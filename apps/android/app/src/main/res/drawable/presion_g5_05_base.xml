@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generado por scripts/nativa/presion-dibujos.mjs. No editar a mano: cambiar el dibujo ahí y regenerar.
+     El negro es solo la máscara: se tiñe al usarlo (DibujoPresion.kt). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path
+        android:pathData="M72.5 14A9.5 9.5 0 1 0 91.5 14A9.5 9.5 0 1 0 72.5 14ZM78.58 10.58L85.42 17.42M85.42 10.58L78.58 17.42"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.2" />
+    <path
+        android:pathData="M12.5 30L13.15 30.09L13.75 30.33L14.27 30.73L14.67 31.25L14.91 31.85L15 32.5L15 47.5L14.91 48.15L14.67 48.75L14.27 49.27L13.75 49.67L13.15 49.91L12.5 50L10.5 50L9.85 49.91L9.25 49.67L8.73 49.27L8.33 48.75L8.09 48.15L8 47.5L8 32.5L8.09 31.85L8.33 31.25L8.73 30.73L9.25 30.33L9.85 30.09L10.5 30ZM20 24L20.78 24.1L21.5 24.4L22.12 24.88L22.6 25.5L22.9 26.22L23 27L23 53L22.9 53.78L22.6 54.5L22.12 55.12L21.5 55.6L20.78 55.9L20 56L18 56L17.22 55.9L16.5 55.6L15.88 55.12L15.4 54.5L15.1 53.78L15 53L15 27L15.1 26.22L15.4 25.5L15.88 24.88L16.5 24.4L17.22 24.1L18 24ZM50.28 56L49.22 55.9L48.5 55.6L47.88 55.12L47.4 54.5L47.1 53.78L47 53L47 27L47.1 26.22L47.4 25.5L47.88 24.88L48.5 24.4L49.22 24.1L50 24L52 24L52.78 24.1L53.5 24.4L54.12 24.88L54.6 25.5L54.9 26.22L55 27L55 52.76M59.5 30L60.15 30.09L60.75 30.33L61.27 30.73L61.67 31.25L61.91 31.85L62 32.5L62 47.5L61.91 48.15L61.67 48.75L61.27 49.27L60.75 49.67L60.15 49.91L59.5 50L57.5 50L56.85 49.91L56.25 49.67L55.73 49.27L55.33 48.75L55.09 48.15L55 47.5L55 32.5L55.09 31.85L55.33 31.25L55.73 30.73L56.25 30.33L56.85 30.09L57.5 30ZM23.5 37L46.5 37M23.5 43L46.5 43M45 68A17 17 0 1 0 79 68A17 17 0 1 0 45 68ZM62 68L62 57M62 68L70 72"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.5" />
+    <path
+        android:pathData="M75.6 68L76.4 68M62 81.6L62 82.4M48.4 68L47.6 68M62 54.4L62 53.6"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.8" />
+</vector>

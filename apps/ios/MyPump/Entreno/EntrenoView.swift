@@ -38,6 +38,7 @@ struct EntrenoView: View {
                     }
                 case .sinRutina:
                     ScrollView {
+                        TarjetaPresion().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         TarjetaGimnasio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
@@ -204,6 +205,8 @@ private struct ListaEntreno: View {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 // «Tu guía» mientras falte ver algo: verde y primera, arriba de todo (pedido de Mati, 4-nov). Abajo,
                 // el aviso de Revisión.
+                // «Tu presión», primera de todas mientras haya algo para hacer. Es una tarjeta más: no toca ni condiciona la rutina.
+                TarjetaPresion()
                 // 2.2.0: el link de la entrega, desde 30 min antes hasta el fin (aunque la tarjeta de la guía esté oculta).
                 if let g = GuiaUI.modelo { TarjetaEntregaAhora(modelo: g) }
                 if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }

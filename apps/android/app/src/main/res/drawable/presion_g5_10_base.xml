@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generado por scripts/nativa/presion-dibujos.mjs. No editar a mano: cambiar el dibujo ahí y regenerar.
+     El negro es solo la máscara: se tiñe al usarlo (DibujoPresion.kt). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path
+        android:pathData="M72.5 14A9.5 9.5 0 1 0 91.5 14A9.5 9.5 0 1 0 72.5 14ZM78.58 10.58L85.42 17.42M85.42 10.58L78.58 17.42"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.2" />
+    <path
+        android:pathData="M35 34L37.33 34.31L39.5 35.21L41.36 36.64L42.79 38.5L43.69 40.67L44 43L44 59L43.69 61.33L42.79 63.5L41.36 65.36L39.5 66.79L37.33 67.69L35 68L19 68L16.67 67.69L14.5 66.79L12.64 65.36L11.21 63.5L10.31 61.33L10 59L10 43L10.31 40.67L11.21 38.5L12.64 36.64L14.5 35.21L16.67 34.31L19 34ZM16 34.5L19 16L35 16L38 34.5M16 67.5L19 86L35 86L38 67.5M44.5 46L47.5 46M47.5 46L47.5 54M44.5 54L47.5 54M56 70A14 14 0 1 0 84 70A14 14 0 1 0 56 70ZM64.5 55.5L67 50.5L73 50.5L75.5 55.5"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.5" />
+    <path
+        android:pathData="M15.5 51L21 51L24.5 43.5L29 58.5L32.5 51L38.5 51M60.5 70A9.5 9.5 0 1 0 79.5 70A9.5 9.5 0 1 0 60.5 70Z"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.8" />
+</vector>
