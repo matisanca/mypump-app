@@ -1,0 +1,826 @@
+{
+  "_": "Controles de salud en la app (pedido de Mati, 11/11): lo que comparten iOS, Android y la web. Fuente: nativa-evidencia/privado/CONTROLES_SALUD.md y supabase/propuestas/nativa_controles_salud.sql. «respuesta» es lo que devuelve mypump_controles_get; «hoyTelefono» es la fecha del teléfono (solo cuenta si el servidor no manda «hoy»). «estudios» alimenta el bloque «Próximo control» de Estudios; «inicio», la tarjeta de arriba de la primera pestaña; «hitos», «Tu recorrido». Nunca el ciclo, fármacos ni «IA».",
+  "textos": {
+    "cejaInicio": "Control de salud",
+    "tituloInicio": "Tu próximo control de salud",
+    "verMisEstudios": "Ver mis estudios",
+    "notaProgramado": "Te vamos a mandar las órdenes unos días antes.",
+    "notaOrdenes": "Ya te mandamos las órdenes. Están más abajo, en Tus órdenes.",
+    "tituloPorDefecto": "Control de salud",
+    "hitosTitulo": "Tus controles de salud",
+    "hitoProximo": "Próximo",
+    "hitoRecibido": "Recibido",
+    "hitoVisto": "Mati lo vio",
+    "notaOrdenesSinLista": "Ya te mandamos las órdenes."
+  },
+  "tituloMax": 60,
+  "titulo": [
+    {
+      "entra": null,
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "   ",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "Control de salud",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "  Chequeo anual ",
+      "sale": "Chequeo anual"
+    },
+    {
+      "entra": "Control del posciclo",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "Control post ciclo",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "Control de TRT",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "Revisión con IA",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "Control de Testosterona total",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "Control hormonal",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "Fármacos y salud",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "Control 250 mg",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "Control con la guía de Mati",
+      "sale": "Control con la guía de Mati"
+    },
+    {
+      "entra": "Análisis de control",
+      "sale": "Análisis de control"
+    },
+    {
+      "entra": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "sale": "Control de salud"
+    },
+    {
+      "entra": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "sale": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "entra": "Control de salxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéééé",
+      "sale": "Control de salud"
+    }
+  ],
+  "cuando": [
+    {
+      "fecha": "2026-11-16",
+      "hoy": "2026-11-11",
+      "texto": "El lunes 16/11"
+    },
+    {
+      "fecha": "2026-11-11",
+      "hoy": "2026-11-11",
+      "texto": "El miércoles 11/11"
+    },
+    {
+      "fecha": "2026-11-09",
+      "hoy": "2026-11-11",
+      "texto": "Era para el lunes 9/11"
+    },
+    {
+      "fecha": "2027-01-04",
+      "hoy": "2026-12-28",
+      "texto": "El lunes 4/1/2027"
+    },
+    {
+      "fecha": "2026-12-30",
+      "hoy": null,
+      "texto": "El miércoles 30/12"
+    }
+  ],
+  "casos": [
+    {
+      "nombre": "token caído (null)",
+      "respuesta": null,
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": null,
+        "inicio": null,
+        "hitos": []
+      }
+    },
+    {
+      "nombre": "apagada en el servidor",
+      "respuesta": {
+        "habilitado": false
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": null,
+        "inicio": null,
+        "hitos": []
+      }
+    },
+    {
+      "nombre": "respuesta que no es un objeto",
+      "respuesta": [],
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": null,
+        "inicio": null,
+        "hitos": []
+      }
+    },
+    {
+      "nombre": "sin control",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": null,
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": null,
+        "inicio": null,
+        "hitos": []
+      }
+    },
+    {
+      "nombre": "control lejano: solo en Estudios",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-12-30",
+          "avisar_desde": "2026-12-23",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El miércoles 30/12",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "miércoles 30/12",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "avisar_desde mañana: todavía no va arriba",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-20",
+          "avisar_desde": "2026-11-12",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El viernes 20/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "viernes 20/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "dentro de la ventana (hoy = avisar_desde)",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": "2026-11-11",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": {
+          "titulo": "Tu próximo control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes.",
+          "boton": "Ver mis estudios"
+        },
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 16/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "el día del control",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-11",
+          "avisar_desde": "2026-11-04",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El miércoles 11/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": {
+          "titulo": "Tu próximo control de salud",
+          "cuando": "El miércoles 11/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes.",
+          "boton": "Ver mis estudios"
+        },
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "miércoles 11/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "el día pasó y sigue programado: sigue arriba, sin alarma",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-09",
+          "avisar_desde": "2026-11-02",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "Era para el lunes 9/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": {
+          "titulo": "Tu próximo control de salud",
+          "cuando": "Era para el lunes 9/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes.",
+          "boton": "Ver mis estudios"
+        },
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 9/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "órdenes enviadas: se va de arriba",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": "2026-11-09",
+          "estado": "ordenes_enviadas"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Ya te mandamos las órdenes. Están más abajo, en Tus órdenes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 16/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "otro año",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-12-28",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2027-01-04",
+          "avisar_desde": "2026-12-28",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 4/1/2027",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": {
+          "titulo": "Tu próximo control de salud",
+          "cuando": "El lunes 4/1/2027",
+          "nota": "Te vamos a mandar las órdenes unos días antes.",
+          "boton": "Ver mis estudios"
+        },
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 4/1/2027",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "sin avisar_desde: nunca arriba",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": null,
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 16/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "avisar_desde inválido: nunca arriba",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": "2026-13-01",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 16/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "estado desconocido: en Estudios sin nota, nunca arriba",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": "2026-11-09",
+          "estado": "en_revision"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": null
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 16/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "sin estado: como programado",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": "2026-11-09"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": {
+          "titulo": "Tu próximo control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes.",
+          "boton": "Ver mis estudios"
+        },
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 16/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "sin fecha: no hay próximo",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": null,
+          "avisar_desde": "2026-11-09",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": null,
+        "inicio": null,
+        "hitos": []
+      }
+    },
+    {
+      "nombre": "un próximo ya revisado no es próximo",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": "2026-11-09",
+          "estado": "revisado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": null,
+        "inicio": null,
+        "hitos": []
+      }
+    },
+    {
+      "nombre": "título con «ciclo»: cae al de siempre",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de mitad de ciclo",
+          "fecha_objetivo": "2026-12-30",
+          "avisar_desde": "2026-12-23",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El miércoles 30/12",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "miércoles 30/12",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "título propio sin nada raro",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Chequeo de mitad de año",
+          "fecha_objetivo": "2026-12-30",
+          "avisar_desde": "2026-12-23",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Chequeo de mitad de año",
+          "cuando": "El miércoles 30/12",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Chequeo de mitad de año",
+            "cuando": "miércoles 30/12",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "sin hoy del servidor: vale el del teléfono",
+      "respuesta": {
+        "habilitado": true,
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": "2026-11-10",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": "2026-11-11",
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": {
+          "titulo": "Tu próximo control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes.",
+          "boton": "Ver mis estudios"
+        },
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 16/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "sin hoy del servidor ni del teléfono: nunca arriba",
+      "respuesta": {
+        "habilitado": true,
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": "2026-11-10",
+          "estado": "programado"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 16/11",
+            "estado": "Próximo"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "últimos: hasta 3, solo recibidos o vistos, en el orden del servidor",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-12-30",
+          "avisar_desde": "2026-12-23",
+          "estado": "programado"
+        },
+        "ultimos": [
+          {
+            "titulo_alumno": "Control de salud",
+            "fecha_objetivo": "2026-10-01",
+            "avisar_desde": "2026-09-24",
+            "estado": "revisado"
+          },
+          {
+            "titulo_alumno": "Control de salud",
+            "fecha_objetivo": "2026-09-01",
+            "avisar_desde": "2026-08-25",
+            "estado": "cancelado"
+          },
+          {
+            "titulo_alumno": "Control de salud",
+            "fecha_objetivo": null,
+            "avisar_desde": null,
+            "estado": "revisado"
+          },
+          {
+            "titulo_alumno": "Control de salud",
+            "fecha_objetivo": "2026-08-20",
+            "avisar_desde": "2026-08-13",
+            "estado": "resultado_subido"
+          },
+          {
+            "titulo_alumno": "Control de salud",
+            "fecha_objetivo": "2026-06-15",
+            "avisar_desde": "2026-06-08",
+            "estado": "revisado"
+          },
+          {
+            "titulo_alumno": "Control de salud",
+            "fecha_objetivo": "2026-05-02",
+            "avisar_desde": "2026-04-25",
+            "estado": "revisado"
+          },
+          "no es un objeto"
+        ]
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El miércoles 30/12",
+          "nota": "Te vamos a mandar las órdenes unos días antes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "miércoles 30/12",
+            "estado": "Próximo"
+          },
+          {
+            "titulo": "Control de salud",
+            "cuando": "jueves 1/10",
+            "estado": "Mati lo vio"
+          },
+          {
+            "titulo": "Control de salud",
+            "cuando": "jueves 20/8",
+            "estado": "Recibido"
+          },
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 15/6",
+            "estado": "Mati lo vio"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "solo pasados",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": null,
+        "ultimos": [
+          {
+            "titulo_alumno": "Control de salud",
+            "fecha_objetivo": "2026-10-01",
+            "avisar_desde": "2026-09-24",
+            "estado": "resultado_subido"
+          }
+        ]
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": null,
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "jueves 1/10",
+            "estado": "Recibido"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "órdenes enviadas: se va de arriba (órdenes mandadas por fuera de la app: sin «Tus órdenes»)",
+      "respuesta": {
+        "habilitado": true,
+        "hoy": "2026-11-11",
+        "proximo": {
+          "titulo_alumno": "Control de salud",
+          "fecha_objetivo": "2026-11-16",
+          "avisar_desde": "2026-11-09",
+          "estado": "ordenes_enviadas"
+        },
+        "ultimos": []
+      },
+      "hoyTelefono": null,
+      "sale": {
+        "estudios": {
+          "titulo": "Control de salud",
+          "cuando": "El lunes 16/11",
+          "nota": "Ya te mandamos las órdenes."
+        },
+        "inicio": null,
+        "hitos": [
+          {
+            "titulo": "Control de salud",
+            "cuando": "lunes 16/11",
+            "estado": "Próximo"
+          }
+        ]
+      },
+      "hayOrdenes": false
+    }
+  ]
+}

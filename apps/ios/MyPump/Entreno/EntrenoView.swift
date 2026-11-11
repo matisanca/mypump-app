@@ -54,6 +54,7 @@ struct EntrenoView: View {
                         // Un estudio pedido o una orden nueva, también sin rutina y en el mismo orden: después del link de
                         // la entrega y antes de la guía.
                         TarjetaEstudiosInicio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                        TarjetaControlInicio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         if let g = GuiaUI.modelo {
                             TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         }
@@ -240,6 +241,8 @@ private struct ListaEntreno: View {
                 // Un estudio pedido o una orden nueva (pedido de Mati, 10-nov). Orden fijo de las tarjetas de arriba: el link
                 // de la entrega (tiene hora), Estudios (lo pidió Mati y tiene fecha) y la guía destacada.
                 TarjetaEstudiosInicio()
+                // El próximo control de salud, desde que toca avisar (`controles_app`): lleva a Estudios en un toque.
+                TarjetaControlInicio()
                 if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
                 TarjetaFotosInicio(soloSiFaltan: true)
                 TarjetaGimnasio()

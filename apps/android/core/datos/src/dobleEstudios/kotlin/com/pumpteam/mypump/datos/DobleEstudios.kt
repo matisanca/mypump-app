@@ -43,6 +43,14 @@ class DobleEstudios : Transporte {
     var ultimoUrls: ValorJson? = null
     /** Los `p_ids` de cada `novedades_vistas`, en orden. */
     val vistasPedidas = java.util.concurrent.CopyOnWriteArrayList<List<String>>()
+    /** `controles_app` en la config. Sin prender, la app no llama a `mypump_controles_get`. */
+    @Volatile var palancaControles = false
+    /** `mypump_controles_get` no existe (PGRST202). */
+    @Volatile var controlesSinFuncion = false
+    /** Corre antes de contestar `mypump_controles_get` (para apagar la palanca mientras la respuesta viaja). */
+    @Volatile var antesDeControles: (() -> Unit)? = null
+    /** Lo que contesta `mypump_controles_get` (sin próximo ni últimos, de entrada). */
+    @Volatile var controles: ValorJson = parsear("""{"habilitado":true,"hoy":"$HOY","proximo":null,"ultimos":[]}""")
 
     val llamadasEstudios: List<String> get() = llamadas.filter { "estudios" in it }
     val intentosDeSubida: Int get() = llamadas.count { it == "estudios/upload" }
@@ -68,7 +76,13 @@ class DobleEstudios : Transporte {
     private fun t(s: String) = ValorJson.Texto(s)
 
     private fun atender(nombre: String, p: Pedido): Pair<Int, String> {
-        if (nombre == "mypump_get_app_config") return 200 to """{"estudios_app":$palanca}"""
+        if (nombre == "mypump_get_app_config") return 200 to """{"estudios_app":$palanca,"controles_app":${palanca && palancaControles}}"""
+        if (nombre == "mypump_controles_get") {
+            antesDeControles?.invoke()
+            if (controlesSinFuncion) return 404 to """{"code":"PGRST202","message":"no existe"}"""
+            if (tokenCaido) return 200 to "null"
+            return 200 to if (palancaControles) controles.serializar() else """{"habilitado":false}"""
+        }
         // Una cuenta inventada, para las pruebas que arman `ModeloApp` entero.
         if (nombre == "mypump_get_cliente_info") return 200 to """[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"""
         if (nombre.startsWith("mypump_estudios") && sinFuncion) return 404 to """{"code":"PGRST202","message":"no existe"}"""
@@ -207,6 +221,7 @@ class DobleEstudios : Transporte {
 
     companion object {
         const val HOY = "2026-11-10"
+        val ESCENARIOS_CONTROLES = setOf("controlesApagado", "sinControl", "controlLejano", "controlEnVentana", "controlOrdenes")
         const val PEDIDO_LAB = "22222222-2222-4222-8222-222222222201"
         const val PEDIDO_ECO = "22222222-2222-4222-8222-222222222202"
         const val PEDIDO_HECHO = "22222222-2222-4222-8222-222222222203"
@@ -283,6 +298,24 @@ class DobleEstudios : Transporte {
                         }
                     }
                 }
+            }
+            // Controles de salud (`controles_app`), sobre «completo»: apagada con un control cargado, prendida sin control, uno
+            // lejano, uno dentro de la ventana de aviso y uno con las órdenes ya enviadas. Fechas inventadas, con hoy = 10/11.
+            if (nombre in ESCENARIOS_CONTROLES) {
+                val base = escenario("completo")
+                fun control(fecha: String, avisar: String, estado: String) =
+                    """{"titulo_alumno":"Control de salud","fecha_objetivo":"$fecha","avisar_desde":"$avisar","estado":"$estado"}"""
+                fun controles(proximo: String) {
+                    base.controles = parsear("""{"habilitado":true,"hoy":"$HOY","proximo":$proximo,"ultimos":[${control("2026-10-01", "2026-09-24", "revisado")}]}""")
+                }
+                when (nombre) {
+                    "controlesApagado" -> controles(control("2026-11-16", "2026-11-09", "programado"))
+                    "sinControl" -> base.palancaControles = true
+                    "controlLejano" -> { base.palancaControles = true; controles(control("2026-12-30", "2026-12-23", "programado")) }
+                    "controlEnVentana" -> { base.palancaControles = true; controles(control("2026-11-16", "2026-11-09", "programado")) }
+                    "controlOrdenes" -> { base.palancaControles = true; controles(control("2026-11-16", "2026-11-09", "ordenes_enviadas")) }
+                }
+                return base
             }
             return d
         }

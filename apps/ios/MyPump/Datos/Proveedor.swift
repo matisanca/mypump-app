@@ -133,7 +133,7 @@ private struct EstudiosDePrueba: Transporte {
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
         let ruta = pedido.url?.path ?? ""
         let f = ruta.components(separatedBy: "/").last ?? ""
-        if ruta.contains("/estudios/") || f.hasPrefix("mypump_estudios") || f == "mypump_get_app_config" || pedido.url?.host?.hasSuffix(".invalid") == true {
+        if ruta.contains("/estudios/") || f.hasPrefix("mypump_estudios") || f == "mypump_controles_get" || f == "mypump_get_app_config" || pedido.url?.host?.hasSuffix(".invalid") == true {
             // `-estudiosLento YES`: cada subida tarda, para ver «Subiendo 1 de 3».
             if ruta.hasSuffix("estudios/upload"), UserDefaults.standard.bool(forKey: "estudiosLento") { try? await Task.sleep(for: .seconds(4)) }
             return try await doble.enviar(pedido)

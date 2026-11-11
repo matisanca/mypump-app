@@ -214,6 +214,7 @@ private fun SinRutina(modelo: ModeloApp) {
                 // La videollamada también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                 com.pumpteam.mypump.guia.TarjetaVideollamadaEntreno(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
 com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
+                com.pumpteam.mypump.estudios.TarjetaControlInicioDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
                 com.pumpteam.mypump.recorrido.TarjetaRecorridoDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
                 TarjetaPresionDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
                 TarjetaGimnasioDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))

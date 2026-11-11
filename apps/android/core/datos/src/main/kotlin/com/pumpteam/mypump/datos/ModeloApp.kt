@@ -982,6 +982,7 @@ class ModeloApp(
             _devolucion.value?.recordarPalanca(it.devolucionSemanal)
             disco?.let { d -> if (elegirHorarioRecordado(d) != it.elegirHorario) d.guardar(ARCHIVO_PALANCA_ELEGIR, ValorJson.Booleano(it.elegirHorario)) }
             _estudios.value?.usarPalanca(it.estudiosApp)
+            _estudios.value?.let { e -> if (e.usarPalancaControles(it.controlesApp)) alcance.launch { e.traerControles() } }
             // La cola B (2.3.0): apagadas (o sin la clave) no se llama a nada nuevo ni queda nada a la vista.
             _finPlan.value?.usarPalanca(it.finPlan)
             _compras.value?.usarPalanca(it.comprasPais)

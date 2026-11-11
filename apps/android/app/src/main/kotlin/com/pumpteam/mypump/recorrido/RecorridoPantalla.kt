@@ -135,12 +135,12 @@ fun HojaDeRecorridoDe(modelo: ModeloApp, navegacion: Navegacion) {
     }
     // Dejó de verse (Mati lo cerró, o se apagó) con la hoja abierta: se cierra.
     LaunchedEffect(r == null) { if (r == null) RecorridoUI.abierta = false }
-    if (RecorridoUI.abierta && r != null) HojaRecorrido(m, r, alCerrar = { RecorridoUI.abierta = false })
+    if (RecorridoUI.abierta && r != null) HojaRecorrido(m, r, modelo, alCerrar = { RecorridoUI.abierta = false })
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
 @Composable
-private fun HojaRecorrido(m: ModeloFinPlan, r: Recorrido, alCerrar: () -> Unit) {
+private fun HojaRecorrido(m: ModeloFinPlan, r: Recorrido, app: ModeloApp, alCerrar: () -> Unit) {
     val c = MyPump.colores
     val hoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val alcance = rememberCoroutineScope()
@@ -176,6 +176,8 @@ private fun HojaRecorrido(m: ModeloFinPlan, r: Recorrido, alCerrar: () -> Unit) 
                 )
                 r.resumen.mensaje?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = c.texto, modifier = Modifier.testTag("recorrido-mensaje")) }
                 r.resumen.logros.forEachIndexed { i, l -> TarjetaLogro(l, Modifier.testTag("recorrido-logro-$i")) }
+                // Los controles de salud, como hitos con fecha (`controles_app`).
+                com.pumpteam.mypump.estudios.HitosControlRecorrido(app)
                 if (pide) {
                     Column(Modifier.padding(top = Espacio.xs), verticalArrangement = Arrangement.spacedBy(Espacio.xxs)) {
                         Text(T.PREGUNTAS_TITULO, style = MaterialTheme.typography.titleLarge, color = c.texto, modifier = Modifier.semantics { heading() })

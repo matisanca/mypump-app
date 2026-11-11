@@ -303,7 +303,8 @@ public struct EstadoEstudios: Equatable, Sendable {
     public let hoy: Estudios.Dia?
     public let topeArchivos: Int
     public let topeMB: Int
-    public let proximoControl: ProximoControl?
+    /// El de `proximo_control` o, con `controles_app`, el control de salud (`conControl`).
+    public private(set) var proximoControl: ProximoControl?
     public let pendientes: [PendienteEstudio]
     public let ordenes: [OrdenEstudio]
     public let estudios: [EstudioRecibido]
@@ -325,6 +326,15 @@ public struct EstadoEstudios: Equatable, Sendable {
         novedades = max(0, j["novedades"]?.enteroEstudios ?? 0)
     }
 
+    /// El control de salud (`mypump_controles_get`) alimenta el mismo bloque «Próximo control» y gana sobre el del pedido:
+    /// un solo lugar, con el mismo texto neutro. nil deja lo que vino en `proximo_control`.
+    public func conControl(_ c: ProximoControl?) -> EstadoEstudios {
+        guard let c else { return self }
+        var e = self
+        e.proximoControl = c
+        return e
+    }
+
     /// Los `borrador` son restos de una subida a medias: no se muestran.
     public var enviosVisibles: [EnvioRecibido] { envios.filter { !$0.borrador } }
 }
@@ -334,6 +344,9 @@ public struct ProximoControl: Equatable, Sendable {
     public let titulo: String
     public let desde: Estudios.Dia?
     public let hasta: Estudios.Dia?
+    /// Con un control de salud: «El lunes 16/11» (ya armado) y la nota de abajo. nil en el del pedido.
+    public let cuandoFijo: String?
+    public let nota: String?
 
     init?(_ j: JSONValue?) {
         guard case .objeto? = j, let j else { return nil }
@@ -341,7 +354,17 @@ public struct ProximoControl: Equatable, Sendable {
         titulo = j["titulo"]?.comoTexto.noVacio ?? "Estudio"
         desde = Estudios.Dia(j["desde"]?.comoTexto)
         hasta = Estudios.Dia(j["hasta"]?.comoTexto)
+        cuandoFijo = nil
+        nota = nil
     }
+
+    /// El de un control de salud (`Controles.proximoParaEstudios`).
+    init(titulo: String, cuando: String, nota: String?) {
+        tipo = nil; self.titulo = titulo; desde = nil; hasta = nil; cuandoFijo = cuando; self.nota = nota
+    }
+
+    /// Lo que dice el bloque debajo del título.
+    public var cuando: String? { cuandoFijo ?? Estudios.fechaControl(desde: desde, hasta: hasta) }
 }
 
 public struct PendienteEstudio: Equatable, Sendable, Identifiable {

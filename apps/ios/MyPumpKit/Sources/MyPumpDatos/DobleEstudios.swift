@@ -26,6 +26,8 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
     public var topeDia = false
     /// Corre después de atender cada subida (para probar lo que pasa en medio de una pasada).
     public var alSubir: (@Sendable () async -> Void)?
+    /// Corre antes de contestar `mypump_controles_get` (para apagar la palanca mientras la respuesta viaja).
+    public var antesDeControles: (@Sendable () async -> Void)?
     public var llamadas: [String] = []
     public var hoy = "2026-11-10"
     public var proximoControl: JSONValue = .null
@@ -39,6 +41,12 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
     public var urlsPedidas: [JSONValue] = []
     /// Los `p_ids` de cada `novedades_vistas`, en orden.
     public var vistasPedidas: [[String]] = []
+    /// `controles_app` en la config. Sin prender, la app no llama a `mypump_controles_get`.
+    public var palancaControles = false
+    /// `mypump_controles_get` no existe (PGRST202).
+    public var controlesSinFuncion = false
+    /// Lo que contesta `mypump_controles_get` (sin próximo ni últimos, de entrada).
+    public var controles: JSONValue = .objeto(["habilitado": .bool(true), "hoy": .texto("2026-11-10"), "proximo": .null, "ultimos": .lista([])])
 
     public init() {}
 
@@ -55,6 +63,7 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
             return try atender(nombre, pedido)
         }
         if ruta.hasSuffix("/estudios/upload") { await alSubir?() }
+        if ruta.hasSuffix("/mypump_controles_get") { await antesDeControles?() }
         return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: status, httpVersion: nil, headerFields: nil)!)
     }
 
@@ -67,7 +76,12 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
         func t(_ s: String) -> Data { Data(s.utf8) }
         switch nombre {
         case "mypump_get_app_config":
-            return (200, t(palanca ? #"{"estudios_app":true}"# : #"{"gimnasio_fotos":false}"#))
+            if !palanca { return (200, t(#"{"gimnasio_fotos":false}"#)) }
+            return (200, t(palancaControles ? #"{"estudios_app":true,"controles_app":true}"# : #"{"estudios_app":true,"controles_app":false}"#))
+        case "mypump_controles_get":
+            if controlesSinFuncion { return (404, t(#"{"code":"PGRST202","message":"no existe"}"#)) }
+            if tokenCaido { return (200, t("null")) }
+            return (200, json(palancaControles ? controles : .objeto(["habilitado": .bool(false)])))
         case "mypump_get_cliente_info":   // una cuenta inventada, para las pruebas que arman `ModeloApp` entero
             return (200, t(#"[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"#))
         case _ where nombre.hasPrefix("mypump_estudios") && sinFuncion:
@@ -255,6 +269,23 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
             if nombre == "ordenNueva" { d.ordenes[1]["nuevo"] = .bool(true) }
             // Solo una orden sin ver y nada por hacer.
             if nombre == "soloOrdenNueva" { d.pendientes = []; d.ordenes[1]["nuevo"] = .bool(true) }
+            // Controles de salud (`controles_app`): apagada con un control cargado, prendida sin control, uno lejano, uno
+            // dentro de la ventana de aviso y uno con las órdenes ya enviadas. Fechas inventadas, con hoy = 10/11.
+            func control(_ fecha: String, _ avisar: String, _ estado: String) -> JSONValue {
+                .objeto(["titulo_alumno": .texto("Control de salud"), "fecha_objetivo": .texto(fecha), "avisar_desde": .texto(avisar), "estado": .texto(estado)])
+            }
+            func controles(_ proximo: JSONValue) {
+                d.controles = .objeto(["habilitado": .bool(true), "hoy": .texto(d.hoy), "proximo": proximo,
+                                       "ultimos": .lista([control("2026-10-01", "2026-09-24", "revisado")])])
+            }
+            switch nombre {
+            case "controlesApagado": controles(control("2026-11-16", "2026-11-09", "programado"))
+            case "sinControl": d.palancaControles = true
+            case "controlLejano": d.palancaControles = true; controles(control("2026-12-30", "2026-12-23", "programado"))
+            case "controlEnVentana": d.palancaControles = true; controles(control("2026-11-16", "2026-11-09", "programado"))
+            case "controlOrdenes": d.palancaControles = true; controles(control("2026-11-16", "2026-11-09", "ordenes_enviadas"))
+            default: break
+            }
         }
         return d
     }

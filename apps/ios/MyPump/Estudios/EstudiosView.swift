@@ -263,8 +263,12 @@ private struct ProximoControlEstudios: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(T.proximoControl).textoCeja()
                 Text(control.titulo).font(.headline)
-                if let cuando = Estudios.fechaControl(desde: control.desde, hasta: control.hasta) {
-                    Text(cuando).font(.subheadline).foregroundStyle(.secondary)
+                if let cuando = control.cuando {
+                    Text(cuando).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("estudios-proximo-control-cuando")
+                }
+                // Con un control de salud (`controles_app`): cuándo llegan las órdenes. Neutro, sin motivo.
+                if let nota = control.nota {
+                    Text(nota).font(.subheadline).foregroundStyle(.secondary).padding(.top, 2)
                 }
             }
             .fixedSize(horizontal: false, vertical: true)

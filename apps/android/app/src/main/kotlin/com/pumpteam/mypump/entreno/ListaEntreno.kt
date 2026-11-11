@@ -217,6 +217,8 @@ fun ListaEntreno(
                     // Un estudio pedido o una orden nueva (10-nov): después de la entrega de ahora (tiene hora) y antes de
                     // la guía. El mismo orden en iOS.
                     com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo)
+                    // El próximo control de salud, desde que toca avisar (`controles_app`): lleva a Estudios en un toque.
+                    com.pumpteam.mypump.estudios.TarjetaControlInicioDe(modelo)
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
                     TarjetaFotosInicioDe(modelo, soloSiFaltan = true)
                     TarjetaGimnasioDe(modelo)

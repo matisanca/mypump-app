@@ -615,6 +615,7 @@ public final class ModeloApp {
             palanca = palancaLeida.conArgumentosDePrueba()
             palancaLeida.recordar()
             estudios?.usarPalanca(palancaLeida.estudiosApp)
+            estudios?.usarPalancaControles(palancaLeida.controlesApp)
             revision?.guiadoPrendido = palancaLeida.checkGuiado
             documentos?.usarPalanca(palanca.contratoApp)
             await outbox?.usarPalanca(opsLegadas: palancaLeida.opsLegadas)
