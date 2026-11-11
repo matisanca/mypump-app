@@ -47,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -88,9 +87,13 @@ import com.pumpteam.mypump.reglas.OrdenEstudios
 import com.pumpteam.mypump.reglas.PendienteEstudios
 import com.pumpteam.mypump.reglas.TextosEstudios as T
 import java.time.LocalDate
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+
+/** Lo que se espera a que la carga de la app lea la palanca al volver de una muerte del proceso. */
+private const val ESPERA_PALANCA_MS = 20_000L
 
 /** Sin pedido: «Subir un estudio» suelto. */
 private const val SUBIDA_SUELTA = ""
@@ -102,16 +105,13 @@ private const val SUBIDA_SUELTA = ""
 @Composable
 fun EstudiosPantalla(m: ModeloEstudios, alVolver: () -> Unit) {
     val estado by m.estado.collectAsStateWithLifecycle()
-    val contexto = LocalContext.current
     // Al volver de una muerte del proceso el estado todavía no está: se decide después de preguntar.
     var preguntado by remember { mutableStateOf(false) }
     LaunchedEffect(m) {
-        // Lo que se haya bajado para ver en otra vida de la app no queda en el teléfono.
-        withContext(Dispatchers.IO) { ArchivosEstudios.barrer(ArchivosEstudios.paraVer(contexto)) }
-        if (m.palancaRecordada) {
-            m.refrescar()
-            m.drenarEnFondo()
-        }
+        // La palanca no se recuerda de una vez para la otra: al volver de una muerte del proceso se espera a que la carga
+        // de la app la lea. Sin esa lectura (o apagada) no se llama a nada y la pantalla se cierra.
+        if (m.palanca.value == null) withTimeoutOrNull(ESPERA_PALANCA_MS) { m.palanca.filterNotNull().first() }
+        m.sincronizar()
         preguntado = true
     }
     LaunchedEffect(preguntado, estado == null) { if (preguntado && estado == null) alVolver() }
@@ -121,7 +121,8 @@ fun EstudiosPantalla(m: ModeloEstudios, alVolver: () -> Unit) {
     var ordenAbierta by rememberSaveable { mutableStateOf<String?>(null) }
     var subida by rememberSaveable { mutableStateOf<String?>(null) }
     var fechaDe by rememberSaveable { mutableStateOf<String?>(null) }
-    var abierto by remember { mutableStateOf<Abierto?>(null) }
+    // Rotar el teléfono no cierra lo que se está mirando (el papel se vuelve a bajar: en el teléfono no queda guardado).
+    var abierto by rememberSaveable(stateSaver = Abierto.Guarda) { mutableStateOf<Abierto?>(null) }
 
     val e = estado ?: return Box(Modifier.fillMaxSize().background(MyPump.colores.fondo))
     val orden = e.orden(ordenAbierta)
@@ -169,6 +170,7 @@ private fun Principal(
     val sinSenal by m.sinSenal.collectAsStateWithLifecycle()
     val aviso by m.aviso.collectAsStateWithLifecycle()
     val errorCarga by m.errorCarga.collectAsStateWithLifecycle()
+    val detenida by m.detenida.collectAsStateWithLifecycle()
     var recargando by remember { mutableStateOf(false) }
     val hoy = e.hoy
     val bloques = Estudios.bloques(e)
@@ -180,8 +182,7 @@ private fun Principal(
                 recargando = true
                 alcance.launch {
                     try {
-                        m.refrescar()
-                        m.drenar()
+                        m.sincronizar()   // respeta la palanca: apagada, no llama a nada
                     } finally {
                         recargando = false
                     }
@@ -199,7 +200,7 @@ private fun Principal(
                 verticalArrangement = Arrangement.spacedBy(Espacio.m),
             ) {
                 if (errorCarga) Renglon(Iconos.SinNube, T.errorDeCarga, c.textoSecundario, Modifier.padding(horizontal = Espacio.xxs).testTag("estudios-error-carga"), vivo = true)
-                EstadoDeLaSubida(cola, progreso, sinSenal, aviso)
+                EstadoDeLaSubida(cola, progreso, sinSenal, detenida, aviso, alReintentar = { alcance.launch { m.reintentar() } })
 
                 for (bloque in bloques) {
                     when (bloque) {
@@ -273,7 +274,14 @@ private fun Renglon(icono: ImageVector, texto: String, tono: Color, modifier: Mo
 
 /** Lo que pasa con lo que el alumno mandó: subiendo, esperando señal, recibido o por qué no salió. */
 @Composable
-private fun EstadoDeLaSubida(cola: List<EnvioEstudios>, progreso: ModeloEstudios.Progreso?, sinSenal: Boolean, aviso: ModeloEstudios.Aviso?) {
+private fun EstadoDeLaSubida(
+    cola: List<EnvioEstudios>,
+    progreso: ModeloEstudios.Progreso?,
+    sinSenal: Boolean,
+    detenida: Boolean,
+    aviso: ModeloEstudios.Aviso?,
+    alReintentar: () -> Unit,
+) {
     val c = MyPump.colores
     if (cola.isEmpty() && aviso == null) return
     Tarjeta(Modifier.testTag("estudios-estado-subida"), espaciado = Espacio.s) {
@@ -284,6 +292,10 @@ private fun EstadoDeLaSubida(cola: List<EnvioEstudios>, progreso: ModeloEstudios
             val va = (subidos + 1).coerceIn(1, total)
             if (sinSenal && progreso == null) {
                 Renglon(Iconos.SinWifi, T.sinSenal, c.textoSecundario, Modifier.testTag("estudios-sin-senal"), vivo = true, fuerte = true)
+            } else if (detenida && progreso == null) {
+                // La cola quedó parada por algo que no es la red (el link, el servidor): se dice y se ofrece retomarla.
+                Renglon(Iconos.Alerta, T.noSePudoEnviar, c.alerta, Modifier.testTag("estudios-detenida"), vivo = true, fuerte = true)
+                BotonSecundario(T.probarDeNuevo, alTocar = alReintentar, compacto = true, tono = c.marcaTexto, modifier = Modifier.testTag("estudios-reintentar"))
             } else {
                 Text(
                     Estudios.progreso(subidos, total),

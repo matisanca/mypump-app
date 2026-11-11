@@ -72,6 +72,8 @@ class ModeloApp(
     internal val alcance: CoroutineScope,
     /** Donde esperan los archivos de «Estudios» hasta subir (en la app, `noBackupFilesDir`). Sin ella, [raizDisco]. */
     private val raizSinRespaldo: File? = null,
+    /** La caché de la app (`cacheDir`): lo de «Estudios» que quedó ahí se barre al arrancar y al cerrar sesión. */
+    private val raizCache: File? = null,
 ) {
     enum class Fase {
         /** "Bienvenido a MyPump": pegá tu link o mirá la demo. */
@@ -303,6 +305,8 @@ class ModeloApp(
         }
 
     init {
+        // Antes que nada, y sin mirar la palanca ni si hay sesión: lo médico que venció o quedó suelto no sigue en el teléfono.
+        ColaEstudios.barrerTelefono(raizDisco, raizSinRespaldo ?: raizDisco, raizCache)
         token?.let(::prepararCuenta)
     }
 
@@ -389,6 +393,9 @@ class ModeloApp(
         almacen.guardar(null)
         // Lo buscado por código se va con la cuenta: se borra del teléfono.
         disco?.borrar(ARCHIVO_CODIGOS)
+        // Lo médico tampoco se queda: ni los estudios que esperaban salir, ni lo elegido, ni lo que se bajó para ver.
+        _estudios.value?.borrarTodo()
+        raizCache?.let { ColaEstudios.limpiarCache(it) }
         soltarCuentaEnMemoria()
         _entreno.value = null
         _rutina.value = null
@@ -712,7 +719,7 @@ class ModeloApp(
             _palanca.value = it
             _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
             _tecnica.value?.recordarPalanca(it.tecnicaVideo)
-            _estudios.value?.recordarPalanca(it.estudiosApp)
+            _estudios.value?.usarPalanca(it.estudiosApp)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -794,18 +801,12 @@ class ModeloApp(
         _fotos.value?.drenar()
         _gimnasio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
         _tecnica.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
-        _estudios.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+        _estudios.value?.takeIf { it.palanca.value == true }?.drenarEnFondo()
     }
 
-    /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
+    /** Con la palanca apagada, o sin haberla leído en esta sesión, no se llama a nada: la app es la de siempre. */
     private suspend fun sincronizarEstudios() {
-        val x = _estudios.value ?: return
-        if (x.palancaRecordada) {
-            x.refrescar()
-            x.drenarEnFondo()   // un PDF grande no frena el resto de la carga
-        } else {
-            x.apagar()
-        }
+        _estudios.value?.sincronizar()
     }
 
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */

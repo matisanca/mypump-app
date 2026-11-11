@@ -42,6 +42,17 @@ class EstudiosUiTest : PruebaUi() {
     /** La cámara, el selector de fotos y el de archivos, de mentira: contestan sin abrir nada. El de fotos devuelve dos de una vez. */
     private fun ponerSelectores() {
         val monitor = object : Instrumentation.ActivityMonitor() {
+            private var capturas = 0
+
+            private fun otraFoto(n: Int): ByteArray {
+                val img = FotoDePrueba.imagen(2400, 1800 - 16 * n)
+                try {
+                    return FotoDePrueba.jpegDeCamara(app, img)
+                } finally {
+                    img.recycle()
+                }
+            }
+
             private fun archivo(nombre: String, bytes: ByteArray) = ProveedorFotos.uri(app, File(ProveedorFotos.carpeta(app), nombre).apply { parentFile?.mkdirs(); writeBytes(bytes) })
 
             override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
@@ -49,7 +60,8 @@ class EstudiosUiTest : PruebaUi() {
                 if (accion == MediaStore.ACTION_IMAGE_CAPTURE) {
                     @Suppress("DEPRECATION")
                     val salida = intent.getParcelableExtra<android.net.Uri>(MediaStore.EXTRA_OUTPUT) ?: return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
-                    app.contentResolver.openOutputStream(salida)!!.use { it.write(CamaraDePrueba.fotoGrande()) }
+                    // Cada foto de la cámara es distinta (la hoja no suma dos veces los mismos bytes).
+                    app.contentResolver.openOutputStream(salida)!!.use { it.write(if (capturas++ == 0) CamaraDePrueba.fotoGrande() else otraFoto(capturas)) }
                     return Instrumentation.ActivityResult(Activity.RESULT_OK, null)
                 }
                 val tipos = intent.getStringArrayExtra(Intent.EXTRA_MIME_TYPES)?.toList() ?: emptyList()
@@ -128,6 +140,7 @@ class EstudiosUiTest : PruebaUi() {
         // La subida: dos fotos de una vez y un PDF.
         p.tocar(etiqueta("estudios-subir"))
         p.nodo(texto("Subí todas las hojas juntas, en PDF o en fotos donde se lea bien."))
+        p.nodo(texto("Hasta 20 archivos por envío."))
         assertFalse("sin archivos no se envía", p.habilitado(etiqueta("estudios-enviar")))
         Telefono.captura("est-hoja-vacia-$tema")
         p.tocar(etiqueta("estudios-elegir-fotos"))

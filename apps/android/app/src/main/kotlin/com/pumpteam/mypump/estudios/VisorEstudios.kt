@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,7 +74,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Lo que se pidió abrir: una orden o un estudio propio. */
-internal data class Abierto(val clase: String, val id: String, val titulo: String)
+internal data class Abierto(val clase: String, val id: String, val titulo: String) {
+    companion object {
+        /** Para que rotar el teléfono no cierre lo que se está mirando. */
+        val Guarda = listSaver<Abierto?, String>(
+            save = { a -> if (a == null) emptyList() else listOf(a.clase, a.id, a.titulo) },
+            restore = { l -> if (l.size == 3) Abierto(l[0], l[1], l[2]) else null },
+        )
+    }
+}
 
 /**
  * Los documentos bajados para ver. Viven en un temporal de la caché propia mientras la pantalla está abierta: al cerrar se
@@ -175,6 +184,8 @@ private class Documentos(private val carpeta: File) {
 private sealed interface EstadoVisor {
     data object Cargando : EstadoVisor
     data object Error : EstadoVisor
+    /** El estudio llegó pero todavía no se puede abrir (409 `todavia_no`): no es un error. */
+    data object TodaviaNo : EstadoVisor
     data class Listo(val documentos: Documentos) : EstadoVisor
 }
 
@@ -194,7 +205,12 @@ internal fun VisorEstudios(m: ModeloEstudios, abierto: Abierto, alCerrar: () -> 
 
     LaunchedEffect(documentos) {
         estado = EstadoVisor.Cargando
-        val bien = when (val r = m.urls(abierto.clase, abierto.id)) {
+        val r = m.urls(abierto.clase, abierto.id)
+        if (r == ModeloEstudios.Apertura.TodaviaNo) {
+            estado = EstadoVisor.TodaviaNo
+            return@LaunchedEffect
+        }
+        val bien = when (r) {
             is ModeloEstudios.Apertura.Ok -> {
                 var todos = true
                 for (remoto in r.archivos) {
@@ -231,6 +247,20 @@ internal fun VisorEstudios(m: ModeloEstudios, abierto: Abierto, alCerrar: () -> 
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }.testTag("estudios-visor-error"),
                 )
                 BotonSecundario(T.probarDeNuevo, alTocar = { intento++ }, compacto = true, tono = c.marcaTexto, modifier = Modifier.testTag("estudios-visor-reintentar"))
+            }
+            EstadoVisor.TodaviaNo -> Column(
+                Modifier.fillMaxSize().padding(relleno).padding(horizontal = Espacio.xl),
+                verticalArrangement = Arrangement.spacedBy(Espacio.m, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(Iconos.TildeEnCirculo, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(44.dp))
+                Text(
+                    T.recibidoAviso,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = c.texto,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }.testTag("estudios-visor-todavia-no"),
+                )
             }
             is EstadoVisor.Listo -> Hojas(e.documentos, relleno)
         }

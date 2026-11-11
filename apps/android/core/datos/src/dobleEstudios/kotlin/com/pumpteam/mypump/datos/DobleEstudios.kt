@@ -22,6 +22,11 @@ class DobleEstudios : Transporte {
     @Volatile var topeDia = false
     /** Cuántas veces `enviar` contesta `faltan_archivos` antes de aceptar. */
     @Volatile var faltanVeces = 0
+    /** Un error con el que `envio_nuevo` o `enviar` contestan en vez de atender (para los que la app no conoce). */
+    @Volatile var errorEnvioNuevo: String? = null
+    @Volatile var errorEnviar: String? = null
+    /** El status con el que fallan `envio_nuevo` y `enviar` (400: un parámetro que el servidor no acepta). */
+    @Volatile var statusDeEscritura: Int? = null
     /** La imagen que se baja al abrir un estudio propio (las pruebas de interfaz ponen una que se pueda ver). */
     @Volatile var imagenParaVer: ByteArray = JPEG_MINIMO
 
@@ -64,6 +69,10 @@ class DobleEstudios : Transporte {
         if (nombre == "mypump_get_app_config") return 200 to """{"estudios_app":$palanca}"""
         if (nombre.startsWith("mypump_estudios") && sinFuncion) return 404 to """{"code":"PGRST202","message":"no existe"}"""
         if (nombre.startsWith("mypump_estudios") && tokenCaido) return 200 to "null"
+        if (nombre == "mypump_estudios_envio_nuevo" || nombre == "mypump_estudios_enviar") {
+            statusDeEscritura?.let { return it to """{"code":"22023","message":"forzado (doble)"}""" }
+            (if (nombre.endsWith("nuevo")) errorEnvioNuevo else errorEnviar)?.let { return 200 to """{"ok":false,"error":"$it"}""" }
+        }
         return when (nombre) {
             "mypump_estudios_get" -> if (!habilitado) 200 to """{"habilitado":false}""" else 200 to vista().serializar()
             "mypump_estudios_envio_nuevo" -> 200 to envioNuevo(cuerpo(p))

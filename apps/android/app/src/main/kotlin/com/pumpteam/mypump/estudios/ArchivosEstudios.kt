@@ -3,6 +3,8 @@ package com.pumpteam.mypump.estudios
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import com.pumpteam.mypump.datos.ColaEstudios
+import com.pumpteam.mypump.fotos.ProveedorFotos
 import com.pumpteam.mypump.fotos.ReduccionFoto
 import com.pumpteam.mypump.reglas.Estudios
 import java.io.File
@@ -15,15 +17,28 @@ import java.util.UUID
  */
 internal object ArchivosEstudios {
     /** Lo que el alumno juntó en la hoja y todavía no envió. */
-    fun borradores(contexto: Context): File = File(contexto.cacheDir, "estudios-borrador")
+    fun borradores(contexto: Context): File = File(contexto.cacheDir, ColaEstudios.CARPETA_BORRADOR)
 
     /** Lo que se bajó para mostrar (una orden, un estudio propio). */
-    fun paraVer(contexto: Context): File = File(contexto.cacheDir, "estudios-ver")
+    fun paraVer(contexto: Context): File = File(contexto.cacheDir, ColaEstudios.CARPETA_VER)
 
-    /** Borra de [carpeta] todo lo que no esté en [vivos] (restos de una vez que Android cerró la app). */
-    fun barrer(carpeta: File, vivos: Set<String> = emptySet()) {
-        carpeta.listFiles()?.filter { it.absolutePath !in vivos }?.forEach { it.delete() }
-    }
+    /** La clave de [ProveedorFotos.archivo] para la foto que deja la cámara: `camara/foto-estudios.jpg` ([ColaEstudios.FOTO_CAMARA]). */
+    const val CLAVE_CAMARA = "estudios"
+
+    /**
+     * A un nombre propio (`camara/estudios-<id>.jpg`): la foto siguiente usa el mismo archivo de la cámara y no puede pisar
+     * a esta mientras se convierte. Es la foto cruda, con sus metadatos: se borra apenas se convierte, y lo que quede de
+     * una vez que Android cerró la app, al abrir la hoja y al arrancar ([ColaEstudios.limpiarCache]).
+     */
+    fun unicaDeCamara(contexto: Context): File = File(ProveedorFotos.carpeta(contexto), "${ColaEstudios.PREFIJO_CAMARA}${UUID.randomUUID()}.jpg")
+
+    /**
+     * Lo que quedó de otra vez en la hoja y en la cámara y ya nadie usa: todo menos [vivos] (lo que está en la hoja). Solo
+     * tiene sentido sin conversiones en curso. Es la lista de AHORA: lo que se cree después no está en ella.
+     */
+    fun restos(contexto: Context, vivos: Set<String>): List<File> =
+        borradores(contexto).listFiles().orEmpty().filter { it.absolutePath !in vivos } +
+            ProveedorFotos.carpeta(contexto).listFiles().orEmpty().filter { it.name.startsWith(ColaEstudios.PREFIJO_CAMARA) }
 
     sealed interface Resultado {
         data class Listo(val archivo: File, val mime: String) : Resultado
