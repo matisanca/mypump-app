@@ -289,3 +289,16 @@ fun TemaMyPump(oscuro: Boolean = isSystemInDarkTheme(), contenido: @Composable (
         }
     }
 }
+
+/**
+ * Adentro rige el modo oscuro, sea cual sea el tema de la app: lo usa la tarjeta principal ([Heroe]), que se ve igual en
+ * claro y en oscuro (blanco sobre casi negro y el verde #5BBE62 con texto casi negro encima).
+ */
+@Composable
+fun EnOscuro(contenido: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalColoresMyPump provides coloresOscuros) {
+        MaterialTheme(colorScheme = esquemaOscuro, typography = tipografia) {
+            CompositionLocalProvider(LocalContentColor provides coloresOscuros.texto, content = contenido)
+        }
+    }
+}
