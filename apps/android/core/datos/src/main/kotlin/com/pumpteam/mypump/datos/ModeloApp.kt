@@ -172,11 +172,23 @@ class ModeloApp(
 
     /** La palanca se leyó en esta cuenta (si no, los adjuntos del chat quedan como la última vez que se supo). */
     @Volatile private var palancaLeidaEnSesion = false
+    /** La palanca se leyó alguna vez en este proceso: lo leído manda sobre lo recordado en el disco de la cuenta. */
+    @Volatile private var palancaLeidaEnProceso = false
     val palanca: StateFlow<PalancaRemota> = _palanca.asStateFlow()
 
     /** «Pump del día» (2.3.0): las fechas ya celebradas de esta cuenta (`metas.json` en su disco; en la demo, en memoria). */
     private val _registroMetas = MutableStateFlow(PumpDelDia.Registro())
     val registroMetas: StateFlow<PumpDelDia.Registro> = _registroMetas.asStateFlow()
+
+    /**
+     * La palanca `chat_adjuntos` para el chat: leída en esta cuenta, la leída; si no, prendida la última vez, null (el chat
+     * usa lo último que supo de este cliente); apagada o nunca leída, false.
+     */
+    private fun palancaAdjuntos(): Boolean? = when {
+        palancaLeidaEnSesion -> _palanca.value.chatAdjuntos
+        _palanca.value.chatAdjuntos -> null
+        else -> false
+    }
 
     /** Las metas del plan, o null con la palanca `metas_pasos` apagada o sin ninguna meta (planes viejos: no se inventa). */
     fun metas(): MetasPlan? {
@@ -689,6 +701,9 @@ class ModeloApp(
         val d = Disco(raizDisco, t)
         disco = d
         cacheCodigos = null
+        // Sin red al arrancar, `metas_pasos`, `novedades_plan` y `chat_adjuntos` valen lo último que se leyó en esta cuenta
+        // (como `PalancaRemota.arranque` en iOS); sin nada leído nunca, apagadas.
+        if (!palancaLeidaEnProceso) _palanca.value = palancasRecordadas(d, _palanca.value)
         _registroMetas.value = leerRegistroMetas(d)
         val sesiones = SesionesDelDia(alcance)
         sesionesDelDia = sesiones
@@ -981,6 +996,8 @@ class ModeloApp(
         palancaLeida?.let {
             _palanca.value = it
             palancaLeidaEnSesion = true
+            palancaLeidaEnProceso = true
+            disco?.let { d -> recordarPalancas(d, it) }
             _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
             _fotosInicio.value?.recordarPalanca(it.fotosInicio)
             _tecnica.value?.recordarPalanca(it.tecnicaVideo)
@@ -1087,7 +1104,7 @@ class ModeloApp(
         sincronizarFotosInicio()
         sincronizarTecnica()
         sincronizarDevolucion()
-        _chat.value?.consultarAdjuntos(if (palancaLeidaEnSesion) _palanca.value.chatAdjuntos else null)
+        _chat.value?.consultarAdjuntos(palancaAdjuntos())
         sincronizarFeedback()
         sincronizarEstudios()
         sincronizarWins()
@@ -1285,7 +1302,7 @@ class ModeloApp(
         if (toca(Relectura.GIMNASIO)) {
             sincronizarGimnasio()
             sincronizarTecnica()
-            _chat.value?.consultarAdjuntos(if (palancaLeidaEnSesion) _palanca.value.chatAdjuntos else null)
+            _chat.value?.consultarAdjuntos(palancaAdjuntos())
             sincronizarFeedback()
         }
         // La devolución y los estudios llegan con un aviso que trae al alumno: se releen en cada vuelta (un pedido chico
@@ -2284,6 +2301,25 @@ class ModeloApp(
         var elegirHorarioForzado: Boolean? = null
 
         internal const val ARCHIVO_PALANCA_ELEGIR = "elegir-horario-palanca.json"
+        internal const val ARCHIVO_PALANCA_METAS = "metas-pasos-palanca.json"
+        internal const val ARCHIVO_PALANCA_NOVEDADES = "novedades-plan-palanca.json"
+        internal const val ARCHIVO_PALANCA_ADJUNTOS = "chat-adjuntos-palanca.json"
+
+        private fun recordada(d: Disco, archivo: String): Boolean = d.leer(archivo)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true)
+
+        /** `metas_pasos`, `novedades_plan` y `chat_adjuntos` como se leyeron por última vez en esta cuenta (de fábrica, apagadas). */
+        internal fun palancasRecordadas(d: Disco, base: PalancaRemota): PalancaRemota = base.copy(
+            metasPasos = recordada(d, ARCHIVO_PALANCA_METAS),
+            novedadesPlan = recordada(d, ARCHIVO_PALANCA_NOVEDADES),
+            chatAdjuntos = recordada(d, ARCHIVO_PALANCA_ADJUNTOS),
+        )
+
+        internal fun recordarPalancas(d: Disco, p: PalancaRemota) {
+            for ((archivo, valor) in listOf(ARCHIVO_PALANCA_METAS to p.metasPasos, ARCHIVO_PALANCA_NOVEDADES to p.novedadesPlan,
+                ARCHIVO_PALANCA_ADJUNTOS to p.chatAdjuntos)) {
+                if (recordada(d, archivo) != valor) d.guardar(archivo, ValorJson.Booleano(valor))
+            }
+        }
 
         /** La palanca `elegir_horario` que se leyó por última vez en esta cuenta (de fábrica, apagada). */
         internal fun elegirHorarioRecordado(d: Disco): Boolean =
