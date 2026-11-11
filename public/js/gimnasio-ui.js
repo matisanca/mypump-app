@@ -391,7 +391,9 @@
     if (!cambioDeEtapa && (escribiendo() || ui.presionando)) { ui.pendiente = true; return; }
     ui.pendiente = false;
     const volver = ui.pila.length ? T.tarjetaTitulo : T.cerrar;
-    const h = `<div class="gim"><button type="button" class="sd-volver" data-gim="volver" id="gimVolver">‹ ${e(volver)}</button>${cuerpo(m)}</div>`;
+    // «Entreno en casa» (js/casa-ui.js): el interruptor arriba de todo y, si la carga es de casa, su lista en lugar de las zonas.
+    const casa = raiz.CasaUI && !ui.pila.length && !m.envio ? raiz.CasaUI.piezas() : null;
+    const h = `<div class="gim"><button type="button" class="sd-volver" data-gim="volver" id="gimVolver">‹ ${e(volver)}</button>${casa ? casa.arriba : ''}${casa && casa.cuerpo != null ? casa.cuerpo : cuerpo(m)}</div>`;
     if (h !== ui.ultimoHtml) { r.innerHTML = h; ui.ultimoHtml = h; }
     const t = document.getElementById('hdrTitle');
     if (t) t.textContent = titulo();
@@ -400,6 +402,8 @@
   }
 
   function detalleTarjeta(m) {
+    const casa = raiz.CasaUI ? raiz.CasaUI.detalleTarjeta() : null;
+    if (casa) return casa;
     switch (m.pantalla) {
       case 'zonas': return m.faltantes.length ? T.faltanZonas(m.faltantes.length) : T.revisarYEnviar;
       case 'recibido': return T.recibido;
@@ -585,7 +589,7 @@
       }
     } catch (_) { prendida = valor === true; }
     if (!prendida) {
-      if (ui.modelo) { ui.modelo.apagar(); ui.modelo = null; pintar(); }
+      if (ui.modelo) { ui.modelo.apagar(); ui.modelo = null; if (raiz.CasaUI) raiz.CasaUI.conGimnasio(null); pintar(); }
       return;
     }
     if (ui.modelo) return;
@@ -599,6 +603,7 @@
         rpc: ui.op.rpc, almacen, token: ui.op.token, visionUrl: ui.op.visionUrl, conLock: conLock(ui.op.token),
       });
       await m.cargar();
+      if (raiz.CasaUI) raiz.CasaUI.conGimnasio(m, pintar);      // con la palanca `casa`, cada refresco trae también lo de casa
       await m.refrescar(primera);
       m.alCambiar = pintar;
       ui.modelo = m;
@@ -608,6 +613,7 @@
       m.reanudar();
     } catch (_) {
       ui.modelo = null;
+      if (raiz.CasaUI) raiz.CasaUI.conGimnasio(null);
     } finally {
       ui.arrancando = false;
     }
