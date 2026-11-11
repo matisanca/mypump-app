@@ -3,7 +3,7 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Revisión: arriba de todo las tarjetas Recuperación y Tu progreso, que abren Salud (2.1.0, pedido de Mati del 4-nov:
+/// Revisión: arriba de todo la devolución de Mati, si hay una publicada (2.3.0); después las tarjetas Recuperación y Tu progreso, que abren Salud (2.1.0, pedido de Mati del 4-nov:
 /// Salud ya no es una pestaña); después subir la semana: las fotos y el check, que trae el peso del día y la salud de los últimos 7 días. En
 /// iPad, las dos tarjetas lado a lado y debajo dos columnas: las fotos a la izquierda, el check a la derecha. Con una cuenta sale de `ModeloRevision` y `ModeloFotos`; en la demo y en los bocetos, de las
 /// muestras.
@@ -26,6 +26,7 @@ struct RevisionView: View {
                     Group {
                         if claseAncho == .regular {
                             VStack(alignment: .leading, spacing: Espacio.l) {
+                                devolucion
                                 HStack(alignment: .top, spacing: Espacio.l) {
                                     recuperacion.frame(maxWidth: .infinity, alignment: .top)
                                     progreso.frame(maxWidth: .infinity, alignment: .top)
@@ -49,6 +50,7 @@ struct RevisionView: View {
                             .anchoLectura(Ancho.doble)
                         } else {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
+                                devolucion
                                 // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
                                 VStack(spacing: Espacio.m) { recuperacion; progreso }
                                 diaDeRevision; avisoPlan; notaSemanal; fotos; check
@@ -67,7 +69,8 @@ struct RevisionView: View {
                     async let r: Void = revision.cargarRevision()
                     async let f: Void = modeloFotos?.cargar() ?? ()
                     async let s: Void = modelo.salud?.cargar() ?? ()
-                    _ = await (r, f, s)
+                    async let d: Void = modelo.palanca.devolucionSemanal ? (modelo.devolucion?.refrescar() ?? ()) : ()
+                    _ = await (r, f, s, d)
                 }
                 .task {
                     // Bocetos: `-ir check` (o fotos) abre desplazado hasta esa sección.
@@ -103,6 +106,14 @@ struct RevisionView: View {
             guard abrir else { return }
             misDatos = true
             navegacion?.misDatos = false
+        }
+    }
+
+    /// La devolución de Mati, arriba de todo. Sin cuenta, apagada o sin ninguna publicada, no hay nada.
+    @ViewBuilder private var devolucion: some View {
+        if !modelo.conMuestras, modelo.palanca.devolucionSemanal, let d = modelo.devolucion, let ultima = d.ultima {
+            DevolucionTarjeta(ultima: ultima, anteriores: d.anteriores)
+                .id("devolucion")
         }
     }
 

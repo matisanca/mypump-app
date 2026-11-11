@@ -70,7 +70,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Revisión (gemela de `RevisionView.swift`): arriba de todo las tarjetas Recuperación y Tu progreso, que abren Salud (2.1.0, «Salud dentro
+ * Revisión (gemela de `RevisionView.swift`): arriba de todo la devolución de Mati si hay una publicada (2.3.0); después las tarjetas Recuperación y Tu progreso, que abren Salud (2.1.0, «Salud dentro
  * de Revisión»: Salud dejó de ser pestaña); después el aviso del plan incompleto (GEN-05), las fotos de la semana y el
  * check (que ya trae el peso del día y, arriba del botón, «Tu salud, últimos 7 días»). De acá cuelgan Mis datos (el ícono
  * de arriba) y Salud.
@@ -86,6 +86,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     val salud by modelo.salud.collectAsStateWithLifecycle()
     val fotos by modelo.fotos.collectAsStateWithLifecycle()
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
+    val modeloDevolucion by modelo.devolucion.collectAsStateWithLifecycle()
+    val devolucion = modeloDevolucion?.estado?.collectAsStateWithLifecycle()?.value
     val filasDePeso = revision?.salud?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pesoParaLasFotos = remember(filasDePeso) { PesoCorporal.serie(filasDePeso) }
     val alcance = LocalAlcanceApp.current
@@ -136,6 +138,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         coroutineScope {
                             launch { revision?.cargarRevision() }
                             launch { fotos?.cargar() }
+                            modeloDevolucion?.takeIf { it.palancaRecordada }?.let { d -> launch { d.refrescar() } }
                         }
                     } finally {
                         recargando = false
@@ -158,6 +161,9 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         .padding(bottom = Espacio.xl + rellenoInferior()),
                     verticalArrangement = Arrangement.spacedBy(Espacio.xl),
                 ) {
+                    // La devolución de Mati, arriba de todo. Apagada (el modelo queda sin estado) o sin ninguna publicada, no hay nada.
+                    val ultima = devolucion?.ultima
+                    if (!esDemo && ultima != null) TarjetaDevolucion(ultima, devolucion.anteriores)
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
                         // Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo).
                         SemanaRevision.textoDia(diaDeRevision(modelo))?.let {
