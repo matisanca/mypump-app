@@ -11,14 +11,11 @@ struct AvisosTests {
         #expect(DestinoAviso(destino: "myday") == .recuperacion)
         #expect(DestinoAviso(destino: "revision") == .revision)
         #expect(DestinoAviso(destino: "salud") == .misDatos)
-<<<<<<< HEAD
         #expect(DestinoAviso(destino: "estudios") == .estudios)
         #expect(DestinoAviso(destino: "fotos_inicio") == .fotosInicio)
         #expect(DestinoAviso(escena: "fotos_inicio") == .fotosInicio)
-=======
         #expect(DestinoAviso(destino: "presion") == .presion)
         #expect(DestinoAviso(escena: "presion") == .presion)
->>>>>>> nativa-presion
         #expect(DestinoAviso(destino: "chat") == .chat)
         #expect(DestinoAviso(destino: "comentarios") == .chat)
         #expect(DestinoAviso(destino: nil) == .chat)
