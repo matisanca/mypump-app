@@ -72,10 +72,14 @@ struct FestejoEnEntreno: ViewModifier {
                 guard let r = WinsUI.deMuestra, !DemoUI.abrioYa.contains("festejo") else { return }
                 DemoUI.abrioYa.insert("festejo")
                 // Que la cuenta de prueba termine de cargar (el permiso) antes de abrirlo.
-                for _ in 0..<40 where Proveedor.modelo.fase != .listo { try? await Task.sleep(for: .milliseconds(250)) }
-                try? await Task.sleep(for: .milliseconds(600))
-                // Con la palanca apagada no se festeja nada, tampoco de muestra.
+                for _ in 0..<240 where Proveedor.modelo.fase != .listo { try? await Task.sleep(for: .milliseconds(250)) }
+                // Con la palanca apagada no se festeja nada, tampoco de muestra (la palanca y el estado llegan con la carga).
+                for _ in 0..<80 where !WinsUI.activo { try? await Task.sleep(for: .milliseconds(250)) }
                 guard WinsUI.activo else { return }
+                if !Proveedor.modelo.esDemo {
+                    // El permiso llega con el estado: un respiro para que el festejo abra con lo que dijo el servidor.
+                    try? await Task.sleep(for: .milliseconds(800))
+                }
                 estado.mostrando = .init(records: r)
             }
             #endif
@@ -151,7 +155,6 @@ struct FestejoView: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .sensoryFeedback(.success, trigger: festejos)
-        .accessibilityIdentifier("festejo")
         .sheet(isPresented: $pidiendoPermiso) { PermisoLogrosView(records: records) }
         .task {
             // Con el permiso ya dado, los récords quedan en la cola apenas se festejan: no hay nada que tocar.
@@ -326,7 +329,6 @@ struct PermisoLogrosView: View {
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(enviando)
         .animation(.snappy, value: aviso)
-        .accessibilityIdentifier("permiso-logros")
     }
 
     private func aceptar() {

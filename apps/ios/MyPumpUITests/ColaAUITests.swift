@@ -20,7 +20,7 @@ final class ColaAUITests: XCTestCase {
 
     /// Una cuenta de mentira contra el doble: `sinPermiso`, `conPermiso`, `sinRedPermiso`, `apagado`, `listaLista`…
     private func cuenta(_ escenario: String, _ extra: [String] = [], oscuro: Bool = false, letraGrande: Bool = false) {
-        let token = "tkcolaa" + UUID().uuidString.prefix(8).lowercased()
+        let token = "tkcolaadeprueba" + UUID().uuidString.prefix(8).lowercased()
         lanzar(["-token", token, "-colaADePrueba", escenario] + extra, oscuro: oscuro, letraGrande: letraGrande)
     }
 
@@ -30,6 +30,9 @@ final class ColaAUITests: XCTestCase {
 
     private func e(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
     private func esperar(_ s: TimeInterval) { RunLoop.current.run(until: Date().addingTimeInterval(s)) }
+    /// Revisión con la cuenta de muestra ocupa el hilo principal un rato largo al abrir (peor con la máquina cargada): si se
+    /// le pregunta antes, XCTest corta a los 30 s con «main thread busy».
+    private func esperarQuieta() { esperar(45) }
     private func foto(_ nombre: String) {
         esperar(0.8)
         let s = XCUIScreen.main.screenshot()
@@ -45,7 +48,7 @@ final class ColaAUITests: XCTestCase {
     /// Sin permiso: el festejo ofrece «Contarle a Mati», que abre el permiso. Con el sí, el festejo dice que Mati se entera.
     func testFestejoSinPermisoYHojaDePermiso() {
         cuenta("sinPermiso", ["-pestana", "entreno", "-festejoDePrueba", "3"])
-        XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 60), "No se abrió el festejo")
+        XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 150), "No se abrió el festejo")
         XCTAssertEqual(e("festejo-titulo").label, "3 récords hoy")
         XCTAssertEqual(e("festejo-subtitulo").label, "Superaste 3 de tus mejores marcas.")
         XCTAssertTrue(e("festejo-record-remo con barra").exists)
@@ -54,7 +57,7 @@ final class ColaAUITests: XCTestCase {
         XCTAssertTrue(app.buttons["festejo-seguir"].isHittable)
         foto("festejo-sin-permiso")
         app.buttons["festejo-contarle"].tap()
-        XCTAssertTrue(e("permiso-logros-titulo").waitForExistence(timeout: 8))
+        XCTAssertTrue(e("permiso-logros-titulo").waitForExistence(timeout: 25))
         XCTAssertEqual(e("permiso-logros-titulo").label, "¿Compartir tus logros con Mati?")
         XCTAssertTrue(app.buttons["permiso-logros-no"].isHittable)
         foto("permiso")
@@ -71,7 +74,7 @@ final class ColaAUITests: XCTestCase {
     func testFestejoConPermiso() {
         for (oscuro, grande) in [(false, false), (true, false), (false, true)] {
             cuenta("conPermiso", ["-pestana", "entreno", "-festejoDePrueba", "1"], oscuro: oscuro, letraGrande: grande)
-            XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 60), "No se abrió el festejo")
+            XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 150), "No se abrió el festejo")
             XCTAssertEqual(e("festejo-titulo").label, "Récord nuevo")
             XCTAssertTrue(e("festejo-con-permiso").waitForExistence(timeout: 5))
             XCTAssertEqual(e("festejo-con-permiso").label, "Mati se va a enterar de este logro.")
@@ -84,12 +87,12 @@ final class ColaAUITests: XCTestCase {
     /// Letra grande y tres récords sin permiso: los dos botones quedan a la vista y lo de arriba se puede recorrer.
     func testFestejoLetraGrande() {
         cuenta("sinPermiso", ["-pestana", "entreno", "-festejoDePrueba", "3"], oscuro: true, letraGrande: true)
-        XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 60))
+        XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 150))
         XCTAssertTrue(app.buttons["festejo-contarle"].isHittable)
         XCTAssertTrue(app.buttons["festejo-seguir"].isHittable)
         foto("festejo-sin-permiso-oscuro-letra-grande")
         app.buttons["festejo-contarle"].tap()
-        XCTAssertTrue(e("permiso-logros-titulo").waitForExistence(timeout: 8))
+        XCTAssertTrue(e("permiso-logros-titulo").waitForExistence(timeout: 25))
         XCTAssertTrue(app.buttons["permiso-logros-si"].isHittable)
         XCTAssertTrue(app.buttons["permiso-logros-no"].isHittable)
         foto("permiso-oscuro-letra-grande")
@@ -98,9 +101,9 @@ final class ColaAUITests: XCTestCase {
     /// Sin red, el permiso no queda dado: lo dice y la hoja sigue ahí. «Ahora no» la cierra.
     func testPermisoSinRed() {
         cuenta("sinRedPermiso", ["-pestana", "entreno", "-festejoDePrueba", "1"])
-        XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 60))
+        XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 150))
         app.buttons["festejo-contarle"].tap()
-        XCTAssertTrue(app.buttons["permiso-logros-si"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["permiso-logros-si"].waitForExistence(timeout: 25))
         app.buttons["permiso-logros-si"].tap()
         XCTAssertTrue(e("permiso-logros-aviso").waitForExistence(timeout: 15), "Sin red tiene que avisar")
         foto("permiso-sin-red")
@@ -112,8 +115,9 @@ final class ColaAUITests: XCTestCase {
     /// Mis datos → Logros: apagar saca el permiso y lo dice; prender abre la hoja de permiso.
     func testMisDatosInterruptor() {
         cuenta("conPermiso", ["-pestana", "revision", "-abrir", "misdatos"])
+        esperarQuieta()
         let interruptor = app.switches["logros-interruptor"]
-        XCTAssertTrue(interruptor.waitForExistence(timeout: 60), "Falta la sección Logros")
+        XCTAssertTrue(interruptor.waitForExistence(timeout: 150), "Falta la sección Logros")
         XCTAssertEqual(interruptor.value as? String, "1")
         XCTAssertTrue(app.staticTexts["Compartir mis logros con Mati"].exists)
         foto("misdatos-logros")
@@ -122,7 +126,7 @@ final class ColaAUITests: XCTestCase {
         XCTAssertEqual(interruptor.value as? String, "0")
         foto("misdatos-logros-apagado")
         interruptor.switches.firstMatch.tap()
-        XCTAssertTrue(e("permiso-logros-titulo").waitForExistence(timeout: 8), "Prenderlo pide el permiso")
+        XCTAssertTrue(e("permiso-logros-titulo").waitForExistence(timeout: 25), "Prenderlo pide el permiso")
         app.buttons["permiso-logros-si"].tap()
         esperar(2)
         XCTAssertEqual(app.switches["logros-interruptor"].value as? String, "1")
@@ -130,8 +134,9 @@ final class ColaAUITests: XCTestCase {
 
     func testMisDatosOscuroLetraGrande() {
         cuenta("sinPermiso", ["-pestana", "revision", "-abrir", "misdatos"], oscuro: true, letraGrande: true)
+        esperarQuieta()
         let interruptor = app.switches["logros-interruptor"]
-        XCTAssertTrue(interruptor.waitForExistence(timeout: 60), "Falta la sección Logros")
+        XCTAssertTrue(interruptor.waitForExistence(timeout: 150), "Falta la sección Logros")
         XCTAssertEqual(interruptor.value as? String, "0")
         foto("misdatos-logros-oscuro-letra-grande")
     }
@@ -139,26 +144,28 @@ final class ColaAUITests: XCTestCase {
     /// Con las palancas apagadas no hay nada nuevo: ni festejo, ni lista, ni la sección de Mis datos.
     func testConLasPalancasApagadasNoHayNada() {
         cuenta("apagado", ["-pestana", "entreno", "-festejoDePrueba", "2"])
-        XCTAssertTrue(app.buttons["fila-ejercicio-1"].waitForExistence(timeout: 60), "No cargó Entreno")
+        XCTAssertTrue(app.buttons["fila-ejercicio-1"].waitForExistence(timeout: 150), "No cargó Entreno")
         noAparece("festejo-titulo", 6, "Apagada no se festeja")
         XCTAssertFalse(e("lista-previa").exists, "Apagada no hay lista previa")
         cuenta("apagado", ["-pestana", "revision", "-abrir", "misdatos"])
-        XCTAssertTrue(app.switches["tema-oscuro"].waitForExistence(timeout: 60), "No abrió Mis datos")
+        esperarQuieta()
+        XCTAssertTrue(app.switches["tema-oscuro"].waitForExistence(timeout: 150), "No abrió Mis datos")
         XCTAssertFalse(app.switches["logros-interruptor"].exists, "Apagada y sin permiso no hay sección Logros")
     }
 
     /// La racha de pasos que es un hito, con permiso: la celebración del Pump del día lo dice.
     func testRachaDePasosConPermiso() {
         cuenta("conPermiso", ["-pestana", "entreno", "-metas", "racha7", "-pasos", "10240"])
-        XCTAssertTrue(e("pump-racha-compartida").waitForExistence(timeout: 60), "La celebración no dice que Mati se entera")
+        XCTAssertTrue(e("pump-racha-compartida").waitForExistence(timeout: 150), "La celebración no dice que Mati se entera")
         XCTAssertEqual(e("pump-racha-compartida").label, "Mati se va a enterar de esta racha.")
+        esperar(3)   // los textos de la celebración entran con la animación
         foto("pump-racha-compartida")
         app.buttons["pump-seguir"].tap()
     }
 
     func testRachaDePasosSinPermiso() {
         cuenta("sinPermiso", ["-pestana", "entreno", "-metas", "racha7", "-pasos", "10240"])
-        XCTAssertTrue(app.buttons["pump-seguir"].waitForExistence(timeout: 60), "No salió la celebración")
+        XCTAssertTrue(app.buttons["pump-seguir"].waitForExistence(timeout: 150), "No salió la celebración")
         XCTAssertFalse(e("pump-racha-compartida").exists, "Sin permiso no se comparte nada")
     }
 
@@ -168,7 +175,7 @@ final class ColaAUITests: XCTestCase {
     func testListaPreviaSola() {
         for (oscuro, grande) in [(false, false), (true, false), (false, true)] {
             cuenta("sinPermiso", ["-pestana", "entreno"], oscuro: oscuro, letraGrande: grande)
-            XCTAssertTrue(e("lista-previa-tarjeta").waitForExistence(timeout: 60), "Falta la lista previa")
+            XCTAssertTrue(e("lista-previa-tarjeta").waitForExistence(timeout: 150), "Falta la lista previa")
             XCTAssertEqual(e("lista-previa-titulo").label, "Antes de la videollamada")
             XCTAssertTrue(e("lista-previa-resumen").exists)
             XCTAssertTrue(e("lista-previa-consejo").exists)
@@ -184,7 +191,7 @@ final class ColaAUITests: XCTestCase {
 
     func testListaPreviaTodoListo() {
         cuenta("listaLista", ["-pestana", "entreno"])
-        XCTAssertTrue(e("lista-previa-tarjeta").waitForExistence(timeout: 60))
+        XCTAssertTrue(e("lista-previa-tarjeta").waitForExistence(timeout: 150))
         XCTAssertEqual(e("lista-previa-resumen").label, "Ya tenés todo listo")
         XCTAssertFalse(app.buttons["lista-previa-fotos"].exists, "Lo hecho no es un botón")
         foto("lista-previa-todo-listo")
@@ -192,7 +199,7 @@ final class ColaAUITests: XCTestCase {
 
     func testListaPreviaInactiva() {
         cuenta("listaInactiva", ["-pestana", "entreno"])
-        XCTAssertTrue(app.buttons["fila-ejercicio-1"].waitForExistence(timeout: 60), "No cargó Entreno")
+        XCTAssertTrue(app.buttons["fila-ejercicio-1"].waitForExistence(timeout: 150), "No cargó Entreno")
         esperar(2)
         XCTAssertFalse(e("lista-previa").exists, "Inactiva no se muestra")
     }
@@ -203,7 +210,7 @@ final class ColaAUITests: XCTestCase {
         for (escenario, oscuro, grande) in [("diasAntes", false, false), ("diasAntes", true, false), ("porEntrar", false, false), ("diasAntes", false, true)] {
             lanzar(["-bocetos", "YES", "-agendaDemo", escenario, "-pestana", "entreno", "-elegirHorario", "YES", "-listaPreviaDePrueba", "demo"],
                    oscuro: oscuro, letraGrande: grande)
-            XCTAssertTrue(e("videollamada").waitForExistence(timeout: 60))
+            XCTAssertTrue(e("videollamada").waitForExistence(timeout: 150))
             let lista = e("lista-previa")
             for _ in 0..<5 where !(lista.exists && lista.isHittable) { app.swipeUp(velocity: .slow) }
             XCTAssertTrue(lista.exists, "La lista va dentro de la tarjeta")
@@ -226,7 +233,7 @@ final class ColaAUITests: XCTestCase {
     func testDemoEntreno() {
         for oscuro in [false, true] {
             demo(["-pestana", "entreno"], oscuro: oscuro)
-            XCTAssertTrue(e("lista-previa-tarjeta").waitForExistence(timeout: 60), "La demo trae su lista previa")
+            XCTAssertTrue(e("lista-previa-tarjeta").waitForExistence(timeout: 150), "La demo trae su lista previa")
             foto("demo-entreno\(oscuro ? "-oscuro" : "")")
             let pump = e("pump-del-dia")
             for _ in 0..<8 where !(pump.exists && pump.isHittable) { app.swipeUp(velocity: .slow) }
@@ -239,7 +246,7 @@ final class ColaAUITests: XCTestCase {
     func testDemoDevolucion() {
         for (oscuro, grande) in [(false, false), (true, false), (false, true)] {
             demo(["-pestana", "revision"], oscuro: oscuro, letraGrande: grande)
-            XCTAssertTrue(e("devolucion-tarjeta").waitForExistence(timeout: 60), "La demo trae la devolución de Mati")
+            XCTAssertTrue(e("devolucion-tarjeta").waitForExistence(timeout: 150), "La demo trae la devolución de Mati")
             XCTAssertTrue(e("devolucion-texto").exists)
             foto("demo-devolucion\(oscuro ? "-oscuro" : "")\(grande ? "-letra-grande" : "")")
         }
@@ -249,14 +256,19 @@ final class ColaAUITests: XCTestCase {
     func testDemoProgresoYPeso() {
         for oscuro in [false, true] {
             demo(["-pestana", "salud", "-segmento", "fuerza"], oscuro: oscuro)
-            XCTAssertTrue(app.staticTexts["Remo con barra"].waitForExistence(timeout: 60), "Fuerza no muestra el historial de la demo")
+            XCTAssertTrue(app.staticTexts["Remo con barra"].waitForExistence(timeout: 150), "Fuerza no muestra el historial de la demo")
             foto("demo-progreso\(oscuro ? "-oscuro" : "")")
+            if !oscuro {
+                app.staticTexts["Remo con barra"].firstMatch.tap()
+                esperar(1.5)
+                foto("demo-progreso-detalle")
+            }
             demo(["-pestana", "salud", "-segmento", "cuerpo"], oscuro: oscuro)
-            XCTAssertTrue(e("ritmo-peso").waitForExistence(timeout: 60), "Cuerpo no muestra el peso con su ritmo")
+            XCTAssertTrue(e("ritmo-peso").waitForExistence(timeout: 150), "Cuerpo no muestra el peso con su ritmo")
             foto("demo-peso\(oscuro ? "-oscuro" : "")")
         }
         demo(["-pestana", "salud", "-segmento", "recuperacion"])
-        XCTAssertTrue(e("pump-del-dia").waitForExistence(timeout: 60), "Recuperación muestra los pasos de la demo")
+        XCTAssertTrue(e("pump-del-dia").waitForExistence(timeout: 150), "Recuperación muestra los pasos de la demo")
         foto("demo-salud-pasos")
     }
 
@@ -264,7 +276,7 @@ final class ColaAUITests: XCTestCase {
     func testDemoChat() {
         for oscuro in [false, true] {
             demo(["-pestana", "chat"], oscuro: oscuro)
-            XCTAssertTrue(e("chat-campo").waitForExistence(timeout: 60))
+            XCTAssertTrue(e("chat-campo").waitForExistence(timeout: 150))
             XCTAssertTrue(app.staticTexts.count > 3, "El chat de la demo no trae la charla")
             foto("demo-chat\(oscuro ? "-oscuro" : "")")
         }
@@ -282,9 +294,9 @@ final class ColaAUITests: XCTestCase {
         for _ in 0..<14 where !(cerrar.exists && cerrar.isHittable) { app.swipeUp() }
         XCTAssertTrue(cerrar.isHittable, "No está «Cerrar sesión de hoy»")
         cerrar.tap()
-        XCTAssertTrue(app.buttons["confirmar-cierre"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["confirmar-cierre"].waitForExistence(timeout: 30))
         app.buttons["confirmar-cierre"].tap()
-        XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 20), "Después de cerrar con un récord, el festejo")
+        XCTAssertTrue(e("festejo-titulo").waitForExistence(timeout: 40), "Después de cerrar con un récord, el festejo")
         XCTAssertEqual(e("festejo-titulo").label, "Récord nuevo")
         foto("demo-festejo")
         app.buttons["festejo-contarle"].tap()

@@ -118,7 +118,8 @@ struct ListaPreviaBloque: View {
             HStack(spacing: Espacio.xs) {
                 if conIcono {
                     Image(systemName: "checklist")
-                        .font(.footnote.weight(.bold)).foregroundStyle(Color.sobreMarca)
+                        // Tamaño fijo: el círculo no crece con la letra y el dibujo no se tiene que cortar.
+                        .font(.system(size: 14, weight: .bold)).foregroundStyle(Color.sobreMarca)
                         .frame(width: 30, height: 30).background(Color.marca, in: .circle)
                         .accessibilityHidden(true)
                 }
