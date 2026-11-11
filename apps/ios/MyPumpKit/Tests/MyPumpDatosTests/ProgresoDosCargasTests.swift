@@ -18,7 +18,7 @@ struct ProgresoDosCargasTests {
         return try! JSONDecoder().decode(RutinaActiva.self, from: Data(json.utf8))
     }
 
-    static func filas(_ nombres: [String], porEjercicio: Int) -> String {
+    nonisolated static func filas(_ nombres: [String], porEjercicio: Int) -> String {
         var t: [String] = []
         for n in nombres {
             let c = ClaveEjercicio.de(n)
@@ -77,16 +77,19 @@ struct ProgresoDosCargasTests {
         let lock = NSLock()
         var pedidos = 0
         var sinRed = false
+        var demora: Duration = .zero
+        var cuantos: Int { lock.withLock { pedidos } }
         func enviar(_ p: URLRequest) async throws -> (Data, URLResponse) {
-            let corte = lock.withLock { pedidos += 1; return sinRed }
+            let (corte, d) = lock.withLock { pedidos += 1; return (sinRed, demora) }
+            if d > .zero { try await Task.sleep(for: d) }
             if corte { throw URLError(.notConnectedToInternet) }
             let cuerpo = ProgresoDosCargasTests.filas(["Uno"], porEjercicio: 3)
             return (Data(cuerpo.utf8), HTTPURLResponse(url: p.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
         }
     }
 
-    /// La tarjeta de progreso de Revisión y Salud → Fuerza piden solas: con una carga en camino, la segunda no sale (eran
-    /// dos pedidos iguales con todas las claves del plan). Con tarjetas tampoco; sin red, sí.
+    /// La tarjeta de progreso de Revisión y Salud → Fuerza piden solas: con tarjetas no hace falta pedir; sin red, sí (las
+    /// dos a la vez, en `laQuePidioSeVaYLaCargaSigue`).
     @Test func siHaceFaltaNoPideDosVeces() async throws {
         let t = Contado()
         let m = ModeloProgreso(cliente: ClienteRPC(config: .produccion, transporte: t), token: "AAAAAAAAAAAAAAAAAAAA")
@@ -95,24 +98,41 @@ struct ProgresoDosCargasTests {
         m.antesDeLasCuentas = {
             guard adentro == nil else { return }
             adentro = m.cargando
-            await m.cargarSiHaceFalta(rutina: r)
         }
         await m.cargarSiHaceFalta(rutina: r)
         #expect(adentro == true)
-        #expect(t.pedidos == 1, "con una carga en camino salió otra")
+        #expect(t.cuantos == 1)
         #expect(!m.cargando)
         #expect(m.tarjetas.map(\.clave) == [ClaveEjercicio.de("Uno")])
         await m.cargarSiHaceFalta(rutina: r)
-        #expect(t.pedidos == 1, "con tarjetas no hace falta")
+        #expect(t.cuantos == 1, "con tarjetas no hace falta")
         // Tirar para actualizar sí pide.
         t.lock.withLock { t.sinRed = true }
         await m.cargar(rutina: r)
-        let conCorte = t.pedidos
+        let conCorte = t.cuantos
         #expect(conCorte >= 2)
         #expect(m.estado == .sinRed)
         t.lock.withLock { t.sinRed = false }
         await m.cargarSiHaceFalta(rutina: r)
-        #expect(t.pedidos == conCorte + 1, "sin red se vuelve a pedir")
+        #expect(t.cuantos == conCorte + 1, "sin red se vuelve a pedir")
         #expect(m.estado == .listo)
+    }
+    /// Quien la pidió se va (SwiftUI cancela su `.task`) y la otra pantalla la espera: la carga sigue y termina bien, sin
+    /// «sin red» y con un solo pedido.
+    @Test func laQuePidioSeVaYLaCargaSigue() async throws {
+        let t = Contado()
+        t.demora = .milliseconds(300)
+        let m = ModeloProgreso(cliente: ClienteRPC(config: .produccion, transporte: t), token: "AAAAAAAAAAAAAAAAAAAA")
+        let r = Self.rutina(["Uno"])
+        let revision = Task { await m.cargarSiHaceFalta(rutina: r) }
+        while t.cuantos == 0 { try await Task.sleep(for: .milliseconds(5)) }
+        let fuerza = Task { await m.cargarSiHaceFalta(rutina: r) }
+        try await Task.sleep(for: .milliseconds(20))
+        revision.cancel()
+        await revision.value
+        await fuerza.value
+        #expect(t.cuantos == 1)
+        #expect(m.estado == .listo)
+        #expect(m.tarjetas.map(\.clave) == [ClaveEjercicio.de("Uno")])
     }
 }

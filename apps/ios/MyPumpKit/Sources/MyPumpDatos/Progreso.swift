@@ -39,6 +39,8 @@ public final class ModeloProgreso {
     @ObservationIgnored private var enVuelo = 0
     /// Hay una carga en camino.
     public var cargando: Bool { enVuelo > 0 }
+    /// La carga que pidió `cargarSiHaceFalta`, mientras no vuelve.
+    @ObservationIgnored private var automatica: Task<Void, Never>?
     /// Solo para las pruebas: corre justo antes de las cuentas, que es donde se cuela otra carga.
     @ObservationIgnored var antesDeLasCuentas: (() async -> Void)?
 
@@ -50,9 +52,17 @@ public final class ModeloProgreso {
     /// faltó la red, y nunca con otra carga en camino. Abrir Fuerza desde Revisión mientras la tarjeta todavía cargaba
     /// hacía dos pedidos iguales con todas las claves del plan (y la primera respuesta se tiraba). Tirar para actualizar
     /// usa `cargar`.
-    public func cargarSiHaceFalta(rutina: RutinaActiva?, nombreEfectivo: (Ejercicio) -> String = { $0.nombre }) async {
+    ///
+    /// La carga va en una `Task` propia, sin atarla a la vista: SwiftUI cancela el `.task` de quien la pidió cuando se va
+    /// (Revisión, al abrir Fuerza), y una carga cancelada dejaba «sin red» a la otra pantalla, que ya no la iba a pedir.
+    /// La que llega mientras tanto la espera (como Android, que la corre en el alcance de la app).
+    public func cargarSiHaceFalta(rutina: RutinaActiva?, nombreEfectivo: @escaping @MainActor (Ejercicio) -> String = { $0.nombre }) async {
+        if let t = automatica { await t.value; return }
         guard !cargando, tarjetas.isEmpty || estado == .sinRed else { return }
-        await cargar(rutina: rutina, nombreEfectivo: nombreEfectivo)
+        let t = Task { await self.cargar(rutina: rutina) { nombreEfectivo($0) } }
+        automatica = t
+        await t.value
+        if automatica == t { automatica = nil }
     }
 
     /// `nombreEfectivo` da el nombre que se está haciendo (el del sustituto si el ejercicio está sustituido).

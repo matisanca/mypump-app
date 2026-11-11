@@ -270,8 +270,15 @@ final class ColaBUITests: XCTestCase {
         XCTAssertEqual(valorInterruptor(), "0")
     }
 
-    /// Entrenando en casa (o con la carga en revisión) el botón no hace falta.
+    /// Entrenando en casa el botón no hace falta. Primero se ve que lo de casa llegó (si no, pasaría por no haber cargado).
     func testCasaVigenteNoOfreceElBoton() {
+        lanzar("casaVigente", pestana: "revision")
+        let datos = app.buttons["Mis datos"].firstMatch
+        XCTAssertTrue(datos.waitForExistence(timeout: 20))
+        datos.tap()
+        tocar("mis-datos-gimnasio")
+        esperar("casa-vigente")
+        app.terminate()
         lanzar("casaVigente")
         esperar("recorrido-tarjeta")
         noEsta("casa-tarjeta", 4)
