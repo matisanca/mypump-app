@@ -34,7 +34,11 @@ final class ColaBUITests: XCTestCase {
             n += 1
         }
     }
-    private func tocar(_ id: String) { esperar(id); subirHasta(id); e(id).tap() }
+    /// En una lista larga (o con letra grande) el elemento puede no existir hasta bajar.
+    private func tocar(_ id: String) {
+        if !e(id).waitForExistence(timeout: 8) { subirHasta(id) }
+        esperar(id); subirHasta(id); e(id).tap()
+    }
     private func texto(_ s: String) -> XCUIElement { app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", s)).firstMatch }
     private func pausa(_ s: TimeInterval = 0.6) { RunLoop.current.run(until: Date().addingTimeInterval(s)) }
     private func foto(_ nombre: String) {
