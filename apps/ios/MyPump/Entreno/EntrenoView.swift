@@ -42,6 +42,11 @@ struct EntrenoView: View {
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
                             TarjetaEntregaAhora(modelo: g).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                        }
+                        // Un estudio pedido o una orden nueva, también sin rutina y en el mismo orden: después del link de
+                        // la entrega y antes de la guía.
+                        TarjetaEstudiosInicio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                        if let g = GuiaUI.modelo {
                             TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         }
                         ContentUnavailableView("Todavía no hay rutina", systemImage: "dumbbell",
@@ -206,6 +211,9 @@ private struct ListaEntreno: View {
                 // el aviso de Revisión.
                 // 2.2.0: el link de la entrega, desde 30 min antes hasta el fin (aunque la tarjeta de la guía esté oculta).
                 if let g = GuiaUI.modelo { TarjetaEntregaAhora(modelo: g) }
+                // Un estudio pedido o una orden nueva (pedido de Mati, 10-nov). Orden fijo de las tarjetas de arriba: el link
+                // de la entrega (tiene hora), Estudios (lo pidió Mati y tiene fecha) y la guía destacada.
+                TarjetaEstudiosInicio()
                 if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
                 TarjetaGimnasio()
                 cabecera

@@ -13,11 +13,11 @@ final class EstudiosUITests: XCTestCase {
 
     override func setUp() async throws { continueAfterFailure = false }
 
-    private func lanzar(_ escenario: String, extra: [String] = []) {
+    private func lanzar(_ escenario: String, pestana: String = "revision", extra: [String] = []) {
         app = XCUIApplication()
         // Un token distinto por prueba: la cola queda en disco y no se mezcla.
         let token = "tkestudios" + UUID().uuidString.prefix(8).lowercased()
-        app.launchArguments = ["-token", token, "-sinOnboarding", "YES", "-pestana", "revision", "-estudiosDePrueba", escenario] + extra
+        app.launchArguments = ["-token", token, "-sinOnboarding", "YES", "-pestana", pestana, "-estudiosDePrueba", escenario] + extra
         if oscuro { app.launchArguments += ["-mypump-theme", "dark"] }
         if letraGrande { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
         app.launch()
@@ -257,6 +257,111 @@ final class EstudiosUITests: XCTestCase {
             pausa(2)
             XCTAssertFalse(e("mis-datos-estudios").exists, caso)
             XCTAssertFalse(texto("Estudios y órdenes").exists, caso)
+            app.terminate()
+        }
+    }
+
+    // MARK: Novedades: la tarjeta de arriba, el punto, «Nuevo» y el aviso
+
+    /// Cualquier elemento cuya etiqueta contenga ese texto (un botón o una tarjeta leen sus textos juntos).
+    private func conEtiqueta(_ s: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", s)).firstMatch
+    }
+
+    /// Arriba de Entreno la tarjeta verde con «Ver»; un toque lleva a Estudios con la tarjeta nueva a la vista y su «Nuevo».
+    private func novedad() {
+        lanzar("novedad", pestana: "entreno")
+        esperar("estudios-tarjeta-inicio-boton")
+        XCTAssertTrue(conEtiqueta("Tenés un estudio nuevo para hacer").exists)
+        XCTAssertTrue(e("estudios-tarjeta-inicio-boton").label.hasPrefix("Ver"))
+        XCTAssertTrue(e("estudios-tarjeta-inicio-boton").isHittable, "se ve sin desplazar")
+        XCTAssertGreaterThanOrEqual(e("estudios-tarjeta-inicio-boton").frame.height, 44)
+        foto("8-novedad-inicio")
+        e("estudios-tarjeta-inicio-boton").tap()
+        esperar("estudios-pendiente-\(id(2))")
+        XCTAssertTrue(e("estudios-pendiente-\(id(2))").isHittable, "la tarjeta nueva queda a la vista")
+        XCTAssertTrue(conEtiqueta("Nuevo").waitForExistence(timeout: 5))
+        foto("8-novedad-estudios")
+        // Estuvo a la vista: sigue pendiente y conserva «Nuevo» mientras se la mira.
+        pausa(3)
+        XCTAssertTrue(conEtiqueta("Nuevo").exists)
+        XCTAssertTrue(e("estudios-subir-\(id(2))").exists)
+    }
+
+    func testNovedadLaTarjetaDeArribaLlevaALaTarjetaNueva() { novedad() }
+    func testNovedadOscuro() { oscuro = true; novedad() }
+    func testNovedadLetraGrande() { letraGrande = true; novedad() }
+
+    /// Sin nada sin ver y con algo por hacer: «Tenés un estudio para hacer» y «Subir resultado». Un toque a Estudios, dos al selector.
+    func testSinNovedadLaTarjetaLlevaASubirEnDosToques() {
+        lanzar("completo", pestana: "entreno")
+        esperar("estudios-tarjeta-inicio-boton")
+        XCTAssertTrue(conEtiqueta("Tenés un estudio para hacer").exists)
+        XCTAssertTrue(e("estudios-tarjeta-inicio-boton").label.hasPrefix("Subir resultado"))
+        foto("9-para-hacer-inicio")
+        e("estudios-tarjeta-inicio-boton").tap()
+        esperar("estudios-subir-\(id(1))")
+        XCTAssertFalse(conEtiqueta("Nuevo").exists)
+        e("estudios-subir-\(id(1))").tap()
+        esperar("estudios-sacar-fotos")
+        for opcion in ["estudios-sacar-fotos", "estudios-elegir-fotos", "estudios-elegir-pdf"] {
+            XCTAssertTrue(e(opcion).isHittable, opcion)
+            XCTAssertGreaterThanOrEqual(e(opcion).frame.height, 44, opcion)
+            XCTAssertGreaterThan(e(opcion).frame.width, app.frame.width * 0.7, "\(opcion) va de ancho completo")
+        }
+        foto("9-hoja-opciones")
+    }
+
+    func testSinPedidosNiNovedadNoHayTarjetaArriba() {
+        lanzar("vacio", pestana: "entreno")
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
+        pausa(3)
+        XCTAssertFalse(e("estudios-tarjeta-inicio").exists)
+        XCTAssertFalse(e("estudios-tarjeta-inicio-boton").exists)
+    }
+
+    /// El punto en la fila de Mis datos (leído «Novedad») se apaga cuando la orden nueva estuvo a la vista.
+    func testElPuntoDeLaFilaSeApagaAlVerLaOrden() {
+        lanzar("ordenNueva")
+        abrirMisDatos()
+        traer("mis-datos-estudios")
+        XCTAssertTrue(e("mis-datos-estudios-novedad").exists || e("mis-datos-estudios").label.contains("Novedad"))
+        foto("10-novedad-mis-datos")
+        e("mis-datos-estudios").tap()
+        // La orden nueva está más abajo que los pedidos: la pantalla se desplaza sola hasta ella.
+        esperar("estudios-orden-\(id(12))")
+        pausa(1.5)
+        XCTAssertTrue(e("estudios-orden-\(id(12))").isHittable, "la orden nueva queda a la vista")
+        XCTAssertTrue(conEtiqueta("Nuevo").exists)
+        pausa(3)
+        app.navigationBars.buttons.firstMatch.tap()
+        traer("mis-datos-estudios")
+        pausa(1)
+        XCTAssertFalse(e("mis-datos-estudios-novedad").exists)
+        XCTAssertFalse(e("mis-datos-estudios").label.contains("Novedad"))
+    }
+
+    /// Tocar el aviso con la app cerrada (`destino = estudios`): Mis datos → Estudios, con la tarjeta nueva a la vista.
+    func testElAvisoAbreEstudios() {
+        lanzar("novedad", pestana: "entreno", extra: ["-destinoDePrueba", "estudios"])
+        esperar("estudios-pendiente-\(id(2))")
+        XCTAssertTrue(e("estudios-pendiente-\(id(2))").isHittable)
+        XCTAssertTrue(conEtiqueta("Nuevo").waitForExistence(timeout: 5))
+        // Atrás vuelve a Mis datos, de donde cuelga.
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Mis datos"].waitForExistence(timeout: 10))
+    }
+
+    /// Sin la sección (palanca apagada, sin el servidor nuevo, cuenta sin la función) el aviso deja en Mis datos: nunca en
+    /// blanco ni en el Chat.
+    func testElAvisoSinLaSeccionCaeEnMisDatos() {
+        for caso in ["apagado", "sinServidor", "noHabilitado"] {
+            lanzar(caso, pestana: "entreno", extra: ["-destinoDePrueba", "estudios"])
+            XCTAssertTrue(app.navigationBars["Mis datos"].waitForExistence(timeout: 30), caso)
+            pausa(7)   // más que el tope de la espera
+            XCTAssertTrue(app.navigationBars["Mis datos"].exists, caso)
+            XCTAssertFalse(e("estudios-subir").exists, caso)
+            XCTAssertFalse(e("mis-datos-estudios").exists, caso)
             app.terminate()
         }
     }

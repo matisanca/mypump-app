@@ -90,10 +90,18 @@ struct RevisionView: View {
             .subtituloNavegacion(Self.semanaActual())
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { MisDatosView(datos: datos) } label: {
+                    // Un solo camino a Mis datos (el mismo que usan los avisos): así nunca se apila dos veces.
+                    Button { misDatos = true } label: {
                         Image(systemName: "person.crop.circle")
+                            // Un estudio o una orden sin ver: el punto sigue hasta la fila «Estudios y órdenes».
+                            .overlay(alignment: .topTrailing) {
+                                if novedadEstudios {
+                                    Circle().fill(Color.marcaVivo).frame(width: 10, height: 10).offset(x: 3, y: -3).accessibilityHidden(true)
+                                }
+                            }
                     }
                     .accessibilityLabel("Mis datos")
+                    .accessibilityValue(novedadEstudios ? TextosEstudios.novedad : "")
                 }
             }
             .navigationDestination(isPresented: $misDatos) { MisDatosView(datos: datos) }
@@ -105,6 +113,9 @@ struct RevisionView: View {
             navegacion?.misDatos = false
         }
     }
+
+    /// Hay un estudio pedido o una orden sin ver (nunca en la demo ni en los bocetos).
+    private var novedadEstudios: Bool { !modelo.conMuestras && modelo.estudios?.hayNovedad == true }
 
     /// Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo). El domingo no agrega nada.
     @ViewBuilder private var diaDeRevision: some View {

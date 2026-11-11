@@ -28,6 +28,11 @@ struct MisDatosView: View {
     /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
     /// en el iPhone (para poder exportarlas o borrarlas aunque ya no haya reloj).
     @State private var calibracionVisible = false
+    @Environment(Navegacion.self) private var navegacion: Navegacion?
+    /// «Estudios y órdenes» abierta: por la fila, por un aviso o por la tarjeta de arriba de Entreno (un solo camino).
+    @State private var verEstudios = false
+    /// Cambia cada vez que se llega pidiendo la tarjeta nueva: Estudios se desplaza hasta ella.
+    @State private var enfocarEstudios = 0
 
     /// Las páginas legales de la web, en Safari dentro de la app (como hoy).
     enum Pagina: String, Identifiable {
@@ -96,7 +101,7 @@ struct MisDatosView: View {
                     .accessibilityIdentifier("mis-datos-guia")
                 }
                 if let est = modelo.estudios, est.habilitado {
-                    FilaEstudiosMisDatos(modelo: est)
+                    FilaEstudiosMisDatos(modelo: est) { verEstudios = true }
                 }
                 if let t = modelo.tecnica, t.habilitado || verTecnica {
                     Button { verTecnica = true } label: {
@@ -164,6 +169,23 @@ struct MisDatosView: View {
             }
         }
         .navigationTitle("Mis datos")
+        .navigationDestination(isPresented: $verEstudios) {
+            if let est = modelo.estudios { EstudiosView(modelo: est, enfocar: enfocarEstudios) }
+        }
+        // Un aviso de Estudios, `?scene=estudios` o la tarjeta de arriba de Entreno: ya se está en Mis datos (que existe
+        // siempre) y se pasa a Estudios cuando se sabe que la sección está. Con la app recién abierta el `get` puede no
+        // haber vuelto: se espera con tope. Si no está (palanca apagada, cuenta sin la función, `get` caído), se queda acá.
+        .task(id: navegacion?.estudios ?? false) {
+            guard navegacion?.estudios == true else { return }
+            let seccion = await modelo.estudiosParaAviso()
+            guard !Task.isCancelled, navegacion?.estudios == true else { return }
+            navegacion?.estudios = false
+            guard seccion != nil else { return }
+            enfocarEstudios += 1
+            verEstudios = true
+        }
+        // Se fue de Mis datos antes de saberlo: el pedido no queda esperando para la próxima vez que entre.
+        .onDisappear { if !verEstudios { navegacion?.estudios = false } }
         .tint(Color.marcaTexto)
         .sheet(isPresented: $fuentes) { FuentesView() }
         .sheet(item: $pagina) { p in

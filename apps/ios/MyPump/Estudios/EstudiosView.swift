@@ -11,18 +11,27 @@ extension Color {
     static let ambarEstudios = Color(claro: UIColor(hex: 0xB45309), oscuro: UIColor(hex: 0xFFB020))
 }
 
-/// La fila de Mis datos: «Estudios y órdenes» y, abajo, cuántos faltan.
+/// La fila de Mis datos: «Estudios y órdenes» y, abajo, cuántos faltan. Con un pedido o una orden sin ver, un punto
+/// (VoiceOver: «Novedad»).
 struct FilaEstudiosMisDatos: View {
     let modelo: ModeloEstudios
+    let abrir: () -> Void
 
     var body: some View {
-        NavigationLink { EstudiosView(modelo: modelo) } label: {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(T.entradaMisDatos).foregroundStyle(.primary)
-                    Text(T.subtituloEntrada(modelo.pendientes)).font(.subheadline).foregroundStyle(.secondary)
-                }
-            } icon: { IconoAzulejo("doc.text.fill", color: .marcaTexto) }
+        Button(action: abrir) {
+            HStack(spacing: Espacio.s) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(T.entradaMisDatos).foregroundStyle(.primary)
+                        Text(T.subtituloEntrada(modelo.pendientes)).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    .multilineTextAlignment(.leading)
+                } icon: { IconoAzulejo("doc.text.fill", color: .marcaTexto) }
+                Spacer(minLength: 0)
+                if modelo.hayNovedad { PuntoNovedad().accessibilityIdentifier("mis-datos-estudios-novedad") }
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary).accessibilityHidden(true)
+            }
+            .contentShape(.rect)
         }
         .accessibilityIdentifier("mis-datos-estudios")
     }
@@ -31,6 +40,17 @@ struct FilaEstudiosMisDatos: View {
 /// «Estudios»: lo que falta hacer, las órdenes y lo que llegó. Documentos, fechas y estados: sin valores ni interpretación.
 struct EstudiosView: View {
     let modelo: ModeloEstudios
+    /// Mayor que cero y distinto cada vez que se llega desde un aviso o desde la tarjeta de arriba de Entreno: con lo
+    /// último del servidor, la pantalla se desplaza hasta la primera tarjeta nueva.
+    var enfocar = 0
+    @Environment(Navegacion.self) private var navegacion: Navegacion?
+    /// Avisos que llegaron con esta pantalla ya abierta: también llevan a la tarjeta nueva.
+    @State private var pedidosAca = 0
+    /// Lo que llegó como nuevo en esta visita: la etiqueta «Nuevo» no se va mientras el alumno la está mirando, aunque
+    /// ya se haya avisado al servidor que la vio.
+    @State private var nuevasAca: Set<String> = []
+    /// Las tarjetas nuevas que están de verdad en pantalla.
+    @State private var aLaVista: Set<String> = []
     @State private var subida: Subida?
     @State private var fecha: PendienteEstudio?
     @State private var abridor = AbridorEstudios()
@@ -42,25 +62,56 @@ struct EstudiosView: View {
         var id: String { pedidoId ?? "suelto" }
     }
 
+    /// Las nuevas de ahora que se están viendo, en orden: lo que hay que avisarle al servidor.
+    private var vistasSinMarcar: [String] {
+        guard let e = modelo.estado else { return [] }
+        return Estudios.nuevas(e).filter(aLaVista.contains)
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Espacio.l) {
-                if modelo.errorDeCarga {
-                    NotaEstudios(texto: T.errorDeCarga, icono: "arrow.clockwise", tono: .secondary).accessibilityIdentifier("estudios-error-carga")
+        ScrollViewReader { lector in
+            ScrollView {
+                VStack(alignment: .leading, spacing: Espacio.l) {
+                    if modelo.errorDeCarga {
+                        NotaEstudios(texto: T.errorDeCarga, icono: "arrow.clockwise", tono: .secondary).accessibilityIdentifier("estudios-error-carga")
+                    }
+                    if let e = modelo.estado { contenido(e) }
                 }
-                if let e = modelo.estado { contenido(e) }
+                .padding(.horizontal, Espacio.m)
+                .padding(.top, Espacio.xs)
+                .padding(.bottom, Espacio.xl)
+                .anchoLectura()
             }
-            .padding(.horizontal, Espacio.m)
-            .padding(.top, Espacio.xs)
-            .padding(.bottom, Espacio.xl)
-            .anchoLectura()
+            // Respetan la palanca: apagada, ni el `get` ni la cola llaman a nada.
+            .task(id: enfocar + pedidosAca) {
+                await modelo.sincronizar()
+                guard enfocar + pedidosAca > 0, !Task.isCancelled, let ancla = modelo.estado.flatMap(Estudios.ancla) else { return }
+                // Que la lista termine de armarse con lo que llegó antes de moverla.
+                try? await Task.sleep(for: .milliseconds(350))
+                guard !Task.isCancelled else { return }
+                withAnimation(.snappy) { lector.scrollTo(ancla, anchor: .top) }
+            }
         }
         .background(Color.fondo)
         .navigationTitle(T.titulo)
         .navigationBarTitleDisplayMode(.large)
-        // Respetan la palanca: apagada, ni el `get` ni la cola llaman a nada.
         .refreshable { await modelo.sincronizar() }
-        .task { await modelo.sincronizar() }
+        // Tocaron otro aviso de Estudios con la pantalla ya abierta: no hay a dónde ir, se trae lo nuevo y se muestra.
+        .onChange(of: navegacion?.estudios ?? false) { _, pedido in
+            guard pedido else { return }
+            navegacion?.estudios = false
+            pedidosAca += 1
+        }
+        .onChange(of: modelo.estado.map(Estudios.nuevas) ?? [], initial: true) { _, nuevas in nuevasAca.formUnion(nuevas) }
+        // Una tarjeta nueva que estuvo un momento en pantalla deja de ser novedad (sigue pendiente). Si el aviso al
+        // servidor falla, queda como estaba y se vuelve a intentar la próxima vez que se vea.
+        .task(id: vistasSinMarcar) {
+            let ids = vistasSinMarcar
+            guard !ids.isEmpty else { return }
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            await modelo.marcarVistas(ids)
+        }
         .onDisappear { modelo.limpiarAviso(); abridor.cancelar(modelo) }
         // Al cerrarse la hoja, como sea, lo elegido y no enviado se borra (tras «Enviar» ya no queda nada).
         .sheet(item: $subida, onDismiss: { modelo.descartarBorrador() }) { s in
@@ -80,12 +131,14 @@ struct EstudiosView: View {
             VStack(alignment: .leading, spacing: Espacio.s) {
                 EncabezadoSeccion(titulo: T.teFaltaHacer)
                 ForEach(e.pendientes) { p in
-                    TarjetaPendiente(pendiente: p, hoy: e.hoy, ocupado: ocupado == p.id, bloqueada: abridor.abriendo != nil, abriendo: abridor.abriendo == p.ordenId && p.ordenId != nil,
+                    TarjetaPendiente(pendiente: p, nuevo: nuevasAca.contains(p.id), hoy: e.hoy, ocupado: ocupado == p.id, bloqueada: abridor.abriendo != nil, abriendo: abridor.abriendo == p.ordenId && p.ordenId != nil,
                                      error: errorDe(p),
                                      subir: { subida = Subida(pedidoId: p.id) },
                                      hecho: { errorPendiente = nil; fecha = p },
                                      deshacer: { Task { await deshacer(p) } },
                                      verOrden: { if let o = p.ordenId { errorPendiente = nil; abridor.abrir(clase: "orden", id: o, titulo: p.titulo, modelo: modelo) } })
+                        .alEstarALaVista { ver(p.id, $0) }
+                        .id(Estudios.Ancla.pendiente(p.id))
                 }
             }
         }
@@ -113,7 +166,9 @@ struct EstudiosView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(e.ordenes.enumerated()), id: \.element.id) { i, o in
                         if i > 0 { Divider().padding(.leading, Espacio.m) }
-                        FilaOrden(orden: o, modelo: modelo)
+                        FilaOrden(orden: o, nuevo: nuevasAca.contains(o.id), modelo: modelo)
+                            .alEstarALaVista { ver(o.id, $0) }
+                            .id(Estudios.Ancla.orden(o.id))
                     }
                 }
                 .superficieTarjeta()
@@ -145,6 +200,11 @@ struct EstudiosView: View {
                     .accessibilityIdentifier("estudios-nota")
             }
         }
+    }
+
+    /// Una tarjeta entró o salió de la pantalla.
+    private func ver(_ id: String, _ visible: Bool) {
+        if visible { aLaVista.insert(id) } else { aLaVista.remove(id) }
     }
 
     private func errorDe(_ p: PendienteEstudio) -> String? {
@@ -218,6 +278,8 @@ private struct ProximoControlEstudios: View {
 
 private struct TarjetaPendiente: View {
     let pendiente: PendienteEstudio
+    /// El alumno todavía no lo había visto: lleva la etiqueta «Nuevo».
+    let nuevo: Bool
     let hoy: Estudios.Dia?
     let ocupado: Bool
     /// Se está bajando algo para ver: hasta que abra no se presenta otra hoja encima.
@@ -233,6 +295,7 @@ private struct TarjetaPendiente: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.s) {
             VStack(alignment: .leading, spacing: 4) {
+                if nuevo { EtiquetaNuevo().padding(.bottom, 2).accessibilityIdentifier("estudios-nuevo-\(pendiente.id)") }
                 Text(pendiente.titulo).font(.title3.weight(.bold)).accessibilityAddTraits(.isHeader)
                 if let d = pendiente.detalle { Text(d).font(.subheadline).foregroundStyle(.secondary) }
                 if pendiente.hecho {
@@ -374,6 +437,8 @@ private struct EtiquetaEstadoEstudio: View {
 
 private struct FilaOrden: View {
     let orden: OrdenEstudio
+    /// El alumno todavía no la había visto: lleva la etiqueta «Nuevo».
+    let nuevo: Bool
     let modelo: ModeloEstudios
 
     var body: some View {
@@ -381,6 +446,7 @@ private struct FilaOrden: View {
             NavigationLink { DetalleOrdenView(orden: orden, modelo: modelo) } label: {
                 HStack(spacing: Espacio.s) {
                     VStack(alignment: .leading, spacing: 3) {
+                        if nuevo { EtiquetaNuevo().padding(.bottom, 2).accessibilityIdentifier("estudios-nuevo-\(orden.id)") }
                         Text(orden.titulo).font(.headline).foregroundStyle(.primary)
                         let d = Estudios.detalleOrden(orden)
                         if !d.isEmpty { Text(d).font(.subheadline).foregroundStyle(.secondary) }

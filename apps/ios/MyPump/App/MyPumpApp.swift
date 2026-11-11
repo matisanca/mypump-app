@@ -106,6 +106,13 @@ struct Raiz: View {
     private var badgeEntreno: Int { modelo.conMuestras ? 0 : modelo.entreno?.sinLeerEntreno ?? 0 }
     private var badgeChat: Int { modelo.conMuestras ? 0 : modelo.chat?.noLeidos ?? 0 }
     private var badgeRevision: Int { modelo.conMuestras ? 0 : modelo.pendientesDeLaSemana.total }
+    /// Revisión es la pestaña que lleva a Mis datos: con un estudio o una orden sin ver y sin nada de la semana que contar,
+    /// lleva un punto (VoiceOver: «Novedad»). Con número, el número: los dos invitan a entrar, y adentro el punto sigue.
+    private var insigniaRevision: Text? {
+        if badgeRevision > 0 { return Text(verbatim: String(badgeRevision)) }
+        guard !modelo.conMuestras, modelo.estudios?.hayNovedad == true else { return nil }
+        return Text(verbatim: "●").accessibilityLabel(TextosEstudios.novedad)
+    }
     /// La pestaña Suplementación: solo si `mypump_suplementacion` devolvió algo (o la demo trae la muestra).
     private var suplementacionVisible: ModeloSuplementacion? { modelo.suplementacion.flatMap { $0.hay ? $0 : nil } }
 
@@ -143,7 +150,7 @@ struct Raiz: View {
                     Tab("Chat", systemImage: "bubble.left.and.bubble.right.fill", value: Pestaña.chat) { chat }
                         .badge(badgeChat)
                     Tab("Revisión", systemImage: "checklist", value: Pestaña.revision) { revision }
-                        .badge(badgeRevision)
+                        .badge(insigniaRevision)
                 }
                 .tabViewStyle(.sidebarAdaptable)
             } else {
@@ -157,7 +164,7 @@ struct Raiz: View {
                     chat.tabItem { Label("Chat", systemImage: "bubble.left.and.bubble.right.fill") }.tag(Pestaña.chat)
                         .badge(badgeChat)
                     revision.tabItem { Label("Revisión", systemImage: "checklist") }.tag(Pestaña.revision)
-                        .badge(badgeRevision)
+                        .badge(insigniaRevision)
                 }
             }
         }

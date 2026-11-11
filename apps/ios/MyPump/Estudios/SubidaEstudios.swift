@@ -21,7 +21,6 @@ struct HojaSubidaEstudios: View {
     @State private var elegidas: [PhotosPickerItem] = []
     @State private var aviso: String?
     @State private var procesando = 0
-    @Environment(\.dynamicTypeSize) private var letra
 
     private var dePrueba: Bool {
         #if DEBUG
@@ -76,12 +75,13 @@ struct HojaSubidaEstudios: View {
         .interactiveDismissDisabled(!modelo.borrador.isEmpty || procesando > 0)
     }
 
+    /// Tres botones grandes, uno por renglón, con ícono y texto (pedido de Mati, 10-nov: tiene que ser obvio, también
+    /// para un alumno mayor). En tres columnas el texto quedaba chico.
     private var opciones: some View {
-        let fila = letra.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Espacio.s)) : AnyLayout(HStackLayout(alignment: .top, spacing: Espacio.s))
-        return fila {
+        VStack(spacing: Espacio.s) {
             if hayCamara {
                 Button { tocar { camara = true } } label: { Label(T.sacarFotos, systemImage: "camera.fill") }
-                    .buttonStyle(AccionTarjeta())
+                    .buttonStyle(OpcionSubida())
                     .accessibilityIdentifier("estudios-sacar-fotos")
                     .fullScreenCover(isPresented: $camara) {
                         CamaraEstudios { imagen in
@@ -93,7 +93,7 @@ struct HojaSubidaEstudios: View {
                     }
             }
             Button { tocar { galeria = true } } label: { Label(T.elegirFotos, systemImage: "photo.on.rectangle") }
-                .buttonStyle(AccionTarjeta())
+                .buttonStyle(OpcionSubida())
                 .accessibilityIdentifier("estudios-elegir-fotos")
                 .photosPicker(isPresented: $galeria, selection: $elegidas, maxSelectionCount: max(1, modelo.topeArchivos - modelo.borrador.count), matching: .images)
                 .onChange(of: elegidas) { _, nuevas in
@@ -108,7 +108,7 @@ struct HojaSubidaEstudios: View {
                     }
                 }
             Button { tocar(pdf: true) { importar = true } } label: { Label(T.elegirPDF, systemImage: "doc.fill") }
-                .buttonStyle(AccionTarjeta())
+                .buttonStyle(OpcionSubida())
                 .accessibilityIdentifier("estudios-elegir-pdf")
                 .fileImporter(isPresented: $importar, allowedContentTypes: [.pdf], allowsMultipleSelection: true) { r in
                     guard case .success(let urls) = r else { return }
@@ -197,6 +197,54 @@ struct HojaSubidaEstudios: View {
         let conPermiso = url.startAccessingSecurityScopedResource()
         defer { if conPermiso { url.stopAccessingSecurityScopedResource() } }
         return (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+    }
+}
+
+/// Una opción de la hoja de subida: de ancho completo, alta, con el ícono en un círculo y el texto grande al lado.
+private struct OpcionSubida: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Cuerpo(configuration: configuration)
+    }
+
+    private struct Cuerpo: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isEnabled) private var habilitado
+        @ScaledMetric(relativeTo: .headline) private var lado: CGFloat = 44
+
+        var body: some View {
+            configuration.label
+                .labelStyle(Renglon(lado: lado, tono: habilitado ? .marcaTexto : .secondary))
+                .padding(.horizontal, Espacio.m)
+                .padding(.vertical, Espacio.s)
+                .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                .superficieTarjeta(radio: Radio.control + 4)
+                .contentShape(.rect)
+                .opacity(habilitado ? 1 : 0.45)
+                .scaleEffect(configuration.isPressed ? 0.98 : 1)
+                .opacity(configuration.isPressed ? 0.85 : 1)
+                .animation(.snappy(duration: 0.18), value: configuration.isPressed)
+        }
+    }
+
+    private struct Renglon: LabelStyle {
+        let lado: CGFloat
+        let tono: Color
+
+        func makeBody(configuration: Configuration) -> some View {
+            HStack(spacing: Espacio.s) {
+                configuration.icon
+                    .font(.system(size: lado * 0.45, weight: .semibold))
+                    .foregroundStyle(tono)
+                    .frame(width: lado, height: lado)
+                    .background(Color.marcaSuave, in: .circle)
+                configuration.title
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+        }
     }
 }
 
