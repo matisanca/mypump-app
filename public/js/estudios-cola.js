@@ -20,6 +20,8 @@
   const ESPERA_FONDO_S = 60;
   const ESPERA_SUBIDA_MS = 180000;
   const ESPERA_URLS_MS = 30000;
+  const ESPERA_BAJAR_MS = 120000;
+  const IMAGEN = /^image\/(jpeg|png|webp|gif)$/;
 
   function uuid() {
     const c = typeof crypto !== 'undefined' ? crypto : null;
@@ -400,6 +402,24 @@
       if (res.status !== 200 || !json || json.ok !== true || !Array.isArray(json.archivos)) return 'error';
       const archivos = json.archivos.filter((f) => f && typeof f.url === 'string' && urlSegura(f.url)).map((f) => ({ url: f.url, pdf: f.mime === 'application/pdf' }));
       return archivos.length && archivos.length === json.archivos.length ? { archivos } : 'error';
+    }
+
+    /* Baja un archivo firmado a memoria, sin caché de disco. La pantalla muestra ese Blob: la URL firmada no llega
+       al DOM ni al historial. El tipo lo fija la clase del archivo, nunca el servidor: un PDF o una imagen, nada que
+       el navegador pueda ejecutar como página.  a: { url, pdf } → Blob | null */
+    async bajar(a) {
+      if (!a || !urlSegura(a.url)) return null;
+      let blob = null;
+      try {
+        await conLimite(ESPERA_BAJAR_MS, async (signal) => {
+          const res = await this.fetch(a.url, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal });
+          if (!res || res.status !== 200) return;
+          const b = await res.blob();
+          if (!b || !b.size) return;
+          blob = b.slice(0, b.size, a.pdf ? E.MIME.pdf : (IMAGEN.test(b.type) ? b.type : E.MIME.jpeg));
+        });
+      } catch (_) { return null; }
+      return blob;
     }
   }
 

@@ -1,9 +1,10 @@
 /* =============================================================
    estudios-ui.js — «Estudios y órdenes»: las pantallas de la web.
 
-   Todo texto sale de Estudios.T. Con la palanca apagada, sin el servidor nuevo o
-   sin cuenta no se crea nada: ni modelo, ni llamadas, ni la fila de Mis datos.
-   Lo único que se guarda en el navegador es si la palanca estaba prendida.
+   Todo texto sale de Estudios.T. Con la palanca apagada, sin poder leerla en esta
+   carga, sin el servidor nuevo o sin cuenta no se crea nada: ni modelo, ni llamadas,
+   ni la fila de Mis datos. En el navegador no se guarda nada: ni la palanca.
+   Un archivo se ve desde la memoria (un Blob): su URL firmada no toca el DOM ni el historial.
    ============================================================= */
 (function (raiz) {
   'use strict';
@@ -12,7 +13,7 @@
   const T = E.T;
   const FLAG = 'mypump_palanca_estudios_app';
   const SEG_ENTRE_REFRESCOS = 60;
-  const VIDA_VISOR_MS = 9 * 60 * 1000;      // las URL firmadas duran 10 minutos
+  const VIDA_VISOR_MS = 9 * 60 * 1000;      // lo abierto se suelta de la memoria a los 9 minutos
   const TIRON_PX = 90;
   const ESPERAS_ARRANQUE_S = [4, 20];
   const QUIETO_MS = 350;                    // tras cambiar de pantalla: el segundo toque de un doble toque no cae en otro botón
@@ -20,9 +21,11 @@
   const ui = {
     op: null, modelo: null, arrancando: false, enganchado: false, ultimoRefresco: 0,
     pila: [], error: null, ocupado: false, abriendo: false, preparando: 0,
-    ultimoHtml: null, quietoHasta: 0, presionando: false, pendiente: false, firmaEntrada: '', vistas: new Map(), relojVisor: null, tiron: null,
+    ultimoHtml: null, quietoHasta: 0, presionando: false, pendiente: false, firmaEntrada: '', vistas: new Map(), relojVisor: null, sueltas: [], tiron: null,
   };
 
+  /* Un id del servidor dentro de un selector: escapado, para que no pueda cambiarlo. */
+  const escCss = (s) => (raiz.CSS && raiz.CSS.escape ? raiz.CSS.escape(String(s)) : String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => `\\${c.charCodeAt(0).toString(16)} `));
   const e = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const svg = (d, t = 18) => `<svg viewBox="0 0 24 24" width="${t}" height="${t}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const IC = {
@@ -186,9 +189,11 @@
 
   function colaHtml(m) {
     if (!m.cola.length) return '';
-    if (m.subiendo) return `<div class="est-banda" id="estCola" role="status"><div class="spinner est-spinner" aria-hidden="true"></div><span>${e(m.progreso)}</span></div>`;
-    if (m.sinSenal) return `<div class="est-banda" id="estCola" role="status"><span>${e(T.sinSenal)}</span></div>`;
-    return `<div class="est-banda" id="estCola" role="status"><span>${e(T.noSePudoEnviar)}</span>${pildora(T.probarDeNuevo, 'reanudar')}</div>`;
+    // Lo que falta subir vive solo en la memoria de esta página, y en un teléfono el navegador no pregunta antes de cerrarla.
+    const noCierres = `<small class="est-banda-nota" id="estNoCierres">${e(T.noCierres)}</small>`;
+    if (m.subiendo) return `<div class="est-banda" id="estCola" role="status"><div class="spinner est-spinner" aria-hidden="true"></div><span>${e(m.progreso)}${noCierres}</span></div>`;
+    if (m.sinSenal) return `<div class="est-banda" id="estCola" role="status"><span>${e(T.sinSenal)}${noCierres}</span></div>`;
+    return `<div class="est-banda" id="estCola" role="status"><span>${e(T.noSePudoEnviar)}${noCierres}</span>${pildora(T.probarDeNuevo, 'reanudar')}</div>`;
   }
 
   function pendienteHtml(p, hoy, i) {
@@ -266,14 +271,14 @@
   }
 
   /* Varias hojas, o una ventana que el navegador no dejó abrir: las fotos se ven acá y cada PDF se abre con su botón.
-     Las URL están solo en esta pantalla y se sueltan al salir o a los 9 minutos. */
+     Cada `a.url` es una URL de memoria (blob:), nunca la firmada; se suelta al salir o a los 9 minutos. */
   function pVisor(d) {
     let fotos = 0, pdfs = 0;
     const uno = d.archivos.length === 1;
     return `<h2 class="est-h1" id="estTitulo" tabindex="-1">${e(d.titulo)}</h2>
       ${d.archivos.map((a) => (a.pdf
-        ? `<a class="btn-primary est-enlace" href="${e(a.url)}" target="_blank" rel="noopener noreferrer">${IC.pdf}<span>${e(uno ? d.rotulo : T.pdf(++pdfs))}</span></a>`
-        : `<img class="est-hoja" src="${e(a.url)}" alt="${e(T.foto(++fotos))}" referrerpolicy="no-referrer">`)).join('')}`;
+        ? `<a class="btn-primary est-enlace" href="${e(a.url)}" target="_blank" rel="noopener">${IC.pdf}<span>${e(uno ? d.rotulo : T.pdf(++pdfs))}</span></a>`
+        : `<img class="est-hoja" src="${e(a.url)}" alt="${e(T.foto(++fotos))}">`)).join('')}`;
   }
 
   // ── Armar y pintar ──
@@ -306,13 +311,13 @@
       ui.ultimoHtml = h;
       // El foco del teclado no se pierde al repintar: vuelve al mismo botón si sigue estando.
       if (clave && clave[0]) {
-        const mismo = Array.from(r.querySelectorAll(`[data-est="${clave[0]}"]`)).find((b) => b.getAttribute('data-id') === clave[1] && b.getAttribute('data-cual') === clave[2] && !b.disabled);
+        const mismo = Array.from(r.querySelectorAll(`[data-est="${escCss(clave[0])}"]`)).find((b) => b.getAttribute('data-id') === clave[1] && b.getAttribute('data-cual') === clave[2] && !b.disabled);
         if (mismo) mismo.focus({ preventScroll: true });
       }
     }
     podarVistas();
     const t = document.getElementById('hdrTitle');
-    if (t) t.textContent = T.titulo;
+    if (t && escenaActiva()) t.textContent = T.titulo;      // al soltar el visor desde otra sección no se le pisa el título
   }
 
   function pintar() {
@@ -323,7 +328,18 @@
     if (escenaActiva()) renderEscena();
   }
 
-  function soltarVisor() { if (ui.relojVisor) { clearTimeout(ui.relojVisor); ui.relojVisor = null; } }
+  /* Suelta de la memoria todo archivo abierto (la pestaña de una orden ya lo cargó y lo sigue mostrando). */
+  function soltarVisor() {
+    if (ui.relojVisor) { clearTimeout(ui.relojVisor); ui.relojVisor = null; }
+    for (const u of ui.sueltas) { try { URL.revokeObjectURL(u); } catch (_) {} }
+    ui.sueltas = [];
+  }
+  /* Al salir de la sección, al irse la página o a los 9 minutos: no queda ni la pantalla del archivo. */
+  function cerrarVisor() {
+    if (tope() && tope().t === 'visor') { ui.pila.pop(); ui.error = null; }
+    soltarVisor();
+    if (ui.modelo) renderEscena();
+  }
 
   const aquietar = () => { ui.quietoHasta = Date.now() + QUIETO_MS; };
 
@@ -350,6 +366,7 @@
   function abrir() {
     const m = ui.modelo;
     if (!m || !m.estado) return;
+    aquietar();                                   // el segundo toque de un doble toque en Mis datos no cae en un botón de acá
     ui.pila = [];
     ui.error = null;
     soltarVisor();
@@ -362,9 +379,21 @@
 
   function cerrar() { if (ui.op) ui.op.irA('misdatos'); }
 
-  /* La URL firmada se pide recién al tocar. La orden (un PDF) se abre en una pestaña, que hay que abrir en el mismo
-     toque, antes de esperar al servidor, o el navegador la bloquea; un estudio, que puede traer varias hojas, y la
-     orden cuando la pestaña no se pudo abrir, se ven en la pantalla. */
+  /* La URL firmada se pide recién al tocar y no sale de la memoria: cada archivo se baja sin caché a un Blob y lo que
+     se muestra o se abre es ese Blob. Así no queda ni en el historial (que se sincroniza) ni en el caché de disco.
+     La orden (un PDF) se abre en una pestaña, que hay que abrir en el mismo toque, antes de esperar al servidor, o el
+     navegador la bloquea; un estudio, que puede traer varias hojas, y la orden cuando la pestaña no se pudo abrir, se
+     ven en la pantalla. */
+  async function bajarTodos(m, archivos) {
+    const l = [];
+    for (const a of archivos) {
+      const blob = await m.bajar(a);
+      if (!blob) return null;
+      l.push({ blob, pdf: a.pdf });
+    }
+    return l;
+  }
+
   async function abrirArchivos(clase, id, titulo, rotulo, pestana) {
     const m = ui.modelo;
     if (ui.abriendo || !m) return;
@@ -373,25 +402,31 @@
     renderEscena();
     let w = null;
     if (pestana) { try { w = window.open('', '_blank'); } catch (_) { w = null; } }
-    let r = 'error';
-    try { r = await m.urls(clase, id); } finally { ui.abriendo = false; }
+    let r = 'error', bajados = null;
+    try {
+      r = await m.urls(clase, id);
+      if (typeof r !== 'string') bajados = await bajarTodos(m, r.archivos);
+    } finally { ui.abriendo = false; }
     const cerrarVentana = () => { try { if (w && !w.closed) w.close(); } catch (_) {} };
     if (ui.modelo !== m || !m.estado) { cerrarVentana(); return; }
-    if (typeof r === 'string') {
+    if (!escenaActiva()) { cerrarVentana(); renderEscena(); return; }      // se fue de la sección mientras bajaba
+    if (typeof r === 'string' || !bajados) {
       cerrarVentana();
       // Todavía no se puede abrir: es de Mati, no un error.
       ui.error = r === 'todaviaNo' ? T.envioRecibido : T.noSePudoAbrir;
       renderEscena();
       return;
     }
-    if (r.archivos.length === 1 && w && !w.closed) {
-      try { w.opener = null; } catch (_) {}
-      try { w.location.replace(r.archivos[0].url); renderEscena(); return; } catch (_) { cerrarVentana(); }
-    } else cerrarVentana();
     if (tope() && tope().t === 'visor') ui.pila.pop();
-    apilar({ t: 'visor', titulo, rotulo, archivos: r.archivos });
     soltarVisor();
-    ui.relojVisor = setTimeout(() => { if (tope() && tope().t === 'visor') desapilar(); }, VIDA_VISOR_MS);
+    const archivos = bajados.map((x) => ({ url: URL.createObjectURL(x.blob), pdf: x.pdf }));
+    ui.sueltas = archivos.map((a) => a.url);
+    ui.relojVisor = setTimeout(cerrarVisor, VIDA_VISOR_MS);
+    if (archivos.length === 1 && w && !w.closed) {
+      try { w.opener = null; } catch (_) {}
+      try { w.location.replace(archivos[0].url); renderEscena(); return; } catch (_) { cerrarVentana(); }
+    } else cerrarVentana();
+    apilar({ t: 'visor', titulo, rotulo, archivos });
   }
 
   // ── «Ya me lo hice»: la fecha ──
@@ -415,11 +450,15 @@
       <button type="button" class="fp-pick-btn is-cancel" id="estFechaCancelar">${e(T.cancelar)}</button></div>`;
     const q = (s) => ov.querySelector(s);
     let guardando = false;
+    // El segundo toque de un doble toque en «Ya me lo hice» cae sobre la hoja recién abierta: no guarda ni la cierra.
+    const quietaHasta = Date.now() + QUIETO_MS;
+    const quieta = () => Date.now() < quietaHasta;
     const salir = () => {
+      aquietar();                                 // ni el de «Cancelar» cae en el botón que quedó debajo
       document.removeEventListener('keydown', teclas, true);
       ov.remove();
       if (origen && document.contains(origen)) origen.focus({ preventScroll: true });
-      else { const b = document.querySelector(`#scene-estudios [data-id="${pedidoId}"]`); if (b) b.focus({ preventScroll: true }); }
+      else { const b = document.querySelector(`#scene-estudios [data-id="${escCss(pedidoId)}"]`); if (b) b.focus({ preventScroll: true }); }
     };
     function teclas(ev) {
       if (ev.key === 'Escape') { ev.preventDefault(); if (!guardando) salir(); return; }
@@ -430,9 +469,9 @@
       ev.preventDefault();
       f[(i + (ev.shiftKey ? -1 : 1) + f.length) % f.length].focus();
     }
-    ov.addEventListener('click', (ev) => { if ((ev.target === ov || ev.target.id === 'estFechaCancelar') && !guardando) salir(); });
+    ov.addEventListener('click', (ev) => { if (!quieta() && (ev.target === ov || ev.target.id === 'estFechaCancelar') && !guardando) salir(); });
     q('#estFechaGuardar').addEventListener('click', async () => {
-      if (guardando) return;
+      if (guardando || quieta()) return;
       const valor = q('#estFecha').value;
       const error = q('#estFechaError');
       if (!E.dia(valor) || valor > hoy) { error.textContent = T.revisaLaFecha; return; }
@@ -520,6 +559,9 @@
         if (ev.changedTouches[0].clientY - y0 >= TIRON_PX) { ui.ultimoRefresco = Date.now(); ui.modelo.refrescar().catch(() => {}); }
       }, { passive: true });
     }
+    // Al salir de la sección (o irse la página) se suelta lo abierto.
+    if (r && raiz.MutationObserver) new raiz.MutationObserver(() => { if (!escenaActiva()) cerrarVisor(); }).observe(r, { attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('pagehide', cerrarVisor);
     window.addEventListener('online', () => { if (ui.modelo) ui.modelo.reanudar().catch(() => {}); });
     document.addEventListener('visibilitychange', () => {
       const m = ui.modelo;
@@ -548,18 +590,14 @@
   /* op: { token, rpc, visionUrl, irA(escena), alCambiarEntrada() } */
   function configurar(op) { ui.op = op; }
 
-  /* valor: true o false si el servidor contestó; null si no se pudo preguntar (se sigue con lo último que se supo). */
+  /* valor: true o false si el servidor contestó en esta carga de la página; null si no se pudo preguntar.
+     Sin una lectura fresca no se arranca nada ni se recuerda la anterior: un apagado de emergencia vale aunque la
+     lectura falle. Lo que ya estaba andando en memoria (una subida en curso) sigue hasta que el servidor diga que no. */
   async function aplicarPalanca(valor) {
     if (!ui.op || ui.arrancando) return;
-    let prendida;
-    try {
-      if (valor === null) prendida = localStorage.getItem(FLAG) === '1';
-      else {
-        prendida = valor === true;
-        if (prendida) localStorage.setItem(FLAG, '1'); else localStorage.removeItem(FLAG);
-      }
-    } catch (_) { prendida = valor === true; }
-    if (!prendida) {
+    try { localStorage.removeItem(FLAG); } catch (_) {}      // lo que recordaban las versiones anteriores
+    if (valor === null) return;
+    if (valor !== true) {
       if (ui.modelo) { ui.modelo.cerrar(); ui.modelo = null; pintar(); }
       return;
     }

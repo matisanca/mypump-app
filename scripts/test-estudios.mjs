@@ -102,7 +102,7 @@ function doble(ini = {}) {
   const d = {
     habilitado: true, sinRed: false, sinFuncion: false, tokenCaido: false, transitorio: false, llamadas: [], envios: new Map(), subidas: [], urls: [],
     proximasSubida: [], proximasNuevo: [], proximasEnviar: [], hechos: [], pendientes: [{ id: PEDIDO, tipo: 'laboratorio', titulo: 'Análisis de laboratorio', hasta: '2026-11-19', estado: 'pedido' }],
-    estudios: [], urlsRespuesta: null, ...ini,
+    estudios: [], urlsRespuesta: null, bajadas: [], bajadaRespuesta: null, ...ini,
   };
   const vista = () => ({
     habilitado: true, hoy: '2026-11-10', topes: { archivos_por_envio: 20, mb_por_archivo: 20 }, pendientes: d.pendientes, ordenes: [], estudios: d.estudios,
@@ -161,6 +161,12 @@ function doble(ini = {}) {
     return { status: 200, json: { ok: true } };
   };
   d.fetch = async (url, op) => {
+    if (!String(url).endsWith('/estudios/urls')) {         // un archivo firmado
+      d.bajadas.push({ url, op });
+      const [status, cuerpo] = d.bajadaRespuesta || [200, new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 1])], { type: 'text/html' })];
+      if (status === 0) throw new Error('sin red');
+      return { status, blob: async () => cuerpo };
+    }
     d.urls.push({ url, op });
     const [status, json] = d.urlsRespuesta || [200, { ok: true, archivos: [{ url: 'https://firmado.ejemplo.test/a.pdf?sig=x', mime: 'application/pdf' }], expira_en: 600 }];
     if (status === 0) throw new Error('sin red');
@@ -466,6 +472,164 @@ await caso('urls: todavia_no, link caído y respuestas que no se abren', async (
   assert.equal(await m.urls('estudio', 'e'), 'error'); assert.equal(m.estado, null);
 });
 
+await caso('bajar: a memoria, sin caché ni credenciales, y con el tipo fijado por la clase del archivo', async () => {
+  const d = doble(), m = await modelo(d);
+  const firmada = 'https://firmado.ejemplo.test/a.pdf?sig=x';
+  const b = await m.bajar({ url: firmada, pdf: true });
+  assert.equal(b.type, 'application/pdf'); assert.equal(b.size, 6);      // el servidor dijo text/html: no se le cree
+  const op = d.bajadas[0].op;
+  assert.equal(d.bajadas[0].url, firmada); assert.equal(op.cache, 'no-store'); assert.equal(op.credentials, 'omit'); assert.equal(op.referrerPolicy, 'no-referrer');
+  assert.ok(op.signal); assert.equal(op.method, undefined); assert.equal(op.headers, undefined);      // un GET pelado: el token no viaja
+  assert.equal((await m.bajar({ url: firmada, pdf: false })).type, 'image/jpeg');
+  d.bajadaRespuesta = [200, new Blob([new Uint8Array(4)], { type: 'image/png' })]; assert.equal((await m.bajar({ url: firmada, pdf: false })).type, 'image/png');
+  d.bajadaRespuesta = [200, new Blob([new Uint8Array(4)], { type: 'image/svg+xml' })]; assert.equal((await m.bajar({ url: firmada, pdf: false })).type, 'image/jpeg');
+  for (const r of [[0, null], [403, new Blob(['x'])], [404, new Blob(['x'])], [200, new Blob([])]]) { d.bajadaRespuesta = r; assert.equal(await m.bajar({ url: firmada, pdf: true }), null, String(r[0])); }
+  d.bajadaRespuesta = null; const antes = d.bajadas.length;
+  for (const url of ['http://otro.ejemplo.test/a.pdf', 'javascript:alert(1)', 'blob:x', '']) assert.equal(await m.bajar({ url, pdf: true }), null, url);
+  assert.equal(d.bajadas.length, antes);                  // una URL que no es segura ni se pide
+});
+
+// ── La pantalla, contra un DOM de mentira: lo justo para tocar botones y mirar qué sale ──
+function pantalla(ini = {}) {
+  const d = doble({ estudios: [{ id: 'e-1', tipo: 'ecografia', titulo: 'Ecografía', fecha: '2026-10-12', hojas: 2, estado: 'visto', se_puede_abrir: true }], ...ini });
+  const x = { d, reloj: { t: 1800000000000 }, activa: false, oyentes: {}, deVentana: {}, guardado: new Map(), creadas: [], soltadas: [], relojes: [], ventanas: [], selectores: [], hojas: [], observadores: [], pedidos: [], sinVentana: false };
+  const root = {
+    innerHTML: '', classList: { contains: (c) => c === 'is-active' && x.activa }, contains: () => false, querySelectorAll: () => [],
+    addEventListener: (t, f) => { x.oyentes[t] = f; },
+  };
+  x.root = root;
+  const hijo = () => ({ on: {}, value: '', disabled: false, textContent: '', addEventListener(t, f) { this.on[t] = f; }, focus() {} });
+  const ctx = {
+    document: {
+      getElementById: (id) => (id === 'scene-estudios' ? root : null), activeElement: null, visibilityState: 'visible', contains: () => false,
+      addEventListener() {}, removeEventListener() {}, querySelector: (sel) => { x.selectores.push(sel); return null; }, body: { appendChild() {} },
+      createElement: () => { const h = { hijos: {}, on: {}, quitada: false, addEventListener(t, f) { this.on[t] = f; }, remove() { this.quitada = true; }, querySelector(s) { return (this.hijos[s] = this.hijos[s] || hijo()); } }; x.hojas.push(h); return h; },
+    },
+    localStorage: { getItem: (k) => (x.guardado.has(k) ? x.guardado.get(k) : null), setItem: (k, v) => x.guardado.set(k, String(v)), removeItem: (k) => x.guardado.delete(k) },
+    addEventListener: (t, f) => { x.deVentana[t] = f; }, scrollTo() {}, scrollY: 0,
+    open: () => { if (x.sinVentana) return null; const w = { closed: false, opener: {}, fue: [], close() { this.closed = true; } }; w.location = { replace: (u) => w.fue.push(u) }; x.ventanas.push(w); return w; },
+    MutationObserver: class { constructor(f) { x.observadores.push(f); } observe() {} },
+    URL: class extends URL { static createObjectURL(b) { const u = `blob:https://app.ejemplo.test/${x.creadas.length + 1}`; x.creadas.push({ u, tipo: b.type }); return u; } static revokeObjectURL(u) { x.soltadas.push(u); } },
+    CSS: { escape: (t) => `«${t}»` },
+    Date: class extends Date { static now() { return x.reloj.t; } },
+    setTimeout: (f, ms) => { if (ms >= 60000) { x.relojes.push({ f, ms }); return 0; } return setTimeout(f, ms); }, clearTimeout: (t) => { if (t) clearTimeout(t); },
+    fetch: async (url, op) => {
+      x.pedidos.push(String(url));
+      if (!String(url).endsWith('/estudios/upload')) return d.fetch(url, op);
+      const h = op.headers, r = await d.subir({ url, token: h['x-estudios-token'], envio: h['x-estudios-envio'], archivo: h['x-estudios-archivo'], mime: h['Content-Type'], cuerpo: op.body });
+      if (!r) throw new Error('sin red');
+      return { status: r.status, json: async () => r.json };
+    },
+    Blob, Response, AbortController, crypto: globalThis.crypto, TextEncoder, Uint8Array,
+  };
+  ctx.window = ctx; vm.createContext(ctx);
+  for (const f of ['estudios.js', 'estudios-cola.js', 'estudios-ui.js']) vm.runInContext(fs.readFileSync(new URL(`../public/js/${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
+  x.ui = ctx.EstudiosUI;
+  x.ui.configurar({ token: TOK, visionUrl: 'https://vision.ejemplo.test', rpc: d.rpc, alCambiarEntrada() {}, irA: (e) => { x.activa = e === 'estudios'; if (x.activa) x.ui.renderEscena(); } });
+  x.pausa = (ms = 400) => { x.reloj.t += ms; };
+  x.tocar = async (est, id) => { x.oyentes.click({ target: { closest: () => ({ dataset: { est, id }, disabled: false }) } }); for (let i = 0; i < 12; i++) await new Promise((r) => setTimeout(r, 0)); };
+  x.entrar = async () => { await x.ui.aplicarPalanca(true); x.ui.abrir(); await hasta(() => cuenta(d, 'mypump_estudios_get') >= 2); x.pausa(); };
+  return x;
+}
+const FIRMA = /firmado|sig=/;
+
+await caso('palanca: sin una lectura fresca en esta carga no se llama a nada, aunque antes estuviera prendida', async () => {
+  const x = pantalla(); x.guardado.set('mypump_palanca_estudios_app', '1');
+  await x.ui.aplicarPalanca(null);
+  assert.equal(x.d.llamadas.length, 0); assert.equal(x.pedidos.length, 0); assert.equal(x.ui.entradaVisible(), false); assert.equal(x.ui._modelo, null);
+  assert.equal(x.guardado.size, 0);                       // lo recordado por la versión anterior se borra
+  await x.ui.aplicarPalanca(true);
+  assert.equal(x.ui.entradaVisible(), true); assert.equal(x.guardado.size, 0);      // prendida: tampoco se guarda
+  // Con una subida en curso en memoria, una lectura que falla no la corta; un «no» del servidor, sí.
+  const m = x.ui._modelo; await conArchivos(m, 1); m.enviar(null);
+  await x.ui.aplicarPalanca(null); assert.equal(x.ui._modelo, m); assert.equal(m.cola.length, 1);
+  await x.ui.aplicarPalanca(false); assert.equal(x.ui._modelo, null); assert.equal(x.ui.entradaVisible(), false);
+  const y = pantalla(); await y.ui.aplicarPalanca(false); await y.ui.aplicarPalanca(undefined);
+  assert.equal(y.d.llamadas.length, 0);
+});
+await caso('ver la orden: la pestaña recibe un blob, nunca la URL firmada, y se suelta', async () => {
+  const x = pantalla(); await x.entrar();
+  await x.tocar('verOrden', 'o-1');
+  const w = x.ventanas[0];
+  assert.equal(x.d.bajadas.length, 1); assert.match(x.d.bajadas[0].url, FIRMA); assert.equal(x.d.bajadas[0].op.cache, 'no-store');
+  assert.deepEqual([...w.fue], ['blob:https://app.ejemplo.test/1']); assert.equal(w.opener, null); assert.equal(w.closed, false);
+  assert.equal(x.creadas[0].tipo, 'application/pdf');
+  assert.ok(!FIRMA.test(x.root.innerHTML)); assert.ok(!x.root.innerHTML.includes('blob:'));      // con pestaña no hay visor
+  assert.equal(x.relojes.filter((r) => r.ms === 9 * 60 * 1000).length, 1);
+  // Otro toque: URL nueva, blob nuevo, y el anterior se suelta.
+  await x.tocar('verOrden', 'o-1');
+  assert.equal(x.d.urls.length, 2); assert.deepEqual([...x.soltadas], ['blob:https://app.ejemplo.test/1']); assert.deepEqual([...x.ventanas[1].fue], ['blob:https://app.ejemplo.test/2']);
+  // A los 9 minutos se suelta.
+  x.relojes[x.relojes.length - 1].f();
+  assert.deepEqual([...x.soltadas], ['blob:https://app.ejemplo.test/1', 'blob:https://app.ejemplo.test/2']);
+  // No se pudo bajar: se cierra la pestaña y avisa; nada de la URL en la pantalla.
+  x.d.bajadaRespuesta = [403, new Blob(['x'])];
+  await x.tocar('verOrden', 'o-1');
+  assert.equal(x.ventanas[2].closed, true); assert.deepEqual([...x.ventanas[2].fue], []); assert.ok(x.root.innerHTML.includes(T.noSePudoAbrir)); assert.ok(!FIRMA.test(x.root.innerHTML));
+  assert.equal(x.creadas.length, 2);
+});
+await caso('visor: enlaces e imágenes son blob y se sueltan al volver, al salir de la sección y al irse la página', async () => {
+  const x = pantalla(); await x.entrar();
+  // El navegador no dejó abrir la pestaña: la orden queda como un enlace que el alumno toca.
+  x.sinVentana = true;
+  await x.tocar('verOrden', 'o-1');
+  assert.match(x.root.innerHTML, /<a class="btn-primary est-enlace" href="blob:https:\/\/app\.ejemplo\.test\/1" target="_blank" rel="noopener">/);
+  assert.ok(!FIRMA.test(x.root.innerHTML));
+  x.pausa(); await x.tocar('volver');
+  assert.deepEqual([...x.soltadas], ['blob:https://app.ejemplo.test/1']); assert.ok(!x.root.innerHTML.includes('blob:'));
+  // Un estudio con dos fotos.
+  x.d.urlsRespuesta = [200, { ok: true, archivos: [{ url: 'https://firmado.ejemplo.test/1.jpg?sig=a', mime: 'image/jpeg' }, { url: 'https://firmado.ejemplo.test/2.jpg?sig=b', mime: 'image/jpeg' }] }];
+  x.d.bajadaRespuesta = [200, new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], { type: 'image/jpeg' })];
+  x.pausa(); await x.tocar('verEstudio', 'e-1');
+  assert.equal((x.root.innerHTML.match(/<img class="est-hoja" src="blob:/g) || []).length, 2); assert.ok(!FIRMA.test(x.root.innerHTML));
+  // Sale de la sección por la barra de abajo.
+  x.activa = false; x.observadores[0]();
+  assert.equal(x.soltadas.length, 3); assert.ok(!x.root.innerHTML.includes('blob:'));
+  // Vuelve, abre de nuevo y la página se va.
+  x.ui.abrir(); x.pausa(); await x.tocar('verEstudio', 'e-1');
+  assert.equal(x.creadas.length, 5); x.deVentana.pagehide();
+  assert.equal(x.soltadas.length, 5); assert.ok(!x.root.innerHTML.includes('blob:'));
+  // Se fue de la sección mientras bajaba: no se crea nada.
+  x.ui.abrir(); x.pausa();
+  const lenta = x.d.fetch; let seguir; x.d.fetch = async (u, op) => { if (!String(u).endsWith('/estudios/urls')) await new Promise((r) => { seguir = r; }); return lenta(u, op); };
+  const toque = x.tocar('verEstudio', 'e-1'); await hasta(() => !!seguir); x.activa = false; seguir(); await toque; await hasta(() => x.d.bajadas.length >= 6);
+  for (let i = 0; i < 12; i++) await new Promise((r) => setTimeout(r, 0));
+  assert.equal(x.creadas.length, 5); assert.ok(!x.root.innerHTML.includes('blob:'));
+});
+await caso('doble toque: ni al entrar ni en la hoja de «Ya me lo hice» el segundo toque hace algo', async () => {
+  const x = pantalla(); await x.ui.aplicarPalanca(true); x.ui.abrir(); await hasta(() => cuenta(x.d, 'mypump_estudios_get') >= 2);
+  // El segundo toque del que abrió la sección cae sobre un botón de acá: no pasa nada.
+  await x.tocar('hecho', PEDIDO); assert.equal(x.hojas.length, 0);
+  x.pausa(); await x.tocar('hecho', PEDIDO); assert.equal(x.hojas.length, 1);
+  const h = x.hojas[0], guardar = h.hijos['#estFechaGuardar'], fecha = h.hijos['#estFecha'];
+  fecha.value = '2026-11-10';
+  // El segundo toque cae en «Guardar», en «Cancelar» o afuera: ni guarda ni cierra.
+  x.pausa(200); await guardar.on.click(); h.on.click({ target: h }); h.on.click({ target: { id: 'estFechaCancelar' } });
+  assert.deepEqual(x.d.hechos, []); assert.equal(h.quitada, false);
+  x.pausa(200); fecha.value = '2026-11-08'; await guardar.on.click();
+  assert.deepEqual(x.d.hechos, [[PEDIDO, '2026-11-08']]); assert.equal(h.quitada, true);
+  // Al cerrarse, el toque que sobra no cae en el botón de abajo.
+  await x.tocar('deshacer', PEDIDO); assert.equal(x.d.hechos.length, 1);
+  x.pausa(); await x.tocar('deshacer', PEDIDO); assert.deepEqual(x.d.hechos[1], [PEDIDO, null]);
+});
+await caso('un id del servidor dentro de un selector va escapado', async () => {
+  const raro = 'x"],[data-est="enviar';
+  const x = pantalla({ pendientes: [{ id: raro, tipo: 'laboratorio', titulo: 'Análisis de laboratorio', hasta: '2026-11-19', estado: 'pedido' }] }); await x.entrar();
+  await x.tocar('hecho', raro);
+  x.pausa(); x.hojas[0].on.click({ target: x.hojas[0] });      // cierra tocando afuera: busca el botón para devolverle el foco
+  assert.deepEqual(x.selectores, [`#scene-estudios [data-id="«${raro}»"]`]);
+});
+await caso('mientras hay algo sin subir, la pantalla pide no cerrar la página', async () => {
+  assert.equal(T.noCierres, 'No cierres esta página.');
+  const x = pantalla(); await x.entrar();
+  assert.ok(!x.root.innerHTML.includes(T.noCierres));
+  x.d.sinRed = true;
+  const m = x.ui._modelo; await conArchivos(m, 2); m.enviar(null); await m.drenar(); x.ui.renderEscena();
+  assert.equal(m.cola.length, 1); assert.match(x.root.innerHTML, /id="estCola"[^>]*>.*<small class="est-banda-nota" id="estNoCierres">No cierres esta página\.<\/small>/);
+  x.d.sinRed = false; destrabar(m); await m.drenar(); await hasta(() => m.cola.length === 0); x.ui.renderEscena();
+  assert.ok(!x.root.innerHTML.includes(T.noCierres));
+});
+
 // ── Lo que no puede pasar con datos médicos ──
 await caso('nada de estudios en localStorage, IndexedDB, cachés ni registros', () => {
   const leer = (f) => fs.readFileSync(new URL(`../public/js/${f}`, import.meta.url), 'utf8');
@@ -474,7 +638,10 @@ await caso('nada de estudios en localStorage, IndexedDB, cachés ni registros', 
   assert.ok(!/sessionStorage|indexedDB|caches\.|console\./.test(uiSrc));
   // Lo único que la pantalla guarda es si la palanca estaba prendida.
   const usos = uiSrc.match(/localStorage\.\w+\([^)]*\)/g) || [];
-  assert.ok(usos.length > 0 && usos.every((u) => /^localStorage\.(getItem|setItem|removeItem)\(FLAG(, '1')?\)$/.test(u)), usos.join(' | '));
+  assert.deepEqual(usos, ['localStorage.removeItem(FLAG)']);      // ni la palanca se recuerda: solo se borra la de versiones anteriores
+  // Una URL firmada no se navega ni se pinta: lo único que llega a `location.replace`, a un href o a un src es un blob:.
+  assert.ok(!/location\.replace\(r\.|r\.archivos\[0\]\.url/.test(uiSrc));
+  assert.ok(!/querySelector(All)?\(`[^`]*\$\{(?!escCss\()/.test(uiSrc), 'un valor dentro de un selector va escapado');
   // El token viaja en un encabezado o en el cuerpo, nunca pegado a una URL.
   for (const f of ['estudios-cola.js', 'estudios-ui.js']) assert.ok(!/[?&](token|t)=|\$\{[^}]*token[^}]*\}/.test(leer(f).replace(/`\$\{this\.visionUrl\}[^`]*`/g, '')), f);
 });

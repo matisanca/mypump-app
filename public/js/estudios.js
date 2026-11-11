@@ -63,6 +63,7 @@
     noSePudoEnviar: 'No se pudo enviar. Probá de nuevo.',
     // Solo de la web: el botón que acompaña a «No se pudo…» (en la app es el gesto de deslizar). Ya aprobado en Técnica.
     probarDeNuevo: 'Probar de nuevo',
+    noCierres: 'No cierres esta página.',
   };
 
   // ── Fechas: un día de calendario, sin hora ni zona ──

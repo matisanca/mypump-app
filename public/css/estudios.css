@@ -37,6 +37,7 @@ button.est-fila{cursor:pointer}
 .est-vacio{font-size:.9375rem;text-align:center;padding:var(--space-4) var(--space-3)}
 .est-banda{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3);padding:var(--space-3) var(--space-4);border-radius:var(--radius-lg);background:var(--color-bg-tertiary);color:var(--color-text-primary);font-size:.9375rem;line-height:1.4}
 .est-banda > span{flex:1 1 180px;min-width:0}
+.est-banda-nota{display:block;font-size:.8125rem;color:var(--color-text-secondary)}
 .est-banda > svg{flex:none;color:var(--color-brand-text)}
 .est-banda.is-bien{background:var(--color-brand-subtle)}
 .est-banda .est-pildora{background:var(--color-bg-primary)}
