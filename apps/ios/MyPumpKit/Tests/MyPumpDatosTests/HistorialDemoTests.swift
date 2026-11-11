@@ -121,6 +121,41 @@ struct HistorialDemoTests {
         #expect(m.demoHistorial == nil && m.listaPrevia == nil && m.metas == nil)
     }
 
+    /// Un calentamiento que se llama igual que el ejercicio de trabajo no lo tapa ni le presta sus series: el récord del de
+    /// trabajo se festeja igual (revisión del 10/11).
+    @Test func unCalentamientoConElMismoNombreNoTapaElRecord() async throws {
+        var rutina = try #require(try JSONSerialization.jsonObject(with: Self.archivo("rutina")) as? [String: Any])
+        var dias = try #require(rutina["dias"] as? [[String: Any]])
+        var bloques = try #require(dias[0]["bloques"] as? [[String: Any]])
+        var ejercicios = try #require(bloques[0]["ejercicios"] as? [[String: Any]])
+        let i = try #require(ejercicios.firstIndex { $0["tipo"] as? String == "calentamiento" })
+        ejercicios[i]["nombre"] = "Remo con barra"
+        bloques[0]["ejercicios"] = ejercicios; dias[0]["bloques"] = bloques; rutina["dias"] = dias
+        let m = ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: Espia()), almacen: TokenEnMemoria(nil),
+                          raizDisco: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        m.entrarEnDemo(rutina: try JSONSerialization.data(withJSONObject: rutina), dieta: try Self.archivo("dieta"),
+                       historial: try Self.archivo("historial"))
+        let e = try #require(m.entreno)
+        await e.cargar()
+        await e.precargarHistorial()
+        let calentamiento = try #require(e.dia.lista.first { $0.tipo == "calentamiento" && $0.nombre == "Remo con barra" })
+        let trabajo = try #require(e.dia.lista.first { $0.tipo != "calentamiento" && $0.nombre == "Remo con barra" })
+        await e.pedirHistorial(calentamiento.id)
+        await e.pedirHistorial(trabajo.id)
+        // Una serie de calentamiento, liviana, y la de trabajo con más kilos que nunca.
+        e.escribir(calentamiento.id, 0, campo: "kg", valor: "20")
+        e.escribir(calentamiento.id, 0, campo: "reps", valor: "10")
+        _ = await e.confirmarSerie(calentamiento.id, 0) { _ in true }
+        let filas = try #require(m.demoHistorial?.porClave["remo con barra"])
+        let tope = try #require(filas.compactMap(\.pesoKg).max())
+        e.escribir(trabajo.id, 0, campo: "kg", valor: JS.texto(tope + 2.5))
+        e.escribir(trabajo.id, 0, campo: "reps", valor: "8")
+        _ = await e.confirmarSerie(trabajo.id, 0) { _ in true }
+        let records = e.recordsDeHoy()
+        #expect(records.count == 1 && records.first?.tipo == .recordKg && records.first?.chip == "+2,5 kg")
+        #expect(records.first?.kg == tope + 2.5)
+    }
+
     @Test func sinElHistorialLaDemoQuedaComoAntes() async throws {
         let m = ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: Espia()), almacen: TokenEnMemoria(nil),
                           raizDisco: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))

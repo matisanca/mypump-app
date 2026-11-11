@@ -19,10 +19,12 @@ final class ColaAUITests: XCTestCase {
     }
 
     /// Una cuenta de mentira contra el doble: `sinPermiso`, `conPermiso`, `sinRedPermiso`, `apagado`, `listaLista`…
-    private func cuenta(_ escenario: String, _ extra: [String] = [], oscuro: Bool = false, letraGrande: Bool = false) {
-        let token = "tkcolaadeprueba" + UUID().uuidString.prefix(8).lowercased()
+    private func cuenta(_ escenario: String, _ extra: [String] = [], oscuro: Bool = false, letraGrande: Bool = false, token dado: String? = nil) {
+        let token = dado ?? Self.tokenNuevo()
         lanzar(["-token", token, "-colaADePrueba", escenario] + extra, oscuro: oscuro, letraGrande: letraGrande)
     }
+
+    private static func tokenNuevo() -> String { "tkcolaadeprueba" + UUID().uuidString.prefix(8).lowercased() }
 
     private func demo(_ extra: [String] = [], oscuro: Bool = false, letraGrande: Bool = false) {
         lanzar(["-entrar", "demo"] + extra, oscuro: oscuro, letraGrande: letraGrande)
@@ -32,12 +34,20 @@ final class ColaAUITests: XCTestCase {
     private func esperar(_ s: TimeInterval) { RunLoop.current.run(until: Date().addingTimeInterval(s)) }
     /// Revisión con la cuenta de muestra ocupa el hilo principal un rato largo al abrir (peor con la máquina cargada): si se
     /// le pregunta antes, XCTest corta a los 30 s con «main thread busy».
-    private func esperarQuieta() { esperar(45) }
+    private func esperarQuieta() { esperar(70) }
     private func foto(_ nombre: String) {
         esperar(0.8)
         let s = XCUIScreen.main.screenshot()
         let a = XCTAttachment(screenshot: s); a.name = nombre; a.lifetime = .keepAlways; add(a)
         if let dir, !dir.isEmpty { try? s.pngRepresentation.write(to: URL(fileURLWithPath: "\(dir)/ios-\(nombre).png")) }
+    }
+    /// Deja el elemento (con lo que tiene debajo, su pie) bien arriba de la barra de pestañas.
+    private func subir(_ x: XCUIElement) {
+        for _ in 0..<6 where x.frame.maxY > app.frame.height * 0.55 {
+            let medio = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+            medio.press(forDuration: 0.05, thenDragTo: medio.withOffset(CGVector(dx: 0, dy: -220)), withVelocity: .slow, thenHoldForDuration: 0.2)
+            esperar(0.5)
+        }
     }
     private func noAparece(_ id: String, _ s: TimeInterval = 4, _ mensaje: String) {
         XCTAssertFalse(e(id).waitForExistence(timeout: s), mensaje)
@@ -120,6 +130,7 @@ final class ColaAUITests: XCTestCase {
         XCTAssertTrue(interruptor.waitForExistence(timeout: 150), "Falta la sección Logros")
         XCTAssertEqual(interruptor.value as? String, "1")
         XCTAssertTrue(app.staticTexts["Compartir mis logros con Mati"].exists)
+        subir(interruptor)
         foto("misdatos-logros")
         interruptor.switches.firstMatch.tap()
         XCTAssertTrue(e("logros-aviso").waitForExistence(timeout: 10))
@@ -132,13 +143,40 @@ final class ColaAUITests: XCTestCase {
         XCTAssertEqual(app.switches["logros-interruptor"].value as? String, "1")
     }
 
+    /// Con la palanca apagada y el permiso dado de antes, el interruptor sigue para poder sacarlo; al apagarlo, la sección
+    /// no desaparece: queda el «Listo, no se comparte nada más.».
+    func testMisDatosApagarConLaPalancaApagada() {
+        // El permiso «de antes» queda en el teléfono en una primera apertura, con la palanca todavía prendida; con la palanca
+        // apagada la app ya no le pregunta el estado al servidor.
+        let token = Self.tokenNuevo()
+        cuenta("conPermiso", ["-pestana", "revision", "-abrir", "misdatos"], token: token)
+        esperarQuieta()
+        XCTAssertTrue(app.switches["logros-interruptor"].waitForExistence(timeout: 150), "Falta la sección Logros")
+        XCTAssertEqual(app.switches["logros-interruptor"].value as? String, "1")
+        cuenta("apagadoConPermiso", ["-pestana", "revision", "-abrir", "misdatos"], token: token)
+        esperarQuieta()
+        let interruptor = app.switches["logros-interruptor"]
+        XCTAssertTrue(interruptor.waitForExistence(timeout: 150), "Con el permiso dado, la sección sigue aunque la palanca esté apagada")
+        XCTAssertEqual(interruptor.value as? String, "1")
+        interruptor.switches.firstMatch.tap()
+        XCTAssertTrue(e("logros-aviso").waitForExistence(timeout: 15))
+        XCTAssertEqual(e("logros-aviso").label, "Listo, no se comparte nada más.")
+        XCTAssertTrue(app.switches["logros-interruptor"].exists, "La sección no desaparece con el aviso a la vista")
+        XCTAssertEqual(app.switches["logros-interruptor"].value as? String, "0")
+    }
+
     func testMisDatosOscuroLetraGrande() {
         cuenta("sinPermiso", ["-pestana", "revision", "-abrir", "misdatos"], oscuro: true, letraGrande: true)
         esperarQuieta()
         let interruptor = app.switches["logros-interruptor"]
         XCTAssertTrue(interruptor.waitForExistence(timeout: 150), "Falta la sección Logros")
         XCTAssertEqual(interruptor.value as? String, "0")
+        subir(interruptor)
+        XCTAssertTrue(interruptor.isHittable, "Con letra grande el interruptor no queda tapado")
         foto("misdatos-logros-oscuro-letra-grande")
+        // Al final del scroll tampoco queda nada tapado por la barra de pestañas.
+        let barra = app.tabBars.firstMatch
+        XCTAssertTrue(interruptor.frame.maxY <= barra.frame.minY, "El interruptor queda arriba de la barra: \(interruptor.frame) y \(barra.frame)")
     }
 
     /// Con las palancas apagadas no hay nada nuevo: ni festejo, ni lista, ni la sección de Mis datos.
@@ -148,7 +186,7 @@ final class ColaAUITests: XCTestCase {
         noAparece("festejo-titulo", 6, "Apagada no se festeja")
         XCTAssertFalse(e("lista-previa").exists, "Apagada no hay lista previa")
         cuenta("apagado", ["-pestana", "revision", "-abrir", "misdatos"])
-        esperarQuieta()
+        esperarQuieta(80)
         XCTAssertTrue(app.switches["tema-oscuro"].waitForExistence(timeout: 150), "No abrió Mis datos")
         XCTAssertFalse(app.switches["logros-interruptor"].exists, "Apagada y sin permiso no hay sección Logros")
     }

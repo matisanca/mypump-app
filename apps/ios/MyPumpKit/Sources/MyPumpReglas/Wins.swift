@@ -115,14 +115,14 @@ public enum ReglasWins {
     public static let permisoTitulo = "¿Compartir tus logros con Mati?"
     public static let permisoCuerpo = [
         "Cuando logres un récord o una racha de pasos, Mati lo va a ver y lo puede compartir con el equipo de Pump Team.",
-        "Se comparte tu nombre, el ejercicio y la marca. Nunca tus fotos, tu peso ni tus datos de salud.",
+        "Se comparte tu nombre y el logro: el ejercicio y la marca, o los días de tu racha. Nunca tus fotos, tu peso ni otros datos de salud.",
         "Lo podés desactivar cuando quieras en Mis datos. Lo ya compartido no se puede borrar.",
     ]
     public static let permisoSi = "Sí, compartir"
     public static let permisoNo = "Ahora no"
     public static let ajusteSeccion = "Logros"
     public static let ajusteInterruptor = "Compartir mis logros con Mati"
-    public static let ajustePie = "Mati ve tus récords y tus rachas de pasos, y los puede compartir con el equipo de Pump Team. Nunca tus fotos, tu peso ni tus datos de salud."
+    public static let ajustePie = "Mati ve tus récords y tus rachas de pasos, y los puede compartir con el equipo de Pump Team. Nunca tus fotos, tu peso ni otros datos de salud."
     public static let desactivado = "Listo, no se comparte nada más."
     public static let sinRed = "No se pudo guardar. Probá de nuevo cuando tengas conexión."
     public static let demo = "En la demo no se envía nada."

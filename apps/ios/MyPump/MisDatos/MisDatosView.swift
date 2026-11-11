@@ -14,6 +14,7 @@ import MyPumpReloj
 /// falta, el permiso de notificaciones del sistema.
 struct MisDatosView: View {
     let datos: Muestras
+    @State private var logrosALaVista = false
     @State private var modelo = Proveedor.modelo
     /// El permiso de notificaciones (nil = todavía no se sabe). Sin él no llegan ni los mensajes de Mati ni su aviso del
     /// domingo: se ofrece activarlo.
@@ -73,8 +74,11 @@ struct MisDatosView: View {
             }
 
             // Logros (2.3.0): con la palanca prendida, o con el permiso dado (para poder sacarlo siempre).
-            if !modelo.conMuestras, let wins = modelo.wins, wins.visibleEnMisDatos {
+            // Una vez a la vista, la sección no se va mientras Mis datos siga abierto: al apagar el interruptor con la palanca
+            // apagada tiene que quedar el «Listo, no se comparte nada más.».
+            if !modelo.conMuestras, let wins = modelo.wins, wins.visibleEnMisDatos || logrosALaVista {
                 SeccionLogros(wins: wins)
+                    .onAppear { logrosALaVista = true }
             }
 
             Section {

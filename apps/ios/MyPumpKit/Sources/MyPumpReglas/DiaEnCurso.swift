@@ -176,7 +176,8 @@ public struct DiaEnCurso: Sendable, Equatable {
     public func entradasDeRecords(hoy: String, efectivo: (Ejercicio) -> Ejercicio) -> [ReglasWins.Ejercicio] {
         var vistas = Set<String>()
         var entradas: [ReglasWins.Ejercicio] = []
-        for ex in lista {
+        // El calentamiento no entra: ni aporta series ni tapa al ejercicio de trabajo que se llama igual.
+        for ex in lista where ex.tipo != "calentamiento" {
             let ef = efectivo(ex)
             let nombre = nombreEfectivo(ex.id) ?? ef.nombre
             let clave = ClaveEjercicio.de(nombre)
@@ -185,7 +186,7 @@ public struct DiaEnCurso: Sendable, Equatable {
             let anteriores = RecordSerie.anteriores(h, hoy: hoy, zona: zona)
             let recordKg = anteriores.map(\.kg).filter(\.isFinite).max() ?? 0
             var marcas: [RecordSerie.Marca] = []
-            for l in lista where ClaveEjercicio.de(nombreEfectivo(l.id)) == clave {
+            for l in lista where l.tipo != "calentamiento" && ClaveEjercicio.de(nombreEfectivo(l.id)) == clave {
                 let repsPlan = Progresiones.pauta(efectivo(l), semana: semana).reps
                 for (i, s) in (ejercicios[l.id]?.series ?? []).enumerated() where s.confirmada && esDelEjercicioActual(l.id, s) {
                     guard let m = RecordSerie.marca(s) else { continue }
@@ -196,7 +197,7 @@ public struct DiaEnCurso: Sendable, Equatable {
                 }
             }
             entradas.append(ReglasWins.Ejercicio(clave: clave, nombre: nombre, anteriores: anteriores, hoy: marcas,
-                                                 sinKg: ReglasEjercicio.sinKg(ef) || ReglasEjercicio.esCardio(ef) || ex.tipo == "calentamiento",
+                                                 sinKg: ReglasEjercicio.sinKg(ef) || ReglasEjercicio.esCardio(ef),
                                                  suficiente: RecordSerie.historiaSuficiente(h, hoy: hoy, zona: zona)))
         }
         return entradas

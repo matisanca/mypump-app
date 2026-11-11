@@ -364,6 +364,8 @@ struct SeccionLogros: View {
             .tint(Color.marcaVivo)
             .disabled(trabajando)
             .accessibilityIdentifier("logros-interruptor")
+            // La hoja cuelga del interruptor y no de la sección: colgada de la sección se repite en cada fila y no abre.
+            .sheet(isPresented: $pidiendo) { PermisoLogrosView() }
             if let aviso {
                 Text(aviso)
                     .font(.subheadline)
@@ -376,7 +378,6 @@ struct SeccionLogros: View {
         } footer: {
             Text(ReglasWins.ajustePie)
         }
-        .sheet(isPresented: $pidiendo) { PermisoLogrosView() }
     }
 
     private func apagar() {

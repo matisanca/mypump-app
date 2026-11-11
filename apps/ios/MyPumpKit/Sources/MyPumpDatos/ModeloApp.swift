@@ -358,7 +358,7 @@ public final class ModeloApp {
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
         tecnica = ModeloTecnica(cliente: cliente, token: t, disco: disco)
         devolucion = ModeloDevolucion(cliente: cliente, token: t, disco: disco)
-        wins = ModeloWins(cliente: cliente, token: t, disco: disco)
+        wins = ModeloWins(cliente: cliente, token: t, disco: disco, palanca: palanca.winsApp)
         listaPrevia = ModeloListaPrevia(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)

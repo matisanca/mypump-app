@@ -29,6 +29,8 @@ public final class ModeloWins {
         var cola: [Logro]
         /// Lo último que dijo `mypump_wins_estado` (opcional: los archivos de antes no lo traen).
         var activa: Bool?
+        /// Cuántas veces el servidor contestó algo que no se entiende, por id (opcional: los archivos de antes no lo traen).
+        var intentos: [String: Int]?
     }
 
     /// El servidor dijo que la función está prendida (`activa` de `mypump_wins_estado`). Se recuerda: sin red en el
@@ -41,20 +43,28 @@ public final class ModeloWins {
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
     @ObservationIgnored let disco: Disco?
-    /// La palanca `wins_app`, como la leyó `ModeloApp`.
-    @ObservationIgnored private var palanca = false
+    /// La palanca `wins_app`, como la leyó `ModeloApp`. Arranca con lo recordado en el teléfono: cerrar la sesión con mala
+    /// señal, antes de que termine la carga, festeja igual.
+    private var palanca: Bool
     @ObservationIgnored private var vaciando = false
+    /// Respuestas que no se entendieron, por logro: al tercer intento se saca.
+    @ObservationIgnored private var intentos: [String: Int] = [:]
+    /// Lo que ya salió en esta sesión de la app: lo mismo no se vuelve a encolar.
+    @ObservationIgnored private var enviados: [Logro] = []
 
     static let archivo = "wins.json"
     public static let topeCola = 50
     public static let plataforma = "ios"
+    /// Intentos fallidos (respuesta rara, token) antes de sacar un logro de la cola.
+    public static let intentosMaximos = 3
 
-    public init(cliente: ClienteRPC, token: String, disco: Disco?) {
-        self.cliente = cliente; self.token = token; self.disco = disco
+    public init(cliente: ClienteRPC, token: String, disco: Disco?, palanca: Bool = false) {
+        self.cliente = cliente; self.token = token; self.disco = disco; self.palanca = palanca
         if let g = disco?.leer(Guardado.self, Self.archivo) {
             permiso = g.permiso
             cola = g.cola
             activa = g.activa ?? false
+            intentos = g.intentos ?? [:]
         }
     }
 
@@ -94,7 +104,10 @@ public final class ModeloWins {
         guardar()
     }
 
-    private func guardar() { disco?.guardar(Guardado(permiso: permiso, cola: cola, activa: activa), Self.archivo) }
+    private func guardar() {
+        intentos = intentos.filter { id, _ in cola.contains { $0.id == id } }
+        disco?.guardar(Guardado(permiso: permiso, cola: cola, activa: activa, intentos: intentos.isEmpty ? nil : intentos), Self.archivo)
+    }
 
     // MARK: - Permiso
 
@@ -143,8 +156,12 @@ public final class ModeloWins {
         return true
     }
 
-    /// Uno por tipo, clave y día (como el servidor): el mismo logro otra vez reemplaza al que todavía no salió.
+    /// Uno por tipo, clave y día (como el servidor). El mismo logro con los mismos datos, en la cola o ya enviado en esta
+    /// sesión, no se encola otra vez (reabrir el festejo o girar la pantalla no genera ids nuevos). Con datos distintos
+    /// (mejoró la marca) reemplaza al que todavía no salió, con id nuevo.
     private func agregar(tipo: ReglasWins.Tipo, clave: String, dia: String, datos: JSONValue) {
+        func igual(_ l: Logro) -> Bool { l.tipo == tipo && l.clave == clave && l.dia == dia && l.datos == datos }
+        guard !cola.contains(where: igual), !enviados.contains(where: igual) else { return }
         cola.removeAll { $0.tipo == tipo && $0.clave == clave && $0.dia == dia }
         cola.append(Logro(id: UUID().uuidString.lowercased(), tipo: tipo, clave: clave, dia: dia, datos: datos))
         // Tope: lo más viejo se descarta.
@@ -164,24 +181,36 @@ public final class ModeloWins {
             ])
             switch r {
             case .success(let j):
+                if j["motivo"]?.comoTexto == "sin_permiso" { fijarPermiso(false); return }
                 if j["ok"] == .bool(true) {
-                    if j["motivo"]?.comoTexto == "sin_permiso" { fijarPermiso(false); return }
+                    enviados.append(l)
+                    if enviados.count > Self.topeCola { enviados.removeFirst(enviados.count - Self.topeCola) }
                     quitar(l)
                 } else if j["motivo"]?.comoTexto == "datos" {
                     quitar(l)
-                } else {
-                    return   // token caído u otra respuesta: no se pierde nada, se verá en la próxima
+                } else if !contarIntento(l) {
+                    return   // token caído u otra respuesta: se reintenta en la próxima (hasta tres veces)
                 }
             case .failure(let e) where e.funcionInexistente:
-                cola = []
-                guardar()
+                // El servidor no tiene la función: nada que mandar ni que mostrar.
+                activa = false
+                fijarPermiso(false)
                 return
             case .failure(let e) where e.clase == .permanente:
-                quitar(l)   // el servidor lo rechazó: reintentar no lo arregla
+                if !contarIntento(l) { return }   // una respuesta que no se entiende: como la de arriba
             case .failure:
-                return
+                return   // red caída o 5xx: queda, sin contar intentos
             }
         }
+    }
+
+    /// Un intento fallido más de este logro. true si ya fueron tres y se sacó (se sigue con el próximo).
+    private func contarIntento(_ l: Logro) -> Bool {
+        let n = (intentos[l.id] ?? 0) + 1
+        if n >= Self.intentosMaximos { quitar(l); return true }
+        intentos[l.id] = n
+        guardar()
+        return false
     }
 
     private func quitar(_ l: Logro) {
