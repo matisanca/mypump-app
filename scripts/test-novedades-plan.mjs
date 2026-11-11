@@ -9,7 +9,7 @@ let n = 0;
 const eq = (a, b, m) => { assert.deepEqual(a, b, m); n++; };
 
 const casos = JSON.parse(readFileSync(new URL('./fixtures/novedades-casos.json', import.meta.url), 'utf8'));
-assert.ok(casos.length >= 30);
+assert.ok(casos.length >= 38, 'los 38 casos compartidos');
 for (const c of casos) eq(N.calcular(c.antes, c.despues), c.esperado ?? null, c.nombre);
 
 // Reglas de texto: sin dos puntos ni guiones, nunca RIR, fallo, coach ni entrenador, nunca una dosis, a lo sumo 4 líneas.
@@ -100,4 +100,47 @@ let ahora = 1_000_000;
   eq(m.lista.filter((x) => !x.vista).length, 1, 'solo la última sin ver');
 }
 void caso;
+
+// ---- «Sin dosis»: la prueba compartida con las apps (copia de apps/shared/fixtures/novedades/sin_dosis.json).
+const sinDosis = JSON.parse(readFileSync(new URL('./fixtures/novedades-sin-dosis.json', import.meta.url), 'utf8'));
+assert.ok(sinDosis.length >= 48, 'la prueba compartida de sin dosis');
+for (const c of sinDosis) eq(N.sinDosis(c.entrada), c.salida, `sinDosis(${JSON.stringify(c.entrada)})`);
+eq(N.sinDosis('Creatina 5 g'), N.sinDosis(N.sinDosis('Creatina 5 g')), 'sinDosis dos veces da lo mismo');
+{
+  // Un ítem cuyo nombre es solo una dosis se ignora; el nombre con dosis se muestra sin ella y nunca aparece la cantidad.
+  const fila = (items) => ({ suplementacion: { items } });
+  const r = N.calcular({ suplementacion: fila([{ nombre: 'Omega 3' }]) },
+    { suplementacion: fila([{ nombre: 'Omega 3' }, { nombre: '5 g' }, { nombre: 'Zinc 25 mg, con la cena' }]) });
+  eq(r.partes[0].lineas, ['Se suma Zinc con la cena'], 'sin dosis en el texto');
+  // Misma dosis en el nombre: no cambia nada. Otra dosis en el nombre: cambia cómo lo tomás, sin decir cuánto.
+  eq(N.calcular({ suplementacion: fila([{ nombre: 'Magnesio 400 mg' }]) }, { suplementacion: fila([{ nombre: 'Magnesio  400 MG' }]) }), null, 'misma dosis');
+  eq(N.calcular({ suplementacion: fila([{ nombre: 'Magnesio 400 mg' }]) }, { suplementacion: fila([{ nombre: 'Magnesio 200 mg' }]) }).partes[0].lineas,
+    ['Cambia cómo tomás Magnesio'], 'otra dosis en el nombre');
+  // Sin dosis en el nombre la firma no suma el nombre: «Omega 3» y «omega  3» son lo mismo.
+  eq(N.calcular({ suplementacion: fila([{ nombre: 'Omega 3' }]) }, { suplementacion: fila([{ nombre: 'omega  3' }]) }), null, 'mismo nombre');
+}
+
+// ---- Con la palanca apagada la base guardada se borra en cada carga; la lista de novedades no.
+{
+  const a = almacen(); a.borrar = (k) => a.m.delete(k);
+  const m = N.crearModelo('tok', a, () => ahora);
+  m.observar({ rutina: conRutina.antes.rutina });
+  const nov = m.observar({ rutina: conRutina.despues.rutina });
+  assert.ok(nov && a.m.has('mypump_novedades_base_tok') && a.m.has('mypump_novedades_tok'));
+  const listaAntes = a.m.get('mypump_novedades_tok');
+  N.olvidarBase('tok', a);
+  eq(a.m.has('mypump_novedades_base_tok'), false, 'apagada: la base se borra');
+  eq(a.m.get('mypump_novedades_tok'), listaAntes, 'apagada: la lista queda igual');
+  N.olvidarBase('tok', a);   // sin base no hace nada
+  eq(a.m.size, 1, 'apagada dos veces');
+  // Al prenderla se parte de la copia de la última carga (la semilla), no de una base vieja: no hay resumen enorme.
+  const m2 = N.crearModelo('tok', a, () => ahora);
+  eq(m2.observar({ rutina: conRutina.despues.rutina }, { rutina: conRutina.despues.rutina }), null, 'al prender, sin cambios no avisa');
+  eq(m2.lista.length, 1, 'la lista sigue');
+  // Un almacén sin borrar(): queda una base nula, que vale como «no hay base».
+  const b = almacen();
+  N.crearModelo('tok', b, () => ahora).observar({ rutina: conRutina.antes.rutina });
+  N.olvidarBase('tok', b);
+  eq(N.crearModelo('tok', b, () => ahora).observar({ rutina: conRutina.despues.rutina }), null, 'base nula = sin base');
+}
 console.log(`novedades-plan: ${n} ok (${casos.length} casos compartidos)`);

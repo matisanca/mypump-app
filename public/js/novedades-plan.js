@@ -388,18 +388,100 @@
 
   // ------------------------------------------------------------ Suplementación
 
+  // «Sin dosis»: el nombre del suplemento sin la cantidad que a veces trae pegada («Creatina 5 g» → «Creatina»). Port EXACTO
+  // de la referencia (scripts/nativa/novedades-sin-dosis.py en la rama nativa): se recorre palabra por palabra, sin `\b`.
+  // La prueba compartida es scripts/fixtures/novedades-sin-dosis.json: las tres plataformas dan la misma salida.
+  const SD_UNIDADES = new Set(('mg mcg ug µg g gr grs kg ml l ui iu % cap caps capsula capsulas comprimido comprimidos comp tableta tabletas '
+    + 'tab tabs pastilla pastillas gota gotas scoop scoops cucharada cucharadas cucharadita cucharaditas sobre sobres unidad unidades').split(' '));
+  const SD_TIEMPOS = new Set(['dia', 'toma', 'noche', 'semana', 'comida', 'mañana']);
+  const SD_ENLACES = new Set(['por', 'x', 'al', '/', 'c/']);
+  const SD_SUELTOS = new Set(['x', '-', '–', '—', ':', '·']);
+  const SD_NUM = '0123456789.,';
+  const SD_DIGITOS = '0123456789';
+  const sdCuenta = (s, c) => s.split(c).length - 1;
+  function sdNorm(t) {
+    let n = clave(t);
+    while (n && '(['.includes(n[0])) n = n.slice(1);
+    while (n && ').,;:]'.includes(n[n.length - 1])) n = n.slice(0, -1);
+    return n;
+  }
+  /** [número, resto]. El número: dígitos con . o , y a lo sumo un rango «3-5» o «3/5». */
+  function sdPartir(n) {
+    if (!n || !SD_DIGITOS.includes(n[0])) return ['', n];
+    let i = 0;
+    while (i < n.length && SD_NUM.includes(n[i])) i++;
+    if (i + 1 < n.length && '-/'.includes(n[i]) && SD_DIGITOS.includes(n[i + 1])) {
+      i++;
+      while (i < n.length && SD_NUM.includes(n[i])) i++;
+    }
+    return [n.slice(0, i), n.slice(i)];
+  }
+  function sdUnidad(r) {
+    r = r.split('/')[0];
+    while (r.endsWith('.')) r = r.slice(0, -1);
+    return SD_UNIDADES.has(r);
+  }
+  const sdEsNumero = (n) => { const [p, r] = sdPartir(n); return p !== '' && r === ''; };
+  const sdSoloDigitos = (s) => Array.from(s).every((c) => SD_DIGITOS.includes(c));
+
+  function sinDosis(nombre) {
+    const base = limpio(nombre);
+    const ts = base ? base.split(' ') : [];
+    const out = [];
+    let i = 0; let cerrar = 0;
+    while (i < ts.length) {
+      let t = ts[i];
+      const n = sdNorm(t);
+      const [p, r] = sdPartir(n);
+      let quita = 0;
+      if (p) {
+        if (r && (sdUnidad(r) || r === 'x')) quita = 1;
+        else if (!r && i + 1 < ts.length && sdNorm(ts[i + 1]) && sdUnidad(sdNorm(ts[i + 1]))) quita = 2;
+      } else if (n.length > 1 && n[0] === 'x' && sdSoloDigitos(n.slice(1))) quita = 1;
+      if (!quita) {
+        if (cerrar && t.endsWith(')')) { t = t.slice(0, -1); cerrar--; }
+        if (t) out.push(t);
+        i++;
+        continue;
+      }
+      let ido = ts.slice(i, i + quita);
+      i += quita;
+      if (i + 1 < ts.length && SD_ENLACES.has(sdNorm(ts[i])) && SD_TIEMPOS.has(sdNorm(ts[i + 1]))) { ido = ido.concat(ts.slice(i, i + 2)); i += 2; }
+      else if (i < ts.length && sdNorm(ts[i]).startsWith('/') && SD_TIEMPOS.has(sdNorm(ts[i]).slice(1))) { ido = ido.concat(ts.slice(i, i + 1)); i += 1; }
+      else if (i + 1 < ts.length && sdNorm(ts[i]) === 'x' && sdEsNumero(sdNorm(ts[i + 1]))) { ido = ido.concat(ts.slice(i, i + 2)); i += 2; }
+      if (out.length >= 2 && sdNorm(out[out.length - 1]) === 'a' && sdEsNumero(sdNorm(out[out.length - 2]))) { ido = out.slice(-2).concat(ido); out.splice(-2, 2); }
+      if (out.length && SD_SUELTOS.has(out[out.length - 1])) out.pop();
+      const a = ido.reduce((s, x) => s + sdCuenta(x, '('), 0);
+      const c = ido.reduce((s, x) => s + sdCuenta(x, ')'), 0);
+      if (a > c) cerrar += a - c;
+      else if (c > a && out.length && sdCuenta(out.join(' '), '(') > sdCuenta(out.join(' '), ')')) out[out.length - 1] += ')';
+    }
+    while (out.length && Array.from(out[out.length - 1]).every((ch) => '-–—:,·+/x'.includes(ch))) out.pop();
+    if (out.length) {
+      let u = out[out.length - 1];
+      while (u && ',:;'.includes(u[u.length - 1])) u = u.slice(0, -1);
+      if (u) out[out.length - 1] = u; else out.pop();
+    }
+    return out.join(' ').split('()').join('').trim();
+  }
+
   /** La cantidad se compara pero nunca se muestra. */
   function firma(it) {
     const tomas = it.tomas.map((t) => `${clave(t.momento || '')}=${clave(t.cantidad || '')}`).join(';');
     const dias = it.dias.map(clave).sort().join(',');
     return [clave(it.cantidad || ''), clave(it.momento || ''), tomas, dias, it.opcional ? '1' : '0'].join('|');
   }
+  /** [clave, nombre para mostrar, firma]. Se compara y se muestra sin la dosis; si el nombre la traía, la firma suma el
+   *  nombre entero: «Creatina 3 g» → «Creatina 5 g» es «Cambia cómo tomás Creatina». */
   function activos(s) {
     const vistos = new Set(); const r = [];
     for (const it of (s ? s.items : [])) {
-      const k = clave(it.nombre);
+      const nombre = sinDosis(it.nombre);
+      const k = clave(nombre);
       if (!k || clave(it.estado || '') === 'sale' || vistos.has(k)) continue;
-      vistos.add(k); r.push([k, it]);
+      vistos.add(k);
+      const entero = clave(it.nombre);
+      r.push([k, nombre, entero !== k ? `${firma(it)}|${entero}` : firma(it)]);
     }
     return r;
   }
@@ -413,11 +495,11 @@
     const v = activos(antes);
     const kv = new Set(v.map((x) => x[0])); const kn = new Set(n.map((x) => x[0]));
     const lineas = [];
-    for (const [k, it] of n) if (!kv.has(k)) lineas.push(`Se suma ${limpio(it.nombre)}`);
-    for (const [k, it] of v) if (!kn.has(k)) lineas.push(`Dejás de tomar ${limpio(it.nombre)}`);
-    for (const [k, it] of n) {
+    for (const [k, nombre] of n) if (!kv.has(k)) lineas.push(`Se suma ${nombre}`);
+    for (const [k, nombre] of v) if (!kn.has(k)) lineas.push(`Dejás de tomar ${nombre}`);
+    for (const [k, nombre, f] of n) {
       const b = v.find((x) => x[0] === k);
-      if (b && firma(it) !== firma(b[1])) lineas.push(`Cambia cómo tomás ${limpio(it.nombre)}`);
+      if (b && f !== b[2]) lineas.push(`Cambia cómo tomás ${nombre}`);
     }
     if (!lineas.length) return null;
     return { area: 'suplementacion', titular: 'Mati actualizó tu suplementación', grande: false, lineas: recortar(lineas) };
@@ -508,7 +590,17 @@
     };
   }
 
-  const API = { MAX_LINEAS, MAXIMO, DIAS_TARJETA, calcular, crearModelo, formatoPauta, repsNormal, formatoCantidad, formatoKcal,
+  /** Con la palanca apagada el plan «ya visto» no se guarda: se borra en cada carga, así al prenderla se parte de la copia
+   *  de la última carga y no de una base de hace semanas. La lista de novedades ya guardadas no se toca. */
+  function olvidarBase(token, almacen) {
+    const k = `mypump_novedades_base_${token}`;
+    try {
+      if (almacen.leer(k) == null) return;
+      if (almacen.borrar) almacen.borrar(k); else almacen.guardar(k, 'null');
+    } catch (_) {}
+  }
+
+  const API = { MAX_LINEAS, MAXIMO, DIAS_TARJETA, calcular, crearModelo, sinDosis, olvidarBase, formatoPauta, repsNormal, formatoCantidad, formatoKcal,
     recortar, nombreDia, clave, limpio };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else global.NovedadesPlan = API;

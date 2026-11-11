@@ -8619,5 +8619,162 @@
     }
    ]
   }
+ },
+ {
+  "nombre": "el nombre del suplemento trae la dosis: no se muestra",
+  "antes": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina 3 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Vitamina C (2 g)",
+       "estado": "sigue"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "despues": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina 5 g",
+       "momento": "desayuno",
+       "estado": "sube"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Magnesio 400 mg x día",
+       "momento": "dormir",
+       "estado": "nuevo"
+      },
+      {
+       "nombre": "Vitamina D 5.000 UI del almuerzo",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-09T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu suplementación",
+   "resumen": "Se suma Magnesio",
+   "partes": [
+    {
+     "area": "suplementacion",
+     "titular": "Mati actualizó tu suplementación",
+     "grande": false,
+     "lineas": [
+      "Se suma Magnesio",
+      "Se suma Vitamina D del almuerzo",
+      "Dejás de tomar Vitamina C",
+      "Cambia cómo tomás Creatina"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "el nombre trae la dosis y no cambió: no se cuenta",
+  "antes": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina 5 g",
+       "momento": "desayuno",
+       "estado": "nuevo"
+      },
+      {
+       "nombre": "5 g",
+       "estado": "sigue"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "despues": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina  5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "5 g",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "200 mg",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-09T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": null
  }
 ]
