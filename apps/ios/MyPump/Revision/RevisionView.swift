@@ -26,6 +26,7 @@ struct RevisionView: View {
                     Group {
                         if claseAncho == .regular {
                             VStack(alignment: .leading, spacing: Espacio.l) {
+                                TarjetaFotosInicio()
                                 HStack(alignment: .top, spacing: Espacio.l) {
                                     recuperacion.frame(maxWidth: .infinity, alignment: .top)
                                     progreso.frame(maxWidth: .infinity, alignment: .top)
@@ -49,6 +50,7 @@ struct RevisionView: View {
                             .anchoLectura(Ancho.doble)
                         } else {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
+                                TarjetaFotosInicio()
                                 // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
                                 VStack(spacing: Espacio.m) { recuperacion; progreso }
                                 diaDeRevision; avisoPlan; notaSemanal; fotos; check

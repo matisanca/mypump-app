@@ -38,6 +38,8 @@ object PreparacionFotoInicio {
             val ancho = bitmap.width
             val alto = bitmap.height
             val medida = FotosInicio.medir(luma(bitmap), ancho, alto)
+            // Una fecha del futuro (reloj de la cámara mal puesto) no cuenta: ahora, y sin aviso de vieja.
+            val tomada = tomada?.takeIf { !it.isAfter(ahora.plusDays(1)) }?.let { if (it.isAfter(ahora)) ahora else it }
             val cuando = tomada ?: ahora
             val dias = FotosInicio.dias(cuando.toInstant(), ahora.toInstant())
             // Sin fecha de la original no se sabe cuándo se sacó: no se avisa que es vieja.

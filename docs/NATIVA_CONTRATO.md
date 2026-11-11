@@ -578,8 +578,10 @@ set con URLs firmadas de 10 minutos.
 
 Como la de Gimnasio: el JPEG en `fotos-inicio/<id>.jpg` y el índice en `fotos-inicio-cola.json` (`id`, `pose`, `tomadaEn`,
 `brillo`, `nitidez`), por cuenta, en disco. Se sube de a una, en el orden en que se encolaron. Una pose del cuerpo nueva saca de
-la cola a la anterior de esa pose que todavía no empezó a subir. `FotosInicio.clasificarSubida` decide: `ok`, `descartar` (con
-aviso `rechazada` o `tope`, o `refrescar` el estado) o `reintentar`. Sin red se corta la pasada; tres errores seguidos del
+la cola a la anterior de esa pose que todavía no empezó a subir; si la anterior ya estaba subiendo y falla, tampoco se
+reintenta (antes de cada subida se sacan las del cuerpo que no son la última de su pose: si no, pisaría a la nueva).
+`FotosInicio.clasificarSubida` decide: `ok`, `descartar` (con aviso `rechazada` o `tope`) o `reintentar`. El 403 (`refrescar`)
+es aparte: corta la pasada, refresca el estado y NO borra la foto (si fue el link, sale con el nuevo). Sin red se corta la pasada; tres errores seguidos del
 servidor también, y se reintenta al minuto y al volver la red o la app al frente. La nota que no se pudo mandar queda guardada
 y sale con la cola.
 

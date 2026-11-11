@@ -11,7 +11,7 @@ public enum TextosFotosInicio {
     public static let tarjetaSeguir = "Seguir"
     public static let tarjetaLista = "Listas. Mati ya las tiene"
     public static let entradaMisDatos = "Mis fotos de inicio"
-    public static let privacidad = "Las ve solo Mati. No se publican ni salen de la app"
+    public static let privacidad = "Las ve solo Mati. No se publican"
     // Consejos
     public static let consejosTitulo = "Antes de sacarlas"
     public static let consejoLuz = "De frente a una ventana o con la luz prendida. Sin contraluz"
@@ -65,6 +65,8 @@ public enum TextosFotosInicio {
     public static let motivacionTope = "Hasta 4 fotos"
     public static let borrarFoto = "Borrar foto"
     public static let notaSinSenal = "Sin señal: la nota queda guardada y se manda sola"
+    public static let notaError = "No se pudo guardar la nota. Probá de nuevo"
+    public static let borrarSinSenal = "Sin señal: no se pudo borrar. Probá de nuevo"
     // Botones
     public static let cerrar = "Cerrar"
     public static let siguiente = "Siguiente"

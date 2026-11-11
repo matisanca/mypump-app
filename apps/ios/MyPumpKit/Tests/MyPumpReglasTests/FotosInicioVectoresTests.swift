@@ -55,7 +55,7 @@ final class FotosInicioVectoresTests: XCTestCase {
             "motivacionTitulo": TextosFotosInicio.motivacionTitulo, "opcional": TextosFotosInicio.opcional, "motivacionBajada": TextosFotosInicio.motivacionBajada,
             "motivacionAgregar": TextosFotosInicio.motivacionAgregar, "motivacionNota": TextosFotosInicio.motivacionNota, "motivacionGuardar": TextosFotosInicio.motivacionGuardar,
             "motivacionGuardada": TextosFotosInicio.motivacionGuardada, "motivacionTope": TextosFotosInicio.motivacionTope, "borrarFoto": TextosFotosInicio.borrarFoto,
-            "notaSinSenal": TextosFotosInicio.notaSinSenal, "cerrar": TextosFotosInicio.cerrar, "siguiente": TextosFotosInicio.siguiente,
+            "notaSinSenal": TextosFotosInicio.notaSinSenal, "notaError": TextosFotosInicio.notaError, "borrarSinSenal": TextosFotosInicio.borrarSinSenal, "cerrar": TextosFotosInicio.cerrar, "siguiente": TextosFotosInicio.siguiente,
             "listoBoton": TextosFotosInicio.listoBoton, "listoTeclado": TextosFotosInicio.listoTeclado,
         ]
         XCTAssertEqual(Set(enCodigo.keys), Set(t.keys))

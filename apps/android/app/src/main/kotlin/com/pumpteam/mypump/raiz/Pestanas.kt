@@ -219,7 +219,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }
                                     } else if (navegacion.fotosInicio && fir != null) {
-                                        FotosInicioPantalla(fir, alVolver = { navegacion.fotosInicio = false })
+                                        FotosInicioPantalla(fir, alVolver = { navegacion.fotosInicio = false }, directo = true)
                                     } else {
                                         RevisionPantalla(
                                             modelo,

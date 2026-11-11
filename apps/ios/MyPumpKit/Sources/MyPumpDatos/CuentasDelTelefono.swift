@@ -170,4 +170,26 @@ enum CuentasDelTelefono {
         }
         return total
     }
+
+    /// Lo mismo con las fotos de inicio (y la nota) que no llegaron a subirse.
+    @MainActor @discardableResult
+    static func adoptarFotosInicio(clienteId: String, en disco: Disco, fotosInicio: ModeloFotosInicio) -> Int {
+        guard !clienteId.isEmpty else { return 0 }
+        let base = disco.carpeta.deletingLastPathComponent()
+        let propia = disco.carpeta.lastPathComponent
+        let nombres = ((try? FileManager.default.contentsOfDirectory(atPath: base.path)) ?? []).filter { $0.hasPrefix("cuenta-") && $0 != propia }.sorted()
+        var total = 0
+        for nombre in nombres {
+            let otra = Disco(carpeta: base.appendingPathComponent(nombre, isDirectory: true))
+            let viejas = otra.leer([PendienteFotoInicio].self, PendienteFotoInicio.archivo) ?? []
+            let hayNota = otra.leer(BorradorFotosInicio.self, BorradorFotosInicio.archivo) != nil
+            guard !viejas.isEmpty || hayNota, Self.clienteId(de: otra) == clienteId, fotosInicio.adoptar(viejas, desde: otra) else { continue }
+            otra.borrar(PendienteFotoInicio.archivo)
+            otra.borrar(BorradorFotosInicio.archivo)
+            otra.borrar(ModeloFotosInicio.archivoEstado)
+            try? FileManager.default.removeItem(at: otra.url(PendienteFotoInicio.carpeta))
+            total += viejas.count
+        }
+        return total
+    }
 }

@@ -117,11 +117,13 @@ private fun observar(m: ModeloFotosInicio): Vista {
 
 /** Arriba de todo en Revisión. Sin cuenta, con la palanca apagada o sin `habilitado: true`, no existe. */
 @Composable
-fun TarjetaFotosInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
+fun TarjetaFotosInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier, soloSiFaltan: Boolean = false) {
     val f by modelo.fotosInicio.collectAsStateWithLifecycle()
     val m = f ?: return
     val v = observar(m)
     if (v.estado == null) return
+    // En Entreno (lo primero que se ve al abrir la app) va mientras falte alguna; en Revisión, siempre.
+    if (soloSiFaltan && m.faltan.isEmpty()) return
     val c = MyPump.colores
     val navegacion = LocalNavegacion.current
     val listas = m.listas
@@ -130,7 +132,11 @@ fun TarjetaFotosInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .superficieTarjeta()
             .clip(RoundedCornerShape(Radio.tarjeta))
-            .clickable(role = Role.Button) { navegacion?.fotosInicio = true }
+            .clickable(role = Role.Button) {
+                // La pantalla vive en Revisión: desde Entreno se pasa a esa pestaña con la pantalla ya abierta.
+                navegacion?.pestana = com.pumpteam.mypump.raiz.Pestana.REVISION
+                navegacion?.fotosInicio = true
+            }
             .padding(Espacio.m)
             .testTag("fotos-inicio-tarjeta"),
         verticalAlignment = Alignment.CenterVertically,
@@ -175,7 +181,7 @@ private const val A_POSE = "pose:"
 private const val A_REVISAR = "revisar:"
 
 @Composable
-fun FotosInicioPantalla(m: ModeloFotosInicio, alVolver: () -> Unit) {
+fun FotosInicioPantalla(m: ModeloFotosInicio, alVolver: () -> Unit, directo: Boolean = false) {
     val v = observar(m)
     // Al volver de una muerte del proceso el estado todavía no está: se decide después de preguntar.
     var preguntado by remember { mutableStateOf(false) }
@@ -191,7 +197,9 @@ fun FotosInicioPantalla(m: ModeloFotosInicio, alVolver: () -> Unit) {
     val ids = v.estado?.fotos?.map { it.id }
     LaunchedEffect(ids) { if (!ids.isNullOrEmpty()) m.firmar() }
 
-    var destino by rememberSaveable { mutableStateOf("") }
+    // `directo` (la tarjeta): abre ya en la pose que falta, con el resumen atrás; el segundo toque es la foto (regla de Mati:
+    // nada a más de dos toques). Desde Mis datos, el resumen.
+    var destino by rememberSaveable { mutableStateOf(if (directo) m.faltan.firstOrNull()?.let { A_POSE + it } ?: "" else "") }
     // La foto que se está revisando: no sobrevive a la muerte del proceso (se vuelve a la pose).
     var preparada by remember { mutableStateOf<FotoPreparada?>(null) }
     BackHandler(enabled = destino.isNotEmpty()) {
@@ -339,7 +347,7 @@ private fun ResumenFotosInicio(
                             MiniaturaMotivacion(f, v.urls[f.id]) {
                                 alcance.launch {
                                     errorMotivacion = when (m.borrarMotivacion(f.id)) {
-                                        ModeloFotosInicio.Salida.SIN_SENAL -> T.sinSenal
+                                        ModeloFotosInicio.Salida.SIN_SENAL -> T.borrarSinSenal
                                         else -> null
                                     }
                                 }
@@ -497,6 +505,7 @@ private fun NotaMotivacion(m: ModeloFotosInicio, v: Vista) {
                         resultado = when (m.guardarNota(nota)) {
                             ModeloFotosInicio.Salida.OK -> T.motivacionGuardada
                             ModeloFotosInicio.Salida.SIN_SENAL -> T.notaSinSenal
+                            ModeloFotosInicio.Salida.ERROR -> T.notaError
                             else -> null
                         }
                         nota = FotosInicio.notaRecortada(nota)

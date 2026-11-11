@@ -47,6 +47,7 @@ public enum FotosInicio {
         /// Qué tan marcados están los bordes más marcados, en la dirección en que menos lo están (una foto movida los pierde
         /// en la dirección del movimiento).
         public let nitidez: Double
+        public init(brillo: Double, nitidez: Double) { self.brillo = brillo; self.nitidez = nitidez }
     }
 
     public enum Problema: String, Equatable, Sendable, CaseIterable { case chica, apaisada, oscura, movida, vieja }

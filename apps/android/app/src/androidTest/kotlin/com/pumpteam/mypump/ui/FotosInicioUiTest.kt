@@ -40,6 +40,9 @@ class FotosInicioUiTest : PruebaUi() {
     private fun abrirDesdeRevision() {
         p.tocar(etiqueta("pestana-revision"))
         p.tocar(etiqueta("fotos-inicio-tarjeta"), ms = 30_000)
+        // La tarjeta abre derecho en la pose que falta; atrás queda el resumen.
+        p.nodo(etiqueta("fotos-inicio-instruccion"))
+        p.atras()
         p.nodo(etiqueta("fotos-inicio-pose-frente"))
     }
 
@@ -58,6 +61,8 @@ class FotosInicioUiTest : PruebaUi() {
         p.nodo(texto(TextosFotosInicio.tarjetaEmpezar))
         Telefono.captura("fi-tarjeta-$tema")
         p.tocar(etiqueta("fotos-inicio-tarjeta"))
+        p.nodo(etiqueta("fotos-inicio-instruccion"))
+        p.atras()
         p.nodo(etiqueta("fotos-inicio-pose-frente"))
         p.nodo(texto(TextosFotosInicio.faltan(3)))
         p.nodo(texto(TextosFotosInicio.privacidad))

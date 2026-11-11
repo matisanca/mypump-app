@@ -85,6 +85,7 @@ function limpiarJpegInicio(buf) {
     if (buf[i] !== 0xff) return null;
     let m = buf[i + 1];
     while (m === 0xff && i + 2 < buf.length) { i += 1; m = buf[i + 1]; }   // relleno
+    if (i + 4 > buf.length) return null;                                     // el relleno llegó al final: no es un JPEG entero
     if (m === 0xd8 || m === 0x00 || (m >= 0xd0 && m <= 0xd7) || m === 0x01) return null;   // no van antes del SOS
     if (m === 0xd9) return null;                                             // terminó sin imagen
     const largo = buf.readUInt16BE(i + 2);

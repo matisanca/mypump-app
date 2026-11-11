@@ -13,7 +13,7 @@ object TextosFotosInicio {
     const val tarjetaSeguir = "Seguir"
     const val tarjetaLista = "Listas. Mati ya las tiene"
     const val entradaMisDatos = "Mis fotos de inicio"
-    const val privacidad = "Las ve solo Mati. No se publican ni salen de la app"
+    const val privacidad = "Las ve solo Mati. No se publican"
     // Consejos
     const val consejosTitulo = "Antes de sacarlas"
     const val consejoLuz = "De frente a una ventana o con la luz prendida. Sin contraluz"
@@ -67,6 +67,8 @@ object TextosFotosInicio {
     const val motivacionTope = "Hasta 4 fotos"
     const val borrarFoto = "Borrar foto"
     const val notaSinSenal = "Sin señal: la nota queda guardada y se manda sola"
+    const val notaError = "No se pudo guardar la nota. Probá de nuevo"
+    const val borrarSinSenal = "Sin señal: no se pudo borrar. Probá de nuevo"
     // Botones
     const val cerrar = "Cerrar"
     const val siguiente = "Siguiente"
@@ -127,6 +129,8 @@ object TextosFotosInicio {
         "motivacionTope" to motivacionTope,
         "borrarFoto" to borrarFoto,
         "notaSinSenal" to notaSinSenal,
+        "notaError" to notaError,
+        "borrarSinSenal" to borrarSinSenal,
         "cerrar" to cerrar,
         "siguiente" to siguiente,
         "listoBoton" to listoBoton,

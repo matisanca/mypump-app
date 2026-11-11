@@ -224,7 +224,7 @@ class ModeloFotosInicio(
         }
         val id = UUID.randomUUID().toString().lowercase()
         if (!escribirAtomico(archivo(id), jpeg)) return Foto.NO_SE_GUARDO
-        val item = PendienteFotoInicio(id, pose, tomadaEn.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), medida?.brillo, medida?.nitidez)
+        val item = PendienteFotoInicio(id, pose, tomadaEn.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), medida?.brillo, medida?.nitidez)
         val anterior = _cola.value
         val reemplazadas = if (pose == FotosInicio.MOTIVACION) emptyList() else anterior.filter { it.pose == pose && it.id != _subiendo.value }
         _cola.value = anterior.filter { it !in reemplazadas } + item
@@ -352,6 +352,7 @@ class ModeloFotosInicio(
             var subioAlguna = false
             var seguidas = 0
             pasada@ while (true) {
+                sacarReemplazadas()
                 val item = _cola.value.sortedBy { if (it.id in conError) 1 else 0 }.firstOrNull() ?: break
                 _subiendo.value = item.id
                 val r = subir(item)
@@ -371,12 +372,15 @@ class ModeloFotosInicio(
                     }
                     Envio.Perdida -> sacarDeLaCola(item.id)
                     is Envio.Descartar -> {
-                        refrescarAlFinal = refrescarAlFinal || r.s.refrescar
+                        // 403: el link ya no sirve o se cerró la sección. Lo demás tampoco va a entrar, y la foto NO se borra:
+                        // si es el link, sale con el nuevo (adoptarFotosInicio).
+                        if (r.s.refrescar) {
+                            refrescarAlFinal = true
+                            break@pasada
+                        }
                         r.s.aviso?.let { _aviso.value = it }
                         sacarDeLaCola(item.id)
                         borrarAlSubir.remove(item.id)
-                        // El link ya no sirve o se cerró la sección: lo demás tampoco va a entrar.
-                        if (r.s.refrescar) break@pasada
                     }
                     Envio.Reintentar -> {
                         conError.add(item.id)
@@ -395,6 +399,16 @@ class ModeloFotosInicio(
         } finally {
             drenando.unlock()
         }
+    }
+
+    /**
+     * Una foto del cuerpo que tiene otra más nueva de su pose en la cola ya no se sube (quedó de cuando la nueva se encoló
+     * mientras esta subía): si se reintentara después, pisaría en el servidor a la que el alumno eligió.
+     */
+    private fun sacarReemplazadas() {
+        val cuerpo = _cola.value.filter { it.pose != FotosInicio.MOTIVACION }
+        val ultima = cuerpo.associate { it.pose to it.id }
+        for (p in cuerpo) if (ultima[p.pose] != p.id) sacarDeLaCola(p.id)
     }
 
     /** Una pasada sin esperarla, atada a la vida de la app: cambiar de pantalla no corta la subida. */

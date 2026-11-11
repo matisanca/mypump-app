@@ -22,6 +22,8 @@ public struct PalancaRemota: Equatable, Sendable {
     public var gimnasioFotos = false
     /// Técnica por video (`tecnica_video`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo.
     public var tecnicaVideo = false
+    /// Fotos de inicio (`fotos_inicio`). Sin la clave, apagadas: ni se muestran ni se llama a nada nuevo.
+    public var fotosInicio = false
 
     public init() {}
 
@@ -33,17 +35,21 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveGimnasioFotos = "mypump-palanca-gimnasio-fotos"
     /// El último valor leído de `tecnica_video`: prendida, un video en la cola sigue subiendo aunque se arranque sin red.
     static let claveTecnicaVideo = "mypump-palanca-tecnica-video"
+    /// El último valor leído de `fotos_inicio`: prendida, una foto en la cola sigue subiendo aunque se arranque sin red.
+    static let claveFotosInicio = "mypump-palanca-fotos-inicio"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
         if defaults.bool(forKey: claveGimnasioFotos) { p.gimnasioFotos = true }
         if defaults.bool(forKey: claveTecnicaVideo) { p.tecnicaVideo = true }
+        if defaults.bool(forKey: claveFotosInicio) { p.fotosInicio = true }
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
         defaults.set(contadorRepsReloj, forKey: Self.claveContadorReps)
         defaults.set(gimnasioFotos, forKey: Self.claveGimnasioFotos)
         defaults.set(tecnicaVideo, forKey: Self.claveTecnicaVideo)
+        defaults.set(fotosInicio, forKey: Self.claveFotosInicio)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
@@ -54,6 +60,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["reloj_contador_reps"] { contadorRepsReloj = b }
         if case .bool(let b)? = j["gimnasio_fotos"] { gimnasioFotos = b }
         if case .bool(let b)? = j["tecnica_video"] { tecnicaVideo = b }
+        if case .bool(let b)? = j["fotos_inicio"] { fotosInicio = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

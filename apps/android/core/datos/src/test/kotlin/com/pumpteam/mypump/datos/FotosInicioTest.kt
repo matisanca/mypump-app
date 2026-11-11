@@ -209,6 +209,7 @@ class FotosInicioTest {
         assertEquals(2, d.llamadas.count { it == "mypump_fotos_inicio_get" })
         assertNull(m.estado.value, "se refrescó: ya no está habilitado")
         assertNull(m.aviso.value)
+        assertEquals(2, m.cola.value.size, "con 403 las fotos no se borran: si fue el link, salen con el nuevo")
     }
 
     @Test fun topeDeMotivacion(): Unit = runBlocking {

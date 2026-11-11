@@ -23,6 +23,7 @@ struct MisDatosView: View {
     @AppStorage("mypump-theme") private var tema = ""
     @State private var fuentes = false
     @State private var verGimnasio = false
+    @State private var verFotosInicio = false
     @State private var verTecnica = false
     @State private var pagina: Pagina?
     /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
@@ -111,6 +112,15 @@ struct MisDatosView: View {
                     .accessibilityIdentifier("mis-datos-gimnasio")
                     .sheet(isPresented: $verGimnasio) {
                         GimnasioRaiz(modelo: g, alCerrar: { verGimnasio = false }).presentationDragIndicator(.visible)
+                    }
+                }
+                if let f = modelo.fotosInicio, f.visible || verFotosInicio {
+                    Button { verFotosInicio = true } label: {
+                        fila(TextosFotosInicio.entradaMisDatos, icono: "camera.fill", color: .marcaTexto)
+                    }
+                    .accessibilityIdentifier("mis-datos-fotos-inicio")
+                    .sheet(isPresented: $verFotosInicio) {
+                        FotosInicioRaiz(modelo: f, alCerrar: { verFotosInicio = false }).presentationDragIndicator(.visible)
                     }
                 }
                 Button { fuentes = true } label: {
