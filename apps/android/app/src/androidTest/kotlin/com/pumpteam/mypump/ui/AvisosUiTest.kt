@@ -124,7 +124,7 @@ class AvisosUiTest : PruebaUi() {
         // `progress` (lo que era Progreso): Revisión + Salud → Fuerza; el viejo `myday` (2.3.0): Mi salud, en la recuperación.
         app.startActivity(intentDePush("progress"))
         p.esperar("Revisión + Salud") { p.enSalud() }
-        p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
+        p.esperar("Fuerza elegida") { p.enSeccion("fuerza") }
         app.startActivity(intentDePush("myday"))
         p.nodo(etiqueta("mi-salud-bloque-recuperacion"))
         assertFalse(p.existe(etiqueta("salud-pantalla")))

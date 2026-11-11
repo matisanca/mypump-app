@@ -57,10 +57,21 @@ fun TarjetaGuiaDe(modelo: ModeloApp, modifier: Modifier = Modifier, solo: Reglas
     }
 }
 
-/** El resumen de la guía y dónde va (la tarjeta en Entreno, la fila de Mis datos o nada). */
+/**
+ * El resumen de la guía y dónde va (la tarjeta en Entreno, la fila de Mis datos o nada). Simplificar (11/11): con todo
+ * visto, la guía sigue en Entreno como fila discreta de «Tu inicio con Mati» solo 7 días desde que se terminó
+ * ([ModeloGuia.completaEn], que se anota acá al detectarlo); después queda en Mis datos. Un video nuevo de Mati la vuelve
+ * grande y la cuenta empieza de nuevo al verlo.
+ */
 @Composable
 fun lugarDeLaGuia(g: ModeloGuia): Pair<ResumenGuia?, ReglasGuia.Lugar> {
     val resumen by g.resumen.collectAsStateWithLifecycle()
     val oculta by g.ocultaAMano.collectAsStateWithLifecycle()
-    return resumen to ReglasGuia.lugar(resumen, oculta)
+    val enMemoria by g.guia.collectAsStateWithLifecycle()
+    val completaEn by g.completaEn.collectAsStateWithLifecycle()
+    val r = resumen
+    val completa = r != null && ReglasNovedad.tarjeta(r, enMemoria) == null && ReglasGuia.estiloTarjeta(r) == ReglasGuia.EstiloTarjeta.COMPACTA
+    LaunchedEffect(g, r != null, completa) { if (r != null) g.anotarCompleta(completa) }
+    val lugar = ReglasGuia.lugar(r, oculta)
+    return r to if (lugar == ReglasGuia.Lugar.ENTRENO && completa && !ReglasGuia.filaInicioVigente(completaEn)) ReglasGuia.Lugar.MIS_DATOS else lugar
 }

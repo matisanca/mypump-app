@@ -57,9 +57,9 @@ class PresionUiTest : PruebaUi() {
 
     /** De la tarjeta de arriba a la toma anotada: un paso por pantalla. */
     private fun hastaAnotar(tema: String?) {
-        p.nodo(etiqueta("tarjeta-presion"), 20_000)
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"), 20_000)
         captura(tema, "tarjeta")
-        p.tocar(etiqueta("tarjeta-presion-boton"))
+        p.tocar(etiqueta("tarjeta-mi-salud-inicio-boton"))
         p.nodo(etiqueta("presion-cuando"))
         captura(tema, "cuando")
         p.tocar(etiqueta("presion-cuando-seguir"))
@@ -127,7 +127,7 @@ class PresionUiTest : PruebaUi() {
     private fun marcarSintoma(t: String) {
         tema(t)
         val d = lanzar("serie2")
-        p.nodo(etiqueta("tarjeta-presion"), 20_000)
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"), 20_000)
         // Presión vive en «Mi salud» (2.3.0): Revisión → Mi salud → la fila de Presión.
         p.abrirMiSalud()
         p.tocar(etiqueta("mi-salud-presion"))
@@ -171,8 +171,8 @@ class PresionUiTest : PruebaUi() {
     private fun aparato(t: String) {
         tema(t)
         lanzar("serie0") { it.aparato = null }
-        p.nodo(etiqueta("tarjeta-presion"), 20_000)
-        p.tocar(etiqueta("tarjeta-presion-boton"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"), 20_000)
+        p.tocar(etiqueta("tarjeta-mi-salud-inicio-boton"))
         p.nodo(etiqueta("presion-antes"))
         captura(t, "aparato")
         p.escribir(etiqueta("presion-medida"), "35")
@@ -189,7 +189,7 @@ class PresionUiTest : PruebaUi() {
         val d = lanzar("apagado")
         p.nodo(etiqueta("pestana-entreno"), 20_000)
         p.quieto(1_500)
-        assertFalse(p.existe(etiqueta("tarjeta-presion")))
+        assertFalse(p.existe(etiqueta("tarjeta-mi-salud-inicio")))
         p.tocar(etiqueta("pestana-revision"))
         p.tocar(etiqueta("tarjeta-mi-salud"))
         p.nodo(etiqueta("mi-salud-pantalla"))
@@ -202,14 +202,14 @@ class PresionUiTest : PruebaUi() {
         lanzar("sinServidor")
         p.nodo(etiqueta("pestana-entreno"), 20_000)
         p.quieto(1_500)
-        assertFalse(p.existe(etiqueta("tarjeta-presion")))
+        assertFalse(p.existe(etiqueta("tarjeta-mi-salud-inicio")))
     }
 
     @Test fun desdeMisDatosSinSerie() {
         lanzar("sinSerie")
         p.nodo(etiqueta("pestana-entreno"), 20_000)
         p.quieto(1_000)
-        assertFalse("sin serie abierta no hay tarjeta", p.existe(etiqueta("tarjeta-presion")))
+        assertFalse("sin serie abierta no hay tarjeta", p.existe(etiqueta("tarjeta-mi-salud-inicio")))
         // Presión vive en «Mi salud» (2.3.0): Revisión → Mi salud → la fila de Presión.
         p.abrirMiSalud()
         p.tocar(etiqueta("mi-salud-presion"))
@@ -252,8 +252,8 @@ class PresionUiTest : PruebaUi() {
 
     @Test fun sinAparatoPrimeroPreparar() {
         lanzar("serie0") { it.aparato = null }
-        p.nodo(etiqueta("tarjeta-presion"), 20_000)
-        p.tocar(etiqueta("tarjeta-presion-boton"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"), 20_000)
+        p.tocar(etiqueta("tarjeta-mi-salud-inicio-boton"))
         p.nodo(etiqueta("presion-antes"))
         captura("claro", "aparato")
         assertFalse(p.habilitado(etiqueta("presion-guardar")))

@@ -222,13 +222,17 @@ class FotosInicioUiTest : PruebaUi() {
         p.nodo(etiqueta("mis-datos"))
     }
 
+    /** Simplificar: el renglón de Mis datos se fue; la tarjeta fija de Revisión abre las fotos de inicio (también ya mandadas). */
     @Test
-    fun desdeMisDatos() {
+    fun desdeLaTarjetaDeRevision() {
         lanzar("completo")
         p.tocar(etiqueta("pestana-revision"))
         p.nodo(texto(TextosFotosInicio.tarjetaLista), ms = 30_000)
         p.tocar(etiqueta("mis-datos"))
-        p.tocar(etiqueta("mis-datos-fotos-inicio"))
+        p.nodo(etiqueta("mis-datos-pantalla"))
+        assertFalse(p.existe(etiqueta("mis-datos-fotos-inicio")))
+        p.tocar(etiqueta("pestana-revision"))
+        p.tocar(etiqueta("fotos-inicio-tarjeta"))
         p.nodo(texto(TextosFotosInicio.listoTitulo))
         p.nodo(texto(TextosFotosInicio.lista))
         Telefono.captura("fi-mis-datos-claro")

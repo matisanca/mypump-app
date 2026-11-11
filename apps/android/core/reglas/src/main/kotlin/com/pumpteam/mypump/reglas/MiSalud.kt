@@ -75,6 +75,16 @@ object MiSalud {
         return Tarjeta(primero?.first ?: lista(bloques), lineas.size, primero?.second)
     }
 
+    /** La ceja de la tarjeta verde de arriba de Entreno (simplificar, 11/11). */
+    const val CEJA_INICIO = "Mi salud"
+
+    /** Debajo de la línea, con más de una cosa: «Y 1 cosa más» / «Y 2 cosas más». null con una sola. */
+    fun masCosas(cuenta: Int): String? = when {
+        cuenta <= 1 -> null
+        cuenta == 2 -> "Y 1 cosa más"
+        else -> "Y ${cuenta - 1} cosas más"
+    }
+
     /** «Control, estudios, presión y recuperación». */
     fun lista(bloques: List<Bloque>): String {
         val nombres = bloques.map { it.nombre }

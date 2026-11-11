@@ -67,7 +67,7 @@ class SaludEnRevisionUiTest : PruebaUi() {
         p.tocar(etiqueta("tarjeta-mi-salud"))
         p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.nodo(etiqueta("salud-pantalla"))
-        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.esperar("Recuperación elegida") { p.enSeccion("recuperacion") }
         assertTrue("Revisión marcada con Salud abierta", p.seleccionado(etiqueta("pestana-revision")))
         // Volver lleva a Mi salud, de donde se abrió; otra vez, a Revisión.
         p.tocar(etiqueta("volver"))
@@ -77,7 +77,7 @@ class SaludEnRevisionUiTest : PruebaUi() {
         p.esperarQueNoEste(etiqueta("mi-salud-pantalla"))
         p.tocar(etiqueta("tarjeta-progreso-revision"))
         p.nodo(etiqueta("salud-pantalla"))
-        p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
+        p.esperar("Fuerza elegida") { p.enSeccion("fuerza") }
     }
 
     @Test
@@ -97,7 +97,7 @@ class SaludEnRevisionUiTest : PruebaUi() {
         guardarCuenta()
         registrar(ActivityScenario.launch<MainActivity>(CentroAvisos.intentDeAviso(app, "progress"))).also {
             p.esperar("Revisión + Salud", ms = 30_000) { p.enSalud() }
-            p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
+            p.esperar("Fuerza elegida") { p.enSeccion("fuerza") }
             assertFalse(p.existe(etiqueta("pestana-salud")))
             // Atrás vuelve a Revisión, con la tarjeta Mi salud arriba.
             p.atras()

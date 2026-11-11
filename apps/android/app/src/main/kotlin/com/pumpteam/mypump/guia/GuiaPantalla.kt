@@ -119,6 +119,7 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
     val avisos by modelo.avisos.collectAsStateWithLifecycle()
     val resumenServidor by modelo.resumen.collectAsStateWithLifecycle()
     val ocultaAMano by modelo.ocultaAMano.collectAsStateWithLifecycle()
+    val completaEn by modelo.completaEn.collectAsStateWithLifecycle()
     val audios by modelo.audios.items.collectAsStateWithLifecycle()
     val agenda by modelo.agenda.agenda.collectAsStateWithLifecycle()
     val reservando by modelo.agenda.reservando.collectAsStateWithLifecycle()
@@ -172,7 +173,7 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
                 textos = textos,
                 mensajes = mensajes,
                 puedeSumarLlamada = modelo.puedeSumarDudaLlamada(),
-                accionEntreno = ReglasGuia.accionEntreno(resumenServidor, ocultaAMano),
+                accionEntreno = ReglasGuia.accionEntreno(resumenServidor, ocultaAMano, completaEn = completaEn),
                 alAccionEntreno = modelo::ocultarDeEntreno,
                 transcriptos = audios.filter { it.estado == com.pumpteam.mypump.datos.ModeloAudioDudas.Estado.TRANSCRIPTO }.mapNotNull { it.texto },
                 hayAudios = audios.isNotEmpty(),

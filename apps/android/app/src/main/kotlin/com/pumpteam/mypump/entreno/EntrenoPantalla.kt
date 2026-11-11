@@ -1,6 +1,5 @@
 package com.pumpteam.mypump.entreno
 
-import com.pumpteam.mypump.presion.TarjetaPresionDe
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -214,20 +213,18 @@ private fun SinRutina(modelo: ModeloApp) {
                 // Sin rutina, las mismas tarjetas de arriba y en el mismo orden que con rutina (`ListaEntreno`): en el flujo
                 // nuevo la guía, la videollamada y el contrato pueden llegar antes que el plan. El mismo orden en iOS.
                 val borde = Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs)
-                TarjetaPresionDe(modelo, borde)
-                // Con la lista previa adentro (o sola, sin guía).
-                com.pumpteam.mypump.guia.TarjetaVideollamadaEntreno(modelo, borde)
+                // «Tu inicio con Mati» (simplificar): la guía, la videollamada de comienzo y la lista previa en una tarjeta.
+                com.pumpteam.mypump.guia.TarjetaInicioConMati(modelo, borde)
+                // «Mi salud» (simplificar): presión, estudios y control en una tarjeta, solo con algo para hacer.
+                com.pumpteam.mypump.misalud.TarjetaMiSaludInicioDe(modelo, borde)
                 com.pumpteam.mypump.recorrido.TarjetaRecorridoDe(modelo, borde)
-                com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo, borde)
-                // El próximo control de salud (palanca `controles_app`), junto a los estudios, como con rutina.
-                com.pumpteam.mypump.estudios.TarjetaControlInicioDe(modelo, borde)
-                // Sin rutina no hay «más abajo»: la guía va en el lugar de la destacada, sea cual sea su estilo.
-                com.pumpteam.mypump.guia.TarjetaGuiaDe(modelo, borde)
                 com.pumpteam.mypump.fotosinicio.TarjetaFotosInicioDe(modelo, borde, soloSiFaltan = true)
                 TarjetaGimnasioDe(modelo, borde)
                 com.pumpteam.mypump.novedades.TarjetaNovedadDe(modelo, borde)
                 // El contrato sin firmar (palanca `contrato_app`): justo el pre-inicio, antes de que haya rutina.
                 com.pumpteam.mypump.misdatos.AvisoContratoPendiente(modelo, borde)
+                // «Mi gimnasio y mi técnica» (simplificar): también sin rutina (la técnica y el gimnasio no dependen de ella).
+                com.pumpteam.mypump.gimnasio.EntradaDondeEntreno(modelo, borde)
                 Spacer(Modifier.height(80.dp))
                 EstadoVacio(
                     icono = Iconos.Pesa,

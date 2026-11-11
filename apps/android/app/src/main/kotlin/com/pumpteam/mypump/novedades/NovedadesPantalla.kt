@@ -95,6 +95,10 @@ object TextosNovedades {
     const val VACIO = "Cuando Mati cambie tu rutina, tu dieta o tu suplementación, lo vas a ver acá."
     const val LISTO = "Listo"
 
+    /** Simplificar (11/11): el bloque de Revisión, debajo de la devolución de Mati. */
+    const val ULTIMO_CAMBIO = "Lo último que cambió en tu plan"
+    const val VER_TODO = "Ver todo"
+
     fun area(a: String) = when (a) { "rutina" -> "Rutina"; "dieta" -> "Dieta"; else -> "Suplementación" }
     fun icono(a: String): ImageVector = when (a) { "rutina" -> Iconos.Pesa; "dieta" -> Iconos.Cubiertos; else -> Iconos.Pastilla }
     fun boton(a: String) = when (a) { "rutina" -> "Ver mi rutina"; "dieta" -> "Ver mi dieta"; else -> "Ver mi suplementación" }
@@ -287,7 +291,7 @@ fun TarjetaNovedadDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(n.titular, style = MaterialTheme.typography.titleLarge.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = c.texto, modifier = Modifier.weight(1f, fill = false))
-                if (!n.vista) Box(Modifier.size(8.dp).clip(CircleShape).background(c.marca))
+                if (!n.vista) com.pumpteam.mypump.estudios.PuntoNovedad(lado = 8.dp)
             }
             Text(n.resumen, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, maxLines = 2)
         }
@@ -295,7 +299,54 @@ fun TarjetaNovedadDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     }
 }
 
-/** «Novedades de tu plan» en Mis datos: todas las guardadas, de la más nueva a la más vieja. */
+/**
+ * Simplificar (11/11): en Revisión, debajo de la devolución de Mati, lo último que cambió en el plan y «Ver todo» (la lista
+ * completa, que antes estaba en Mis datos). Con la palanca `novedades_plan` apagada o sin ninguna novedad, nada. La hoja
+ * que sale sola y la tarjeta de Entreno no cambian. Gemela de `NovedadesEnRevision` de iOS.
+ */
+@Composable
+fun NovedadesEnRevision(modelo: ModeloApp, alVerTodo: () -> Unit, modifier: Modifier = Modifier) {
+    val palanca by modelo.palanca.collectAsStateWithLifecycle()
+    val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
+    val nov by modelo.novedades.collectAsStateWithLifecycle()
+    val m = nov ?: return
+    val lista by m.lista.collectAsStateWithLifecycle()
+    if (!palanca.novedadesPlan && !esDemo) return
+    val n = lista.firstOrNull() ?: return
+    val c = MyPump.colores
+    Column(
+        modifier.fillMaxWidth().superficieTarjeta().padding(Espacio.m).testTag("revision-novedades"),
+        verticalArrangement = Arrangement.spacedBy(Espacio.s),
+    ) {
+        Text(
+            TextosNovedades.ULTIMO_CAMBIO, style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+            color = c.texto, modifier = Modifier.semantics { heading() },
+        )
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(Radio.tarjeta))
+                .clickable(role = Role.Button, onClickLabel = "Abre lo que cambió") { NovedadesUI.abierta = n }
+                .semantics(mergeDescendants = true) {}
+                .testTag("revision-novedad-ultima"),
+            horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(TextosNovedades.cuando(n.fecha).uppercase(), style = MaterialTheme.typography.labelMedium, color = c.textoSecundario)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(n.titular, style = MaterialTheme.typography.titleLarge.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = c.texto, modifier = Modifier.weight(1f, fill = false))
+                    if (!n.vista) com.pumpteam.mypump.estudios.PuntoNovedad(lado = 8.dp)
+                }
+                Text(n.resumen, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, maxLines = 3)
+            }
+            Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.padding(top = 4.dp).size(20.dp))
+        }
+        com.pumpteam.mypump.diseno.BotonSecundario(
+            TextosNovedades.VER_TODO, alTocar = alVerTodo,
+            modifier = Modifier.fillMaxWidth().testTag("revision-novedades-ver-todo"), tono = c.marcaTexto,
+        )
+    }
+}
+
+/** «Novedades de tu plan» (desde Revisión, «Ver todo»): todas las guardadas, de la más nueva a la más vieja. */
 @Composable
 fun NovedadesListaPantalla(
     m: ModeloNovedades,

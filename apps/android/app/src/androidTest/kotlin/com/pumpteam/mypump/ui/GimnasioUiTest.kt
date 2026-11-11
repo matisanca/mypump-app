@@ -241,9 +241,9 @@ class GimnasioUiTest : PruebaUi() {
         p.nodo(etiqueta("pestana-entreno"))
         p.quieto(1500)
         assertFalse("con el gimnasio cargado no va la tarjeta", p.existe(etiqueta("gimnasio-tarjeta")))
-        p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("mis-datos"))
-        p.tocar(etiqueta("mis-datos-gimnasio"))
+        // Simplificar: «Mi gimnasio y mi técnica», al final de Entreno.
+        p.abrirDondeEntreno()
+        p.tocar(etiqueta("donde-entreno-gimnasio"))
     }
 
     @Test

@@ -21,7 +21,7 @@ enum class Pestana(val titulo: String) {
     DIETA("Dieta"),
     CHAT("Chat"),
     REVISION("Revisión"),
-    SALUD("Salud"),
+    SALUD("Mi progreso"),
 
     /** Solo si el cliente tiene suplementación (`mypump_suplementacion` devolvió una fila). */
     SUPLEMENTACION("Suplementación");
@@ -123,8 +123,25 @@ class Navegacion(
     /** «Mi técnica» abierto desde Mis datos. */
     var tecnicaEnMisDatos by mutableStateOf(tecnicaEnMisDatos)
 
+    /** «Mi gimnasio y mi técnica» (simplificar, 11/11), encima de Entreno. */
+    var dondeEntreno by mutableStateOf(false)
+
+    /** La respuesta de técnica que se abre directo al entrar (el botón del renglón de Entreno), o null. */
+    var devolucionDondeEntreno by mutableStateOf<String?>(null)
+
+    fun abrirDondeEntreno(devolucion: String?) {
+        elegir(Pestana.ENTRENO)
+        devolucionDondeEntreno = devolucion
+        dondeEntreno = true
+    }
+
+    fun cerrarDondeEntreno() {
+        dondeEntreno = false
+        devolucionDondeEntreno = null
+    }
+
     /** «Novedades de tu plan» abierto desde Mis datos (no sobrevive a rotar: vuelve a Mis datos). */
-    var novedadesEnMisDatos by mutableStateOf(false)
+    var novedadesEnRevision by mutableStateOf(false)
     /** «Documentos» (contrato y consentimiento) abierto desde Mis datos o desde el aviso del contrato pendiente. */
     var documentosEnMisDatos by mutableStateOf(documentosEnMisDatos)
     /**
@@ -187,7 +204,7 @@ class Navegacion(
             guiaEnMisDatos = false
             gimnasioEnMisDatos = false
             tecnicaEnMisDatos = false
-            novedadesEnMisDatos = false
+            novedadesEnRevision = false
             documentosEnMisDatos = false
             miSalud = false
             fotosInicio = false
@@ -198,6 +215,7 @@ class Navegacion(
         if (p == pestana && p == Pestana.ENTRENO) {
             guia = false
             gimnasio = false
+            cerrarDondeEntreno()
         }
         pestana = p
     }
@@ -207,7 +225,10 @@ class Navegacion(
         // Un aviso de otro destino (chat, dieta…) con Presión abierta: se cierra, si no tapaba a donde se fue. Como iOS.
         if (destino != DestinoAviso.PRESION) cerrarPresion()
         when (destino) {
-            DestinoAviso.ENTRENO -> pestana = Pestana.ENTRENO
+            DestinoAviso.ENTRENO -> {
+                pestana = Pestana.ENTRENO
+                cerrarDondeEntreno()
+            }
             DestinoAviso.DIETA -> pestana = Pestana.DIETA
             DestinoAviso.CHAT -> pestana = Pestana.CHAT
             // `progress` (lo que era Progreso): Revisión + Salud → Fuerza. No es de salud: no pasa por Mi salud.
@@ -238,7 +259,7 @@ class Navegacion(
         guiaEnMisDatos = false
         gimnasioEnMisDatos = false
         tecnicaEnMisDatos = false
-        novedadesEnMisDatos = false
+        novedadesEnRevision = false
         documentosEnMisDatos = false
         miSalud = false
         anclaMiSalud = null
@@ -284,7 +305,7 @@ class Navegacion(
         guiaEnMisDatos = false
         gimnasioEnMisDatos = false
         tecnicaEnMisDatos = false
-        novedadesEnMisDatos = false
+        novedadesEnRevision = false
         documentosEnMisDatos = false
         miSalud = false
         anclaMiSalud = null
@@ -316,7 +337,7 @@ class Navegacion(
 
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos, it.documentosEnMisDatos, it.miSalud, it.fotosInicio, it.fotosInicioEnMisDatos, it.presion, it.presionDirecta) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos, it.documentosEnMisDatos, it.miSalud, it.fotosInicio, it.fotosInicioEnMisDatos, it.presion, it.presionDirecta, it.dondeEntreno, it.aperturasSalud) },
             restore = {
                 Navegacion(
                     Pestana.entries.firstOrNull { p -> p.name == it[0] } ?: Pestana.ENTRENO,
@@ -334,7 +355,11 @@ class Navegacion(
                     it.getOrNull(12) as? Boolean ?: false,
                     it.getOrNull(13) as? Boolean ?: false,
                     it.getOrNull(14) as? Boolean ?: false,
-                )
+                ).also { n ->
+                    n.dondeEntreno = it.getOrNull(15) as? Boolean ?: false
+                    // Al rotar, Mi progreso no vuelve a saltar a la sección ni cierra el ejercicio abierto.
+                    n.aperturasSalud = it.getOrNull(16) as? Int ?: 0
+                }
             },
         )
     }

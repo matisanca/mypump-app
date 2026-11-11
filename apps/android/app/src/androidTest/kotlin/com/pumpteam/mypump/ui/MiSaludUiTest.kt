@@ -63,8 +63,14 @@ class MiSaludUiTest : PruebaUi() {
     private fun completa(t: String) {
         tema(t)
         lanzarTodo()
-        p.nodo(etiqueta("control-tarjeta-inicio"), 40_000)
-        p.nodo(etiqueta("tarjeta-presion"), 20_000)
+        // Simplificar: arriba de Entreno, UNA tarjeta «Mi salud» (en lugar de las de control, estudios y presión), con
+        // lo primero para hacer, el número y «Y 2 cosas más».
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"), 40_000)
+        p.esperar("las tres cosas en el inicio", 20_000) { p.descripcion(etiqueta("tarjeta-mi-salud-inicio-cuenta")).takeIf { it == "3 cosas para hacer" } }
+        p.nodo(texto("Y 2 cosas más"))
+        p.nodo(texto("Subir resultado"))
+        for (vieja in listOf("control-tarjeta-inicio", "estudios-tarjeta-inicio", "tarjeta-presion")) assertFalse(vieja, p.existe(etiqueta(vieja)))
+        Telefono.captura("simplificar-1-entreno-mi-salud-$t")
         p.tocar(etiqueta("pestana-revision"))
         // La tarjeta, arriba, con el número de cosas para hacer y lo primero.
         p.nodo(etiqueta("tarjeta-mi-salud"))
@@ -122,7 +128,7 @@ class MiSaludUiTest : PruebaUi() {
         // La fila abre Salud en Recuperación y Volver regresa a Mi salud.
         p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.esperar("Salud abierta") { p.enSalud() }
-        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.esperar("Recuperación elegida") { p.enSeccion("recuperacion") }
         p.tocar(etiqueta("volver"))
         p.nodo(etiqueta("mi-salud-pantalla"))
     }
@@ -135,7 +141,7 @@ class MiSaludUiTest : PruebaUi() {
     @Test
     fun misDatosTieneUnaSolaFila() {
         lanzarTodo()
-        p.nodo(etiqueta("tarjeta-presion"), 20_000)
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"), 20_000)
         p.tocar(etiqueta("pestana-revision"))
         p.tocar(etiqueta("mis-datos"))
         p.nodo(etiqueta("mis-datos-mi-salud"))
@@ -170,28 +176,21 @@ class MiSaludUiTest : PruebaUi() {
         assertTrue(p.seleccionado(etiqueta("pestana-revision")))
     }
 
-    /** La tarjeta de presión del inicio también lleva a Mi salud (con Presión encima, directo en la toma). */
+    /** La tarjeta «Mi salud» del inicio lleva a lo primero pendiente: con un estudio para hacer, Mi salud en Estudios. */
     @Test
-    fun laTarjetaDePresionDelInicioLlevaAMiSalud() {
+    fun laTarjetaDelInicioLlevaALoPrimeroPendiente() {
         lanzarTodo()
-        p.nodo(etiqueta("tarjeta-presion"), 20_000)
-        p.tocar(etiqueta("tarjeta-presion-boton"))
-        p.nodo(etiqueta("presion-cuando"))
-        p.tocar(etiqueta("presion-flujo-cerrar"))
-        p.esperar("cerró Presión") { (!p.existe(etiqueta("presion-cuando"))).takeIf { it } }
-        if (p.existe(etiqueta("presion-cerrar-seccion"))) p.tocar(etiqueta("presion-cerrar-seccion"))
+        p.tocar(etiqueta("tarjeta-mi-salud-inicio-boton"), 20_000)
         p.nodo(etiqueta("mi-salud-pantalla"))
+        p.nodo(etiqueta("mi-salud-bloque-estudios"))
+        assertTrue(p.seleccionado(etiqueta("pestana-revision")))
     }
 
-    /** `?scene=estudios` y la tarjeta del control del inicio: Mi salud, en su bloque. */
+    /** `?scene=estudios`: Mi salud, en su bloque. */
     @Test
-    fun elLinkDeEstudiosYLaTarjetaDelControlCaenEnMiSalud() {
+    fun elLinkDeEstudiosCaeEnMiSalud() {
         lanzarTodo { abrirConLink("https://app.mypumpteam.com/?t=${ServidorDePrueba.TOKEN}&scene=estudios") }
         p.nodo(etiqueta("mi-salud-pantalla"), 30_000)
         p.nodo(etiqueta("mi-salud-bloque-estudios"))
-        p.tocar(etiqueta("pestana-entreno"))
-        p.tocar(etiqueta("control-tarjeta-inicio-boton"))
-        p.nodo(etiqueta("mi-salud-pantalla"))
-        p.nodo(etiqueta("mi-salud-bloque-control"))
     }
 }

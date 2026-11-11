@@ -63,4 +63,12 @@ class MiSaludTest {
         }
         assertEquals("Mi salud", MiSalud.TITULO)
     }
+
+    @Test
+    fun masCosasDebajoDeLaLinea() {
+        assertEquals(null, MiSalud.masCosas(0))
+        assertEquals(null, MiSalud.masCosas(1))
+        assertEquals("Y 1 cosa más", MiSalud.masCosas(2))
+        assertEquals("Y 2 cosas más", MiSalud.masCosas(3))
+    }
 }

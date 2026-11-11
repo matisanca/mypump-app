@@ -578,3 +578,56 @@ fun Pantalla.abrirSalud() {
 
 /** Salud abierta encima de Revisión: la pantalla de Salud a la vista y Revisión marcada en la barra. */
 fun Pantalla.enSalud(): Boolean = existe(etiqueta("salud-pantalla")) && seleccionado(etiqueta("pestana-revision"))
+
+/**
+ * «Mi progreso» (simplificar, 11/11): ya no hay botones de Recuperación, Fuerza y Cuerpo; es una columna con un título por
+ * sección. Esto baja (o sube) hasta que el título de la sección queda arriba de todo.
+ */
+fun Pantalla.verSeccion(seccion: String) {
+    val s = etiqueta("mi-progreso-$seccion")
+    var ultimo = 0L
+    esperar("se puede ir a la sección $seccion") {
+        val n = nodo(s, ms = 0)
+        var padre: androidx.compose.ui.semantics.SemanticsNode? = n.parent
+        while (padre != null && padre.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) == null) padre = padre.parent
+        val lista = padre ?: return@esperar null
+        // positionInRoot, no boundsInRoot: fuera de la vista los límites quedan recortados a nada.
+        val dy = n.positionInRoot.y - lista.boundsInRoot.top
+        // El título grande de arriba se pliega con el primer desplazamiento y se come parte: se insiste hasta llegar (o
+        // hasta el final de la lista, si la sección es la última y no sube más).
+        val rango = lista.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange)
+        val tope = rango != null && ((dy > 0 && rango.value() >= rango.maxValue() - 1f) || (dy < 0 && rango.value() <= 0f))
+        if (kotlin.math.abs(dy) <= 2f || tope) return@esperar true
+        // Un pedido cada 700 ms: cada uno anima el desplazamiento y otro encima cortaría la animación.
+        val ahora = android.os.SystemClock.uptimeMillis()
+        if (ahora - ultimo > 700) {
+            lista.config[androidx.compose.ui.semantics.SemanticsActions.ScrollBy].action?.invoke(0f, dy)
+            ultimo = ahora
+        }
+        null
+    }
+    quieto(400)
+}
+
+/** La sección de «Mi progreso» quedó a la vista arriba (lo que antes era el botón elegido). */
+fun Pantalla.enSeccion(seccion: String): Boolean {
+    if (!existe(etiqueta("mi-progreso-$seccion"))) return false
+    val n = nodo(etiqueta("mi-progreso-$seccion"), ms = 0)
+    val lista = nodo(etiqueta("mi-progreso-lista"), ms = 0)
+    val arriba = lista.boundsInRoot.top
+    // Recuperación es lo primero: la pantalla abre arriba de todo (con el aviso de Revisión encima, si lo hay), así que
+    // alcanza con que su título esté a la vista.
+    val aLaVista = n.positionInRoot.y >= arriba - 4f && n.positionInRoot.y < lista.boundsInRoot.bottom - 40f
+    if (seccion == "recuperacion") return aLaVista
+    // La última sección puede no llegar arriba de todo (no hay más para desplazar): alcanza con la lista al final.
+    val rango = lista.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange)
+    val alFinal = rango != null && rango.value() >= rango.maxValue() - 1f
+    return aLaVista && (alFinal || n.positionInRoot.y <= arriba + lista.boundsInRoot.height * 0.35f)
+}
+
+/** «Mi gimnasio y mi técnica» (simplificar, 11/11): el renglón grande al final de Entreno. */
+fun Pantalla.abrirDondeEntreno() {
+    tocar(etiqueta("pestana-entreno"))
+    tocar(etiqueta("donde-entreno-entrada"), 20_000)
+    nodo(etiqueta("donde-entreno"))
+}

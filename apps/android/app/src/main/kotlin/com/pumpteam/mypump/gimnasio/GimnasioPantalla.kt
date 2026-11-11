@@ -125,26 +125,24 @@ private fun observar(m: ModeloGimnasio): Vista {
     return Vista(estado, cola, subiendo, urls, avisoFoto, avisoEnvio, subidas, total, borrador)
 }
 
-/** La tarjeta «Tu gimnasio» arriba en Entreno. Sin cuenta, con la palanca apagada o sin el servidor nuevo, no existe. */
+/**
+ * La tarjeta «Tu gimnasio» arriba en Entreno, solo mientras falte algo ([ModeloGimnasio.tarjetaVisible]). Desde la 2.3.0
+ * (simplificar) «¿Entrenás en casa? Tocá acá» ya no va suelto: el interruptor está en «Mi gimnasio y mi técnica»
+ * ([EntradaDondeEntreno], al final de Entreno). Sin cuenta, con la palanca apagada o sin el servidor nuevo, no existe.
+ */
 @Composable
 fun TarjetaGimnasioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     val g by modelo.gimnasio.collectAsStateWithLifecycle()
     val m = g ?: return
-    val v = observar(m)
+    observar(m)
     // Con un borrador de casa la tarjeta no habla de zonas ni de fotos.
     val casa by modelo.casa.collectAsStateWithLifecycle()
     val estadoCasa = casa?.estado?.collectAsStateWithLifecycle()?.value
-    // «¿Entrenás en casa? Tocá acá»: mientras no entrene en casa y se pueda cambiar, un botón grande que lleva al interruptor.
-    // Va también con el gimnasio ya cargado (sin la tarjeta): nadie queda a tres toques.
-    // Como iPhone: con la palanca `casa` y el estado del gimnasio (sin él, Mi gimnasio se abriría vacío).
-    val ofrecerCasa = casa?.palancaRecordada == true && v.estado != null &&
-        estadoCasa?.let { Casa.interruptor(it) }?.let { !it.prendido && it.sePuedeMover } == true
-    if (!m.tarjetaVisible && !ofrecerCasa) return
+    if (!m.tarjetaVisible) return
     val c = MyPump.colores
     val navegacion = LocalNavegacion.current
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-    if (m.tarjetaVisible) Row(
-        Modifier
+    Row(
+        modifier
             .fillMaxWidth()
             .superficieTarjeta()
             .clip(RoundedCornerShape(Radio.tarjeta))
@@ -160,19 +158,15 @@ fun TarjetaGimnasioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(T.tarjetaTitulo, style = MaterialTheme.typography.titleMedium, color = c.texto)
             Text(
-                if (Casa.pantalla(estadoCasa) == Casa.Pantalla.LISTA) Casa.Textos.LISTA_TITULO else detalleTarjeta(m),
+                if (Casa.pantalla(estadoCasa) == Casa.Pantalla.LISTA) Casa.Textos.LISTA_TITULO else detalleTarjetaGimnasio(m),
                 style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario,
             )
         }
         Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
     }
-    if (ofrecerCasa) {
-        BotonSecundario(Casa.Textos.TARJETA, alTocar = { navegacion?.gimnasio = true }, modifier = Modifier.fillMaxWidth().testTag("casa-tarjeta"), tono = c.marcaTexto)
-    }
-    }
 }
 
-private fun detalleTarjeta(m: ModeloGimnasio): String = when (m.pantalla) {
+internal fun detalleTarjetaGimnasio(m: ModeloGimnasio): String = when (m.pantalla) {
     Gimnasio.Pantalla.ZONAS -> if (m.faltantes.isEmpty()) T.revisarYEnviar else T.faltanZonas(m.faltantes.size)
     Gimnasio.Pantalla.RECIBIDO -> T.recibido
     Gimnasio.Pantalla.PREGUNTAS -> T.confirmarTarjeta

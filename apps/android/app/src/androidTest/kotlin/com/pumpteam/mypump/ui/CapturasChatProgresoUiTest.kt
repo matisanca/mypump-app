@@ -136,12 +136,12 @@ class CapturasChatProgresoUiTest : PruebaUi() {
         guardarCuenta()
         abrir().also {
             p.abrirSalud()
-            p.tocar(etiqueta("segmento-fuerza"))
+            p.verSeccion("fuerza")
             p.esperar("los totales") { p.textosBajo(etiqueta("progreso-totales")).contains("32") }
             foto("progreso-01-lista")
-            p.desplazar(etiqueta("progreso-lista"), 1_400f)
+            p.desplazar(etiqueta("mi-progreso-lista"), 1_400f)
             foto("progreso-02-lista-abajo")
-            p.desplazar(etiqueta("progreso-lista"), -3_000f)
+            p.desplazar(etiqueta("mi-progreso-lista"), -3_000f)
             p.tocar(etiqueta("progreso-fila-jalon-al-pecho-prono-dorsal-ancho-d1-0"))
             p.nodo(etiqueta("progreso-grafico"))
             foto("progreso-03-detalle")
@@ -164,7 +164,7 @@ class CapturasChatProgresoUiTest : PruebaUi() {
             p.modeloCargado(e)
             servidor.sinRed = true
             p.abrirSalud()
-            p.tocar(etiqueta("segmento-fuerza"))
+            p.verSeccion("fuerza")
             p.nodo(etiqueta("progreso-sin-red"))
             foto("progreso-07-sin-red")
             servidor.sinRed = false
@@ -174,7 +174,7 @@ class CapturasChatProgresoUiTest : PruebaUi() {
         abrir().also {
             p.nodo(etiqueta("pestana-revision"), ms = 40_000)
             p.abrirSalud()
-            p.tocar(etiqueta("segmento-fuerza"))
+            p.verSeccion("fuerza")
             p.nodo(etiqueta("progreso-cargando"), ms = 20_000)
             foto("progreso-08-cargando")
         }.close()
@@ -185,7 +185,7 @@ class CapturasChatProgresoUiTest : PruebaUi() {
             p.tocar(etiqueta("ver-demo"))
             // Salud se abre desde la tarjeta Recuperación de Revisión.
             p.abrirSalud()
-            p.tocar(etiqueta("segmento-fuerza"))
+            p.verSeccion("fuerza")
             // Desde la cola A la demo trae historial (`HistorialDemo`): Fuerza muestra los totales, no el vacío.
             p.nodo(etiqueta("progreso-totales"))
             assertFalse(p.existe(etiqueta("progreso-vacio")))

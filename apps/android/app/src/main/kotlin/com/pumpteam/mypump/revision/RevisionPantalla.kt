@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -92,7 +94,13 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirMiSalud: (com.pumpteam.mypump.reglas.MiSalud.Bloque?) -> Unit, alAbrirFuerza: () -> Unit) {
+fun RevisionPantalla(
+    modelo: ModeloApp,
+    alAbrirMisDatos: () -> Unit,
+    alAbrirMiSalud: (com.pumpteam.mypump.reglas.MiSalud.Bloque?) -> Unit,
+    alAbrirFuerza: () -> Unit,
+    alVerNovedades: () -> Unit = {},
+) {
     val revision by modelo.revision.collectAsStateWithLifecycle()
     val salud by modelo.salud.collectAsStateWithLifecycle()
     val fotos by modelo.fotos.collectAsStateWithLifecycle()
@@ -168,19 +176,22 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirMiSa
         "Revisión",
         subtitulo = semanaActual(),
         acciones = {
-            // El círculo de vidrio de iOS 26 (el mismo de volver), no un ícono suelto.
-            Box(
+            // «Mis datos» con texto (simplificar, 11/11): un dibujito solo no se entiende como puerta. La píldora de vidrio de
+            // iOS 26 (la misma de volver), con el ícono y la palabra.
+            Row(
                 Modifier
                     .padding(end = Espacio.s)
-                    .size(48.dp)
+                    .defaultMinSize(minHeight = 48.dp)
                     .vidrio(CircleShape, elevacion = 6.dp)
                     .clickable(role = Role.Button, onClick = alAbrirMisDatos)
-                    .semantics { contentDescription = "Mis datos" }
-                    .testTag("mis-datos"),
-                contentAlignment = Alignment.Center,
+                    .semantics(mergeDescendants = true) {}
+                    .testTag("mis-datos")
+                    .padding(horizontal = Espacio.m - 2.dp, vertical = Espacio.xs),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Espacio.xs),
             ) {
-                // Un estudio pedido o una orden sin ver ya no marca Mis datos: el camino es la tarjeta «Mi salud», con su número.
-                Icon(Iconos.Persona, contentDescription = null, tint = MyPump.colores.marcaTexto, modifier = Modifier.size(26.dp))
+                Icon(Iconos.Persona, contentDescription = null, tint = MyPump.colores.marcaTexto, modifier = Modifier.size(24.dp))
+                Text("Mis datos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MyPump.colores.marcaTexto, maxLines = 1)
             }
         },
     ) { relleno ->
@@ -238,6 +249,9 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirMiSa
                     val devoluciones = if (esDemo) demoHistorial?.devoluciones else devolucion
                     val ultima = devoluciones?.ultima
                     if (ultima != null) TarjetaDevolucion(ultima, devoluciones.anteriores)
+                    // «Lo último que cambió en tu plan» (simplificar, 11/11): debajo de la devolución, con «Ver todo». Cada
+                    // parte con su palanca (`devolucion_semanal`, `novedades_plan`): con una sola, solo esa.
+                    com.pumpteam.mypump.novedades.NovedadesEnRevision(modelo, alVerNovedades)
                     // Con el check guiado, la tarjeta del check es lo primero de Revisión, siempre: fácil de encontrar.
                     val conTarjeta = revision?.takeIf { conCheckGuiado }
                     if (conTarjeta != null) {

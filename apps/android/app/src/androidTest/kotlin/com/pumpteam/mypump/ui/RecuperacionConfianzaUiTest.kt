@@ -50,7 +50,7 @@ class RecuperacionConfianzaUiTest : PruebaUi() {
     /** Revisión → tarjeta Recuperación → Salud en Recuperación: la card de recuperación va arriba de todo. */
     private fun hastaLaCard() {
         p.abrirSalud()
-        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.esperar("Recuperación elegida") { p.enSeccion("recuperacion") }
         p.nodo(etiqueta("card-recuperacion"))
         p.quieto(400)
     }

@@ -57,6 +57,17 @@ import com.pumpteam.mypump.diseno.AzulejoSuave
 import com.pumpteam.mypump.diseno.EncabezadoSeccion
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.FilaDestino
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.unit.em
+import com.pumpteam.mypump.guia.VerdeGuia
+import com.pumpteam.mypump.raiz.LocalNavegacion
+import com.pumpteam.mypump.reglas.TextosControles
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MarcoPantalla
 import com.pumpteam.mypump.diseno.MyPump
@@ -97,8 +108,16 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** Lo que tarda en aparecer un bloque pedido (la sección carga con la app recién abierta) antes de quedarse arriba. */
 private const val ESPERA_BLOQUE_MS = 20_000L
 
-/** Lo que hay hoy en Mi salud y lo que dice su tarjeta de Revisión. */
-data class EstadoMiSalud(val bloques: List<MiSalud.Bloque>, val tarjeta: MiSalud.Tarjeta?)
+/**
+ * Lo que hay hoy en Mi salud y lo que dice su tarjeta de Revisión. [botonEstudios] y [presion] son lo que mostraban las
+ * tarjetas viejas del inicio (el texto del botón de Estudios y la tarjeta de Presión), para la tarjeta verde de Entreno.
+ */
+data class EstadoMiSalud(
+    val bloques: List<MiSalud.Bloque>,
+    val tarjeta: MiSalud.Tarjeta?,
+    val botonEstudios: Estudios.TarjetaInicio? = null,
+    val presion: ModeloPresion.Tarjeta? = null,
+)
 
 /** La línea de la tarjeta de Revisión para lo que pide Presión. «La de hoy ya está» no pide nada. */
 fun lineaPresion(t: ModeloPresion.Tarjeta?): String? = when (t) {
@@ -124,7 +143,109 @@ fun estadoMiSalud(modelo: ModeloApp): EstadoMiSalud {
         control = controlCerca,
         presion = lineaPresion(tarjetaPresion),
     )
-    return EstadoMiSalud(MiSalud.bloques(partes), MiSalud.tarjeta(partes, pendientes))
+    return EstadoMiSalud(MiSalud.bloques(partes), MiSalud.tarjeta(partes, pendientes), e?.let(Estudios::tarjetaInicio), tarjetaPresion)
+}
+
+/**
+ * Arriba de Entreno (simplificar, 11/11): en lugar de las tarjetas de presión, estudios y control, UNA sola «Mi salud», y
+ * solo con algo para hacer. Verde como las viejas, con la línea de lo primero pendiente, el número de cosas y un botón
+ * grande con el texto de siempre de esa cosa. Estudios y control llevan a su bloque de Mi salud; la presión, directo a la
+ * toma (con Mi salud debajo), como la tarjeta vieja. Gemela de `TarjetaMiSaludInicio` de iOS.
+ */
+@Composable
+fun TarjetaMiSaludInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
+    val navegacion = LocalNavegacion.current
+    val estado = estadoMiSalud(modelo)
+    val t = estado.tarjeta?.takeIf { it.cuenta > 0 } ?: return
+    val primero = t.bloque ?: return
+    val boton: Pair<String, ImageVector> = when (primero) {
+        // Sin pendiente de estudios, lo primero es el control cerca (sin bloque propio: va en Estudios).
+        MiSalud.Bloque.ESTUDIOS -> estado.botonEstudios?.let { it.boton to (if (it.nueva) Iconos.FlechaDerecha else Iconos.FlechaArriba) }
+            ?: (TextosControles.verMisEstudios to Iconos.FlechaDerecha)
+        MiSalud.Bloque.CONTROL -> TextosControles.verMisEstudios to Iconos.FlechaDerecha
+        MiSalud.Bloque.PRESION -> when (estado.presion) {
+            ModeloPresion.Tarjeta.Repetir -> TextosPresion.N.repetir
+            ModeloPresion.Tarjeta.Preparar -> TextosPresion.N.empezar
+            is ModeloPresion.Tarjeta.Toma -> TextosPresion.N.tomaDeHoy
+            is ModeloPresion.Tarjeta.HoyListo, null -> null
+        }?.let { it to Iconos.Corazon }
+        MiSalud.Bloque.RECUPERACION -> null
+        // Con algo para hacer, la tarjeta nunca se esconde por falta de botón: «Ver» abre Mi salud en ese bloque.
+    } ?: ("Ver" to Iconos.FlechaDerecha)
+    val ir = {
+        when (primero) {
+            MiSalud.Bloque.ESTUDIOS -> navegacion?.irAEstudios()
+            MiSalud.Bloque.CONTROL -> navegacion?.irAControl()
+            MiSalud.Bloque.PRESION -> if (estado.presion != null) navegacion?.irAPresion(true) else navegacion?.irAMiSalud(MiSalud.Bloque.PRESION)
+            MiSalud.Bloque.RECUPERACION -> navegacion?.irAMiSalud(MiSalud.Bloque.RECUPERACION)
+        }
+        Unit
+    }
+    val apilada = LocalDensity.current.fontScale >= 1.5f
+    val mas = MiSalud.masCosas(t.cuenta)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Radio.tarjeta))
+            .background(VerdeGuia)
+            .clickable(onClickLabel = boton.first, role = Role.Button, onClick = ir)
+            .testTag("tarjeta-mi-salud-inicio")
+            .padding(Espacio.m + 2.dp),
+        verticalArrangement = Arrangement.spacedBy(Espacio.s + 4.dp),
+    ) {
+        val insignia: @Composable () -> Unit = {
+            Box(
+                Modifier.defaultMinSize(minWidth = 32.dp, minHeight = 32.dp).clip(CircleShape).background(Color.White).padding(horizontal = 8.dp)
+                    .clearAndSetSemantics {
+                        contentDescription = if (t.cuenta == 1) "1 cosa para hacer" else "${t.cuenta} cosas para hacer"
+                        testTag = "tarjeta-mi-salud-inicio-cuenta"
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("${t.cuenta}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = VerdeGuia, textAlign = TextAlign.Center)
+            }
+        }
+        val icono: @Composable () -> Unit = {
+            Box(Modifier.size(52.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                Icon(Iconos.Corazon, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+            }
+        }
+        val textos: @Composable (Modifier) -> Unit = { m ->
+            Column(
+                // TalkBack la lee de una, como encabezado: «Mi salud», la línea y si hay más.
+                m.semantics(mergeDescendants = true) {
+                    heading()
+                    testTag = "tarjeta-mi-salud-inicio-texto"
+                },
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(MiSalud.CEJA_INICIO.uppercase(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, letterSpacing = 0.08.em, color = Color.White)
+                Text(t.linea, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                if (mas != null) Text(mas, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = Color.White)
+            }
+        }
+        // Con la letra muy grande, el ícono y el número arriba y el texto con todo el ancho.
+        if (apilada) {
+            Row(verticalAlignment = Alignment.CenterVertically) { icono(); Spacer(Modifier.weight(1f)); insignia() }
+            textos(Modifier.fillMaxWidth())
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s + 4.dp)) {
+                icono()
+                textos(Modifier.weight(1f))
+                insignia()
+            }
+        }
+        Button(
+            onClick = ir,
+            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp).testTag("tarjeta-mi-salud-inicio-boton"),
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = VerdeGuia),
+            elevation = null,
+        ) {
+            Icon(boton.second, contentDescription = null, modifier = Modifier.size(20.dp))
+            Text(boton.first, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(start = Espacio.xs))
+        }
+    }
 }
 
 /** La tarjeta «Mi salud» de Revisión. Sin ningún bloque no existe. */

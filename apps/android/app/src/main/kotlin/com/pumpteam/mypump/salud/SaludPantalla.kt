@@ -18,7 +18,16 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -54,12 +63,11 @@ import com.pumpteam.mypump.diseno.EstadoVacio
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MarcoPantalla
 import com.pumpteam.mypump.diseno.MyPump
-import com.pumpteam.mypump.diseno.Segmentado
 import com.pumpteam.mypump.diseno.Tarjeta
 import com.pumpteam.mypump.diseno.rellenoInferior
 import com.pumpteam.mypump.diseno.sinAbajo
 import com.pumpteam.mypump.entreno.Letras
-import com.pumpteam.mypump.progreso.FuerzaSegmento
+import com.pumpteam.mypump.progreso.FuerzaContenido
 import com.pumpteam.mypump.progreso.ProgresoDetalle
 import com.pumpteam.mypump.raiz.AnclaRevision
 import com.pumpteam.mypump.raiz.BannerRevision
@@ -78,16 +86,18 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * Salud (2.1, S1): la quinta pestaña, donde estaba Progreso. Arriba un control segmentado con Recuperación, Fuerza y
- * Cuerpo; arranca en Recuperación y queda el último elegido mientras viva la app ([LocalNavegacion]). Un aviso o un link
- * eligen el segmento (`progress` → Fuerza, el viejo `myday` → Recuperación).
+ * «Mi progreso» (simplificar, OK de Mati del 11/11; antes «Salud», con Recuperación, Fuerza y Cuerpo en tres botones de
+ * arriba que a los mayores les costaban): todo en UNA columna, con un título por sección. Se abre desde «Tu progreso» de
+ * Revisión y desde la Recuperación de Mi salud, arriba (Recuperación primero); el aviso `progress` y «Fuerza» bajan a
+ * Fuerza ([Navegacion.segmentoSalud] dice a qué sección ir). Nada de la recuperación se saca. Tirar hacia abajo recarga todo.
  *
- * - Recuperación: el score (con motivos, confianza y tendencia), la salud (sueño, corazón, actividad) y Mi reloj, que
- *   antes estaban en Revisión. En la demo no hay cuenta: lo dice.
- * - Fuerza: el volumen por músculo de la semana y lo que era Progreso (el detalle de un ejercicio tapa la pestaña).
+ * - Recuperación: el score (con motivos, confianza y tendencia), la salud (sueño, corazón, actividad) y Mi reloj. En la
+ *   demo no hay cuenta: lo dice.
+ * - Fuerza: el volumen por músculo de la semana y cada ejercicio (el detalle de un ejercicio tapa la pantalla).
  * - Cuerpo: el peso (con la carga del día), las fotos por semana y el check de la semana, de solo lectura: se suben en
  *   Revisión.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaludPantalla(modelo: ModeloApp, alVolver: (() -> Unit)? = null) {
     val navegacion = LocalNavegacion.current
@@ -96,7 +106,7 @@ fun SaludPantalla(modelo: ModeloApp, alVolver: (() -> Unit)? = null) {
     val tarjetas = progreso?.tarjetas?.collectAsStateWithLifecycle()?.value.orEmpty()
     // El ejercicio abierto en Fuerza (su id). Sobrevive a cambiar de pestaña y a rotar, como la pila de iOS.
     var abierto by rememberSaveable { mutableStateOf<String?>(null) }
-    // Abrir Salud de nuevo (la tarjeta o un aviso) arranca en la lista, no en el ejercicio que había quedado abierto.
+    // Abrir Mi progreso de nuevo (la tarjeta o un aviso) arranca en la lista, en la sección pedida.
     val aperturas = navegacion?.aperturasSalud ?: 0
     var aperturaVista by rememberSaveable { mutableStateOf(aperturas) }
     if (aperturas != aperturaVista) {
@@ -104,9 +114,52 @@ fun SaludPantalla(modelo: ModeloApp, alVolver: (() -> Unit)? = null) {
         abierto = null
     }
     // Afuera de la lista: al volver del detalle queda donde estaba.
-    val estadoLista = rememberLazyListState()
-    val elegida = abierto?.takeIf { segmento == SegmentoSalud.FUERZA }?.let { id -> tarjetas.firstOrNull { it.id == id } }
+    val desplazamiento = rememberScrollState()
+    val elegida = abierto?.let { id -> tarjetas.firstOrNull { it.id == id } }
     BackHandler(enabled = elegida != null) { abierto = null }
+    // Al volver del detalle, la lista queda donde estaba: al reaparecer se mide de a poco y el desplazamiento se recortaba
+    // (se volvía a Recuperación). Se anota al abrir y se repone cuando la lista vuelve a tener ese largo.
+    var volverA by rememberSaveable { mutableStateOf(-1) }
+    LaunchedEffect(elegida != null) {
+        if (elegida != null) {
+            volverA = desplazamiento.value
+        } else if (volverA >= 0) {
+            val a = volverA
+            withTimeoutOrNull(3_000) { snapshotFlow { desplazamiento.maxValue }.first { it >= a } }
+            desplazamiento.scrollTo(a)
+            volverA = -1
+        }
+    }
+    // Dónde empieza cada sección (en lo que se desplaza), para bajar a la pedida.
+    val inicios = remember { mutableStateMapOf<SegmentoSalud, Int>() }
+    val reducir = com.pumpteam.mypump.entreno.reducirMovimiento()
+    // El salto se hace una vez por apertura: rotar (o volver del detalle) no vuelve a mover la lista.
+    val pedido = "$aperturas-${segmento.name}"
+    var saltoHecho by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(pedido) {
+        if (saltoHecho == pedido) return@LaunchedEffect
+        saltoHecho = pedido
+        if (segmento == SegmentoSalud.RECUPERACION) {
+            desplazamiento.scrollTo(0)
+            return@LaunchedEffect
+        }
+        // La sección puede tardar en medirse (la pantalla recién abre): se espera un poco.
+        val y = withTimeoutOrNull(5_000) { snapshotFlow { inicios[segmento] }.filterNotNull().first() } ?: return@LaunchedEffect
+        if (reducir) desplazamiento.scrollTo(y) else desplazamiento.animateScrollTo(y)
+        // Lo de arriba puede crecer después (la recuperación llega con la app recién abierta, por un aviso): durante unos
+        // segundos la sección se sigue, mientras la persona no haya movido la lista.
+        var donde = desplazamiento.value
+        withTimeoutOrNull(4_000) {
+            snapshotFlow { inicios[segmento] }.filterNotNull().collect { nuevo ->
+                if (desplazamiento.isScrollInProgress || desplazamiento.value != donde) return@collect
+                desplazamiento.scrollTo(nuevo)
+                donde = desplazamiento.value
+            }
+        }
+    }
+    val alcance = LocalAlcanceApp.current
+    var recargando by remember { mutableStateOf(false) }
+    val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
 
     AnimatedContent(
         targetState = elegida,
@@ -118,32 +171,67 @@ fun SaludPantalla(modelo: ModeloApp, alVolver: (() -> Unit)? = null) {
                 (slideInHorizontally { -it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { it } + fadeOut())
             }
         },
-        label = "salud",
+        label = "mi-progreso",
     ) { t ->
         if (t != null) {
             ProgresoDetalle(t, alVolver = { abierto = null })
         } else {
-            MarcoPantalla("Salud", modifier = Modifier.testTag("salud-pantalla"), alVolver = alVolver) { relleno ->
-                Column(Modifier.padding(relleno.sinAbajo()).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            MarcoPantalla(TITULO_MI_PROGRESO, modifier = Modifier.testTag("salud-pantalla"), alVolver = alVolver) { relleno ->
+                PullToRefreshBox(
+                    isRefreshing = recargando,
+                    onRefresh = {
+                        if (esDemo) return@PullToRefreshBox   // la demo no toca la red
+                        recargando = true
+                        alcance.launch {
+                            try {
+                                coroutineScope {
+                                    modelo.salud.value?.let { s -> launch { s.cargar() } }
+                                    modelo.revision.value?.let { r -> launch { r.cargarRevision() } }
+                                    modelo.fotos.value?.let { f -> launch { f.cargar() } }
+                                    launch { modelo.cargarProgreso() }
+                                }
+                            } finally {
+                                recargando = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.padding(relleno.sinAbajo()).fillMaxSize(),
+                ) {
                     Column(
-                        Modifier.widthIn(max = AnchoLectura).fillMaxWidth().padding(horizontal = Espacio.m).padding(bottom = Espacio.xs),
-                        verticalArrangement = Arrangement.spacedBy(Espacio.s),
+                        // Con el teclado abierto (el peso del día) lo que se desplaza se achica y el campo queda a la vista.
+                        Modifier.fillMaxSize().imePadding().verticalScroll(desplazamiento).testTag("mi-progreso-lista"),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        // Como la web, arriba de todas las escenas menos Revisión (GEN-03). Sin pendientes no ocupa lugar.
-                        BannerRevision(modelo)
-                        Segmentado(
-                            opciones = SegmentoSalud.entries.map { it.titulo },
-                            elegida = segmento.ordinal,
-                            alElegir = { i -> navegacion?.segmentoSalud = SegmentoSalud.entries[i] },
-                            modifier = Modifier.testTag("salud-segmentos"),
-                            etiquetaPrueba = { i -> SegmentoSalud.entries[i].etiqueta },
-                        )
-                    }
-                    Box(Modifier.weight(1f).fillMaxWidth()) {
-                        when (segmento) {
-                            SegmentoSalud.RECUPERACION -> RecuperacionSegmento(modelo)
-                            SegmentoSalud.FUERZA -> FuerzaSegmento(modelo, estadoLista, alAbrir = { abierto = it })
-                            SegmentoSalud.CUERPO -> CuerpoSegmento(modelo)
+                        Column(
+                            Modifier
+                                .widthIn(max = AnchoLectura)
+                                .fillMaxWidth()
+                                .padding(horizontal = Espacio.m)
+                                .padding(top = Espacio.xs, bottom = Espacio.xl + rellenoInferior()),
+                            verticalArrangement = Arrangement.spacedBy(Espacio.xl),
+                        ) {
+                            // Como la web, arriba de todas las escenas menos Revisión (GEN-03). Sin pendientes no ocupa lugar.
+                            BannerRevision(modelo)
+                            for (seccion in SegmentoSalud.entries) {
+                                Column(
+                                    Modifier.fillMaxWidth().onGloballyPositioned { inicios[seccion] = it.positionInParent().y.toInt() },
+                                    verticalArrangement = Arrangement.spacedBy(Espacio.m),
+                                ) {
+                                    Text(
+                                        seccion.titulo,
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MyPump.colores.texto,
+                                        modifier = Modifier.padding(horizontal = 4.dp).semantics { heading() }.testTag("mi-progreso-${seccion.name.lowercase()}"),
+                                    )
+                                    when (seccion) {
+                                        SegmentoSalud.RECUPERACION -> RecuperacionContenido(modelo)
+                                        SegmentoSalud.FUERZA -> FuerzaContenido(modelo, alAbrir = { abierto = it })
+                                        SegmentoSalud.CUERPO -> CuerpoContenido(modelo)
+                                    }
+                                }
+                            }
+                            PieRespaldo(OrigenRespaldo.RECUPERACION)
                         }
                     }
                 }
@@ -152,84 +240,35 @@ fun SaludPantalla(modelo: ModeloApp, alVolver: (() -> Unit)? = null) {
     }
 }
 
-/** Lo que se desplaza en Recuperación y Cuerpo: a lo ancho de lectura, con lo que tapa la barra de pestañas al final. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun Desplazable(etiqueta: String, alRecargar: (suspend () -> Unit)?, contenido: @Composable () -> Unit) {
-    val alcance = LocalAlcanceApp.current
-    var recargando by remember { mutableStateOf(false) }
-    PullToRefreshBox(
-        isRefreshing = recargando,
-        onRefresh = {
-            val r = alRecargar ?: return@PullToRefreshBox   // la demo no toca la red
-            recargando = true
-            alcance.launch {
-                try {
-                    r()
-                } finally {
-                    recargando = false
-                }
-            }
-        },
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        Column(
-            // Con el teclado abierto (el peso del día) lo que se desplaza se achica y el campo queda a la vista.
-            Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).testTag(etiqueta),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(
-                Modifier
-                    .widthIn(max = AnchoLectura)
-                    .fillMaxWidth()
-                    .padding(horizontal = Espacio.m)
-                    .padding(top = Espacio.xs, bottom = Espacio.xl + rellenoInferior()),
-                verticalArrangement = Arrangement.spacedBy(Espacio.xl),
-            ) { contenido() }
-        }
-    }
-}
+/** El título de la pantalla (la pestaña vieja se llamaba «Salud»). */
+const val TITULO_MI_PROGRESO = "Mi progreso"
 
 /** Recuperación: el score y la salud (del reloj o del teléfono) y Mi reloj. Sin cuenta (la demo), un estado vacío. */
 @Composable
-private fun RecuperacionSegmento(modelo: ModeloApp) {
+private fun RecuperacionContenido(modelo: ModeloApp) {
     val salud by modelo.salud.collectAsStateWithLifecycle()
     var detalle by rememberSaveable { mutableStateOf(false) }
     val s = salud
     val demoHistorial by modelo.demoHistorial.collectAsStateWithLifecycle()
-    if (s == null && demoHistorial != null) {
-        // La demo con historial: el «Pump del día» con sus pasos inventados, y lo demás como siempre en la demo.
-        Desplazable("recuperacion-lista", alRecargar = null) {
-            com.pumpteam.mypump.metas.PumpDelDiaDe(modelo, enSalud = true)
+    Column(Modifier.fillMaxWidth().testTag("recuperacion-lista"), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        if (s == null) {
+            // La demo con historial: el «Pump del día» con sus pasos inventados, y lo demás como siempre en la demo.
+            if (demoHistorial != null) com.pumpteam.mypump.metas.PumpDelDiaDe(modelo, enSalud = true)
             EstadoVacio(
                 icono = Iconos.Reloj,
                 titulo = "Sin datos en la demo",
                 texto = "La recuperación sale de tu reloj o de tu teléfono. En la demo no hay datos.",
                 modifier = Modifier.testTag("recuperacion-vacia"),
             )
-        }
-        return
-    }
-    if (s == null) {
-        EstadoVacio(
-            icono = Iconos.Reloj,
-            titulo = "Sin datos en la demo",
-            texto = "La recuperación sale de tu reloj o de tu teléfono. En la demo no hay datos.",
-            modifier = Modifier.padding(bottom = rellenoInferior()).testTag("recuperacion-vacia"),
-        )
-        return
-    }
-    Desplazable("recuperacion-lista", alRecargar = { s.cargar() }) {
-        Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+        } else {
             com.pumpteam.mypump.metas.PumpDelDiaDe(modelo, enSalud = true)
             CardRecuperacion(s, alVerTodo = { detalle = true })
             CardSalud(s)
+            // Oura y WHOOP según lo que ofrezca el servidor (sin relojes para ofrecer, no ocupa lugar).
+            MiReloj(s, Modifier.testTag("seccion-reloj"))
         }
-        // Oura y WHOOP según lo que ofrezca el servidor (sin relojes para ofrecer, no ocupa lugar).
-        MiReloj(s, Modifier.testTag("seccion-reloj"))
-        PieRespaldo(OrigenRespaldo.RECUPERACION)
     }
-    if (detalle) {
+    if (s != null && detalle) {
         PantallaSuperpuesta(alCerrar = { detalle = false }) {
             SaludDetallePantalla(s, alVolver = { detalle = false })
         }
@@ -238,22 +277,12 @@ private fun RecuperacionSegmento(modelo: ModeloApp) {
 
 /** Cuerpo: el peso (lo único que se carga acá: el del día), las fotos por semana y el check de la semana. */
 @Composable
-private fun CuerpoSegmento(modelo: ModeloApp) {
+private fun CuerpoContenido(modelo: ModeloApp) {
     val revision by modelo.revision.collectAsStateWithLifecycle()
     val fotos by modelo.fotos.collectAsStateWithLifecycle()
-    val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
     val r = revision
     val f = fotos
-    Desplazable(
-        "cuerpo-lista",
-        alRecargar = if (esDemo) null else suspend {
-            coroutineScope {
-                launch { r?.cargarRevision() }
-                launch { f?.cargar() }
-            }
-            Unit
-        },
-    ) {
+    Column(Modifier.fillMaxWidth().testTag("cuerpo-lista"), verticalArrangement = Arrangement.spacedBy(Espacio.xl)) {
         PesoTarjeta(r, Modifier.testTag("seccion-peso"), modelo = modelo)
         FotosPorSemana(f, r)
         CheckDeLaSemana(r)

@@ -389,6 +389,34 @@ class ModeloGuiaTest {
         assertFalse(ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance).also { it.alDia() }.ocultaAMano.value)
     }
 
+    /** «Tu inicio con Mati» (simplificar): la fecha en que se terminó la guía queda en el teléfono, por cuenta, y se borra si vuelve a faltar algo. */
+    @Test
+    fun laFechaDeLaGuiaCompletaQuedaPorCuentaYSeBorraConUnVideoNuevo() = enUnHilo { alcance ->
+        val raiz = carpetaTemporal("guia")
+        val e = entorno(alcance, disco = Disco(raiz, "tok")) { _, _ -> 200 to resumen }
+        e.m.alDia()
+        assertNull(e.m.completaEn.value)
+        e.m.anotarCompleta(true)
+        e.m.alDia()
+        val en = e.m.completaEn.value
+        assertNotNull(en)
+        // Anotarla de nuevo no la mueve (los 7 días cuentan desde la primera vez).
+        e.m.anotarCompleta(true)
+        e.m.alDia()
+        assertEquals(en, e.m.completaEn.value)
+        // Otro arranque la lee del disco (y no la pisa con la de ahora); otra cuenta no la hereda.
+        val otra = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance)
+        otra.anotarCompleta(true)
+        otra.alDia()
+        assertEquals(en, otra.completaEn.value)
+        assertNull(ModeloGuia(ClienteRpc(transporte = SinRed), "otro", null, Disco(raiz, "otro"), alcance).also { it.alDia() }.completaEn.value)
+        // Un video nuevo: vuelve a faltar algo y la fecha se borra.
+        e.m.anotarCompleta(false)
+        e.m.alDia()
+        assertNull(e.m.completaEn.value)
+        assertNull(ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance).also { it.alDia() }.completaEn.value)
+    }
+
     @Test
     fun laBienvenidaSaleUnaSolaVezPorCuenta() = enUnHilo { alcance ->
         val raiz = carpetaTemporal("guia")

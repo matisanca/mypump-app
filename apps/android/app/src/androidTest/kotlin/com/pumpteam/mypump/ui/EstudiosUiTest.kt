@@ -443,13 +443,13 @@ class EstudiosUiTest : PruebaUi() {
     private fun novedad(tema: String): DobleEstudios {
         val d = lanzar("novedad")
         // Arriba de Entreno, sin tocar nada: la tarjeta verde con el botón grande.
-        p.nodo(etiqueta("estudios-tarjeta-inicio"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"))
         p.nodo(texto("Tenés un estudio nuevo para hacer"))
-        p.nodo(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio-boton"))
         p.nodo(texto("Ver"))
         Telefono.captura("est-novedad-inicio-$tema")
         // Un toque: Estudios, con la tarjeta nueva a la vista y su «Nuevo».
-        p.tocar(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.tocar(etiqueta("tarjeta-mi-salud-inicio-boton"))
         p.nodo(etiqueta("mi-salud-pantalla"))
         assertTrue(p.seleccionado(etiqueta("pestana-revision")))
         p.nodo(etiqueta("estudios-nuevo-${DobleEstudios.PEDIDO_ECO}"))
@@ -486,14 +486,14 @@ class EstudiosUiTest : PruebaUi() {
     @Test
     fun sinNovedadLaTarjetaLlevaASubirEnDosToques() {
         lanzar("completo")
-        p.nodo(etiqueta("estudios-tarjeta-inicio"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"))
         p.nodo(texto("Tenés un estudio para hacer"))
-        p.nodo(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio-boton"))
         p.nodo(texto("Subir resultado"))
         assertFalse("sin nada sin ver no hay punto", p.existe(etiqueta("pestana-revision-novedad")))
         Telefono.captura("est-para-hacer-inicio-claro")
         // Un toque a Estudios, dos al selector de archivos.
-        p.tocar(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.tocar(etiqueta("tarjeta-mi-salud-inicio-boton"))
         p.nodo(etiqueta("mi-salud-pantalla"))
         assertFalse(p.existe(texto("Nuevo")))
         p.tocar(etiqueta("estudios-subir-resultado"))
@@ -508,7 +508,7 @@ class EstudiosUiTest : PruebaUi() {
         lanzar("vacio")
         p.nodo(etiqueta("pestana-entreno"))
         p.quieto(2500)
-        assertFalse(p.existe(etiqueta("estudios-tarjeta-inicio")))
+        assertFalse(p.existe(etiqueta("tarjeta-mi-salud-inicio")))
     }
 
     @Test
