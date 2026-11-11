@@ -269,13 +269,13 @@ final class EstudiosUITests: XCTestCase {
     /// Arriba de Entreno la tarjeta verde con «Ver»; un toque lleva a Estudios con la tarjeta nueva a la vista y su «Nuevo».
     private func novedad() {
         lanzar("novedad", pestana: "entreno")
-        esperar("estudios-tarjeta-inicio-boton")
+        esperar("tarjeta-mi-salud-inicio-boton")
         XCTAssertTrue(conEtiqueta("Tenés un estudio nuevo para hacer").exists)
-        XCTAssertTrue(e("estudios-tarjeta-inicio-boton").label.hasPrefix("Ver"))
-        XCTAssertTrue(e("estudios-tarjeta-inicio-boton").isHittable, "se ve sin desplazar")
-        XCTAssertGreaterThanOrEqual(e("estudios-tarjeta-inicio-boton").frame.height, 44)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-boton").label.hasPrefix("Ver"))
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-boton").isHittable, "se ve sin desplazar")
+        XCTAssertGreaterThanOrEqual(e("tarjeta-mi-salud-inicio-boton").frame.height, 44)
         foto("8-novedad-inicio")
-        e("estudios-tarjeta-inicio-boton").tap()
+        e("tarjeta-mi-salud-inicio-boton").tap()
         esperar("estudios-pendiente-\(id(2))")
         XCTAssertTrue(e("estudios-pendiente-\(id(2))").isHittable, "la tarjeta nueva queda a la vista")
         XCTAssertTrue(conEtiqueta("Nuevo").waitForExistence(timeout: 5))
@@ -293,11 +293,11 @@ final class EstudiosUITests: XCTestCase {
     /// Sin nada sin ver y con algo por hacer: «Tenés un estudio para hacer» y «Subir resultado». Un toque a Estudios, dos al selector.
     func testSinNovedadLaTarjetaLlevaASubirEnDosToques() {
         lanzar("completo", pestana: "entreno")
-        esperar("estudios-tarjeta-inicio-boton")
+        esperar("tarjeta-mi-salud-inicio-boton")
         XCTAssertTrue(conEtiqueta("Tenés un estudio para hacer").exists)
-        XCTAssertTrue(e("estudios-tarjeta-inicio-boton").label.hasPrefix("Subir resultado"))
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-boton").label.hasPrefix("Subir resultado"))
         foto("9-para-hacer-inicio")
-        e("estudios-tarjeta-inicio-boton").tap()
+        e("tarjeta-mi-salud-inicio-boton").tap()
         esperar("estudios-subir-\(id(1))")
         XCTAssertFalse(conEtiqueta("Nuevo").exists)
         e("estudios-subir-\(id(1))").tap()
@@ -314,8 +314,8 @@ final class EstudiosUITests: XCTestCase {
         lanzar("vacio", pestana: "entreno")
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
         pausa(3)
-        XCTAssertFalse(e("estudios-tarjeta-inicio").exists)
-        XCTAssertFalse(e("estudios-tarjeta-inicio-boton").exists)
+        XCTAssertFalse(e("tarjeta-mi-salud-inicio").exists)
+        XCTAssertFalse(e("tarjeta-mi-salud-inicio-boton").exists)
     }
 
     /// La tarjeta «Mi salud» dice «Tenés una orden nueva» y deja de decirlo cuando la orden nueva estuvo a la vista.

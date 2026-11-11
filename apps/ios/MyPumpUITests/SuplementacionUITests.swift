@@ -61,11 +61,11 @@ final class SuplementacionUITests: XCTestCase {
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "Falta la tarjeta Recuperación en Mi salud")
         XCTAssertTrue(tarjeta.label.contains("Con tu cuenta"), "La tarjeta de la demo dice otra cosa: \(tarjeta.label)")
         tarjeta.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["segmento-salud"].waitForExistence(timeout: 5), "No abrió Salud")
+        XCTAssertTrue(app.navigationBars["Mi progreso"].waitForExistence(timeout: 5), "No abrió Mi progreso")
         captura("suplementacion-salud-desde-revision")
         app.buttons["salud-cerrar"].tap()
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.descendants(matching: .any)["segmento-salud"].exists, "«Listo» no cerró Salud")
+        XCTAssertTrue(app.navigationBars["Mi progreso"].waitForNonExistence(timeout: 5), "«Listo» no cerró Mi progreso")
     }
 
     private func captura(_ nombre: String) {

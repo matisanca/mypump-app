@@ -209,11 +209,12 @@ final class ColaAUITests: XCTestCase {
 
     // MARK: - Lista previa
 
-    /// Sin reserva: la lista como tarjeta propia, arriba de todo y desplegada. La fila de las fotos lleva a Revisión.
+    /// Sin reserva: la lista, desplegada, dentro de «Tu inicio con Mati» arriba de todo (simplificar, 11/11). La fila de las
+    /// fotos lleva a Revisión.
     func testListaPreviaSola() {
         for (oscuro, grande) in [(false, false), (true, false), (false, true)] {
             cuenta("sinPermiso", ["-pestana", "entreno"], oscuro: oscuro, letraGrande: grande)
-            XCTAssertTrue(e("lista-previa-tarjeta").waitForExistence(timeout: 150), "Falta la lista previa")
+            XCTAssertTrue(e("lista-previa").waitForExistence(timeout: 150), "Falta la lista previa")
             XCTAssertEqual(e("lista-previa-titulo").label, "Antes de la videollamada")
             XCTAssertTrue(e("lista-previa-resumen").exists)
             XCTAssertTrue(e("lista-previa-consejo").exists)
@@ -229,7 +230,7 @@ final class ColaAUITests: XCTestCase {
 
     func testListaPreviaTodoListo() {
         cuenta("listaLista", ["-pestana", "entreno"])
-        XCTAssertTrue(e("lista-previa-tarjeta").waitForExistence(timeout: 150))
+        XCTAssertTrue(e("lista-previa").waitForExistence(timeout: 150))
         XCTAssertEqual(e("lista-previa-resumen").label, "Ya tenés todo listo")
         XCTAssertFalse(app.buttons["lista-previa-fotos"].exists, "Lo hecho no es un botón")
         foto("lista-previa-todo-listo")
@@ -267,11 +268,11 @@ final class ColaAUITests: XCTestCase {
 
     // MARK: - La demo con historial
 
-    /// Entreno en la demo: la lista previa de ejemplo como tarjeta propia y el Pump del día con sus pasos.
+    /// Entreno en la demo: la lista previa de ejemplo dentro de «Tu inicio con Mati» y el Pump del día con sus pasos.
     func testDemoEntreno() {
         for oscuro in [false, true] {
             demo(["-pestana", "entreno"], oscuro: oscuro)
-            XCTAssertTrue(e("lista-previa-tarjeta").waitForExistence(timeout: 150), "La demo trae su lista previa")
+            XCTAssertTrue(e("lista-previa").waitForExistence(timeout: 150), "La demo trae su lista previa")
             foto("demo-entreno\(oscuro ? "-oscuro" : "")")
             let pump = e("pump-del-dia")
             for _ in 0..<8 where !(pump.exists && pump.isHittable) { app.swipeUp(velocity: .slow) }

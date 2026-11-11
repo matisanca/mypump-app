@@ -1,6 +1,7 @@
 import XCTest
 
-/// Salud (2.1, S1 y S2; desde la 2.1.0 una hoja sobre Revisión): los tres segmentos con la cuenta de prueba (el token llega por
+/// «Mi progreso» (antes Salud; 2.1, S1 y S2; desde la 2.1.0 una hoja sobre Revisión; desde el simplificar del 11/11 una sola
+/// columna sin los botones de arriba): las tres secciones con la cuenta de prueba (el token llega por
 /// `TEST_RUNNER_MYPUMP_TOKEN`, nunca escrito en el repo), en claro y oscuro, y las series por músculo del cierre del día
 /// en la demo. Gemelo de `SaludPestanaUiTest.kt`.
 @MainActor
@@ -21,7 +22,15 @@ final class SaludUITests: XCTestCase {
         app.launch()
     }
 
-    private var control: XCUIElement { app.segmentedControls["segmento-salud"].firstMatch }
+    private var barra: XCUIElement { app.navigationBars["Mi progreso"] }
+    private func seccion(_ s: String) -> XCUIElement { app.descendants(matching: .any)["mi-progreso-\(s)"].firstMatch }
+    /// La sección quedó arriba, a la vista (lo que antes era «el segmento seleccionado»).
+    private func arriba(_ s: String) -> Bool {
+        let x = seccion(s)
+        guard x.waitForExistence(timeout: 10) else { return false }
+        for _ in 0..<10 where abs(x.frame.minY - barra.frame.maxY) > 160 { RunLoop.current.run(until: Date().addingTimeInterval(0.4)) }
+        return abs(x.frame.minY - barra.frame.maxY) <= 160
+    }
 
     func testLosTresSegmentosEnClaro() throws { try tresSegmentos(oscuro: false) }
 
@@ -30,36 +39,39 @@ final class SaludUITests: XCTestCase {
     private func tresSegmentos(oscuro: Bool) throws {
         let tema = oscuro ? "oscuro" : "claro"
         try abrir(oscuro: oscuro)
-        XCTAssertTrue(app.navigationBars["Salud"].waitForExistence(timeout: 20), "No abrió Salud")
+        XCTAssertTrue(barra.waitForExistence(timeout: 20), "No abrió Mi progreso")
         XCTAssertFalse(app.tabBars.buttons["Salud"].exists, "Salud ya no es una pestaña: se abre desde Revisión")
         XCTAssertFalse(app.pestana("Progreso").exists, "Quedó la pestaña Progreso")
-        XCTAssertTrue(control.waitForExistence(timeout: 5), "Falta el control de segmentos")
-        for nombre in ["Recuperación", "Fuerza", "Cuerpo"] {
-            XCTAssertTrue(control.buttons[nombre].exists, "Falta el segmento \(nombre)")
+        XCTAssertFalse(app.segmentedControls["segmento-salud"].exists, "Los botones de arriba se fueron (una sola columna)")
+        for nombre in ["recuperacion", "fuerza", "cuerpo"] {
+            XCTAssertTrue(seccion(nombre).waitForExistence(timeout: 10), "Falta la sección \(nombre)")
         }
-        // Arranca en Recuperación: la card de recuperación (o la de conectar salud, si la cuenta no tiene permiso).
-        XCTAssertTrue(control.buttons["Recuperación"].isSelected, "No arrancó en Recuperación")
+        // Arriba de todo, Recuperación: la card de recuperación (o la de conectar salud, si la cuenta no tiene permiso).
         let recuperacion = app.otherElements["card-recuperacion"].firstMatch
         XCTAssertTrue(recuperacion.waitForExistence(timeout: 15), "Recuperación no muestra la card")
+        XCTAssertTrue(arriba("recuperacion"), "No arrancó en Recuperación")
         sleep(1)
         captura("t2-salud-recuperacion-\(tema)")
 
-        control.buttons["Fuerza"].tap()
+        // Bajando, Fuerza y después Cuerpo, en la misma pantalla.
         let volumen = app.otherElements["volumen-musculo"].firstMatch
+        for _ in 0..<8 where !(volumen.exists && volumen.isHittable) { app.swipeUp() }
         XCTAssertTrue(volumen.waitForExistence(timeout: 15), "Fuerza no muestra las series por músculo")
         XCTAssertTrue(app.staticTexts["Series por músculo"].exists)
-        XCTAssertFalse(recuperacion.exists, "La card de recuperación quedó en Fuerza")
         sleep(2)   // que llegue el historial
         captura("t2-salud-fuerza-\(tema)")
 
-        control.buttons["Cuerpo"].tap()
-        XCTAssertTrue(app.textFields["peso-hoy"].firstMatch.waitForExistence(timeout: 10), "Cuerpo no trae el peso")
+        let peso = app.textFields["peso-hoy"].firstMatch
+        for _ in 0..<12 where !(peso.exists && peso.isHittable) { app.swipeUp() }
+        XCTAssertTrue(peso.waitForExistence(timeout: 10), "Cuerpo no trae el peso")
         XCTAssertTrue(app.otherElements["cuerpo-fotos"].firstMatch.exists, "Cuerpo no trae las fotos por semana")
         sleep(1)
         captura("t2-salud-cuerpo-\(tema)")
         let check = app.otherElements["cuerpo-check"].firstMatch
         for _ in 0..<6 where !check.isHittable { app.swipeUp() }
         XCTAssertTrue(check.exists, "Cuerpo no trae el check de la semana")
+        // La recuperación sigue en la misma hoja (no se fue a ningún lado).
+        XCTAssertTrue(recuperacion.exists, "La recuperación desapareció de Mi progreso")
         captura("t2-salud-cuerpo-abajo-\(tema)")
     }
 
@@ -80,14 +92,13 @@ final class SaludUITests: XCTestCase {
         }
     }
 
-    /// Un aviso o un botón con el viejo «Progreso» abre Salud → Fuerza (el argumento viejo sigue andando).
+    /// Un aviso o un botón con el viejo «Progreso» abre Mi progreso en Fuerza (el argumento viejo sigue andando).
     func testElArgumentoViejoProgresoAbreSalud() throws {
         guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else { throw XCTSkip("Falta MYPUMP_TOKEN") }
         app.launchArguments = ["-token", token, "-pestana", "progreso", "-sinOnboarding", "YES"]
         app.launch()
-        XCTAssertTrue(app.navigationBars["Salud"].waitForExistence(timeout: 20))
-        XCTAssertTrue(control.buttons["Fuerza"].waitForExistence(timeout: 5))
-        XCTAssertTrue(control.buttons["Fuerza"].isSelected, "El viejo «Progreso» tiene que abrir Fuerza")
+        XCTAssertTrue(barra.waitForExistence(timeout: 20))
+        XCTAssertTrue(arriba("fuerza"), "El viejo «Progreso» tiene que abrir Fuerza")
     }
 
     /// 2.1.0: Salud no está en la barra. Desde «Mi salud» (11/11) la fila Recuperación vive ahí (arriba de todo en Revisión):
@@ -106,29 +117,29 @@ final class SaludUITests: XCTestCase {
         let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Mi salud")
         tarjeta.tap()
-        XCTAssertTrue(app.navigationBars["Salud"].waitForExistence(timeout: 5), "La tarjeta no abrió Salud")
-        XCTAssertTrue(control.buttons["Recuperación"].isSelected, "No abrió en Recuperación")
+        XCTAssertTrue(barra.waitForExistence(timeout: 5), "La tarjeta no abrió Mi progreso")
+        XCTAssertTrue(arriba("recuperacion"), "No abrió en Recuperación")
         app.buttons["salud-cerrar"].tap()
         // La tarjeta existe detrás de la hoja: lo que prueba el cierre es que la barra de Salud se va.
-        XCTAssertTrue(app.navigationBars["Salud"].waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
+        XCTAssertTrue(barra.waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
 
         // Volver a tocar Recuperación después de cerrar: la hoja vuelve a abrir (y en Recuperación).
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5))
         tarjeta.tap()
-        XCTAssertTrue(control.buttons["Recuperación"].waitForExistence(timeout: 5))
-        XCTAssertTrue(control.buttons["Recuperación"].isSelected)
+        XCTAssertTrue(barra.waitForExistence(timeout: 5))
+        XCTAssertTrue(arriba("recuperacion"))
         app.buttons["salud-cerrar"].tap()
-        XCTAssertTrue(app.navigationBars["Salud"].waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
+        XCTAssertTrue(barra.waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
         // Atrás, a Revisión: «Tu progreso» abre Salud en Fuerza.
         app.navigationBars["Mi salud"].buttons.firstMatch.tap()
         let progreso = app.buttons["tarjeta-progreso-revision"]
         XCTAssertTrue(progreso.waitForExistence(timeout: 5), "Falta la tarjeta Tu progreso")
         progreso.tap()
-        XCTAssertTrue(control.buttons["Fuerza"].waitForExistence(timeout: 5))
-        XCTAssertTrue(control.buttons["Fuerza"].isSelected, "Tu progreso no abrió Fuerza")
+        XCTAssertTrue(barra.waitForExistence(timeout: 5))
+        XCTAssertTrue(arriba("fuerza"), "Tu progreso no abrió Fuerza")
         captura("salud-fuerza-desde-progreso")
         app.buttons["salud-cerrar"].tap()
-        XCTAssertTrue(app.navigationBars["Salud"].waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
+        XCTAssertTrue(barra.waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
     }
 
     /// El cierre del día en la demo, con 3 series confirmadas: «Series por músculo hoy».

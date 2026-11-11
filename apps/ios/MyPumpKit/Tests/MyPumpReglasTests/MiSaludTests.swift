@@ -41,4 +41,25 @@ struct MiSaludTests {
         #expect(MiSalud.faltanTomas(1) == "Te falta 1 toma de presión")
         #expect(MiSalud.Bloque.presion.etiqueta == "mi-salud-bloque-presion")
     }
+
+    // MARK: Entreno (simplificar)
+
+    @Test func primerPendienteSigueElOrdenDeLaLinea() {
+        let todo = MiSalud.Partes(control: true, estudios: true, presion: true)
+        #expect(MiSalud.primerPendiente(todo, pendientes: .init()) == nil)
+        #expect(MiSalud.primerPendiente(todo, pendientes: .init(estudios: "x", control: true, presion: "y")) == .estudios)
+        #expect(MiSalud.primerPendiente(todo, pendientes: .init(control: true, presion: "y")) == .control)
+        #expect(MiSalud.primerPendiente(todo, pendientes: .init(presion: "y")) == .presion)
+        // El control sin su bloque (sin «Próximo control» en Estudios) sigue siendo el control: la app lo lleva a Estudios.
+        #expect(MiSalud.primerPendiente(.init(estudios: true), pendientes: .init(control: true)) == .control)
+        // Sin la parte, lo pendiente no cuenta (igual que la tarjeta).
+        #expect(MiSalud.primerPendiente(.init(), pendientes: .init(estudios: "x", control: true, presion: "y")) == nil)
+    }
+
+    @Test func masCosasSoloConMasDeUna() {
+        #expect(MiSalud.masCosas(0) == nil)
+        #expect(MiSalud.masCosas(1) == nil)
+        #expect(MiSalud.masCosas(2) == "Y 1 cosa más")
+        #expect(MiSalud.masCosas(3) == "Y 2 cosas más")
+    }
 }

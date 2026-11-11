@@ -48,6 +48,7 @@ struct RevisionView: View {
                                 miSalud
                                 TarjetaFotosInicio()
                                 devolucion
+                                novedades
                                 if guiado != nil { check; tuCambio }
                                 progreso
                                 diaDeRevision
@@ -76,6 +77,7 @@ struct RevisionView: View {
                                 miSalud
                                 TarjetaFotosInicio()
                                 devolucion   // lo que Mati le dejó va primero, con la semana a medias o no
+                                novedades    // y lo último que cambió en el plan (simplificar, 11/11)
                                 // Check guiado: la tarjeta va arriba, para que nadie tenga que buscarla.
                                 if guiado != nil { check; tuCambio }
                                 if semanaPendiente {
@@ -133,15 +135,30 @@ struct RevisionView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     // Un solo camino a Mis datos (el mismo que usan los avisos): así nunca se apila dos veces. El punto de un
-                    // estudio sin ver ya no va acá: está en la tarjeta «Mi salud» (11/11).
-                    Button { camino = [.misDatos] } label: { Image(systemName: "person.crop.circle") }
-                        .accessibilityLabel("Mis datos")
+                    // estudio sin ver ya no va acá: está en la tarjeta «Mi salud» (11/11). Con la palabra, no solo el
+                    // dibujito (simplificar, 11/11): un alumno mayor no sabía que era una puerta.
+                    Button { camino = [.misDatos] } label: {
+                        // Un HStack y no un `Label`: en la barra de iOS 26 el `Label` queda solo con el dibujito aunque se le pida
+                        // `.titleAndIcon`.
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.crop.circle").accessibilityHidden(true)
+                            Text("Mis datos")
+                        }
+                        .font(.body.weight(.semibold))
+                        .fixedSize()
+                    }
+                    .accessibilityLabel("Mis datos")
+                    .accessibilityIdentifier("revision-mis-datos")
                 }
             }
             .navigationDestination(for: RutaRevision.self) { ruta in
                 switch ruta {
                 case .misDatos: MisDatosView(datos: datos)
                 case .miSalud: MiSaludView()
+                case .novedades:
+                    if let nov = modelo.novedades {
+                        NovedadesListaView(modelo: nov, estudios: modelo.estudios, irAEstudios: { navegacion?.irAEstudios() })
+                    }
                 }
             }
         }
@@ -159,7 +176,8 @@ struct RevisionView: View {
             }
         }
         .onAppear {
-            if DemoUI.abrir == "misdatos" || DemoUI.abrir == "novedades" { camino = [.misDatos] }
+            if DemoUI.abrir == "misdatos" { camino = [.misDatos] }
+            if DemoUI.abrir == "novedades" { camino = [.novedades] }
             if DemoUI.abrir == "misalud" { camino = [.miSalud] }
         }
         .onChange(of: navegacion?.misDatos ?? false, initial: true) { _, abrir in
@@ -185,6 +203,10 @@ struct RevisionView: View {
             DevolucionTarjeta(ultima: ultima, anteriores: d.anteriores)
                 .id("devolucion")
         }
+    }
+    /// Simplificar (11/11): «Lo último que cambió en tu plan» y «Ver todo», debajo de la devolución (palanca `novedades_plan`).
+    private var novedades: some View {
+        NovedadesEnRevision { camino = [.novedades] }.id("novedades")
     }
     /// «Mi salud» (11/11): todo lo de salud en una pantalla. Sin ningún bloque, no está.
     private var miSalud: some View {

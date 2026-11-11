@@ -23,11 +23,6 @@ struct MisDatosView: View {
     /// D5: "dark" o nada (sigue al teléfono). Lo lee la raíz de la app.
     @AppStorage("mypump-theme") private var tema = ""
     @State private var fuentes = false
-    @State private var verGimnasio = false
-    @State private var verFotosInicio = false
-    @State private var verTecnica = false
-    /// `-abrir novedades` (capturas): la lista de novedades directo.
-    @State private var verNovedades = DemoUI.abrir == "novedades"
     @State private var pagina: Pagina?
     /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
     /// en el iPhone (para poder exportarlas o borrarlas aunque ya no haya reloj).
@@ -66,67 +61,12 @@ struct MisDatosView: View {
                 }
             }
 
-            // Logros (2.3.0): con la palanca prendida, o con el permiso dado (para poder sacarlo siempre).
-            // Una vez a la vista, la sección no se va mientras Mis datos siga abierto: al apagar el interruptor con la palanca
-            // apagada tiene que quedar el «Listo, no se comparte nada más.».
-            if !modelo.conMuestras, let wins = modelo.wins, wins.visibleEnMisDatos || logrosALaVista {
-                SeccionLogros(wins: wins)
-                    .onAppear { logrosALaVista = true }
-            }
-
-            Section {
-                Toggle(isOn: Binding(get: { tema == "dark" }, set: { tema = $0 ? "dark" : "" })) {
-                    Label { Text("Siempre en modo oscuro") } icon: { IconoAzulejo("moon.fill", color: .sueno) }
-                }
-                .tint(Color.marcaVivo)
-                .accessibilityIdentifier("tema-oscuro")
-            } header: {
-                Text("Apariencia")
-            } footer: {
-                // En iPad no dice "iPhone" (lo encontró la revisión de Android).
-                let equipo = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
-                Text(tema == "dark" ? "La app queda oscura aunque tu \(equipo) esté en claro." : "La app sigue a tu \(equipo): clara u oscura, como lo tengas.")
-            }
-
-            Section("Tu información") {
+            // Simplificar (11/11): unos 10 renglones en tres grupos cortos. Lo que salió tiene su lugar: Novedades en Revisión
+            // (debajo de la devolución), Mi gimnasio y Mi técnica en «Mi gimnasio y mi técnica» (Entreno) y las fotos de inicio
+            // en su tarjeta de Revisión (fija mientras estén pedidas; el aviso `fotos_inicio` la abre).
+            Section("Mi plan") {
                 // «Tu recorrido con Mati» (palanca `fin_plan`), mientras se vea: abre la misma hoja que la tarjeta.
                 FilaRecorridoMisDatos()
-                // «Novedades de tu plan» (palanca `novedades_plan`): el lugar fijo, primero.
-                if let nov = modelo.novedades, modelo.palanca.novedadesPlan || modelo.esDemo {
-                    NavigationLink { NovedadesListaView(modelo: nov, estudios: modelo.estudios, irAEstudios: { navegacion?.irAEstudios() }) } label: {
-                        Label { Text(TextosNovedades.entradaMisDatos) } icon: { IconoAzulejo("sparkles", color: .marcaTexto) }
-                    }
-                    .accessibilityIdentifier("mis-datos-novedades")
-                    .navigationDestination(isPresented: $verNovedades) { NovedadesListaView(modelo: nov, estudios: modelo.estudios, irAEstudios: { navegacion?.irAEstudios() }) }
-                }
-                // «Tu guía» después de la entrega (o si la quitó de Entreno): una sola fila, primera, como en Android. Sale
-                // del resumen, sin cartel.
-                if let guia = GuiaUI.modelo, guia.mostrarFila {
-                    NavigationLink { GuiaView(modelo: guia) } label: {
-                        Label { Text("Ver mi guía") } icon: { IconoAzulejo("play.rectangle.fill", color: .marcaTexto) }
-                    }
-                    .accessibilityIdentifier("mis-datos-guia")
-                }
-                // «Mi salud» (11/11): donde estaban la recuperación, «Estudios y órdenes» y «Presión arterial».
-                if filaMiSalud { FilaMiSaludMisDatos() }
-                if let t = modelo.tecnica, t.habilitado || verTecnica {
-                    Button { verTecnica = true } label: {
-                        fila(TextosTecnica.entradaMisDatos, icono: "video.fill", color: .marcaTexto)
-                    }
-                    .accessibilityIdentifier("mis-datos-tecnica")
-                    .sheet(isPresented: $verTecnica) {
-                        MiTecnicaRaiz(modelo: t, alCerrar: { verTecnica = false }).presentationDragIndicator(.visible)
-                    }
-                }
-                if let g = modelo.gimnasio, g.entradaVisible || verGimnasio {
-                    Button { verGimnasio = true } label: {
-                        fila(TextosGimnasio.entradaMisDatos, icono: "dumbbell.fill", color: .marcaTexto)
-                    }
-                    .accessibilityIdentifier("mis-datos-gimnasio")
-                    .sheet(isPresented: $verGimnasio) {
-                        GimnasioRaiz(modelo: g, alCerrar: { verGimnasio = false }).presentationDragIndicator(.visible)
-                    }
-                }
                 // Documentos (contrato y consentimiento): solo si `mypump_contrato_get` devolvió alguno.
                 if let docs = modelo.conMuestras ? nil : modelo.documentos, docs.hay {
                     NavigationLink { DocumentosView(modelo: docs) } label: {
@@ -137,19 +77,58 @@ struct MisDatosView: View {
                     .badge(docs.contratoPendiente ? Text("Pendiente").foregroundStyle(Color.alerta) : nil)
                     .accessibilityIdentifier("mis-datos-documentos")
                 }
-                if let f = modelo.fotosInicio, f.visible || verFotosInicio {
-                    Button { verFotosInicio = true } label: {
-                        fila(TextosFotosInicio.entradaMisDatos, icono: "camera.fill", color: .marcaTexto)
+                // «Tu guía» fuera de Entreno: después de la entrega, si la quitó o a los 7 días de verla entera (su lugar
+                // fijo; nunca se oculta del todo). Sale del resumen, sin cartel.
+                if let guia = GuiaUI.modelo, guia.filaMisDatos() {
+                    NavigationLink { GuiaView(modelo: guia) } label: {
+                        Label { Text("Ver mi guía") } icon: { IconoAzulejo("play.rectangle.fill", color: .marcaTexto) }
                     }
-                    .accessibilityIdentifier("mis-datos-fotos-inicio")
-                    .sheet(isPresented: $verFotosInicio) {
-                        FotosInicioRaiz(modelo: f, alCerrar: { verFotosInicio = false }).presentationDragIndicator(.visible)
-                    }
+                    .accessibilityIdentifier("mis-datos-guia")
                 }
+                // «Mi salud» (11/11): donde estaban la recuperación, «Estudios y órdenes» y «Presión arterial». Atajo.
+                if filaMiSalud { FilaMiSaludMisDatos() }
                 Button { fuentes = true } label: {
                     fila("Respaldo científico del plan", icono: "book.closed.fill", color: .marcaTexto)
                 }
                 .tint(.primary)
+            }
+
+            Section {
+                Toggle(isOn: Binding(get: { tema == "dark" }, set: { tema = $0 ? "dark" : "" })) {
+                    Label { Text("Siempre en modo oscuro") } icon: { IconoAzulejo("moon.fill", color: .sueno) }
+                }
+                .tint(Color.marcaVivo)
+                .accessibilityIdentifier("tema-oscuro")
+                if calibracionVisible, let cuenta = cuentaCalibracion {
+                    NavigationLink { CalibracionView(cuenta: cuenta) } label: {
+                        Label { Text("Conteo de reps") } icon: { IconoAzulejo("waveform.path.ecg", color: .agua) }
+                    }
+                    .accessibilityIdentifier("mis-datos-calibracion")
+                }
+            } header: {
+                Text("Ajustes")
+            } footer: {
+                // En iPad no dice "iPhone" (lo encontró la revisión de Android).
+                let equipo = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tema == "dark" ? "La app queda oscura aunque tu \(equipo) esté en claro." : "La app sigue a tu \(equipo): clara u oscura, como lo tengas.")
+                    if calibracionVisible, cuentaCalibracion != nil {
+                        Text(modelo.palanca.contadorRepsReloj
+                             ? "Conteo de reps: experimental. El Apple Watch cuenta las repeticiones de cada serie y te las propone."
+                             : "Conteo de reps: experimental. Por ahora el Apple Watch no propone las repeticiones.")
+                    }
+                }
+            }
+
+            // Logros (2.3.0): con la palanca prendida, o con el permiso dado (para poder sacarlo siempre).
+            // Una vez a la vista, la sección no se va mientras Mis datos siga abierto: al apagar el interruptor con la palanca
+            // apagada tiene que quedar el «Listo, no se comparte nada más.».
+            if !modelo.conMuestras, let wins = modelo.wins, wins.visibleEnMisDatos || logrosALaVista {
+                SeccionLogros(wins: wins)
+                    .onAppear { logrosALaVista = true }
+            }
+
+            Section("Privacidad") {
                 Button { pagina = .privacidad } label: {
                     fila("Política de privacidad", icono: "hand.raised.fill", color: .agua)
                 }
@@ -158,19 +137,6 @@ struct MisDatosView: View {
                     Label { Text("Eliminar mis datos").foregroundStyle(Color.peligro) } icon: {
                         IconoAzulejo("trash.fill", color: .peligro)
                     }
-                }
-            }
-
-            if calibracionVisible, let cuenta = cuentaCalibracion {
-                Section {
-                    NavigationLink { CalibracionView(cuenta: cuenta) } label: {
-                        Label { Text("Conteo de reps") } icon: { IconoAzulejo("waveform.path.ecg", color: .agua) }
-                    }
-                    .accessibilityIdentifier("mis-datos-calibracion")
-                } footer: {
-                    Text(modelo.palanca.contadorRepsReloj
-                         ? "Experimental. El Apple Watch cuenta las repeticiones de cada serie y te las propone."
-                         : "Experimental. Por ahora el Apple Watch no propone las repeticiones.")
                 }
             }
 

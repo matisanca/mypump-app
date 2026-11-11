@@ -8,3 +8,17 @@ extension XCUIApplication {
         descendants(matching: .button).matching(NSPredicate(format: "label == %@", nombre)).firstMatch
     }
 }
+
+extension XCUIApplication {
+    /// Simplificar (11/11): «Mi gimnasio y mi técnica» se abre con el renglón del final de Entreno (antes, renglones de Mis
+    /// datos y el botón de casa de arriba). Baja hasta él y lo toca.
+    func abrirDondeEntreno(file: StaticString = #filePath, line: UInt = #line) {
+        let entreno = pestana("Entreno")
+        if entreno.waitForExistence(timeout: 20), !entreno.isSelected { entreno.tap() }
+        let fila = descendants(matching: .any)["donde-entreno-entrada"].firstMatch
+        XCTAssertTrue(fila.waitForExistence(timeout: 20), "Falta el renglón «Mi gimnasio y mi técnica»", file: file, line: line)
+        var n = 0
+        while !fila.isHittable && n < 25 { swipeUp(); n += 1 }
+        fila.tap()
+    }
+}

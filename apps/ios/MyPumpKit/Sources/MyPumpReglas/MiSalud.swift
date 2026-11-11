@@ -90,6 +90,31 @@ public enum MiSalud {
         return Tarjeta(linea: lineas.first ?? lista(b), cuenta: lineas.count)
     }
 
+    // MARK: Entreno (simplificar, 11/11)
+
+    /// La tarjeta de arriba de Entreno: en lugar de las tres viejas (presión, estudios y control), una sola, y solo con algo
+    /// para hacer. Lleva a lo primero pendiente, en el mismo orden que la línea de la tarjeta de Revisión.
+    public static let cejaInicio = "Mi salud"
+
+    /// El bloque de lo primero pendiente (estudios, control, presión), o nil sin nada para hacer. Las mismas condiciones que
+    /// `tarjeta`: el control cuenta con el bloque de control o con Estudios.
+    public static func primerPendiente(_ p: Partes, pendientes: Pendientes) -> Bloque? {
+        if p.estudios, pendientes.estudios != nil { return .estudios }
+        // El control lleva a su bloque si está; si no, a Estudios (lo decide quien navega, con `Partes.control`).
+        if pendientes.control, p.control || p.estudios { return .control }
+        if p.presion, pendientes.presion != nil { return .presion }
+        return nil
+    }
+
+    /// Debajo de la línea, cuando hay más de una cosa: «Y 1 cosa más» / «Y 2 cosas más». nil con una sola.
+    public static func masCosas(_ cuenta: Int) -> String? {
+        switch cuenta {
+        case ...1: nil
+        case 2: "Y 1 cosa más"
+        default: "Y \(cuenta - 1) cosas más"
+        }
+    }
+
     /// «Control, estudios, presión y recuperación».
     public static func lista(_ bloques: [Bloque]) -> String {
         let n = bloques.map(\.nombre)

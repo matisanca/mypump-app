@@ -200,12 +200,9 @@ final class GimnasioUITests: XCTestCase {
 
     private func abrirMiGimnasio() {
         XCTAssertFalse(e("gimnasio-tarjeta").waitForExistence(timeout: 4), "Con el gimnasio cargado no va la tarjeta")
-        app.tabBars.buttons["Revisión"].firstMatch.tap()
-        let datos = app.buttons["Mis datos"].firstMatch
-        XCTAssertTrue(datos.waitForExistence(timeout: 10))
-        datos.tap()
-        app.swipeUpSiHaceFalta(e("mis-datos-gimnasio"))
-        tocar("mis-datos-gimnasio")
+        // Simplificar (11/11): ya no está en Mis datos; está en «Mi gimnasio y mi técnica», al final de Entreno.
+        app.abrirDondeEntreno()
+        tocar("donde-entreno-gimnasio")
     }
 
     func testEnProcesoSinHoras() {

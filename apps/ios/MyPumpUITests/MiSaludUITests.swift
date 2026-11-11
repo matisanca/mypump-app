@@ -172,29 +172,45 @@ final class MiSaludUITests: XCTestCase {
         XCTAssertFalse(app.navigationBars["Mis datos"].exists)
     }
 
-    /// Lo que no es salud sigue a donde iba: `progress` abre Salud en Fuerza, sin pasar por Mi salud.
+    /// Lo que no es salud sigue a donde iba: `progress` abre Mi progreso (antes Salud) en Fuerza, sin pasar por Mi salud.
     func testAvisoDeProgresoSigueEnFuerza() {
         lanzar(pestana: "entreno", extra: ["-destinoDePrueba", "progress"])
-        let control = app.descendants(matching: .any)["segmento-salud"]
-        XCTAssertTrue(control.waitForExistence(timeout: 30))
-        XCTAssertTrue(control.buttons["Fuerza"].isSelected)
+        XCTAssertTrue(app.navigationBars["Mi progreso"].waitForExistence(timeout: 30))
+        esperar("mi-progreso-fuerza")
         XCTAssertFalse(app.navigationBars["Mi salud"].exists)
     }
 
-    /// Las tarjetas de Entreno siguen, solo con algo para hacer, y llevan a Mi salud.
-    func testTarjetasDeEntrenoLlevanAMiSalud() {
+    /// Simplificar (11/11): arriba de Entreno, UNA tarjeta «Mi salud» (solo con algo para hacer) en lugar de las de presión,
+    /// estudios y control. Lleva a lo primero pendiente; si es la presión, directo a la toma.
+    func testTarjetaUnicaDeEntrenoLlevaALoPrimeroPendiente() {
         lanzar(pestana: "entreno")
-        esperar("estudios-tarjeta-inicio-boton")
-        e("estudios-tarjeta-inicio-boton").tap()
+        esperar("tarjeta-mi-salud-inicio-boton")
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("2 para hacer"), e("tarjeta-mi-salud-inicio-texto").label)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio").label.contains("Y 1 cosa más") || app.staticTexts["Y 1 cosa más"].exists)
+        for viejo in ["estudios-tarjeta-inicio", "control-tarjeta-inicio", "tarjeta-presion"] {
+            XCTAssertFalse(e(viejo).exists, "\(viejo) quedó suelta en Entreno")
+        }
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-boton").isHittable, "arriba, sin deslizar")
+        foto("simplificar-1-entreno-mi-salud")
+        e("tarjeta-mi-salud-inicio-boton").tap()
         XCTAssertTrue(app.navigationBars["Mi salud"].waitForExistence(timeout: 15))
         esperar("estudios-subir-00000001-0000-4000-8000-000000000000")
         app.terminate()
 
-        lanzar(pestana: "entreno")
-        esperar("tarjeta-presion-boton")
-        e("tarjeta-presion-boton").tap()
-        // Presión directo en la toma de hoy, y debajo Mi salud.
+        // Solo la presión pendiente: el toque va directo a la toma, con Mi salud debajo (como la tarjeta vieja).
+        lanzar("vacio/serie0", pestana: "entreno")
+        esperar("tarjeta-mi-salud-inicio-boton")
+        XCTAssertEqual(e("tarjeta-mi-salud-inicio-boton").label, "Hacer la toma de hoy")
+        e("tarjeta-mi-salud-inicio-boton").tap()
         esperar("presion-cuando", 30)
         XCTAssertTrue(e("mi-salud-bloque-presion").exists)
+    }
+
+    /// Sin nada para hacer, la tarjeta de Entreno no está (la de Revisión sí).
+    func testSinPendientesNoHayTarjetaEnEntreno() {
+        lanzar("vacio/hoyListo", pestana: "entreno")
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
+        pausa(5)
+        XCTAssertFalse(e("tarjeta-mi-salud-inicio").exists)
     }
 }

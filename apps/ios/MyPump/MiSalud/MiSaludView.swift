@@ -106,6 +106,109 @@ struct TarjetaMiSalud: View {
     }
 }
 
+/// Arriba de Entreno (simplificar, 11/11): en lugar de las tarjetas de presión, estudios y control, UNA sola «Mi salud», y
+/// solo con algo para hacer. Verde como las viejas, con la línea de lo primero pendiente, el número de cosas y un botón
+/// grande con el texto de siempre de esa cosa. El botón lleva a lo primero pendiente: estudios y control a su bloque de Mi
+/// salud; la presión, directo a la toma (con Mi salud debajo), como la tarjeta vieja.
+struct TarjetaMiSaludInicio: View {
+    @State private var app = Proveedor.modelo
+    @Environment(Navegacion.self) private var navegacion: Navegacion?
+    @ScaledMetric(relativeTo: .title2) private var ladoIcono: CGFloat = 52
+    @ScaledMetric(relativeTo: .body) private var ladoInsignia: CGFloat = 30
+    @Environment(\.dynamicTypeSize) private var letra
+
+    var body: some View {
+        let partes = MiSaludUI.partes(app), pendientes = MiSaludUI.pendientes(app)
+        if let t = MiSalud.tarjeta(partes, pendientes: pendientes), t.cuenta > 0,
+           let primero = MiSalud.primerPendiente(partes, pendientes: pendientes), let boton = boton(primero) {
+            let apilada = letra.isAccessibilitySize
+            VStack(alignment: .leading, spacing: Espacio.s) {
+                let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.s))
+                                          : AnyLayout(HStackLayout(alignment: .center, spacing: Espacio.s))
+                disposicion {
+                    HStack(spacing: Espacio.s) {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: ladoIcono * 0.42, weight: .bold))
+                            .frame(width: ladoIcono, height: ladoIcono)
+                            .background(.white.opacity(0.2), in: .circle)
+                        if apilada { Spacer(minLength: 0); insignia(t.cuenta) }
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(MiSalud.cejaInicio)
+                            .textCase(.uppercase)
+                            .font(.caption.weight(.heavy))
+                            .tracking(1)
+                        Text(t.linea).font(.title3.weight(.bold))
+                        if let mas = MiSalud.masCosas(t.cuenta) { Text(mas).font(.body.weight(.medium)) }
+                    }
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    if !apilada { Spacer(minLength: 0); insignia(t.cuenta) }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(MiSalud.titulo), \(t.cuenta) para hacer. \(t.linea)")
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("tarjeta-mi-salud-inicio-texto")
+
+                Button { withAnimation(.snappy) { ir(primero) } } label: {
+                    Label(boton.texto, systemImage: boton.icono).multilineTextAlignment(.center)
+                }
+                .buttonStyle(BotonSobreVerde())
+                .accessibilityLabel(boton.texto)
+                .accessibilityHint(t.linea)
+                .accessibilityIdentifier("tarjeta-mi-salud-inicio-boton")
+            }
+            .foregroundStyle(.white)
+            .padding(Espacio.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.guiaDestacada, in: .rect(cornerRadius: Radio.tarjeta, style: .continuous))
+            .shadow(color: Color.guiaDestacada.opacity(0.28), radius: 16, x: 0, y: 8)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("tarjeta-mi-salud-inicio")
+        }
+    }
+
+    /// El texto del botón de la tarjeta vieja de esa cosa.
+    private func boton(_ b: MiSalud.Bloque) -> (texto: String, icono: String)? {
+        let e = MiSaludUI.estudios(app)
+        switch b {
+        case .estudios:
+            guard let t = e?.tarjetaInicio else { return nil }
+            return (t.boton, t.nueva ? "arrow.right" : "arrow.up.doc.fill")
+        case .control:
+            guard let t = e?.tarjetaControl else { return (TextosControles.verMisEstudios, "arrow.right") }
+            return (t.boton, "arrow.right")
+        case .presion:
+            switch MiSaludUI.presion(app)?.tarjeta {
+            case .repetir: return (NP.repetir, "heart.text.square.fill")
+            case .preparar: return (NP.empezar, "heart.text.square.fill")
+            case .toma: return (NP.tomaDeHoy, "heart.text.square.fill")
+            case .hoyListo, nil: return nil
+            }
+        case .recuperacion: return nil
+        }
+    }
+
+    private func ir(_ b: MiSalud.Bloque) {
+        switch b {
+        case .estudios: navegacion?.irAEstudios()
+        // Sin el bloque «Próximo control» (otra lectura del servidor), el control se ve en Estudios.
+        case .control: if MiSaludUI.partes(app).control { navegacion?.irAMiSalud(.control) } else { navegacion?.irAEstudios() }
+        case .presion: navegacion?.irAPresion()
+        case .recuperacion: navegacion?.irAMiSalud(.recuperacion)
+        }
+    }
+
+    @ViewBuilder private func insignia(_ n: Int) -> some View {
+        Text(verbatim: "\(n)")
+            .font(.headline.monospacedDigit())
+            .foregroundStyle(Color.guiaSobreBlanco)
+            .frame(minWidth: ladoInsignia, minHeight: ladoInsignia)
+            .background(.white, in: .circle)
+            .accessibilityIdentifier("tarjeta-mi-salud-inicio-cuenta")
+    }
+}
+
 /// La fila «Mi salud» de Mis datos: donde estaban «Estudios y órdenes», «Presión arterial» y la recuperación. Con un estudio
 /// o una orden sin ver, el punto.
 struct FilaMiSaludMisDatos: View {
@@ -124,7 +227,7 @@ struct FilaMiSaludMisDatos: View {
 }
 
 /// Lo que se empuja dentro de Revisión.
-enum RutaRevision: Hashable { case misDatos, miSalud }
+enum RutaRevision: Hashable { case misDatos, miSalud, novedades }
 
 /// La pantalla «Mi salud».
 struct MiSaludView: View {

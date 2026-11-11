@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import MyPumpModelos
+import MyPumpReglas
 @testable import MyPumpDatos
 
 /// Un servidor de mentira para «Tu guía»: contesta cada RPC con lo que se le diga y anota lo que le llegó.
@@ -40,6 +41,86 @@ final class ServidorGuia: Transporte, @unchecked Sendable {
 private func hasta(_ condicion: () -> Bool, _ segundos: Double = 3) async {
     let limite = Date().addingTimeInterval(segundos)
     while !condicion() && Date() < limite { try? await Task.sleep(for: .milliseconds(20)) }
+}
+
+@Suite("Tu guía: la fila de «Tu inicio con Mati» (simplificar)", .serialized)
+@MainActor
+struct GuiaInicioConMatiTests {
+    let raiz = FileManager.default.temporaryDirectory.appendingPathComponent("mypump-guia-inicio-\(UUID().uuidString)")
+    let token = "tok_prueba_guia_inicio_1"
+
+    private func armar(_ resumen: String) -> (ModeloGuia, ServidorGuia, Disco) {
+        let s = ServidorGuia(["entregas_app_resumen": resumen])
+        let disco = Disco(raiz: raiz, token: token)
+        return (ModeloGuia(cliente: ClienteRPC(transporte: s), token: token, outbox: nil, disco: disco), s, disco)
+    }
+
+    @Test func aMitadDeCaminoNoHayFechaNiFila() async {
+        let (m, _, _) = armar(#"{"ok":true,"total":6,"vistos":4,"minutos_restantes":2,"mostrar_tarjeta":true}"#)
+        await m.actualizarResumen()
+        m.anotarCompleta()
+        #expect(m.completaEn == nil)
+        #expect(m.tarjetaDestacada)
+        #expect(!m.filaEnInicio())
+        #expect(!m.filaMisDatos())
+    }
+
+    @Test func completaQuedaSieteDiasYDespuesPasaAMisDatos() async {
+        let (m, _, disco) = armar(#"{"ok":true,"total":6,"vistos":6,"minutos_restantes":0,"mostrar_tarjeta":true}"#)
+        await m.actualizarResumen()
+        let fin = ReglasGuia.instante("2026-11-04T18:00:00-03:00")!
+        m.anotarCompleta(ahora: fin)
+        #expect(m.completaEn == fin)
+        // Una segunda vez no la corre.
+        m.anotarCompleta(ahora: fin.addingTimeInterval(86_400))
+        #expect(m.completaEn == fin)
+        #expect(!m.tarjetaDestacada)
+        #expect(m.filaEnInicio(ahora: fin.addingTimeInterval(6 * 86_400)))
+        #expect(!m.filaMisDatos(ahora: fin.addingTimeInterval(6 * 86_400)))
+        #expect(!m.filaEnInicio(ahora: fin.addingTimeInterval(7 * 86_400 + 1)))
+        #expect(m.filaMisDatos(ahora: fin.addingTimeInterval(7 * 86_400 + 1)), "Mis datos es su lugar fijo")
+        // Queda guardada para el próximo arranque.
+        let otra = ModeloGuia(cliente: ClienteRPC(transporte: ServidorGuia()), token: token, outbox: nil, disco: disco)
+        #expect(otra.completaEn == fin)
+    }
+
+    @Test func unVideoNuevoBorraLaFechaYVuelveGrande() async {
+        let (m, s, disco) = armar(#"{"ok":true,"total":6,"vistos":6,"minutos_restantes":0,"mostrar_tarjeta":true}"#)
+        await m.actualizarResumen()
+        let fin = ReglasGuia.instante("2026-11-04T18:00:00-03:00")!
+        m.anotarCompleta(ahora: fin)
+        s.responder("entregas_app_resumen", #"{"ok":true,"total":7,"vistos":6,"minutos_restantes":1,"mostrar_tarjeta":true,"novedad_en":"2026-11-12T10:00:00-03:00","nuevos_total":1,"nuevos_vistos":0}"#)
+        await m.actualizarResumen()
+        m.anotarCompleta(ahora: fin.addingTimeInterval(20 * 86_400))
+        #expect(m.completaEn == nil)
+        #expect(m.tarjetaDestacada, "un video nuevo de Mati la vuelve a mostrar grande")
+        #expect(disco.leer(Double.self, "guia_completa_en.json") == nil)
+        // Visto lo nuevo, los 7 días cuentan de nuevo.
+        s.responder("entregas_app_resumen", #"{"ok":true,"total":7,"vistos":7,"minutos_restantes":0,"mostrar_tarjeta":true,"novedad_en":"2026-11-12T10:00:00-03:00","nuevos_total":1,"nuevos_vistos":1}"#)
+        await m.actualizarResumen()
+        let segunda = fin.addingTimeInterval(21 * 86_400)
+        m.anotarCompleta(ahora: segunda)
+        #expect(m.completaEn == segunda)
+        #expect(m.filaEnInicio(ahora: segunda.addingTimeInterval(86_400)))
+    }
+
+    @Test func sinResumenNoTocaNada() {
+        let (m, _, _) = armar("{}")
+        m.anotarCompleta()
+        #expect(m.completaEn == nil)
+        #expect(!m.filaEnInicio())
+    }
+
+    @Test func reglaDeLosSieteDias() {
+        let d = Date(timeIntervalSince1970: 1_000_000)
+        #expect(ReglasGuia.filaInicioVigente(completaEn: nil, ahora: d))
+        #expect(ReglasGuia.filaInicioVigente(completaEn: d, ahora: d.addingTimeInterval(7 * 86_400 - 1)))
+        #expect(!ReglasGuia.filaInicioVigente(completaEn: d, ahora: d.addingTimeInterval(7 * 86_400)))
+        let todo = ReglasGuia.Avance(total: 3, vistos: 3, minutosRestantes: 0)
+        #expect(ReglasGuia.completa(todo, novedad: nil))
+        #expect(!ReglasGuia.completa(todo, novedad: ReglasGuia.Avance(total: 1, vistos: 0, minutosRestantes: 1)))
+        #expect(!ReglasGuia.completa(ReglasGuia.Avance(total: 0, vistos: 0, minutosRestantes: 0), novedad: nil))
+    }
 }
 
 @Suite("Tu guía: el modelo (lecturas, cola y copia)", .serialized)

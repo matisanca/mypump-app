@@ -413,6 +413,19 @@ public enum ReglasGuia {
         r?.hayGuia == true && !quitada && mostrarTarjeta(r, ahora: ahora)
     }
 
+    /// Simplificar (11/11): con todo visto, «Tu guía» queda como una fila discreta dentro de «Tu inicio con Mati» durante
+    /// estos días desde que se terminó; después sale de Entreno (y queda en Mis datos).
+    public static let diasFilaCompleta = 7
+
+    /// La guía está terminada: todo visto y sin una tanda nueva sin ver.
+    public static func completa(_ a: Avance, novedad: Avance?) -> Bool { novedad == nil && a.completo }
+
+    /// La fila discreta sigue: sin fecha (todavía no se anotó) o dentro de los 7 días.
+    public static func filaInicioVigente(completaEn: Date?, ahora: Date = Date()) -> Bool {
+        guard let completaEn else { return true }
+        return ahora.timeIntervalSince(completaEn) < Double(diasFilaCompleta) * 86_400
+    }
+
     /// La fila «Ver mi guía» de Mis datos: con `ok: true` y la tarjeta fuera de Entreno (por la fecha o porque la quitó).
     public static func filaEnMisDatos(_ r: ResumenGuia?, quitada: Bool, ahora: Date = Date()) -> Bool {
         r?.ok == true && !tarjetaEnEntreno(r, quitada: quitada, ahora: ahora)

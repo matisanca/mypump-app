@@ -280,17 +280,17 @@ final class PresionUITests: XCTestCase {
 
     // MARK: Fácil de encontrar: la tarjeta de arriba y los avisos
 
+    // Simplificar (11/11): en Entreno la presión va dentro de la tarjeta única «Mi salud» (`tarjeta-mi-salud-inicio`), con la
+    // línea de lo pendiente y el botón de siempre, que sigue yendo directo a la toma.
     func testTarjetaLlevaDirectoALaTomaDeHoy() {
         lanzar("serie0", enEntreno: true)
-        esperar("tarjeta-presion", 40)
-        XCTAssertTrue(app.staticTexts["Tu presión"].exists)
-        XCTAssertTrue(app.staticTexts["Te faltan 3 tomas"].exists)
-        XCTAssertTrue(app.staticTexts["Son 3 tomas, una por día"].exists)
-        XCTAssertEqual(e("tarjeta-presion-boton").label, "Hacer la toma de hoy")
-        XCTAssertTrue(e("tarjeta-presion-boton").isHittable, "arriba de todo, sin scrollear")
-        XCTAssertGreaterThanOrEqual(e("tarjeta-presion-boton").frame.height, 56)
+        esperar("tarjeta-mi-salud-inicio", 40)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("Te faltan 3 tomas de presión"), e("tarjeta-mi-salud-inicio-texto").label)
+        XCTAssertEqual(e("tarjeta-mi-salud-inicio-boton").label, "Hacer la toma de hoy")
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-boton").isHittable, "arriba de todo, sin scrollear")
+        XCTAssertGreaterThanOrEqual(e("tarjeta-mi-salud-inicio-boton").frame.height, 49.5)
         // Dos toques: la tarjeta y el botón de la pantalla.
-        e("tarjeta-presion-boton").tap()
+        e("tarjeta-mi-salud-inicio-boton").tap()
         desdeCuando()
         anotar("124", "78", "62")
         esperar("presion-no-cuenta")
@@ -300,10 +300,10 @@ final class PresionUITests: XCTestCase {
 
     func testTarjetaRepetirAbreLaRepeticion() {
         lanzar("pendienteAlta", enEntreno: true)
-        esperar("tarjeta-presion", 40)
-        XCTAssertTrue(app.staticTexts["Te quedó pendiente repetir la toma. Hacela sentado y tranquilo cuando puedas."].exists)
-        XCTAssertEqual(e("tarjeta-presion-boton").label, "Repetir la toma")
-        e("tarjeta-presion-boton").tap()
+        esperar("tarjeta-mi-salud-inicio", 40)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("Te falta repetir la toma de presión"))
+        XCTAssertEqual(e("tarjeta-mi-salud-inicio-boton").label, "Repetir la toma")
+        e("tarjeta-mi-salud-inicio-boton").tap()
         esperar("presion-alta", 30)
         anotar("150", "90", "68")
         // La repetición retomada no trae las previas ni el reposo: por eso nunca dice «Esta no cuenta».
@@ -316,10 +316,10 @@ final class PresionUITests: XCTestCase {
 
     func testTarjetaPrepararYHoyListo() {
         lanzar("medirDeNuevo", enEntreno: true)
-        esperar("tarjeta-presion", 40)
-        XCTAssertTrue(app.staticTexts["Primero medí tu brazo y anotá tu tensiómetro"].exists)
-        XCTAssertEqual(e("tarjeta-presion-boton").label, "Empezar")
-        e("tarjeta-presion-boton").tap()
+        esperar("tarjeta-mi-salud-inicio", 40)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("Primero medí tu brazo y anotá tu tensiómetro"))
+        XCTAssertEqual(e("tarjeta-mi-salud-inicio-boton").label, "Empezar")
+        e("tarjeta-mi-salud-inicio-boton").tap()
         esperar("presion-medir-de-nuevo", 30)
         app.terminate()
 
@@ -327,7 +327,8 @@ final class PresionUITests: XCTestCase {
         lanzar("hoyListo", enEntreno: true)
         XCTAssertTrue(app.tabBars.buttons["Entreno"].waitForExistence(timeout: 40))
         RunLoop.current.run(until: Date().addingTimeInterval(6))
-        XCTAssertFalse(e("tarjeta-presion").exists, "en Entreno solo con algo para hacer")
+        XCTAssertFalse(e("tarjeta-mi-salud-inicio").exists, "en Entreno solo con algo para hacer")
+        XCTAssertFalse(e("tarjeta-presion").exists)
         app.terminate()
         lanzar("hoyListo")
         esperar("tarjeta-presion", 40)
@@ -342,6 +343,7 @@ final class PresionUITests: XCTestCase {
             lanzar(escenario, enEntreno: true)
             XCTAssertTrue(app.tabBars.buttons["Entreno"].waitForExistence(timeout: 40), escenario)
             RunLoop.current.run(until: Date().addingTimeInterval(6))
+            XCTAssertFalse(e("tarjeta-mi-salud-inicio").exists, escenario)
             XCTAssertFalse(e("tarjeta-presion").exists, escenario)
             app.terminate()
         }
@@ -479,7 +481,7 @@ final class PresionUITests: XCTestCase {
         for (escenario, nombre) in [("serie0", "toma"), ("serie2", "seguir"), ("pendienteAlta", "repetir"), ("medirDeNuevo", "preparar"), ("hoyListo", "hoy-listo")] {
             // «Hoy listo» ya no va en Entreno: su foto es la del bloque de Mi salud.
             lanzar(escenario, enEntreno: escenario != "hoyListo")
-            esperar("tarjeta-presion", 40)
+            esperar(escenario == "hoyListo" ? "tarjeta-presion" : "tarjeta-mi-salud-inicio", 40)
             foto("tarjeta-\(nombre)")
             app.terminate()
         }

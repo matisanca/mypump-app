@@ -41,24 +41,17 @@ struct EntrenoView: View {
                         // Sin rutina, las mismas tarjetas de arriba y en el mismo orden que con rutina (`ListaEntreno`): en el
                         // flujo nuevo la guía, la videollamada y el contrato pueden llegar antes que el plan.
                         Group {
-                            TarjetaPresion(enInicio: true)
-                            if let g = GuiaUI.modelo {
-                                TarjetaVideollamadaEntreno(modelo: g, listaPrevia: ListaPreviaUI.dentro(modelo, guia: g), abrirGuia: abrirGuia)
-                            }
-                            if let l = ListaPreviaUI.sola(modelo, guia: GuiaUI.modelo) {
-                                TarjetaListaPrevia(vista: l, abrirGuia: abrirGuiaSiHay)
-                            }
+                            // Simplificar (11/11): «Tu inicio con Mati» (guía, videollamada de comienzo y lista previa) y una sola
+                            // «Mi salud», como con rutina.
+                            TarjetaInicioConMati(abrirGuia: abrirGuia, ocultarGuia: ocultarGuia)
+                            TarjetaMiSaludInicio()
                             TarjetaRecorrido()
-                            TarjetaEstudiosInicio()
-                            // El próximo control de salud (palanca `controles_app`), junto a los estudios, como con rutina.
-                            TarjetaControlInicio()
-                            // Sin rutina no hay «más abajo»: la guía va en el lugar de la destacada, sea cual sea su estilo.
-                            if let g = GuiaUI.modelo { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
                             TarjetaFotosInicio(soloSiFaltan: true)
                             TarjetaGimnasio()
                             TarjetaNovedadPlan()
                             // El contrato sin firmar (palanca `contrato_app`): justo el pre-inicio, antes de que haya rutina.
                             AvisoContratoPendiente()
+                            EntradaDondeEntreno()
                         }
                         .padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         ContentUnavailableView("Todavía no hay rutina", systemImage: "dumbbell",
@@ -132,9 +125,6 @@ struct EntrenoView: View {
             }
         }
     }
-
-    /// Sin guía, la fila de la guía de la lista previa no es un botón.
-    private var abrirGuiaSiHay: (() -> Void)? { GuiaUI.modelo == nil ? nil : { abrirGuia() } }
 
     private func abrirGuia() {
         guard ruta.last != GuiaUI.destino else { return }
@@ -213,7 +203,6 @@ private struct ListaEntreno: View {
     @Environment(Preguntador.self) private var preguntador
     @State private var tituloEnBarra = false
     @State private var cerrando = false
-    private var abrirGuiaSiHay: (() -> Void)? { GuiaUI.modelo == nil ? nil : { abrirGuia() } }
     @State private var trabajando = false
     @ScaledMetric(relativeTo: .title) private var ladoAnillo: CGFloat = 68
     @Environment(\.dynamicTypeSize) private var tamañoLetra
@@ -227,24 +216,14 @@ private struct ListaEntreno: View {
         ScrollViewReader { lector in
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
-                // «Tu presión», primera de todas mientras haya algo para hacer. Es una tarjeta más: no toca ni condiciona la rutina.
-                TarjetaPresion(enInicio: true)
-                // 2.3.0: la videollamada fija arriba, desde que se agenda hasta que termina (aunque la tarjeta de la guía esté oculta).
-                if let g = GuiaUI.modelo {
-                    TarjetaVideollamadaEntreno(modelo: g, listaPrevia: ListaPreviaUI.dentro(Proveedor.modelo, guia: g), abrirGuia: abrirGuia)
-                }
-                // «Antes de la videollamada» sin tarjeta de videollamada: su propia tarjeta, en el mismo lugar.
-                if let l = ListaPreviaUI.sola(Proveedor.modelo, guia: GuiaUI.modelo) {
-                    TarjetaListaPrevia(vista: l, abrirGuia: abrirGuiaSiHay)
-                }
-                // «Tu recorrido con Mati» (2.3.0): arriba de todo, solo debajo de la videollamada que está por empezar.
+                // «Tu inicio con Mati» (simplificar, 11/11): la guía grande mientras falte ver algo, la videollamada de comienzo
+                // (fija desde que se agenda hasta que termina) y «Antes de la videollamada», en una sola tarjeta. Lo primero.
+                TarjetaInicioConMati(abrirGuia: abrirGuia, ocultarGuia: ocultarGuia)
+                // «Mi salud» (simplificar): una sola tarjeta en lugar de presión, estudios y control, solo con algo para hacer.
+                // Es una tarjeta más: no toca ni condiciona la rutina.
+                TarjetaMiSaludInicio()
+                // «Tu recorrido con Mati» (2.3.0): arriba, debajo de la videollamada que está por empezar.
                 TarjetaRecorrido()
-                // Un estudio pedido o una orden nueva (pedido de Mati, 10-nov). Orden fijo de las tarjetas de arriba: el link
-                // de la entrega (tiene hora), Estudios (lo pidió Mati y tiene fecha) y la guía destacada.
-                TarjetaEstudiosInicio()
-                // El próximo control de salud, desde que toca avisar (`controles_app`): lleva a Estudios en un toque.
-                TarjetaControlInicio()
-                if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
                 TarjetaFotosInicio(soloSiFaltan: true)
                 TarjetaGimnasio()
                 TarjetaNovedadPlan()
@@ -256,9 +235,6 @@ private struct ListaEntreno: View {
                                     texto: Text(Bonito.sinEmoji(TextosEntreno.demo).replacingOccurrences(of: "Modo demo — ", with: "")),
                                     tono: .alerta)
                 }
-                // «Tu guía» con todo visto: la compacta, en su lugar de siempre (solo si `entregas_app_resumen` dijo que
-                // hay; D16: la barra no se toca).
-                if let g = GuiaUI.modelo, !g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia) }
                 BannerRevision()
                 // «Pump del día» (2.3.0): solo con la palanca `metas_pasos` y una meta de pasos en el plan.
                 PumpDelDiaSiCorresponde()
@@ -279,6 +255,8 @@ private struct ListaEntreno: View {
                 } else {
                     cuerpo
                 }
+                // «Mi gimnasio y mi técnica» (simplificar, 11/11): el renglón grande al final, con la respuesta de técnica a un toque.
+                EntradaDondeEntreno()
                 PieRespaldo(origen: .entreno)
                     .padding(.top, Espacio.xs)
             }

@@ -3,24 +3,24 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Salud (2.1, S1), que reemplaza a Progreso, con tres segmentos. Desde la 2.1.0 no es una pestaña: se abre en una hoja
-/// desde la tarjeta Recuperación de Revisión, un aviso o un link.
+/// «Mi progreso» (simplificar, OK de Mati del 11/11; antes la hoja «Salud» de la 2.1, con tres botones arriba). Se abre en
+/// una hoja desde «Tu progreso» de Revisión, la Recuperación de Mi salud, un aviso o un link. Todo en UNA columna, sin los
+/// botones de arriba (a los alumnos mayores les costaban), con un título por sección:
 /// - Recuperación: la card de recuperación (score, motivos, confianza, tendencia de 14 días), la de salud (sueño,
-///   corazón, actividad) y Mi reloj. Salieron de Revisión.
+///   corazón, actividad) y Mi reloj. Se conserva entera (Mati: la recuperación no desaparece de ningún lado).
 /// - Fuerza: las series por músculo de la semana (S2) y lo que era Progreso (récords y curvas).
-/// - Cuerpo: el peso con su media (la tarjeta que estaba en Revisión), las fotos por semana y el check de la semana, de
-///   solo lectura (se suben en Revisión).
-/// Arranca en Recuperación y recuerda el segmento mientras viva la app. Un aviso o un botón que pide un segmento lo deja
-/// en `Navegacion.segmentoSalud`, y acá se consume.
+/// - Cuerpo: el peso con su media, las fotos por semana y el check de la semana, de solo lectura (se suben en Revisión).
+/// Un aviso o un botón que pide una sección la deja en `Navegacion.segmentoSalud`: acá se baja hasta ella y se consume.
 struct SaludView: View {
     let datos: Muestras
-    /// La hoja de Salud (`Navegacion.saludAbierta`): «Listo» la cierra. nil = sin botón (bocetos).
+    /// La hoja (`Navegacion.saludAbierta`): «Listo» la cierra. nil = sin botón (bocetos).
     var alCerrar: (() -> Void)?
     @State private var modelo = Proveedor.modelo
     @Environment(Navegacion.self) private var navegacion: Navegacion?
     @Environment(\.horizontalSizeClass) private var claseAncho
-    @State private var segmento: SegmentoSalud = DemoUI.segmento.flatMap(SegmentoSalud.init(rawValue:)) ?? .recuperacion
     @State private var ruta: [LineaProgreso] = []
+
+    static let titulo = "Mi progreso"
 
     private var salud: ModeloSalud? { modelo.conMuestras ? nil : modelo.salud }
     private var revision: ModeloRevision? { modelo.conMuestras ? nil : modelo.revision }
@@ -28,30 +28,39 @@ struct SaludView: View {
 
     var body: some View {
         NavigationStack(path: $ruta) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Espacio.l) {
-                    // Como la web, arriba de todas las escenas menos Revisión (GEN-03).
-                    BannerRevision()
-                    Picker("Sección de Salud", selection: $segmento) {
-                        ForEach(SegmentoSalud.allCases) { Text($0.titulo).tag($0) }
+            ScrollViewReader { lector in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Espacio.l) {
+                        // Como la web, arriba de todas las escenas menos Revisión (GEN-03).
+                        BannerRevision()
+                        seccion(.recuperacion) { recuperacion }
+                        seccion(.fuerza) { FuerzaSeccion(datos: datos, ruta: $ruta) }
+                        seccion(.cuerpo) { CuerpoSeccion(datos: datos, revision: revision, modeloFotos: modeloFotos) }
                     }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("segmento-salud")
-                    switch segmento {
-                    case .recuperacion: recuperacion
-                    case .fuerza: FuerzaSeccion(datos: datos, ruta: $ruta)
-                    case .cuerpo: CuerpoSeccion(datos: datos, revision: revision, modeloFotos: modeloFotos)
+                    .padding(.horizontal, Espacio.m)
+                    .padding(.top, Espacio.xs)
+                    .padding(.bottom, Espacio.xl)
+                    .anchoLectura(claseAncho == .regular ? Ancho.doble : Ancho.lectura)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .refreshable { await refrescar() }
+                // Bocetos: `-segmento fuerza|cuerpo` abre en esa sección.
+                .task {
+                    guard let s = DemoUI.segmento.flatMap(SegmentoSalud.init(rawValue:)), s != .recuperacion else { return }
+                    try? await Task.sleep(for: .milliseconds(350))
+                    lector.scrollTo(s, anchor: .top)
+                }
+                .onChange(of: navegacion?.segmentoSalud, initial: true) { _, pedido in
+                    guard let pedido else { return }
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(350))
+                        if pedido != .recuperacion { withAnimation(.snappy) { lector.scrollTo(pedido, anchor: .top) } }
+                        navegacion?.segmentoSalud = nil
                     }
                 }
-                .padding(.horizontal, Espacio.m)
-                .padding(.top, Espacio.xs)
-                .padding(.bottom, Espacio.xl)
-                .anchoLectura(claseAncho == .regular && segmento == .fuerza ? Ancho.doble : Ancho.lectura)
             }
-            .scrollDismissesKeyboard(.interactively)
-            .refreshable { await refrescar() }
             .background(Color.fondo)
-            .navigationTitle("Salud")
+            .navigationTitle(Self.titulo)
             .navigationDestination(for: LineaProgreso.self) { ProgresoDetalleView(linea: $0) }
             .toolbar {
                 if let alCerrar {
@@ -60,13 +69,24 @@ struct SaludView: View {
                     }
                 }
             }
-            .sensoryFeedback(.selection, trigger: segmento)
         }
-        .onChange(of: navegacion?.segmentoSalud, initial: true) { _, pedido in
-            guard let pedido else { return }
-            segmento = pedido
-            navegacion?.segmentoSalud = nil
+    }
+
+    /// Un título grande y lo de la sección; el ancla para bajar hasta ella.
+    private func seccion<C: View>(_ s: SegmentoSalud, @ViewBuilder _ contenido: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: Espacio.s) {
+            Text(s.titulo)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.primary)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.horizontal, 4)
+                .padding(.top, s == .recuperacion ? 0 : Espacio.s)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            contenido()
         }
+        .id(s)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("mi-progreso-\(s.rawValue)")
     }
 
     @ViewBuilder private var recuperacion: some View {
@@ -98,17 +118,14 @@ struct SaludView: View {
         }
     }
 
-    /// Tirar para actualizar: lo del segmento que se ve (sin cuenta no hay nada que traer).
+    /// Tirar para actualizar: las tres secciones (sin cuenta no hay nada que traer).
     private func refrescar() async {
         guard !modelo.conMuestras else { return }
-        switch segmento {
-        case .recuperacion: await salud?.cargar()
-        case .fuerza: await modelo.cargarProgreso()
-        case .cuerpo:
-            async let r: Void = revision?.cargarRevision() ?? ()
-            async let f: Void = modeloFotos?.cargar() ?? ()
-            _ = await (r, f)
-        }
+        async let s: Void = salud?.cargar() ?? ()
+        async let p: Void = modelo.cargarProgreso()
+        async let r: Void = revision?.cargarRevision() ?? ()
+        async let f: Void = modeloFotos?.cargar() ?? ()
+        _ = await (s, p, r, f)
     }
 }
 
