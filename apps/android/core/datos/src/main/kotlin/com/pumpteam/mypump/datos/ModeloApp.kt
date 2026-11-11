@@ -180,6 +180,8 @@ class ModeloApp(
 
     /** Las metas del plan, o null con la palanca `metas_pasos` apagada o sin ninguna meta (planes viejos: no se inventa). */
     fun metas(): MetasPlan? {
+        // La demo con historial trae sus metas inventadas (no depende de ninguna palanca: no hay servidor).
+        if (_esDemo.value) return _demoHistorial.value?.metas
         if (!_palanca.value.metasPasos) return null
         val e = _dieta.value?.estructura ?: return null
         return MetasPlan.desde(e).takeIf { !it.vacio }
@@ -189,9 +191,10 @@ class ModeloApp(
     fun pumpDelDia(hoy: String = FechaLocal.hoy()): Pair<PumpDelDia.Vista, Boolean>? {
         val meta = metas()?.metaPasos ?: return null
         val s = _salud.value
-        val filas = s?.salud?.value ?: emptyList()
+        val demo = _demoHistorial.value?.takeIf { _esDemo.value }
+        val filas = demo?.salud ?: s?.salud?.value ?: emptyList()
         val v = PumpDelDia.vista(PumpDelDia.pasosPorDia(filas), meta, hoy) ?: return null
-        val conectado = s?.conectado?.value == true || SaludVista.tieneReciente(filas, listOf("pasos"), 7, hoy)
+        val conectado = demo != null || s?.conectado?.value == true || SaludVista.tieneReciente(filas, listOf("pasos"), 7, hoy)
         return v to conectado
     }
 
@@ -316,6 +319,15 @@ class ModeloApp(
     /** Estudios y órdenes: existe con cuenta, pero solo llama al servidor con la palanca `estudios_app` prendida. */
     private val _estudios = MutableStateFlow<ModeloEstudios?>(null)
     val estudios: StateFlow<ModeloEstudios?> = _estudios.asStateFlow()
+    /** «Récords y logros» (2.3.0): existe con cuenta, pero solo llama al servidor con la palanca `wins_app` prendida. */
+    private val _wins = MutableStateFlow<ModeloWins?>(null)
+    val wins: StateFlow<ModeloWins?> = _wins.asStateFlow()
+    /** La lista previa a la videollamada (2.3.0): con cuenta y la palanca `lista_previa`; en la demo, la fija del historial. */
+    private val _listaPrevia = MutableStateFlow<ModeloListaPrevia?>(null)
+    val listaPrevia: StateFlow<ModeloListaPrevia?> = _listaPrevia.asStateFlow()
+    /** El historial inventado de la demo sin cuenta (null con cuenta, o si la app no lo trae). Nunca se mezcla con una cuenta. */
+    private val _demoHistorial = MutableStateFlow<HistorialDemo?>(null)
+    val demoHistorial: StateFlow<HistorialDemo?> = _demoHistorial.asStateFlow()
 
     /** Progreso: se carga al abrir la pestaña (como la web). */
     private val _progreso = MutableStateFlow<ModeloProgreso?>(null)
@@ -509,7 +521,14 @@ class ModeloApp(
      * "Ver demo": la rutina y la dieta de ejemplo de la web (`SAMPLE_RUTINA` / `SAMPLE_DIET`, que la app trae
      * empaquetadas), sin cuenta. No toca la red ni escribe nada; los reemplazos viven en memoria.
      */
-    fun entrarEnDemo(rutina: String, dieta: String, guia: String? = null, suplementacion: String? = null, agenda: String? = null) {
+    fun entrarEnDemo(
+        rutina: String,
+        dieta: String,
+        guia: String? = null,
+        suplementacion: String? = null,
+        agenda: String? = null,
+        historial: String? = null,
+    ) {
         fun envolver(estructura: String): JsonElement? = try {
             ValorJson.objeto(
                 "id" to texto("demo"), "version" to numero(1), "estructura" to ValorJson.parsear(estructura), "semana_actual" to numero(1),
@@ -528,8 +547,13 @@ class ModeloApp(
         _sinRedEn.value = emptySet()
         _esDemo.value = true
         // ACC-07: Revisión y el chat con el hilo vacío, sin red ni cola.
-        _revision.value = ModeloRevision.demo(cliente, alcance)
-        _chat.value = ModeloChat(cliente, token = null, outbox = null, alcance = alcance)
+        // El historial inventado (2.3.0), opcional: sin él la demo queda como antes. Días relativos a hoy; nada viaja ni se escribe.
+        val h = historial?.let { HistorialDemo.desde(it) }
+        _demoHistorial.value = h
+        _revision.value = ModeloRevision.demo(cliente, alcance, salud = h?.salud ?: emptyList())
+        _chat.value = ModeloChat(cliente, token = null, outbox = null, alcance = alcance, muestra = h?.chat ?: emptyList())
+        _listaPrevia.value = h?.listaPrevia?.let { ModeloListaPrevia.demo(it) }
+        _progreso.value = h?.let { ModeloProgreso(cliente, "", muestra = it.porClave) }
         // «Tu guía» de muestra (los clips genéricos de «Tu app»), como la rutina: sin red; lo visto y las dudas en memoria.
         _guia.value?.cerrar()
         _guia.value = guia?.let { g ->
@@ -553,6 +577,7 @@ class ModeloApp(
         }?.let { ModeloSuplementacion.demo(cliente, it, alcance) }
         _entreno.value = _rutina.value?.let { r ->
             ModeloEntreno(cliente, token = null, outbox = null, disco = null, rutinaInicial = r, catalogoInicial = catalogoVigente, alcance = alcance)
+                .also { it.historialDemo = h?.porClave }
         }
         _fase.value = Fase.LISTO
         _entreno.value?.let { e -> alcance.launch { e.cargar() } }
@@ -572,6 +597,10 @@ class ModeloApp(
         _entreno.value = null
         _revision.value = null   // los de la demo
         _chat.value = null
+        _demoHistorial.value = null
+        _listaPrevia.value = null
+        _progreso.value = null
+        _registroMetas.value = PumpDelDia.Registro()
         _guia.value?.cerrar()
         _guia.value = null
         _suplementacion.value = null
@@ -618,6 +647,9 @@ class ModeloApp(
         _devolucion.value = null
         _feedback.value = null
         _estudios.value = null
+        _wins.value = null
+        _listaPrevia.value = null
+        _demoHistorial.value = null
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
@@ -679,6 +711,8 @@ class ModeloApp(
         _devolucion.value = ModeloDevolucion(cliente, t, d)
         _feedback.value = ModeloFeedback(cliente, t, d)
         _estudios.value = ModeloEstudios(cliente, t, d, ColaEstudios.carpeta(raizSinRespaldo ?: raizDisco, d), lanzar = { tarea -> alcance.launch { tarea() } })
+        _wins.value = ModeloWins(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        _listaPrevia.value = ModeloListaPrevia(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
@@ -943,6 +977,8 @@ class ModeloApp(
             _finPlan.value?.usarPalanca(it.finPlan)
             _compras.value?.usarPalanca(it.comprasPais)
             _casa.value?.usarPalanca(it.casa && it.gimnasioFotos)
+            _wins.value?.recordarPalanca(it.winsApp)
+            _listaPrevia.value?.recordarPalanca(it.listaPrevia)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -1039,6 +1075,8 @@ class ModeloApp(
         _chat.value?.consultarAdjuntos(if (palancaLeidaEnSesion) _palanca.value.chatAdjuntos else null)
         sincronizarFeedback()
         sincronizarEstudios()
+        sincronizarWins()
+        sincronizarListaPreviaYa()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         anotarCargaCompleta()
@@ -1104,6 +1142,30 @@ class ModeloApp(
     /** Solo lectura. Apagada, se borra lo guardado: no queda nada en pantalla. */
     private suspend fun sincronizarDevolucion() {
         val x = _devolucion.value ?: return
+        if (x.palancaRecordada) x.refrescar() else x.apagar()
+    }
+
+    /** «Récords y logros»: el permiso vigente y lo que quedó en la cola. Con la palanca apagada, ni una llamada. */
+    private suspend fun sincronizarWins() {
+        val x = _wins.value ?: return
+        if (!x.palancaRecordada) return
+        x.refrescar()
+        x.vaciar()
+    }
+
+    /**
+     * La lista previa a la videollamada: al cargar, al volver al frente y al abrir Entreno (como mucho un pedido por minuto).
+     * Con la palanca apagada no se llama a nada y no queda nada en pantalla. La de la demo es fija.
+     */
+    suspend fun sincronizarListaPrevia() {
+        // Mientras carga no: la palanca recordada puede ser vieja, y `cargar` la mira apenas la lee.
+        if (_fase.value != Fase.LISTO) return
+        sincronizarListaPreviaYa()
+    }
+
+    private suspend fun sincronizarListaPreviaYa() {
+        if (_esDemo.value || token == null) return
+        val x = _listaPrevia.value ?: return
         if (x.palancaRecordada) x.refrescar() else x.apagar()
     }
 
@@ -1204,6 +1266,8 @@ class ModeloApp(
         sincronizarEstudios()
         sincronizarFotosInicio()
         if (toca(Relectura.GUIA)) _guia.value?.refrescarResumen()
+        sincronizarWins()
+        sincronizarListaPreviaYa()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }
         // Suplementación: aparte, así no demora lo que sigue (es solo lectura).

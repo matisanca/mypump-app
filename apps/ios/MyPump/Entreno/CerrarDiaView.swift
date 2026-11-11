@@ -169,12 +169,15 @@ struct CerrarDiaView: View {
         escribiendo = false
         enviando = true
         aviso = nil
+        // Logros (2.3.0): los récords se miran antes de cerrar (el cierre limpia el día) y se festejan cuando esta hoja se fue.
+        let records = WinsUI.festeja(motor) ? motor.recordsDeHoy() : []
         Task {
             let r = await motor.cerrarDia(notas: notas)
             enviando = false
             if let a = r.aviso {
                 aviso = a
             } else {
+                EstadoFestejo.shared.pendientes = records
                 cerrados += 1
                 cerrar()
             }

@@ -131,6 +131,10 @@ struct RevisionView: View {
         if !modelo.conMuestras, modelo.palanca.devolucionSemanal, let d = modelo.devolucion, let ultima = d.ultima {
             DevolucionTarjeta(ultima: ultima, anteriores: d.anteriores)
                 .id("devolucion")
+        } else if modelo.demoConHistorial, let d = modelo.demoHistorial?.devoluciones, let ultima = d.ultima {
+            // La demo: las devoluciones de ejemplo de su historial (no se pide ni se marca nada).
+            DevolucionTarjeta(ultima: ultima, anteriores: d.anteriores)
+                .id("devolucion")
         }
     }
     /// Hay un estudio pedido o una orden sin ver (nunca en la demo ni en los bocetos).
@@ -185,6 +189,11 @@ struct RevisionView: View {
             }
     }
     private var lineaProgreso: ProgresoSemana.Linea? {
+        if modelo.demoConHistorial {
+            // La demo: lo mismo, con las series de su historial de ejemplo.
+            let lineas = LineaProgreso.desdeMuestras(muestras)
+            return ProgresoSemana.linea(lineas.map { ProgresoSemana.ejercicio(nombre: $0.nombre, filas: $0.filas) }, hoy: FechaLocal.hoy())
+        }
         guard let p = modelo.conMuestras ? nil : modelo.progreso else { return nil }
         return ProgresoSemana.linea(p.tarjetas.map { ProgresoSemana.ejercicio(nombre: $0.nombre, filas: $0.filas) }, hoy: FechaLocal.hoy())
     }

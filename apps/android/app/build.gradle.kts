@@ -149,6 +149,8 @@ val assetsCompartidos = tasks.register<CopiarCompartido>("assetsCompartidos") {
         "demo/agenda.json" to "apps/shared/demo/agenda.json",
         // Suplementación de la demo: la fila de `mypump_suplementacion` (ficticia).
         "demo/suplementacion.json" to "apps/shared/demo/suplementacion.json",
+        // El historial inventado de la demo (2.3.0): ocho semanas de un alumno que no existe, con días relativos a hoy.
+        "demo/historial.json" to "apps/shared/demo/historial.json",
         "bases/catalogo-ejercicios.json" to "apps/shared/catalogo-ejercicios.json",
         "licencias/Archivo-OFL.txt" to "apps/ios/MyPump/Recursos/Fuentes/Archivo-OFL.txt",
         // Dieta: la base de alimentos de la web (MYPUMP_FOOD_DB) contra la que se buscan los reemplazos.
@@ -225,6 +227,7 @@ android {
         getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleFeedback/kotlin"))
         getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleEstudios/kotlin"))
         getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleFotosInicio/kotlin"))
+        getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleColaA/kotlin"))
     }
 
     packaging {

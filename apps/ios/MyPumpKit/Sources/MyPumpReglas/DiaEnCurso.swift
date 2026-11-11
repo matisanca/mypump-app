@@ -169,6 +169,40 @@ public struct DiaEnCurso: Sendable, Equatable {
         return marcas
     }
 
+    /// Lo que entra a la regla de los récords del día (`ReglasWins.records`, 2.3.0), un ejercicio por clave y en el orden del
+    /// día. `anteriores`: las marcas del historial de días anteriores a `hoy`. `hoy`: las series confirmadas y verosímiles del
+    /// ejercicio que se hace (misma clave en todo el día). Sin kg (peso corporal, calentamiento, cardio), nunca hay récord.
+    /// `efectivo` da el ejercicio que se hace en un lugar (el sustituto, si hay).
+    public func entradasDeRecords(hoy: String, efectivo: (Ejercicio) -> Ejercicio) -> [ReglasWins.Ejercicio] {
+        var vistas = Set<String>()
+        var entradas: [ReglasWins.Ejercicio] = []
+        // El calentamiento no entra: ni aporta series ni tapa al ejercicio de trabajo que se llama igual.
+        for ex in lista where ex.tipo != "calentamiento" {
+            let ef = efectivo(ex)
+            let nombre = nombreEfectivo(ex.id) ?? ef.nombre
+            let clave = ClaveEjercicio.de(nombre)
+            guard !clave.isEmpty, clave.count <= 120, vistas.insert(clave).inserted else { continue }
+            let h = historial[ex.id] ?? []
+            let anteriores = RecordSerie.anteriores(h, hoy: hoy, zona: zona)
+            let recordKg = anteriores.map(\.kg).filter(\.isFinite).max() ?? 0
+            var marcas: [RecordSerie.Marca] = []
+            for l in lista where l.tipo != "calentamiento" && ClaveEjercicio.de(nombreEfectivo(l.id)) == clave {
+                let repsPlan = Progresiones.pauta(efectivo(l), semana: semana).reps
+                for (i, s) in (ejercicios[l.id]?.series ?? []).enumerated() where s.confirmada && esDelEjercicioActual(l.id, s) {
+                    guard let m = RecordSerie.marca(s) else { continue }
+                    // Lo que hubo que preguntar («¿Está bien cargado?») no cuenta como récord, igual que al confirmar.
+                    guard case .ok = Verosimilitud.evaluar(reps: s.reps, kg: s.kg, sinKg: false, recordKg: recordKg,
+                                                           repsUltimaVez: repsUltimaVez(l.id, i), repsPlan: repsPlan) else { continue }
+                    marcas.append(m)
+                }
+            }
+            entradas.append(ReglasWins.Ejercicio(clave: clave, nombre: nombre, anteriores: anteriores, hoy: marcas,
+                                                 sinKg: ReglasEjercicio.sinKg(ef) || ReglasEjercicio.esCardio(ef),
+                                                 suficiente: RecordSerie.historiaSuficiente(h, hoy: hoy, zona: zona)))
+        }
+        return entradas
+    }
+
     /// El descanso del lugar en segundos: el elegido a mano para el ejercicio que se hace (por su clave) o el del plan.
     public func descanso(_ id: String) -> Int {
         DescansoPropio.segundos(propio: descansosPropios[ClaveEjercicio.de(nombreEfectivo(id))], plan: ejercicio(id)?.descansoSegundos)

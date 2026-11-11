@@ -49,6 +49,11 @@ data class PalancaRemota(
     val comprasPais: Boolean = false,
     /** Entreno en casa (`casa`): el interruptor de Mi gimnasio. Sin la clave, apagada. Necesita `gimnasio_fotos`. */
     val casa: Boolean = false,
+     * Récords y logros (`wins_app`, 2.3.0): el festejo al cerrar la sesión y, con permiso, la cola para Mati. Sin la clave,
+     * apagada: ni se muestra ni se llama a nada nuevo.
+    val winsApp: Boolean = false,
+    /** La lista previa a la videollamada de comienzo (`lista_previa`, 2.3.0). Sin la clave, apagada. */
+    val listaPrevia: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -75,6 +80,8 @@ data class PalancaRemota(
             finPlan = (j["fin_plan"] as? ValorJson.Booleano)?.valor ?: false,
             comprasPais = (j["compras_pais"] as? ValorJson.Booleano)?.valor ?: false,
             casa = (j["casa"] as? ValorJson.Booleano)?.valor ?: false,
+            winsApp = (j["wins_app"] as? ValorJson.Booleano)?.valor ?: false,
+            listaPrevia = (j["lista_previa"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

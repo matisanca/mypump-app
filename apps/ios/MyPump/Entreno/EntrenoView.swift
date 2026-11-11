@@ -43,7 +43,12 @@ struct EntrenoView: View {
                         TarjetaGimnasio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
-                            TarjetaVideollamadaEntreno(modelo: g).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                            TarjetaVideollamadaEntreno(modelo: g, listaPrevia: ListaPreviaUI.dentro(modelo, guia: g), abrirGuia: abrirGuia)
+                                .padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                        }
+                        if let l = ListaPreviaUI.sola(modelo, guia: GuiaUI.modelo) {
+                            TarjetaListaPrevia(vista: l, abrirGuia: abrirGuiaSiHay)
+                                .padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         }
                         // Un estudio pedido o una orden nueva, también sin rutina y en el mismo orden: después del link de
                         // la entrega y antes de la guía.
@@ -64,6 +69,9 @@ struct EntrenoView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.fondo)
             .modifier(TareasVideollamada(modelo: GuiaUI.modelo))
+            .modifier(FestejoEnEntreno())
+            // La lista previa: al abrir Entreno y cuando cambian la guía o la agenda (al volver al frente la pide el modelo).
+            .task(id: ListaPreviaUI.clave(GuiaUI.modelo)) { await modelo.sincronizarListaPrevia() }
             .overlay(alignment: .bottom) {
                 if avisoGuiaOculta {
                     AvisoGuiaOculta(deshacer: deshacerOcultarGuia)
@@ -119,6 +127,9 @@ struct EntrenoView: View {
             }
         }
     }
+
+    /// Sin guía, la fila de la guía de la lista previa no es un botón.
+    private var abrirGuiaSiHay: (() -> Void)? { GuiaUI.modelo == nil ? nil : { abrirGuia() } }
 
     private func abrirGuia() {
         guard ruta.last != GuiaUI.destino else { return }
@@ -197,6 +208,7 @@ private struct ListaEntreno: View {
     @Environment(Preguntador.self) private var preguntador
     @State private var tituloEnBarra = false
     @State private var cerrando = false
+    private var abrirGuiaSiHay: (() -> Void)? { GuiaUI.modelo == nil ? nil : { abrirGuia() } }
     @State private var trabajando = false
     @ScaledMetric(relativeTo: .title) private var ladoAnillo: CGFloat = 68
     @Environment(\.dynamicTypeSize) private var tamañoLetra
@@ -213,7 +225,13 @@ private struct ListaEntreno: View {
                 // «Tu guía» mientras falte ver algo: verde y primera, arriba de todo (pedido de Mati, 4-nov). Abajo,
                 // el aviso de Revisión.
                 // 2.3.0: la videollamada fija arriba, desde que se agenda hasta que termina (aunque la tarjeta de la guía esté oculta).
-                if let g = GuiaUI.modelo { TarjetaVideollamadaEntreno(modelo: g) }
+                if let g = GuiaUI.modelo {
+                    TarjetaVideollamadaEntreno(modelo: g, listaPrevia: ListaPreviaUI.dentro(Proveedor.modelo, guia: g), abrirGuia: abrirGuia)
+                }
+                // «Antes de la videollamada» sin tarjeta de videollamada: su propia tarjeta, en el mismo lugar.
+                if let l = ListaPreviaUI.sola(Proveedor.modelo, guia: GuiaUI.modelo) {
+                    TarjetaListaPrevia(vista: l, abrirGuia: abrirGuiaSiHay)
+                }
                 // «Tu recorrido con Mati» (2.3.0): arriba de todo, solo debajo de la videollamada que está por empezar.
                 TarjetaRecorrido()
                 // Un estudio pedido o una orden nueva (pedido de Mati, 10-nov). Orden fijo de las tarjetas de arriba: el link
@@ -299,7 +317,7 @@ private struct ListaEntreno: View {
                 .accessibilityHidden(!tituloEnBarra)
             }
         }
-        .sheet(isPresented: $cerrando) { CerrarDiaView(motor: motor) }
+        .sheet(isPresented: $cerrando, onDismiss: { EstadoFestejo.shared.alCerrarseLaHoja() }) { CerrarDiaView(motor: motor) }
     }
 
     // MARK: Cabecera

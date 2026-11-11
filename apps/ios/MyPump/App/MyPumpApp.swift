@@ -77,7 +77,7 @@ struct MyPumpApp: App {
               let d = Bundle.main.url(forResource: "dieta", withExtension: "json", subdirectory: "Demo.bundle"),
               let rutina = try? Data(contentsOf: r), let dieta = try? Data(contentsOf: d) else { return }
         Proveedor.modelo.entrarEnDemo(rutina: DemoUI.cardioDePrueba ? DemoUI.conCintaDePrueba(rutina) : rutina, dieta: dieta, guia: DemoGuia.datos,
-                                      suplementacion: DemoSuplementacion.datos, agenda: DemoGuia.agenda)
+                                      suplementacion: DemoSuplementacion.datos, agenda: DemoGuia.agenda, historial: DemoHistorialApp.datos)
         // `-novedadDeMuestra rutina|plan|bloque` (DEBUG): una novedad sin ver en la demo, para las capturas.
         if let tipo = UserDefaults.standard.string(forKey: "novedadDeMuestra") {
             Proveedor.modelo.usarNovedadesDeMuestra(ModeloNovedades(muestra: DemoNovedades.lista(tipo)))

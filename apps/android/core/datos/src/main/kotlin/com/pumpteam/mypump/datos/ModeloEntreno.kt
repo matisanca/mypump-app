@@ -40,6 +40,7 @@ import com.pumpteam.mypump.reglas.Pauta
 import com.pumpteam.mypump.reglas.Pregunta
 import com.pumpteam.mypump.reglas.Progresiones
 import com.pumpteam.mypump.reglas.ReglasEjercicio
+import com.pumpteam.mypump.reglas.ReglasWins
 import com.pumpteam.mypump.reglas.ResumenDia
 import com.pumpteam.mypump.reglas.SemanaEntreno
 import com.pumpteam.mypump.reglas.SemanticaJs
@@ -95,6 +96,12 @@ class ModeloEntreno(
     private val sesiones: SesionesDelDia = SesionesDelDia(alcance),
 ) {
     val demo: Boolean = esDemo ?: (token == null || outbox == null)
+
+    /**
+     * La demo sin cuenta (2.3.0): el historial inventado por clave ([HistorialDemo]). Lo pone `ModeloApp.entrarEnDemo`; solo
+     * se mira sin token. null = sin historial, como siempre.
+     */
+    var historialDemo: Map<String, List<RegistroHistorico>>? = null
 
     private val normalizacionInicial = NormalizacionRutina.normalizar(rutinaInicial.estructura)
 
@@ -1077,6 +1084,14 @@ class ModeloEntreno(
         return ResultadoCierre.CERRADO
     }
 
+    /**
+     * Los récords del día (2.3.0, [ReglasWins]): lo que se festeja después de cerrar la sesión. Las marcas de antes salen
+     * del historial por clave de días anteriores (lo mismo que usa el aviso de récord al confirmar una serie). Se mira ANTES
+     * de cerrar.
+     */
+    fun recordsDeHoy(): List<ReglasWins.Record> =
+        ReglasWins.records(_dia.value.entradasDeRecords(FechaJs.ymd(reloj(), zona)) { efectivo(it).ejercicio })
+
     // ── Semana nueva y bloque nuevo (ENT-14/15) ──
 
     sealed interface ResultadoAvance {
@@ -1238,7 +1253,8 @@ class ModeloEntreno(
     }
 
     internal suspend fun traerHistorial(clave: String?, lugar: String): Historial {
-        val t = token ?: return Historial.Filas(emptyList())
+        // Sin cuenta: el historial de ejemplo de la demo, si lo hay (nunca toca la red).
+        val t = token ?: return Historial.Filas(if (demo) historialDemo?.get(clave ?: "") ?: emptyList() else emptyList())
         if (clave != null && !sinHistorialPorClave) {
             when (val m = porClave(listOf(clave))) {
                 is PorClave.Ok -> return Historial.Filas(m.filas[clave] ?: emptyList())

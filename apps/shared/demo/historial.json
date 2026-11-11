@@ -1,0 +1,2192 @@
+{
+ "version": 1,
+ "nota": "Datos inventados para la demo sin cuenta. Los días son relativos a hoy (0 = hoy, -1 = ayer). Lo genera scripts/nativa/generar-demo-historial.py: no editar a mano.",
+ "entreno": [
+  {
+   "ejercicio_id": "ex_010",
+   "nombre": "Remo con barra",
+   "sesiones": [
+    {
+     "dia": -54,
+     "hora": "18:40",
+     "series": [
+      {
+       "kg": 50,
+       "reps": 8
+      },
+      {
+       "kg": 50,
+       "reps": 8
+      },
+      {
+       "kg": 50,
+       "reps": 7
+      },
+      {
+       "kg": 50,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -47,
+     "hora": "18:40",
+     "series": [
+      {
+       "kg": 50,
+       "reps": 9
+      },
+      {
+       "kg": 50,
+       "reps": 9
+      },
+      {
+       "kg": 50,
+       "reps": 8
+      },
+      {
+       "kg": 50,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "dia": -40,
+     "hora": "18:40",
+     "series": [
+      {
+       "kg": 50,
+       "reps": 10
+      },
+      {
+       "kg": 50,
+       "reps": 10
+      },
+      {
+       "kg": 50,
+       "reps": 9
+      },
+      {
+       "kg": 50,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -33,
+     "hora": "18:40",
+     "series": [
+      {
+       "kg": 50,
+       "reps": 10
+      },
+      {
+       "kg": 50,
+       "reps": 10
+      },
+      {
+       "kg": 50,
+       "reps": 9
+      },
+      {
+       "kg": 50,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "dia": -26,
+     "hora": "18:40",
+     "series": [
+      {
+       "kg": 52.5,
+       "reps": 8
+      },
+      {
+       "kg": 52.5,
+       "reps": 8
+      },
+      {
+       "kg": 52.5,
+       "reps": 7
+      },
+      {
+       "kg": 52.5,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -19,
+     "hora": "18:40",
+     "series": [
+      {
+       "kg": 52.5,
+       "reps": 9
+      },
+      {
+       "kg": 52.5,
+       "reps": 9
+      },
+      {
+       "kg": 52.5,
+       "reps": 8
+      },
+      {
+       "kg": 52.5,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "dia": -12,
+     "hora": "18:40",
+     "series": [
+      {
+       "kg": 52.5,
+       "reps": 10
+      },
+      {
+       "kg": 52.5,
+       "reps": 10
+      },
+      {
+       "kg": 52.5,
+       "reps": 9
+      },
+      {
+       "kg": 52.5,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -5,
+     "hora": "18:40",
+     "series": [
+      {
+       "kg": 55,
+       "reps": 8
+      },
+      {
+       "kg": 55,
+       "reps": 8
+      },
+      {
+       "kg": 55,
+       "reps": 7
+      },
+      {
+       "kg": 55,
+       "reps": 7
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_011",
+   "nombre": "Jalón al pecho prono",
+   "sesiones": [
+    {
+     "dia": -54,
+     "hora": "18:51",
+     "series": [
+      {
+       "kg": 45,
+       "reps": 8
+      },
+      {
+       "kg": 45,
+       "reps": 8
+      },
+      {
+       "kg": 45,
+       "reps": 7
+      },
+      {
+       "kg": 45,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -47,
+     "hora": "18:51",
+     "series": [
+      {
+       "kg": 45,
+       "reps": 9
+      },
+      {
+       "kg": 45,
+       "reps": 9
+      },
+      {
+       "kg": 45,
+       "reps": 8
+      },
+      {
+       "kg": 45,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "dia": -40,
+     "hora": "18:51",
+     "series": [
+      {
+       "kg": 45,
+       "reps": 10
+      },
+      {
+       "kg": 45,
+       "reps": 10
+      },
+      {
+       "kg": 45,
+       "reps": 9
+      },
+      {
+       "kg": 45,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -33,
+     "hora": "18:51",
+     "series": [
+      {
+       "kg": 47.5,
+       "reps": 8
+      },
+      {
+       "kg": 47.5,
+       "reps": 8
+      },
+      {
+       "kg": 47.5,
+       "reps": 7
+      },
+      {
+       "kg": 47.5,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -26,
+     "hora": "18:51",
+     "series": [
+      {
+       "kg": 47.5,
+       "reps": 8
+      },
+      {
+       "kg": 47.5,
+       "reps": 8
+      },
+      {
+       "kg": 47.5,
+       "reps": 7
+      },
+      {
+       "kg": 47.5,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -19,
+     "hora": "18:51",
+     "series": [
+      {
+       "kg": 47.5,
+       "reps": 9
+      },
+      {
+       "kg": 47.5,
+       "reps": 9
+      },
+      {
+       "kg": 47.5,
+       "reps": 8
+      },
+      {
+       "kg": 47.5,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "dia": -12,
+     "hora": "18:51",
+     "series": [
+      {
+       "kg": 47.5,
+       "reps": 10
+      },
+      {
+       "kg": 47.5,
+       "reps": 10
+      },
+      {
+       "kg": 47.5,
+       "reps": 9
+      },
+      {
+       "kg": 47.5,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -5,
+     "hora": "18:51",
+     "series": [
+      {
+       "kg": 50,
+       "reps": 8
+      },
+      {
+       "kg": 50,
+       "reps": 8
+      },
+      {
+       "kg": 50,
+       "reps": 7
+      },
+      {
+       "kg": 50,
+       "reps": 7
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_012",
+   "nombre": "Pullover en polea",
+   "sesiones": [
+    {
+     "dia": -54,
+     "hora": "19:02",
+     "series": [
+      {
+       "kg": 20,
+       "reps": 10
+      },
+      {
+       "kg": 20,
+       "reps": 10
+      },
+      {
+       "kg": 20,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -47,
+     "hora": "19:02",
+     "series": [
+      {
+       "kg": 20,
+       "reps": 11
+      },
+      {
+       "kg": 20,
+       "reps": 11
+      },
+      {
+       "kg": 20,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -40,
+     "hora": "19:02",
+     "series": [
+      {
+       "kg": 20,
+       "reps": 12
+      },
+      {
+       "kg": 20,
+       "reps": 12
+      },
+      {
+       "kg": 20,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -33,
+     "hora": "19:02",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 10
+      },
+      {
+       "kg": 22.5,
+       "reps": 10
+      },
+      {
+       "kg": 22.5,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -26,
+     "hora": "19:02",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 11
+      },
+      {
+       "kg": 22.5,
+       "reps": 11
+      },
+      {
+       "kg": 22.5,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -19,
+     "hora": "19:02",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 11
+      },
+      {
+       "kg": 22.5,
+       "reps": 11
+      },
+      {
+       "kg": 22.5,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -12,
+     "hora": "19:02",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 12
+      },
+      {
+       "kg": 22.5,
+       "reps": 12
+      },
+      {
+       "kg": 22.5,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -5,
+     "hora": "19:02",
+     "series": [
+      {
+       "kg": 25,
+       "reps": 10
+      },
+      {
+       "kg": 25,
+       "reps": 10
+      },
+      {
+       "kg": 25,
+       "reps": 9
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_020",
+   "nombre": "Curl con barra Z",
+   "sesiones": [
+    {
+     "dia": -54,
+     "hora": "19:13",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 10
+      },
+      {
+       "kg": 22.5,
+       "reps": 10
+      },
+      {
+       "kg": 22.5,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -47,
+     "hora": "19:13",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 11
+      },
+      {
+       "kg": 22.5,
+       "reps": 11
+      },
+      {
+       "kg": 22.5,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -40,
+     "hora": "19:13",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 12
+      },
+      {
+       "kg": 22.5,
+       "reps": 12
+      },
+      {
+       "kg": 22.5,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -33,
+     "hora": "19:13",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 12
+      },
+      {
+       "kg": 22.5,
+       "reps": 12
+      },
+      {
+       "kg": 22.5,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -26,
+     "hora": "19:13",
+     "series": [
+      {
+       "kg": 25,
+       "reps": 10
+      },
+      {
+       "kg": 25,
+       "reps": 10
+      },
+      {
+       "kg": 25,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -19,
+     "hora": "19:13",
+     "series": [
+      {
+       "kg": 25,
+       "reps": 11
+      },
+      {
+       "kg": 25,
+       "reps": 11
+      },
+      {
+       "kg": 25,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -12,
+     "hora": "19:13",
+     "series": [
+      {
+       "kg": 25,
+       "reps": 12
+      },
+      {
+       "kg": 25,
+       "reps": 12
+      },
+      {
+       "kg": 25,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -5,
+     "hora": "19:13",
+     "series": [
+      {
+       "kg": 27.5,
+       "reps": 10
+      },
+      {
+       "kg": 27.5,
+       "reps": 10
+      },
+      {
+       "kg": 27.5,
+       "reps": 9
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_021",
+   "nombre": "Curl martillo con mancuerna",
+   "sesiones": [
+    {
+     "dia": -54,
+     "hora": "19:24",
+     "series": [
+      {
+       "kg": 10,
+       "reps": 10
+      },
+      {
+       "kg": 10,
+       "reps": 10
+      },
+      {
+       "kg": 10,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -47,
+     "hora": "19:24",
+     "series": [
+      {
+       "kg": 10,
+       "reps": 11
+      },
+      {
+       "kg": 10,
+       "reps": 11
+      },
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -40,
+     "hora": "19:24",
+     "series": [
+      {
+       "kg": 10,
+       "reps": 12
+      },
+      {
+       "kg": 10,
+       "reps": 12
+      },
+      {
+       "kg": 10,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -33,
+     "hora": "19:24",
+     "series": [
+      {
+       "kg": 11,
+       "reps": 10
+      },
+      {
+       "kg": 11,
+       "reps": 10
+      },
+      {
+       "kg": 11,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -26,
+     "hora": "19:24",
+     "series": [
+      {
+       "kg": 11,
+       "reps": 10
+      },
+      {
+       "kg": 11,
+       "reps": 10
+      },
+      {
+       "kg": 11,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -19,
+     "hora": "19:24",
+     "series": [
+      {
+       "kg": 11,
+       "reps": 11
+      },
+      {
+       "kg": 11,
+       "reps": 11
+      },
+      {
+       "kg": 11,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -12,
+     "hora": "19:24",
+     "series": [
+      {
+       "kg": 11,
+       "reps": 12
+      },
+      {
+       "kg": 11,
+       "reps": 12
+      },
+      {
+       "kg": 11,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -5,
+     "hora": "19:24",
+     "series": [
+      {
+       "kg": 12,
+       "reps": 10
+      },
+      {
+       "kg": 12,
+       "reps": 10
+      },
+      {
+       "kg": 12,
+       "reps": 9
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_100",
+   "nombre": "Press banca plano con barra",
+   "sesiones": [
+    {
+     "dia": -52,
+     "hora": "19:05",
+     "series": [
+      {
+       "kg": 60,
+       "reps": 6
+      },
+      {
+       "kg": 60,
+       "reps": 6
+      },
+      {
+       "kg": 60,
+       "reps": 5
+      },
+      {
+       "kg": 60,
+       "reps": 5
+      }
+     ]
+    },
+    {
+     "dia": -45,
+     "hora": "19:05",
+     "series": [
+      {
+       "kg": 60,
+       "reps": 7
+      },
+      {
+       "kg": 60,
+       "reps": 7
+      },
+      {
+       "kg": 60,
+       "reps": 6
+      },
+      {
+       "kg": 60,
+       "reps": 6
+      }
+     ]
+    },
+    {
+     "dia": -38,
+     "hora": "19:05",
+     "series": [
+      {
+       "kg": 60,
+       "reps": 8
+      },
+      {
+       "kg": 60,
+       "reps": 8
+      },
+      {
+       "kg": 60,
+       "reps": 7
+      },
+      {
+       "kg": 60,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -31,
+     "hora": "19:05",
+     "series": [
+      {
+       "kg": 62.5,
+       "reps": 6
+      },
+      {
+       "kg": 62.5,
+       "reps": 6
+      },
+      {
+       "kg": 62.5,
+       "reps": 5
+      },
+      {
+       "kg": 62.5,
+       "reps": 5
+      }
+     ]
+    },
+    {
+     "dia": -24,
+     "hora": "19:05",
+     "series": [
+      {
+       "kg": 62.5,
+       "reps": 6
+      },
+      {
+       "kg": 62.5,
+       "reps": 6
+      },
+      {
+       "kg": 62.5,
+       "reps": 5
+      },
+      {
+       "kg": 62.5,
+       "reps": 5
+      }
+     ]
+    },
+    {
+     "dia": -17,
+     "hora": "19:05",
+     "series": [
+      {
+       "kg": 62.5,
+       "reps": 7
+      },
+      {
+       "kg": 62.5,
+       "reps": 7
+      },
+      {
+       "kg": 62.5,
+       "reps": 6
+      },
+      {
+       "kg": 62.5,
+       "reps": 6
+      }
+     ]
+    },
+    {
+     "dia": -10,
+     "hora": "19:05",
+     "series": [
+      {
+       "kg": 62.5,
+       "reps": 8
+      },
+      {
+       "kg": 62.5,
+       "reps": 8
+      },
+      {
+       "kg": 62.5,
+       "reps": 7
+      },
+      {
+       "kg": 62.5,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -3,
+     "hora": "19:05",
+     "series": [
+      {
+       "kg": 65,
+       "reps": 6
+      },
+      {
+       "kg": 65,
+       "reps": 6
+      },
+      {
+       "kg": 65,
+       "reps": 5
+      },
+      {
+       "kg": 65,
+       "reps": 5
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_101",
+   "nombre": "Press inclinado con mancuernas",
+   "sesiones": [
+    {
+     "dia": -52,
+     "hora": "19:16",
+     "series": [
+      {
+       "kg": 20,
+       "reps": 10
+      },
+      {
+       "kg": 20,
+       "reps": 10
+      },
+      {
+       "kg": 20,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -45,
+     "hora": "19:16",
+     "series": [
+      {
+       "kg": 20,
+       "reps": 11
+      },
+      {
+       "kg": 20,
+       "reps": 11
+      },
+      {
+       "kg": 20,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -38,
+     "hora": "19:16",
+     "series": [
+      {
+       "kg": 20,
+       "reps": 12
+      },
+      {
+       "kg": 20,
+       "reps": 12
+      },
+      {
+       "kg": 20,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -31,
+     "hora": "19:16",
+     "series": [
+      {
+       "kg": 22,
+       "reps": 10
+      },
+      {
+       "kg": 22,
+       "reps": 10
+      },
+      {
+       "kg": 22,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -24,
+     "hora": "19:16",
+     "series": [
+      {
+       "kg": 22,
+       "reps": 11
+      },
+      {
+       "kg": 22,
+       "reps": 11
+      },
+      {
+       "kg": 22,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -17,
+     "hora": "19:16",
+     "series": [
+      {
+       "kg": 22,
+       "reps": 11
+      },
+      {
+       "kg": 22,
+       "reps": 11
+      },
+      {
+       "kg": 22,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -10,
+     "hora": "19:16",
+     "series": [
+      {
+       "kg": 22,
+       "reps": 12
+      },
+      {
+       "kg": 22,
+       "reps": 12
+      },
+      {
+       "kg": 22,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -3,
+     "hora": "19:16",
+     "series": [
+      {
+       "kg": 24,
+       "reps": 10
+      },
+      {
+       "kg": 24,
+       "reps": 10
+      },
+      {
+       "kg": 24,
+       "reps": 9
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_110",
+   "nombre": "Press militar con barra",
+   "sesiones": [
+    {
+     "dia": -52,
+     "hora": "19:27",
+     "series": [
+      {
+       "kg": 35,
+       "reps": 8
+      },
+      {
+       "kg": 35,
+       "reps": 8
+      },
+      {
+       "kg": 35,
+       "reps": 7
+      },
+      {
+       "kg": 35,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -45,
+     "hora": "19:27",
+     "series": [
+      {
+       "kg": 35,
+       "reps": 9
+      },
+      {
+       "kg": 35,
+       "reps": 9
+      },
+      {
+       "kg": 35,
+       "reps": 8
+      },
+      {
+       "kg": 35,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "dia": -38,
+     "hora": "19:27",
+     "series": [
+      {
+       "kg": 35,
+       "reps": 10
+      },
+      {
+       "kg": 35,
+       "reps": 10
+      },
+      {
+       "kg": 35,
+       "reps": 9
+      },
+      {
+       "kg": 35,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -31,
+     "hora": "19:27",
+     "series": [
+      {
+       "kg": 35,
+       "reps": 10
+      },
+      {
+       "kg": 35,
+       "reps": 10
+      },
+      {
+       "kg": 35,
+       "reps": 9
+      },
+      {
+       "kg": 35,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "dia": -24,
+     "hora": "19:27",
+     "series": [
+      {
+       "kg": 37.5,
+       "reps": 8
+      },
+      {
+       "kg": 37.5,
+       "reps": 8
+      },
+      {
+       "kg": 37.5,
+       "reps": 7
+      },
+      {
+       "kg": 37.5,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -17,
+     "hora": "19:27",
+     "series": [
+      {
+       "kg": 37.5,
+       "reps": 9
+      },
+      {
+       "kg": 37.5,
+       "reps": 9
+      },
+      {
+       "kg": 37.5,
+       "reps": 8
+      },
+      {
+       "kg": 37.5,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "dia": -10,
+     "hora": "19:27",
+     "series": [
+      {
+       "kg": 37.5,
+       "reps": 10
+      },
+      {
+       "kg": 37.5,
+       "reps": 10
+      },
+      {
+       "kg": 37.5,
+       "reps": 9
+      },
+      {
+       "kg": 37.5,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -3,
+     "hora": "19:27",
+     "series": [
+      {
+       "kg": 40,
+       "reps": 8
+      },
+      {
+       "kg": 40,
+       "reps": 8
+      },
+      {
+       "kg": 40,
+       "reps": 7
+      },
+      {
+       "kg": 40,
+       "reps": 7
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_111",
+   "nombre": "Extensión tríceps en polea",
+   "sesiones": [
+    {
+     "dia": -52,
+     "hora": "19:38",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 12
+      },
+      {
+       "kg": 22.5,
+       "reps": 12
+      },
+      {
+       "kg": 22.5,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -45,
+     "hora": "19:38",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 13
+      },
+      {
+       "kg": 22.5,
+       "reps": 13
+      },
+      {
+       "kg": 22.5,
+       "reps": 12
+      }
+     ]
+    },
+    {
+     "dia": -38,
+     "hora": "19:38",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 14
+      },
+      {
+       "kg": 22.5,
+       "reps": 14
+      },
+      {
+       "kg": 22.5,
+       "reps": 13
+      }
+     ]
+    },
+    {
+     "dia": -31,
+     "hora": "19:38",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 15
+      },
+      {
+       "kg": 22.5,
+       "reps": 15
+      },
+      {
+       "kg": 22.5,
+       "reps": 14
+      }
+     ]
+    },
+    {
+     "dia": -24,
+     "hora": "19:38",
+     "series": [
+      {
+       "kg": 22.5,
+       "reps": 15
+      },
+      {
+       "kg": 22.5,
+       "reps": 15
+      },
+      {
+       "kg": 22.5,
+       "reps": 13
+      }
+     ]
+    },
+    {
+     "dia": -17,
+     "hora": "19:38",
+     "series": [
+      {
+       "kg": 25,
+       "reps": 12
+      },
+      {
+       "kg": 25,
+       "reps": 12
+      },
+      {
+       "kg": 25,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -10,
+     "hora": "19:38",
+     "series": [
+      {
+       "kg": 25,
+       "reps": 13
+      },
+      {
+       "kg": 25,
+       "reps": 13
+      },
+      {
+       "kg": 25,
+       "reps": 12
+      }
+     ]
+    },
+    {
+     "dia": -3,
+     "hora": "19:38",
+     "series": [
+      {
+       "kg": 25,
+       "reps": 14
+      },
+      {
+       "kg": 25,
+       "reps": 14
+      },
+      {
+       "kg": 25,
+       "reps": 13
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_200",
+   "nombre": "Sentadilla con barra",
+   "sesiones": [
+    {
+     "dia": -50,
+     "hora": "18:20",
+     "series": [
+      {
+       "kg": 80,
+       "reps": 6
+      },
+      {
+       "kg": 80,
+       "reps": 6
+      },
+      {
+       "kg": 80,
+       "reps": 5
+      },
+      {
+       "kg": 80,
+       "reps": 5
+      }
+     ]
+    },
+    {
+     "dia": -43,
+     "hora": "18:20",
+     "series": [
+      {
+       "kg": 80,
+       "reps": 7
+      },
+      {
+       "kg": 80,
+       "reps": 7
+      },
+      {
+       "kg": 80,
+       "reps": 6
+      },
+      {
+       "kg": 80,
+       "reps": 6
+      }
+     ]
+    },
+    {
+     "dia": -36,
+     "hora": "18:20",
+     "series": [
+      {
+       "kg": 80,
+       "reps": 8
+      },
+      {
+       "kg": 80,
+       "reps": 8
+      },
+      {
+       "kg": 80,
+       "reps": 7
+      },
+      {
+       "kg": 80,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -29,
+     "hora": "18:20",
+     "series": [
+      {
+       "kg": 82.5,
+       "reps": 6
+      },
+      {
+       "kg": 82.5,
+       "reps": 6
+      },
+      {
+       "kg": 82.5,
+       "reps": 5
+      },
+      {
+       "kg": 82.5,
+       "reps": 5
+      }
+     ]
+    },
+    {
+     "dia": -22,
+     "hora": "18:20",
+     "series": [
+      {
+       "kg": 82.5,
+       "reps": 7
+      },
+      {
+       "kg": 82.5,
+       "reps": 7
+      },
+      {
+       "kg": 82.5,
+       "reps": 6
+      },
+      {
+       "kg": 82.5,
+       "reps": 6
+      }
+     ]
+    },
+    {
+     "dia": -15,
+     "hora": "18:20",
+     "series": [
+      {
+       "kg": 82.5,
+       "reps": 7
+      },
+      {
+       "kg": 82.5,
+       "reps": 7
+      },
+      {
+       "kg": 82.5,
+       "reps": 6
+      },
+      {
+       "kg": 82.5,
+       "reps": 5
+      }
+     ]
+    },
+    {
+     "dia": -8,
+     "hora": "18:20",
+     "series": [
+      {
+       "kg": 82.5,
+       "reps": 8
+      },
+      {
+       "kg": 82.5,
+       "reps": 8
+      },
+      {
+       "kg": 82.5,
+       "reps": 7
+      },
+      {
+       "kg": 82.5,
+       "reps": 7
+      }
+     ]
+    },
+    {
+     "dia": -1,
+     "hora": "18:20",
+     "series": [
+      {
+       "kg": 85,
+       "reps": 6
+      },
+      {
+       "kg": 85,
+       "reps": 6
+      },
+      {
+       "kg": 85,
+       "reps": 5
+      },
+      {
+       "kg": 85,
+       "reps": 5
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ejercicio_id": "ex_201",
+   "nombre": "Prensa 45°",
+   "sesiones": [
+    {
+     "dia": -50,
+     "hora": "18:31",
+     "series": [
+      {
+       "kg": 140,
+       "reps": 10
+      },
+      {
+       "kg": 140,
+       "reps": 10
+      },
+      {
+       "kg": 140,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -43,
+     "hora": "18:31",
+     "series": [
+      {
+       "kg": 140,
+       "reps": 11
+      },
+      {
+       "kg": 140,
+       "reps": 11
+      },
+      {
+       "kg": 140,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -36,
+     "hora": "18:31",
+     "series": [
+      {
+       "kg": 140,
+       "reps": 12
+      },
+      {
+       "kg": 140,
+       "reps": 12
+      },
+      {
+       "kg": 140,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -29,
+     "hora": "18:31",
+     "series": [
+      {
+       "kg": 140,
+       "reps": 12
+      },
+      {
+       "kg": 140,
+       "reps": 12
+      },
+      {
+       "kg": 140,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -22,
+     "hora": "18:31",
+     "series": [
+      {
+       "kg": 150,
+       "reps": 10
+      },
+      {
+       "kg": 150,
+       "reps": 10
+      },
+      {
+       "kg": 150,
+       "reps": 9
+      }
+     ]
+    },
+    {
+     "dia": -15,
+     "hora": "18:31",
+     "series": [
+      {
+       "kg": 150,
+       "reps": 11
+      },
+      {
+       "kg": 150,
+       "reps": 11
+      },
+      {
+       "kg": 150,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "dia": -8,
+     "hora": "18:31",
+     "series": [
+      {
+       "kg": 150,
+       "reps": 12
+      },
+      {
+       "kg": 150,
+       "reps": 12
+      },
+      {
+       "kg": 150,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "dia": -1,
+     "hora": "18:31",
+     "series": [
+      {
+       "kg": 160,
+       "reps": 10
+      },
+      {
+       "kg": 160,
+       "reps": 10
+      },
+      {
+       "kg": 160,
+       "reps": 9
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "peso": [
+  {
+   "dia": -56,
+   "kg": 84.5
+  },
+  {
+   "dia": -54,
+   "kg": 84.7
+  },
+  {
+   "dia": -52,
+   "kg": 84.1
+  },
+  {
+   "dia": -51,
+   "kg": 84.6
+  },
+  {
+   "dia": -49,
+   "kg": 84.0
+  },
+  {
+   "dia": -47,
+   "kg": 84.4
+  },
+  {
+   "dia": -45,
+   "kg": 83.5
+  },
+  {
+   "dia": -44,
+   "kg": 84.0
+  },
+  {
+   "dia": -42,
+   "kg": 83.6
+  },
+  {
+   "dia": -40,
+   "kg": 83.9
+  },
+  {
+   "dia": -38,
+   "kg": 83.0
+  },
+  {
+   "dia": -37,
+   "kg": 83.4
+  },
+  {
+   "dia": -35,
+   "kg": 83.4
+  },
+  {
+   "dia": -33,
+   "kg": 83.4
+  },
+  {
+   "dia": -31,
+   "kg": 82.7
+  },
+  {
+   "dia": -30,
+   "kg": 82.8
+  },
+  {
+   "dia": -28,
+   "kg": 83.2
+  },
+  {
+   "dia": -26,
+   "kg": 82.7
+  },
+  {
+   "dia": -24,
+   "kg": 82.5
+  },
+  {
+   "dia": -23,
+   "kg": 82.2
+  },
+  {
+   "dia": -21,
+   "kg": 83.0
+  },
+  {
+   "dia": -19,
+   "kg": 82.1
+  },
+  {
+   "dia": -17,
+   "kg": 82.3
+  },
+  {
+   "dia": -16,
+   "kg": 81.9
+  },
+  {
+   "dia": -14,
+   "kg": 82.6
+  },
+  {
+   "dia": -12,
+   "kg": 81.6
+  },
+  {
+   "dia": -10,
+   "kg": 82.0
+  },
+  {
+   "dia": -9,
+   "kg": 81.6
+  },
+  {
+   "dia": -7,
+   "kg": 82.0
+  },
+  {
+   "dia": -5,
+   "kg": 81.2
+  },
+  {
+   "dia": -3,
+   "kg": 81.6
+  },
+  {
+   "dia": -2,
+   "kg": 81.4
+  }
+ ],
+ "pasos": [
+  {
+   "dia": -34,
+   "pasos": 8630
+  },
+  {
+   "dia": -33,
+   "pasos": 9020
+  },
+  {
+   "dia": -32,
+   "pasos": 7510
+  },
+  {
+   "dia": -31,
+   "pasos": 7880
+  },
+  {
+   "dia": -30,
+   "pasos": 10530
+  },
+  {
+   "dia": -29,
+   "pasos": 10290
+  },
+  {
+   "dia": -28,
+   "pasos": 10160
+  },
+  {
+   "dia": -27,
+   "pasos": 10800
+  },
+  {
+   "dia": -26,
+   "pasos": 8370
+  },
+  {
+   "dia": -25,
+   "pasos": 7330
+  },
+  {
+   "dia": -24,
+   "pasos": 8880
+  },
+  {
+   "dia": -23,
+   "pasos": 6650
+  },
+  {
+   "dia": -22,
+   "pasos": 9590
+  },
+  {
+   "dia": -21,
+   "pasos": 11680
+  },
+  {
+   "dia": -20,
+   "pasos": 10110
+  },
+  {
+   "dia": -19,
+   "pasos": 8860
+  },
+  {
+   "dia": -18,
+   "pasos": 9150
+  },
+  {
+   "dia": -17,
+   "pasos": 7430
+  },
+  {
+   "dia": -16,
+   "pasos": 6490
+  },
+  {
+   "dia": -15,
+   "pasos": 10370
+  },
+  {
+   "dia": -14,
+   "pasos": 10130
+  },
+  {
+   "dia": -13,
+   "pasos": 10260
+  },
+  {
+   "dia": -12,
+   "pasos": 10960
+  },
+  {
+   "dia": -11,
+   "pasos": 8460
+  },
+  {
+   "dia": -10,
+   "pasos": 7450
+  },
+  {
+   "dia": -9,
+   "pasos": 6280
+  },
+  {
+   "dia": -8,
+   "pasos": 8360
+  },
+  {
+   "dia": -7,
+   "pasos": 9500
+  },
+  {
+   "dia": -6,
+   "pasos": 6480
+  },
+  {
+   "dia": -5,
+   "pasos": 10140
+  },
+  {
+   "dia": -4,
+   "pasos": 9310
+  },
+  {
+   "dia": -3,
+   "pasos": 9510
+  },
+  {
+   "dia": -2,
+   "pasos": 9790
+  },
+  {
+   "dia": -1,
+   "pasos": 10150
+  },
+  {
+   "dia": 0,
+   "pasos": 6240
+  }
+ ],
+ "metas": {
+  "meta_pasos_dia": 9000,
+  "ritmo_peso_kg_semana": -0.4
+ },
+ "chat": [
+  {
+   "dia": -12,
+   "hora": "10:15",
+   "autor": "coach",
+   "texto": "Buenas, cómo arrancaste la semana?"
+  },
+  {
+   "dia": -11,
+   "hora": "13:40",
+   "autor": "cliente",
+   "texto": "Bien! Ayer hice el remo con 52,5 kg y salieron las 10"
+  },
+  {
+   "dia": -11,
+   "hora": "13:52",
+   "autor": "coach",
+   "texto": "Excelente, ese es el camino. La próxima subí 2,5 kg"
+  },
+  {
+   "dia": -8,
+   "hora": "19:05",
+   "autor": "cliente",
+   "texto": "Una duda, el fin de semana tengo un asado. Cómo hago con la cena?"
+  },
+  {
+   "dia": -8,
+   "hora": "19:30",
+   "autor": "coach",
+   "texto": "Tranquilo, comé la carne con ensalada y dejá el pan y el postre para otra vez. Al otro día seguís normal con el plan"
+  },
+  {
+   "dia": -8,
+   "hora": "19:33",
+   "autor": "cliente",
+   "texto": "Genial, gracias"
+  },
+  {
+   "dia": -3,
+   "hora": "09:12",
+   "autor": "coach",
+   "texto": "Vi que venís llegando a la meta de pasos todos los días, muy bien"
+  },
+  {
+   "dia": -3,
+   "hora": "09:40",
+   "autor": "cliente",
+   "texto": "Sí, me ayudó salir a caminar después de almorzar"
+  },
+  {
+   "dia": -1,
+   "hora": "20:10",
+   "autor": "cliente",
+   "texto": "Hoy sentadilla con 85 kg por 6, nunca había hecho tanto"
+  },
+  {
+   "dia": -1,
+   "hora": "20:25",
+   "autor": "coach",
+   "texto": "Enorme. Seguí así, todo al fallo y cuidando la técnica"
+  }
+ ],
+ "devoluciones": [
+  {
+   "semanas_atras": 1,
+   "texto": "Muy buena semana. Entrenaste los tres días y subiste la sentadilla.\nLlegaste a la meta de pasos cinco días seguidos, eso se nota en la balanza.\nEsta semana quiero que cuides el descanso, acostate siempre a la misma hora."
+  },
+  {
+   "semanas_atras": 2,
+   "texto": "Vas bien con el peso, bajaste medio kilo y la fuerza se mantiene.\nEl press de banca quedó igual que la semana pasada, es normal.\nSi el jueves te sentís con energía, buscá una repetición más en la primera serie."
+  },
+  {
+   "semanas_atras": 3,
+   "texto": "Buen arranque. Cumpliste con la dieta casi toda la semana.\nEl fin de semana se te complicó, la próxima organizá las comidas el viernes.\nSeguí registrando el peso a la mañana, me sirve para ver la tendencia."
+  }
+ ],
+ "lista_previa": {
+  "ok": true,
+  "activa": true,
+  "items": [
+   {
+    "clave": "guia",
+    "estado": "falta",
+    "faltan": 2
+   },
+   {
+    "clave": "dudas",
+    "estado": "falta",
+    "opcional": true
+   },
+   {
+    "clave": "formulario",
+    "estado": "hecho"
+   },
+   {
+    "clave": "fotos",
+    "estado": "falta"
+   }
+  ]
+ }
+}

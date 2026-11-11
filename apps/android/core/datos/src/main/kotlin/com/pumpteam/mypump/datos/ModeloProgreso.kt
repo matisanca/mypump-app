@@ -29,7 +29,15 @@ data class TarjetaProgreso(
  * Progreso (`loadProgressAndRender`): UN pedido con todas las claves del plan (48 filas por clave); si la RPC por clave
  * no existe (PGRST202) se cae al camino viejo por lugar; si se cortó la red se avisa y se reintenta al volver.
  */
-class ModeloProgreso(private val cliente: ClienteRpc, private val token: String) {
+class ModeloProgreso(
+    private val cliente: ClienteRpc,
+    private val token: String,
+    /**
+     * La demo sin cuenta (2.3.0): el historial inventado por clave ([HistorialDemo]). Con esto no se llama a nada: las
+     * tarjetas salen de acá. null = con cuenta, como siempre.
+     */
+    private val muestra: Map<String, List<RegistroHistorico>>? = null,
+) {
     enum class Estado { CARGANDO, LISTO, SIN_RED }
 
     private val _estado = MutableStateFlow(Estado.CARGANDO)
@@ -91,7 +99,9 @@ class ModeloProgreso(private val cliente: ClienteRpc, private val token: String)
         }
         val entradas = porClave.values.toList()
         val filasPor = LinkedHashMap<String, MutableList<RegistroHistorico>>()
-        val r = cliente.filas(
+        val r = if (muestra != null) {
+            Resultado.Ok(entradas.flatMap { muestra[it.clave] ?: emptyList() })
+        } else cliente.filas(
             "mypump_get_historico_por_clave",
             mapOf("p_token" to texto(token), "p_claves" to ValorJson.Lista(entradas.map { texto(it.clave) }), "p_limit_por_ej" to numero(48)),
             RegistroHistorico::desde,

@@ -225,15 +225,19 @@ class ModeloChat(
     internal val alcance: CoroutineScope,
     /** La carpeta `chat-adjuntos/` de la cuenta. null (la demo, los tests viejos): sin fotos ni audios (`ChatAdjuntos.kt`). */
     internal val carpetaAdjuntos: File? = null,
+    /** La demo con historial (2.3.0): la charla de ejemplo de [HistorialDemo]. Solo se mira sin token. */
+    muestra: List<MensajeChat> = emptyList(),
 ) {
     /**
-     * La demo (`chatEsDemo` de la web, ACC-07): el hilo vacío para escribirle a Mati, y nada se carga, se manda, se sondea
-     * ni se marca leído. La pantalla avisa que en la demo los mensajes no se envían.
+     * La demo (`chatEsDemo` de la web, ACC-07): el hilo de ejemplo (o vacío) para escribirle a Mati, y nada se carga, se
+     * manda, se sondea ni se marca leído. La pantalla avisa que en la demo los mensajes no se envían.
      */
     val demo: Boolean = token == null
 
     // En la demo no hay nada más para traer (sin "Ver mensajes anteriores").
-    internal val _hilo = MutableStateFlow(HiloChat(hayMas = !demo))
+    internal val _hilo = MutableStateFlow(
+        if (demo && muestra.isNotEmpty()) HiloChat(hayMas = false).mezclar(muestra).hilo.copy(cursor = null) else HiloChat(hayMas = !demo),
+    )
     val hilo: StateFlow<HiloChat> = _hilo.asStateFlow()
 
     /** Badge del tab: lo del coach que llegó con el chat cerrado. */

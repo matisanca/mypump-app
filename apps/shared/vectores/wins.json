@@ -1,0 +1,1144 @@
+{
+ "fuente": "scripts/nativa/generar-vectores-cola-a.py (referencia en Python)",
+ "tope": 12,
+ "records": [
+  {
+   "nombre": "más kg",
+   "ejercicios": [
+    {
+     "clave": "remo con barra",
+     "nombre": "Remo con barra",
+     "anteriores": [
+      {
+       "kg": 55,
+       "reps": 8
+      },
+      {
+       "kg": 52.5,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 57.5,
+       "reps": 8
+      },
+      {
+       "kg": 57.5,
+       "reps": 7
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_kg",
+     "clave": "remo con barra",
+     "ejercicio": "Remo con barra",
+     "kg": 57.5,
+     "reps": 8,
+     "antes_kg": 55,
+     "antes_reps": 8,
+     "delta": 2.5,
+     "marca": "57,5 kg × 8",
+     "chip": "+2,5 kg",
+     "antes": "Antes: 55 kg × 8"
+    }
+   ]
+  },
+  {
+   "nombre": "mismo kg, más reps",
+   "ejercicios": [
+    {
+     "clave": "press banca",
+     "nombre": "Press banca plano con barra",
+     "anteriores": [
+      {
+       "kg": 60,
+       "reps": 8
+      },
+      {
+       "kg": 60,
+       "reps": 7
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 60,
+       "reps": 9
+      },
+      {
+       "kg": 60,
+       "reps": 8
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_reps",
+     "clave": "press banca",
+     "ejercicio": "Press banca plano con barra",
+     "kg": 60,
+     "reps": 9,
+     "antes_kg": 60,
+     "antes_reps": 8,
+     "delta": 1,
+     "marca": "60 kg × 9",
+     "chip": "+1 rep",
+     "antes": "Antes: 60 kg × 8"
+    }
+   ]
+  },
+  {
+   "nombre": "mismo kg, dos reps más",
+   "ejercicios": [
+    {
+     "clave": "curl",
+     "nombre": "Curl",
+     "anteriores": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 12
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_reps",
+     "clave": "curl",
+     "ejercicio": "Curl",
+     "kg": 12,
+     "reps": 12,
+     "antes_kg": 12,
+     "antes_reps": 10,
+     "delta": 2,
+     "marca": "12 kg × 12",
+     "chip": "+2 reps",
+     "antes": "Antes: 12 kg × 10"
+    }
+   ]
+  },
+  {
+   "nombre": "menos kg con más reps no es récord",
+   "ejercicios": [
+    {
+     "clave": "curl",
+     "nombre": "Curl",
+     "anteriores": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 10,
+       "reps": 20
+      }
+     ]
+    }
+   ],
+   "salida": []
+  },
+  {
+   "nombre": "igual que antes no es récord",
+   "ejercicios": [
+    {
+     "clave": "curl",
+     "nombre": "Curl",
+     "anteriores": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    }
+   ],
+   "salida": []
+  },
+  {
+   "nombre": "sin historia no es récord",
+   "ejercicios": [
+    {
+     "clave": "curl",
+     "nombre": "Curl",
+     "anteriores": [],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    }
+   ],
+   "salida": []
+  },
+  {
+   "nombre": "sin series hoy",
+   "ejercicios": [
+    {
+     "clave": "curl",
+     "nombre": "Curl",
+     "anteriores": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ],
+     "hoy": []
+    }
+   ],
+   "salida": []
+  },
+  {
+   "nombre": "sin kg (peso corporal)",
+   "ejercicios": [
+    {
+     "clave": "dominadas",
+     "nombre": "Dominadas",
+     "anteriores": [
+      {
+       "kg": 5,
+       "reps": 8
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 10,
+       "reps": 8
+      }
+     ],
+     "sin_kg": true
+    }
+   ],
+   "salida": []
+  },
+  {
+   "nombre": "historia cortada",
+   "ejercicios": [
+    {
+     "clave": "curl",
+     "nombre": "Curl",
+     "anteriores": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 14,
+       "reps": 10
+      }
+     ],
+     "suficiente": false
+    }
+   ],
+   "salida": []
+  },
+  {
+   "nombre": "las filas en 0 kg no cuentan",
+   "ejercicios": [
+    {
+     "clave": "curl",
+     "nombre": "Curl",
+     "anteriores": [
+      {
+       "kg": 0,
+       "reps": 30
+      },
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 0,
+       "reps": 40
+      },
+      {
+       "kg": 12.5,
+       "reps": 8
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_kg",
+     "clave": "curl",
+     "ejercicio": "Curl",
+     "kg": 12.5,
+     "reps": 8,
+     "antes_kg": 12,
+     "antes_reps": 10,
+     "delta": 0.5,
+     "marca": "12,5 kg × 8",
+     "chip": "+0,5 kg",
+     "antes": "Antes: 12 kg × 10"
+    }
+   ]
+  },
+  {
+   "nombre": "solo filas en 0 antes: sin historia",
+   "ejercicios": [
+    {
+     "clave": "curl",
+     "nombre": "Curl",
+     "anteriores": [
+      {
+       "kg": 0,
+       "reps": 30
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12.5,
+       "reps": 8
+      }
+     ]
+    }
+   ],
+   "salida": []
+  },
+  {
+   "nombre": "reps en 0 hoy no cuentan",
+   "ejercicios": [
+    {
+     "clave": "curl",
+     "nombre": "Curl",
+     "anteriores": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 20,
+       "reps": 0
+      },
+      {
+       "kg": 12,
+       "reps": 11
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_reps",
+     "clave": "curl",
+     "ejercicio": "Curl",
+     "kg": 12,
+     "reps": 11,
+     "antes_kg": 12,
+     "antes_reps": 10,
+     "delta": 1,
+     "marca": "12 kg × 11",
+     "chip": "+1 rep",
+     "antes": "Antes: 12 kg × 10"
+    }
+   ]
+  },
+  {
+   "nombre": "el mejor de hoy: más kg aunque con menos reps",
+   "ejercicios": [
+    {
+     "clave": "sentadilla",
+     "nombre": "Sentadilla con barra",
+     "anteriores": [
+      {
+       "kg": 80,
+       "reps": 8
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 80,
+       "reps": 10
+      },
+      {
+       "kg": 85,
+       "reps": 5
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_kg",
+     "clave": "sentadilla",
+     "ejercicio": "Sentadilla con barra",
+     "kg": 85,
+     "reps": 5,
+     "antes_kg": 80,
+     "antes_reps": 8,
+     "delta": 5.0,
+     "marca": "85 kg × 5",
+     "chip": "+5 kg",
+     "antes": "Antes: 80 kg × 8"
+    }
+   ]
+  },
+  {
+   "nombre": "lo mejor de antes es el kg más alto con sus reps",
+   "ejercicios": [
+    {
+     "clave": "prensa",
+     "nombre": "Prensa 45°",
+     "anteriores": [
+      {
+       "kg": 150,
+       "reps": 12
+      },
+      {
+       "kg": 160,
+       "reps": 6
+      },
+      {
+       "kg": 160,
+       "reps": 8
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 160,
+       "reps": 9
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_reps",
+     "clave": "prensa",
+     "ejercicio": "Prensa 45°",
+     "kg": 160,
+     "reps": 9,
+     "antes_kg": 160,
+     "antes_reps": 8,
+     "delta": 1,
+     "marca": "160 kg × 9",
+     "chip": "+1 rep",
+     "antes": "Antes: 160 kg × 8"
+    }
+   ]
+  },
+  {
+   "nombre": "decimales: de 62,5 a 63,75",
+   "ejercicios": [
+    {
+     "clave": "press",
+     "nombre": "Press",
+     "anteriores": [
+      {
+       "kg": 62.5,
+       "reps": 8
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 63.75,
+       "reps": 6
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_kg",
+     "clave": "press",
+     "ejercicio": "Press",
+     "kg": 63.75,
+     "reps": 6,
+     "antes_kg": 62.5,
+     "antes_reps": 8,
+     "delta": 1.25,
+     "marca": "63,75 kg × 6",
+     "chip": "+1,25 kg",
+     "antes": "Antes: 62,5 kg × 8"
+    }
+   ]
+  },
+  {
+   "nombre": "tolerancia: 0,1 + 0,2 contra 0,3",
+   "ejercicios": [
+    {
+     "clave": "lateral",
+     "nombre": "Lateral",
+     "anteriores": [
+      {
+       "kg": 0.3,
+       "reps": 12
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 0.30000000000000004,
+       "reps": 13
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_reps",
+     "clave": "lateral",
+     "ejercicio": "Lateral",
+     "kg": 0.30000000000000004,
+     "reps": 13,
+     "antes_kg": 0.3,
+     "antes_reps": 12,
+     "delta": 1,
+     "marca": "0,30000000000000004 kg × 13",
+     "chip": "+1 rep",
+     "antes": "Antes: 0,3 kg × 12"
+    }
+   ]
+  },
+  {
+   "nombre": "varios ejercicios, en el orden del día",
+   "ejercicios": [
+    {
+     "clave": "remo con barra",
+     "nombre": "Remo con barra",
+     "anteriores": [
+      {
+       "kg": 55,
+       "reps": 8
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 57.5,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "clave": "jalon",
+     "nombre": "Jalón al pecho prono",
+     "anteriores": [
+      {
+       "kg": 50,
+       "reps": 8
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 50,
+       "reps": 8
+      }
+     ]
+    },
+    {
+     "clave": "pullover",
+     "nombre": "Pullover en polea",
+     "anteriores": [
+      {
+       "kg": 25,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 25,
+       "reps": 11
+      }
+     ]
+    },
+    {
+     "clave": "curl",
+     "nombre": "Curl con barra Z",
+     "anteriores": [
+      {
+       "kg": 27.5,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 30,
+       "reps": 8
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_kg",
+     "clave": "remo con barra",
+     "ejercicio": "Remo con barra",
+     "kg": 57.5,
+     "reps": 8,
+     "antes_kg": 55,
+     "antes_reps": 8,
+     "delta": 2.5,
+     "marca": "57,5 kg × 8",
+     "chip": "+2,5 kg",
+     "antes": "Antes: 55 kg × 8"
+    },
+    {
+     "tipo": "record_reps",
+     "clave": "pullover",
+     "ejercicio": "Pullover en polea",
+     "kg": 25,
+     "reps": 11,
+     "antes_kg": 25,
+     "antes_reps": 10,
+     "delta": 1,
+     "marca": "25 kg × 11",
+     "chip": "+1 rep",
+     "antes": "Antes: 25 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "curl",
+     "ejercicio": "Curl con barra Z",
+     "kg": 30,
+     "reps": 8,
+     "antes_kg": 27.5,
+     "antes_reps": 10,
+     "delta": 2.5,
+     "marca": "30 kg × 8",
+     "chip": "+2,5 kg",
+     "antes": "Antes: 27,5 kg × 10"
+    }
+   ]
+  },
+  {
+   "nombre": "tope de 12",
+   "ejercicios": [
+    {
+     "clave": "ejercicio 0",
+     "nombre": "Ejercicio 0",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 1",
+     "nombre": "Ejercicio 1",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 2",
+     "nombre": "Ejercicio 2",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 3",
+     "nombre": "Ejercicio 3",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 4",
+     "nombre": "Ejercicio 4",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 5",
+     "nombre": "Ejercicio 5",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 6",
+     "nombre": "Ejercicio 6",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 7",
+     "nombre": "Ejercicio 7",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 8",
+     "nombre": "Ejercicio 8",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 9",
+     "nombre": "Ejercicio 9",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 10",
+     "nombre": "Ejercicio 10",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 11",
+     "nombre": "Ejercicio 11",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 12",
+     "nombre": "Ejercicio 12",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    },
+    {
+     "clave": "ejercicio 13",
+     "nombre": "Ejercicio 13",
+     "anteriores": [
+      {
+       "kg": 10,
+       "reps": 10
+      }
+     ],
+     "hoy": [
+      {
+       "kg": 12,
+       "reps": 10
+      }
+     ]
+    }
+   ],
+   "salida": [
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 0",
+     "ejercicio": "Ejercicio 0",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 1",
+     "ejercicio": "Ejercicio 1",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 2",
+     "ejercicio": "Ejercicio 2",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 3",
+     "ejercicio": "Ejercicio 3",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 4",
+     "ejercicio": "Ejercicio 4",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 5",
+     "ejercicio": "Ejercicio 5",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 6",
+     "ejercicio": "Ejercicio 6",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 7",
+     "ejercicio": "Ejercicio 7",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 8",
+     "ejercicio": "Ejercicio 8",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 9",
+     "ejercicio": "Ejercicio 9",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 10",
+     "ejercicio": "Ejercicio 10",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    },
+    {
+     "tipo": "record_kg",
+     "clave": "ejercicio 11",
+     "ejercicio": "Ejercicio 11",
+     "kg": 12,
+     "reps": 10,
+     "antes_kg": 10,
+     "antes_reps": 10,
+     "delta": 2.0,
+     "marca": "12 kg × 10",
+     "chip": "+2 kg",
+     "antes": "Antes: 10 kg × 10"
+    }
+   ]
+  }
+ ],
+ "textos": [
+  {
+   "n": 1,
+   "titulo": "Récord nuevo",
+   "subtitulo": "Superaste tu mejor marca.",
+   "con_permiso": "Mati se va a enterar de este logro."
+  },
+  {
+   "n": 2,
+   "titulo": "2 récords hoy",
+   "subtitulo": "Superaste 2 de tus mejores marcas.",
+   "con_permiso": "Mati se va a enterar de estos logros."
+  },
+  {
+   "n": 3,
+   "titulo": "3 récords hoy",
+   "subtitulo": "Superaste 3 de tus mejores marcas.",
+   "con_permiso": "Mati se va a enterar de estos logros."
+  },
+  {
+   "n": 12,
+   "titulo": "12 récords hoy",
+   "subtitulo": "Superaste 12 de tus mejores marcas.",
+   "con_permiso": "Mati se va a enterar de estos logros."
+  }
+ ],
+ "fijos": {
+  "contarle": "Contarle a Mati",
+  "seguir": "Seguir",
+  "permiso_titulo": "¿Compartir tus logros con Mati?",
+  "permiso_cuerpo": [
+   "Cuando logres un récord o una racha de pasos, Mati lo va a ver y lo puede compartir con el equipo de Pump Team.",
+   "Se comparte tu nombre y el logro: el ejercicio y la marca, o los días de tu racha. Nunca tus fotos, tu peso ni otros datos de salud.",
+   "Lo podés desactivar cuando quieras en Mis datos. Lo ya compartido no se puede borrar."
+  ],
+  "permiso_si": "Sí, compartir",
+  "permiso_no": "Ahora no",
+  "ajuste_seccion": "Logros",
+  "ajuste_interruptor": "Compartir mis logros con Mati",
+  "ajuste_pie": "Mati ve tus récords y tus rachas de pasos, y los puede compartir con el equipo de Pump Team. Nunca tus fotos, tu peso ni otros datos de salud.",
+  "desactivado": "Listo, no se comparte nada más.",
+  "sin_red": "No se pudo guardar. Probá de nuevo cuando tengas conexión.",
+  "demo": "En la demo no se envía nada.",
+  "racha_con_permiso": "Mati se va a enterar de esta racha."
+ },
+ "permiso_version": 1,
+ "hitos_racha": [
+  7,
+  14,
+  21,
+  30,
+  60,
+  90,
+  120,
+  180,
+  365
+ ],
+ "racha": [
+  {
+   "dias": 0,
+   "es_hito": false
+  },
+  {
+   "dias": 1,
+   "es_hito": false
+  },
+  {
+   "dias": 2,
+   "es_hito": false
+  },
+  {
+   "dias": 6,
+   "es_hito": false
+  },
+  {
+   "dias": 7,
+   "es_hito": true
+  },
+  {
+   "dias": 8,
+   "es_hito": false
+  },
+  {
+   "dias": 14,
+   "es_hito": true
+  },
+  {
+   "dias": 21,
+   "es_hito": true
+  },
+  {
+   "dias": 29,
+   "es_hito": false
+  },
+  {
+   "dias": 30,
+   "es_hito": true
+  },
+  {
+   "dias": 31,
+   "es_hito": false
+  },
+  {
+   "dias": 60,
+   "es_hito": true
+  },
+  {
+   "dias": 90,
+   "es_hito": true
+  },
+  {
+   "dias": 120,
+   "es_hito": true
+  },
+  {
+   "dias": 180,
+   "es_hito": true
+  },
+  {
+   "dias": 365,
+   "es_hito": true
+  },
+  {
+   "dias": 366,
+   "es_hito": false
+  },
+  {
+   "dias": 400,
+   "es_hito": false
+  }
+ ]
+}

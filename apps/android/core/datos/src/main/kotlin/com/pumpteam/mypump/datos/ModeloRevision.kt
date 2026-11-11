@@ -171,7 +171,11 @@ class ModeloRevision(
         private const val ARCHIVO_DIA = "revision_dia.json"
 
         /** "Ver demo" (ACC-07): sin cuenta, sin red ni cola; el check y el peso se tocan igual y no sale nada. */
-        fun demo(cliente: ClienteRpc, alcance: CoroutineScope, hoy: String = FechaLocal.hoy()): ModeloRevision =
-            ModeloRevision(cliente, token = null, outbox = null, alcance = alcance).also { m -> m._fecha.value = hoy }
+        fun demo(cliente: ClienteRpc, alcance: CoroutineScope, hoy: String = FechaLocal.hoy(), salud: List<FilaSalud> = emptyList()): ModeloRevision =
+            ModeloRevision(cliente, token = null, outbox = null, alcance = alcance).also { m ->
+                m._fecha.value = hoy
+                // La demo con historial (2.3.0): el peso de ejemplo de [HistorialDemo], para la tarjeta y el gráfico.
+                m._salud.value = salud
+            }
     }
 }

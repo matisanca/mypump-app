@@ -93,6 +93,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
     val modeloDevolucion by modelo.devolucion.collectAsStateWithLifecycle()
     val devolucion = modeloDevolucion?.estado?.collectAsStateWithLifecycle()?.value
+    val demoHistorial by modelo.demoHistorial.collectAsStateWithLifecycle()
     val filasDePeso = revision?.salud?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pesoParaLasFotos = remember(filasDePeso) { PesoCorporal.serie(filasDePeso) }
     // U1 (auditoría del 10/11): con la semana a medias, las fotos y el check van arriba (antes quedaban fuera de la primera
@@ -185,8 +186,10 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     verticalArrangement = Arrangement.spacedBy(Espacio.xl),
                 ) {
                     // La devolución de Mati, arriba de todo. Apagada (el modelo queda sin estado) o sin ninguna publicada, no hay nada.
-                    val ultima = devolucion?.ultima
-                    if (!esDemo && ultima != null) TarjetaDevolucion(ultima, devolucion.anteriores)
+                    // En la demo con historial, las inventadas (nunca las de una cuenta).
+                    val devoluciones = if (esDemo) demoHistorial?.devoluciones else devolucion
+                    val ultima = devoluciones?.ultima
+                    if (ultima != null) TarjetaDevolucion(ultima, devoluciones.anteriores)
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
                         // Fotos de inicio: arriba de todo, solo con la sección habilitada para esta cuenta.
                         TarjetaFotosInicioDe(modelo)

@@ -196,6 +196,20 @@ private fun RecuperacionSegmento(modelo: ModeloApp) {
     val salud by modelo.salud.collectAsStateWithLifecycle()
     var detalle by rememberSaveable { mutableStateOf(false) }
     val s = salud
+    val demoHistorial by modelo.demoHistorial.collectAsStateWithLifecycle()
+    if (s == null && demoHistorial != null) {
+        // La demo con historial: el «Pump del día» con sus pasos inventados, y lo demás como siempre en la demo.
+        Desplazable("recuperacion-lista", alRecargar = null) {
+            com.pumpteam.mypump.metas.PumpDelDiaDe(modelo, enSalud = true)
+            EstadoVacio(
+                icono = Iconos.Reloj,
+                titulo = "Sin datos en la demo",
+                texto = "La recuperación sale de tu reloj o de tu teléfono. En la demo no hay datos.",
+                modifier = Modifier.testTag("recuperacion-vacia"),
+            )
+        }
+        return
+    }
     if (s == null) {
         EstadoVacio(
             icono = Iconos.Reloj,

@@ -40,6 +40,9 @@ final class EstadoVideollamada {
 
 struct TarjetaVideollamadaEntreno: View {
     let modelo: ModeloGuia
+    /// «Antes de la videollamada» (2.3.0): va dentro de la tarjeta de una reserva de comienzo.
+    var listaPrevia: ReglasListaPrevia.Vista? = nil
+    var abrirGuia: (() -> Void)? = nil
 
     var body: some View {
         let r = modelo.reservaTarjeta()
@@ -47,7 +50,8 @@ struct TarjetaVideollamadaEntreno: View {
             if r != nil {
                 TimelineView(.periodic(from: .now, by: 15)) { ctx in
                     if let r = modelo.reservaTarjeta(ahora: ctx.date) {
-                        TarjetaVideollamada(modelo: modelo, reserva: r, ahora: ctx.date, hojaAfuera: true)
+                        TarjetaVideollamada(modelo: modelo, reserva: r, ahora: ctx.date, hojaAfuera: true,
+                                            listaPrevia: r.tipo == .comienzo ? listaPrevia : nil, abrirGuia: abrirGuia)
                             // En la ventana: la agenda cada 30 s (el link si falta y «Mati ya está en la sala»). Si la reserva
                             // vino solo del resumen (la guía no se abrió), primero se trae la agenda.
                             .task(id: r) {
@@ -96,6 +100,9 @@ struct TarjetaVideollamada: View {
     var ahora: Date = Date()
     /// En Entreno la hoja de cambiar cuelga de `TareasVideollamada` (afuera de la tarjeta); en la guía, de la tarjeta.
     var hojaAfuera = false
+    /// «Antes de la videollamada» (solo en Entreno, con una reserva de comienzo): debajo de lo que la tarjeta ya tiene.
+    var listaPrevia: ReglasListaPrevia.Vista? = nil
+    var abrirGuia: (() -> Void)? = nil
     @State private var paraCalendario = false
     @State private var cambiar = false
     @State private var ayuda = false
@@ -164,6 +171,10 @@ struct TarjetaVideollamada: View {
             }
             if reserva.estado == .confirmada { comoEntro(activa: activa) }
             if reserva.estado == .confirmada && !activa { acciones }
+            if let listaPrevia {
+                Divider().overlay(activa ? Color.sobreMarca.opacity(0.35) : Color.clear)
+                ListaPreviaBloque(vista: listaPrevia, sobreVerde: activa, abrirGuia: abrirGuia)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
