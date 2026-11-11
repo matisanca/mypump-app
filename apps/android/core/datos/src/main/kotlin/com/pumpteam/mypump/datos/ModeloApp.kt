@@ -791,6 +791,9 @@ class ModeloApp(
                 suplAntes?.let { ModeloNovedades.Entrada.Hay(it) } ?: ModeloNovedades.Entrada.NoLlego)
             nov.observar(entrada(rr, rutinaJson.takeIf { rr is Resultado.Ok }), entrada(dd, dietaJson.takeIf { dd is Resultado.Ok }),
                 _suplementacion.value?.entradaNovedades ?: ModeloNovedades.Entrada.NoLlego, semilla)
+        } else if (palancaLeida != null && !palancaLeida.novedadesPlan) {
+            // Apagada (leída en ESTA carga, no por un corte): la base no se queda vieja para cuando se vuelva a prender.
+            nov?.olvidarBase()
         }
         sincronizarGimnasio()
         sincronizarTecnica()
