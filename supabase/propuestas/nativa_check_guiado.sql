@@ -26,7 +26,10 @@ CREATE TABLE IF NOT EXISTS mypump_check_guiado (
   semana_lunes  DATE        NOT NULL,
   catalogo      TEXT        NOT NULL CHECK (catalogo IN ('general', 'ciclo')),
   -- Claves de lo marcado ('acne', 'retencion'…). 'ninguno' = contestó que nada; vacío no se guarda.
-  senales       TEXT[]      NOT NULL CHECK (cardinality(senales) BETWEEN 1 AND 12),
+  senales       TEXT[]      NOT NULL CHECK (cardinality(senales) BETWEEN 1 AND 16),
+  -- Solo en la lista de efectos: cuánto molesta cada uno. {"nauseas": "moderado"}; claves de `senales`, valores
+  -- leve | moderado | fuerte. Vacío en la lista general o con 'ninguno'. `senales` no cambia por esto.
+  intensidades  JSONB       NOT NULL DEFAULT '{}'::JSONB CHECK (jsonb_typeof(intensidades) = 'object'),
   -- Lo que decía clientes_perfil en el momento de guardar (el perfil puede cambiar después).
   en_ciclo      BOOLEAN     NOT NULL DEFAULT FALSE,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -66,8 +69,19 @@ AS $$
                      FROM clientes_perfil WHERE cliente_id = p_cliente_id), FALSE);
 $$;
 
-REVOKE ALL ON FUNCTION mypump_check_guiado_en_ciclo(TEXT) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION mypump_check_guiado_en_ciclo(TEXT) TO service_role;
+-- ── ¿Usa un GLP-1? Solo a ellos la lista de efectos les suma los digestivos (náuseas, vómitos, estreñimiento…) ──
+CREATE OR REPLACE FUNCTION mypump_check_guiado_glp1(p_cliente_id TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE((SELECT 'peptidos.glp1' = ANY(subperfiles) FROM clientes_perfil WHERE cliente_id = p_cliente_id), FALSE);
+$$;
+
+REVOKE ALL ON FUNCTION mypump_check_guiado_en_ciclo(TEXT), mypump_check_guiado_glp1(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_check_guiado_en_ciclo(TEXT), mypump_check_guiado_glp1(TEXT) TO service_role;
 
 -- ── Lo que la app lee al abrir Revisión ──
 -- NULL = el token no sirve. {"activo": false} = palanca apagada (no dice nada del perfil).
@@ -93,15 +107,18 @@ BEGIN
   RETURN jsonb_build_object(
     'activo',   TRUE,
     'en_ciclo', mypump_check_guiado_en_ciclo(v_cliente_id),
+    'glp1',     mypump_check_guiado_glp1(v_cliente_id),
     'semana',   v_lunes,
     'catalogo', v_fila.catalogo,
-    'senales',  CASE WHEN v_fila.cliente_id IS NULL THEN NULL ELSE to_jsonb(v_fila.senales) END
+    'senales',  CASE WHEN v_fila.cliente_id IS NULL THEN NULL ELSE to_jsonb(v_fila.senales) END,
+    'intensidades', CASE WHEN v_fila.cliente_id IS NULL THEN NULL ELSE v_fila.intensidades END
   );
 END;
 $$;
 
 -- ── Guardar lo marcado (una fila por semana; la última gana) ──
--- p_respuestas: {"catalogo": "general" | "ciclo", "senales": ["acne", "retencion"]}
+-- p_respuestas: {"catalogo": "general" | "ciclo", "senales": ["acne", "nauseas"], "intensidades": {"acne": "leve", "nauseas": "moderado"}}
+-- `intensidades` es opcional (sin la clave = vacío) y solo vale en la lista de efectos: claves marcadas, valores leve | moderado | fuerte.
 -- TRUE = guardado. FALSE = palanca apagada (no se guarda; la app lo da por hecho). NULL = el token no sirve.
 -- Con 'ninguno' junto a otras, 'ninguno' se descarta. Lo inválido da 22023 (la cola de la app no lo reintenta).
 CREATE OR REPLACE FUNCTION mypump_check_guiado_guardar(p_token TEXT, p_fecha DATE, p_respuestas JSONB)
@@ -115,6 +132,7 @@ DECLARE
   v_hoy        DATE;
   v_catalogo   TEXT;
   v_senales    TEXT[];
+  v_intens     JSONB;
 BEGIN
   v_cliente_id := mypump_get_cliente_id_from_token(p_token);
   IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
@@ -144,19 +162,31 @@ BEGIN
     FROM jsonb_array_elements_text(p_respuestas->'senales') s;
   -- Solo las claves de la lista del catálogo (las mismas que apps/shared/vectores/check_guiado.json).
   IF NOT v_senales <@ (CASE v_catalogo
-       WHEN 'ciclo' THEN ARRAY['acne','retencion','pecho','cabeza','animo','libido','sueno','aplicacion','ninguno']
+       WHEN 'ciclo' THEN ARRAY['acne','retencion','pecho','cabeza','animo','libido','sueno','aplicacion',
+                             'nauseas','vomitos','estrenimiento','diarrea','acidez','ninguno']
        ELSE ARRAY['dolor','digestion','animo','enfermo','ninguno'] END) THEN
     RAISE EXCEPTION 'señales inválidas' USING ERRCODE = '22023';
   END IF;
   IF cardinality(v_senales) > 1 THEN v_senales := array_remove(v_senales, 'ninguno'); END IF;
-  IF cardinality(v_senales) NOT BETWEEN 1 AND 12 THEN
+  IF cardinality(v_senales) NOT BETWEEN 1 AND 16 THEN
     RAISE EXCEPTION 'señales inválidas' USING ERRCODE = '22023';
   END IF;
 
-  INSERT INTO mypump_check_guiado (cliente_id, semana_lunes, catalogo, senales, en_ciclo)
-  VALUES (v_cliente_id, date_trunc('week', p_fecha)::DATE, v_catalogo, v_senales, mypump_check_guiado_en_ciclo(v_cliente_id))
+  -- Intensidades: un objeto; cada clave es un efecto marcado (nunca 'ninguno') y cada valor leve | moderado | fuerte.
+  v_intens := COALESCE(p_respuestas->'intensidades', '{}'::JSONB);
+  IF jsonb_typeof(v_intens) <> 'object'
+     OR (v_catalogo <> 'ciclo' AND v_intens <> '{}'::JSONB)
+     OR EXISTS (SELECT 1 FROM jsonb_each(v_intens) i
+                WHERE i.key = 'ninguno' OR NOT i.key = ANY(v_senales)
+                   OR jsonb_typeof(i.value) <> 'string' OR (i.value #>> '{}') NOT IN ('leve', 'moderado', 'fuerte')) THEN
+    RAISE EXCEPTION 'intensidades inválidas' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO mypump_check_guiado (cliente_id, semana_lunes, catalogo, senales, intensidades, en_ciclo)
+  VALUES (v_cliente_id, date_trunc('week', p_fecha)::DATE, v_catalogo, v_senales, v_intens, mypump_check_guiado_en_ciclo(v_cliente_id))
   ON CONFLICT (cliente_id, semana_lunes) DO UPDATE
-    SET catalogo = EXCLUDED.catalogo, senales = EXCLUDED.senales, en_ciclo = EXCLUDED.en_ciclo, updated_at = NOW();
+    SET catalogo = EXCLUDED.catalogo, senales = EXCLUDED.senales, intensidades = EXCLUDED.intensidades,
+        en_ciclo = EXCLUDED.en_ciclo, updated_at = NOW();
   RETURN TRUE;
 END;
 $$;
@@ -172,4 +202,4 @@ COMMIT;
 -- Para prenderlo (con OK de Mati, desde ~/_aplicar.py):
 --   UPDATE mypump_app_config SET valor = 'true', actualizado_en = NOW() WHERE clave = 'check_guiado';
 -- Para leerlo en el brief o en el panel:
---   SELECT semana_lunes, catalogo, senales, en_ciclo FROM mypump_check_guiado WHERE cliente_id = '…' ORDER BY 1 DESC;
+--   SELECT semana_lunes, catalogo, senales, intensidades, en_ciclo FROM mypump_check_guiado WHERE cliente_id = '…' ORDER BY 1 DESC;

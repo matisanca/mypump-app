@@ -23,6 +23,15 @@ public enum CheckGuiado {
     /// «Nada de esto»: se guarda para distinguir «no pasó nada» de «no contestó». No convive con otra.
     public static let ninguno = "ninguno"
 
+    /// Los efectos digestivos de la lista de efectos: se muestran solo a quien usa un GLP-1 (lo dice el servidor).
+    public static let digestivas = ["nauseas", "vomitos", "estrenimiento", "diarrea", "acidez"]
+
+    /// Lo que se muestra. `glp1` solo cuenta en la lista de efectos: sin él, las digestivas no aparecen.
+    public static func opciones(_ c: Catalogo, glp1: Bool) -> [Opcion] {
+        c == .ciclo && !glp1 ? opciones(c).filter { !digestivas.contains($0.clave) } : opciones(c)
+    }
+
+    /// La lista entera de cada catálogo (lo que vale al guardar, se muestre o no).
     public static func opciones(_ c: Catalogo) -> [Opcion] {
         switch c {
         case .general: [
@@ -41,9 +50,42 @@ public enum CheckGuiado {
             Opcion(clave: "libido", etiqueta: "Cambios en el deseo sexual"),
             Opcion(clave: "sueno", etiqueta: "Insomnio o sudor de noche"),
             Opcion(clave: "aplicacion", etiqueta: "Dolor en la zona de aplicación"),
+            Opcion(clave: "nauseas", etiqueta: "Náuseas"),
+            Opcion(clave: "vomitos", etiqueta: "Vómitos"),
+            Opcion(clave: "estrenimiento", etiqueta: "Estreñimiento"),
+            Opcion(clave: "diarrea", etiqueta: "Diarrea"),
+            Opcion(clave: "acidez", etiqueta: "Acidez o reflujo"),
             Opcion(clave: ninguno, etiqueta: "Nada de esto"),
         ]
         }
+    }
+
+    // MARK: - Cuánto molesta cada efecto (solo en la lista de efectos)
+
+    public static let intensidades = [
+        Opcion(clave: "leve", etiqueta: "Leve"),
+        Opcion(clave: "moderado", etiqueta: "Moderado"),
+        Opcion(clave: "fuerte", etiqueta: "Fuerte"),
+    ]
+    public static let preguntaIntensidad = "¿Cuánto te molesta?"
+    public static let avisoIntensidad = "Elegí cuánto te molesta"
+
+    /// La lista general no lleva intensidad.
+    public static func llevaIntensidad(_ c: Catalogo) -> Bool { c == .ciclo }
+
+    /// Lo que se manda: solo de los efectos marcados (nunca de «ninguno»), con un valor de la lista.
+    public static func normalizarIntensidades(_ senales: [String], _ intensidades: [String: String], _ c: Catalogo) -> [String: String] {
+        guard llevaIntensidad(c) else { return [:] }
+        let marcadas = normalizar(senales, c).filter { $0 != ninguno }
+        let validas = intensidades.filter { par in marcadas.contains(par.key) && Self.intensidades.contains { $0.clave == par.value } }
+        return validas
+    }
+
+    /// ¿Hay algún efecto marcado sin su intensidad? Con eso «Seguir» no avanza y el check no se manda.
+    public static func faltaIntensidad(_ b: Borrador) -> Bool {
+        guard llevaIntensidad(b.catalogo) else { return false }
+        let marcadas = normalizar(b.senales, b.catalogo).filter { $0 != ninguno }
+        return normalizarIntensidades(b.senales, b.intensidades, b.catalogo).count < marcadas.count
     }
 
     public static func titulo(_ p: Paso, catalogo: Catalogo = .general) -> String {
@@ -107,12 +149,27 @@ public enum CheckGuiado {
         public var valores: [String: Int]
         public var catalogo: Catalogo
         public var senales: [String]
+        /// Cuánto molesta cada efecto marcado (clave del efecto → leve, moderado o fuerte). Solo en la lista de efectos.
+        public var intensidades: [String: String]
         public var nota: String
 
         public init(semana: String, paso: Paso = .peso, peso: String = "", valores: [String: Int] = [:],
-                    catalogo: Catalogo = .general, senales: [String] = [], nota: String = "") {
+                    catalogo: Catalogo = .general, senales: [String] = [], intensidades: [String: String] = [:], nota: String = "") {
             self.semana = semana; self.paso = paso; self.peso = peso; self.valores = valores
-            self.catalogo = catalogo; self.senales = senales; self.nota = nota
+            self.catalogo = catalogo; self.senales = senales; self.intensidades = intensidades; self.nota = nota
+        }
+
+        /// Un borrador guardado antes de que existieran las intensidades se lee igual, sin ellas.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            semana = try c.decode(String.self, forKey: .semana)
+            paso = try c.decode(Paso.self, forKey: .paso)
+            peso = try c.decode(String.self, forKey: .peso)
+            valores = try c.decode([String: Int].self, forKey: .valores)
+            catalogo = try c.decode(Catalogo.self, forKey: .catalogo)
+            senales = try c.decode([String].self, forKey: .senales)
+            intensidades = try c.decodeIfPresent([String: String].self, forKey: .intensidades) ?? [:]
+            nota = try c.decode(String.self, forKey: .nota)
         }
 
         /// ¿Contestó algo? Un borrador sin nada no cuenta como «a medias».
@@ -125,9 +182,9 @@ public enum CheckGuiado {
     /// El borrador con el que se abre: el guardado si es de esta semana; si no, uno nuevo con lo que ya está enviado.
     /// Si el perfil cambió (otro catálogo), lo marcado con la lista anterior no vale.
     public static func abrir(guardado: Borrador?, semana: String, catalogo: Catalogo, enviado: (valores: [String: Int], nota: String)?,
-                             senalesEnviadas: [String]?, catalogoEnviado: Catalogo?) -> Borrador {
+                             senalesEnviadas: [String]?, catalogoEnviado: Catalogo?, intensidadesEnviadas: [String: String]? = nil) -> Borrador {
         if var b = guardado, b.semana == semana {
-            if b.catalogo != catalogo { b.catalogo = catalogo; b.senales = [] }
+            if b.catalogo != catalogo { b.catalogo = catalogo; b.senales = []; b.intensidades = [:] }
             return b
         }
         var b = Borrador(semana: semana, catalogo: catalogo)
@@ -136,7 +193,10 @@ public enum CheckGuiado {
             b.nota = enviado.nota
             b.paso = .resumen
         }
-        if let senalesEnviadas, catalogoEnviado == catalogo { b.senales = normalizar(senalesEnviadas, catalogo) }
+        if let senalesEnviadas, catalogoEnviado == catalogo {
+            b.senales = normalizar(senalesEnviadas, catalogo)
+            b.intensidades = normalizarIntensidades(b.senales, intensidadesEnviadas ?? [:], catalogo)
+        }
         return b
     }
 
@@ -161,20 +221,25 @@ public enum CheckGuiado {
     public static func faltaParaEnviar(_ b: Borrador) -> String? {
         if let f = CheckinSemanal.faltan(b.valores) { return f }
         if normalizar(b.senales, b.catalogo).isEmpty { return "Falta: \(titulo(.senales, catalogo: b.catalogo))" }
+        if faltaIntensidad(b) { return avisoIntensidad }
         return nil
     }
 
     /// El primer paso al que hay que volver para completar lo que falta.
     public static func pasoQueFalta(_ b: Borrador) -> Paso? {
         if CheckinSemanal.faltan(b.valores) != nil { return .escalas }
-        if normalizar(b.senales, b.catalogo).isEmpty { return .senales }
+        if normalizar(b.senales, b.catalogo).isEmpty || faltaIntensidad(b) { return .senales }
         return nil
     }
 
-    /// «Acné o piel grasa, Retención de líquido o hinchazón» para la fila del resumen.
-    public static func textoSenales(_ senales: [String], _ c: Catalogo) -> String {
+    /// «Acné o piel grasa · Leve, Náuseas · Moderado» para la fila del resumen (sin intensidad en la lista general).
+    public static func textoSenales(_ senales: [String], _ c: Catalogo, intensidades: [String: String] = [:]) -> String {
         let n = normalizar(senales, c)
-        return opciones(c).filter { n.contains($0.clave) }.map(\.etiqueta).joined(separator: ", ")
+        let cuanto = normalizarIntensidades(senales, intensidades, c)
+        return opciones(c).filter { n.contains($0.clave) }.map { o in
+            guard let i = Self.intensidades.first(where: { $0.clave == cuanto[o.clave] }) else { return o.etiqueta }
+            return "\(o.etiqueta) · \(i.etiqueta)"
+        }.joined(separator: ", ")
     }
 
     // MARK: - La tarjeta de Revisión

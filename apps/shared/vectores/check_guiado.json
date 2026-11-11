@@ -57,11 +57,32 @@
     "Dolor en la zona de aplicación"
    ],
    [
+    "nauseas",
+    "Náuseas"
+   ],
+   [
+    "vomitos",
+    "Vómitos"
+   ],
+   [
+    "estrenimiento",
+    "Estreñimiento"
+   ],
+   [
+    "diarrea",
+    "Diarrea"
+   ],
+   [
+    "acidez",
+    "Acidez o reflujo"
+   ],
+   [
     "ninguno",
     "Nada de esto"
    ]
   ]
  },
+ "catalogosNota": "ciclo es la lista de efectos entera. Las digestivas se muestran solo si el servidor dice glp1 (subperfil peptidos.glp1); normalizar las acepta siempre.",
  "titulos": {
   "peso": "¿Cuánto pesaste hoy?",
   "escalas": "¿Cómo venís esta semana?",
@@ -253,19 +274,55 @@
     "retencion",
     "acne"
    ],
-   "texto": "Acné o piel grasa, Retención de líquido o hinchazón"
+   "texto": "Acné o piel grasa, Retención de líquido o hinchazón",
+   "intensidades": {}
   },
   {
    "catalogo": "general",
    "senales": [
     "ninguno"
    ],
-   "texto": "Nada de esto"
+   "texto": "Nada de esto",
+   "intensidades": {}
   },
   {
    "catalogo": "general",
    "senales": [],
-   "texto": ""
+   "texto": "",
+   "intensidades": {}
+  },
+  {
+   "catalogo": "ciclo",
+   "senales": [
+    "nauseas",
+    "acne"
+   ],
+   "intensidades": {
+    "nauseas": "moderado",
+    "acne": "leve"
+   },
+   "texto": "Acné o piel grasa · Leve, Náuseas · Moderado"
+  },
+  {
+   "catalogo": "ciclo",
+   "senales": [
+    "acne",
+    "sueno"
+   ],
+   "intensidades": {
+    "sueno": "fuerte"
+   },
+   "texto": "Acné o piel grasa, Insomnio o sudor de noche · Fuerte"
+  },
+  {
+   "catalogo": "general",
+   "senales": [
+    "dolor"
+   ],
+   "intensidades": {
+    "dolor": "fuerte"
+   },
+   "texto": "Dolor o molestia al entrenar"
   }
  ],
  "puedeSeguir": [
@@ -278,7 +335,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": false
@@ -292,7 +350,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": false
@@ -306,7 +365,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": true
@@ -323,7 +383,8 @@
     },
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": false
@@ -342,7 +403,8 @@
     },
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": false
@@ -361,7 +423,8 @@
     },
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": true
@@ -375,7 +438,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 2,
    "puede": false
@@ -389,7 +453,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 3,
    "puede": true
@@ -403,7 +468,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": false
@@ -419,7 +485,8 @@
     "senales": [
      "acne"
     ],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": false
@@ -435,7 +502,8 @@
     "senales": [
      "acne"
     ],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": true
@@ -451,7 +519,8 @@
     "senales": [
      "ninguno"
     ],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": true
@@ -465,7 +534,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": true
@@ -479,7 +549,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "fotosHechas": 0,
    "puede": true
@@ -494,7 +565,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "falta": "Faltan: Energía, Descanso, Hambre, Adherencia",
    "paso": "escalas"
@@ -511,7 +583,8 @@
     },
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "falta": "Faltan: Hambre",
    "paso": "escalas"
@@ -529,7 +602,8 @@
     },
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "falta": "Falta: ¿Algo de esto esta semana?",
    "paso": "senales"
@@ -547,7 +621,8 @@
     },
     "catalogo": "ciclo",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "falta": "Falta: ¿Notaste algo de esto?",
    "paso": "senales"
@@ -567,7 +642,8 @@
     "senales": [
      "ninguno"
     ],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "falta": null,
    "paso": null
@@ -588,10 +664,38 @@
      "acne",
      "sueno"
     ],
-    "nota": ""
+    "nota": "",
+    "intensidades": {
+     "acne": "leve",
+     "sueno": "moderado"
+    }
    },
    "falta": null,
    "paso": null
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [
+     "acne",
+     "sueno"
+    ],
+    "intensidades": {
+     "acne": "leve"
+    },
+    "nota": ""
+   },
+   "falta": "Elegí cuánto te molesta",
+   "paso": "senales"
   }
  ],
  "abrir": [
@@ -610,8 +714,10 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
-   }
+    "nota": "",
+    "intensidades": {}
+   },
+   "intensidadesEnviadas": null
   },
   {
    "caso": "el borrador de esta semana se retoma tal cual",
@@ -627,7 +733,8 @@
     },
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "semana": "2026-11-09",
    "catalogo": "general",
@@ -646,8 +753,10 @@
     },
     "catalogo": "general",
     "senales": [],
-    "nota": ""
-   }
+    "nota": "",
+    "intensidades": {}
+   },
+   "intensidadesEnviadas": null
   },
   {
    "caso": "el borrador de la semana pasada no sirve",
@@ -663,7 +772,8 @@
     },
     "catalogo": "general",
     "senales": [],
-    "nota": "vieja"
+    "nota": "vieja",
+    "intensidades": {}
    },
    "semana": "2026-11-09",
    "catalogo": "general",
@@ -677,8 +787,10 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
-   }
+    "nota": "",
+    "intensidades": {}
+   },
+   "intensidadesEnviadas": null
   },
   {
    "caso": "ya enviado y sin borrador: abre en el resumen con lo enviado",
@@ -712,7 +824,13 @@
     "senales": [
      "acne"
     ],
-    "nota": "todo bien"
+    "nota": "todo bien",
+    "intensidades": {
+     "acne": "moderado"
+    }
+   },
+   "intensidadesEnviadas": {
+    "acne": "moderado"
    }
   },
   {
@@ -743,8 +861,10 @@
     },
     "catalogo": "general",
     "senales": [],
-    "nota": ""
-   }
+    "nota": "",
+    "intensidades": {}
+   },
+   "intensidadesEnviadas": null
   },
   {
    "caso": "cambió el perfil: lo marcado con la otra lista no vale (borrador)",
@@ -762,7 +882,8 @@
     "senales": [
      "dolor"
     ],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "semana": "2026-11-09",
    "catalogo": "ciclo",
@@ -781,8 +902,10 @@
     },
     "catalogo": "ciclo",
     "senales": [],
-    "nota": ""
-   }
+    "nota": "",
+    "intensidades": {}
+   },
+   "intensidadesEnviadas": null
   },
   {
    "caso": "cambió el perfil: lo marcado con la otra lista no vale (enviado)",
@@ -814,6 +937,51 @@
     },
     "catalogo": "ciclo",
     "senales": [],
+    "nota": "",
+    "intensidades": {}
+   },
+   "intensidadesEnviadas": null
+  },
+  {
+   "caso": "cambió el perfil: las intensidades de la otra lista tampoco valen (borrador)",
+   "guardado": {
+    "semana": "2026-11-09",
+    "paso": "nota",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [
+     "acne"
+    ],
+    "intensidades": {
+     "acne": "leve"
+    },
+    "nota": ""
+   },
+   "semana": "2026-11-09",
+   "catalogo": "general",
+   "enviado": null,
+   "senalesEnviadas": null,
+   "catalogoEnviado": null,
+   "intensidadesEnviadas": null,
+   "queda": {
+    "semana": "2026-11-09",
+    "paso": "nota",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [],
+    "intensidades": {},
     "nota": ""
    }
   }
@@ -871,7 +1039,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "semana": "2026-11-09",
    "faltanFotos": true,
@@ -886,7 +1055,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "semana": "2026-11-09",
    "faltanFotos": true,
@@ -901,7 +1071,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": ""
+    "nota": "",
+    "intensidades": {}
    },
    "semana": "2026-11-09",
    "faltanFotos": false,
@@ -923,7 +1094,8 @@
     "valores": {},
     "catalogo": "general",
     "senales": [],
-    "nota": "cambio a medias"
+    "nota": "cambio a medias",
+    "intensidades": {}
    },
    "semana": "2026-11-09",
    "faltanFotos": false,
@@ -931,7 +1103,7 @@
   }
  ],
  "payload": {
-  "_": "Lo que sale por la cola al enviar. checkin y peso son los de siempre, sin un campo más.",
+  "_": "Lo que sale por la cola al enviar. checkin y peso son los de siempre, sin un campo más. check_guiado lleva siempre `intensidades` (objeto vacío en la lista general o con «ninguno»).",
   "borrador": {
    "semana": "2026-11-09",
    "paso": "resumen",
@@ -947,7 +1119,12 @@
     "sueno",
     "acne"
    ],
-   "nota": " todo bien "
+   "nota": " todo bien ",
+   "intensidades": {
+    "sueno": "moderado",
+    "acne": "leve",
+    "pecho": "fuerte"
+   }
   },
   "fecha": "2026-11-11",
   "ops": [
@@ -983,7 +1160,11 @@
       "senales": [
        "acne",
        "sueno"
-      ]
+      ],
+      "intensidades": {
+       "acne": "leve",
+       "sueno": "moderado"
+      }
      }
     }
    }
@@ -998,10 +1179,231 @@
       "senales": [
        "acne",
        "sueno"
-      ]
+      ],
+      "intensidades": {
+       "acne": "leve",
+       "sueno": "moderado"
+      }
      }
     }
    }
   }
- }
+ },
+ "digestivas": [
+  "nauseas",
+  "vomitos",
+  "estrenimiento",
+  "diarrea",
+  "acidez"
+ ],
+ "opcionesCiclo": [
+  {
+   "glp1": false,
+   "claves": [
+    "acne",
+    "retencion",
+    "pecho",
+    "cabeza",
+    "animo",
+    "libido",
+    "sueno",
+    "aplicacion",
+    "ninguno"
+   ]
+  },
+  {
+   "glp1": true,
+   "claves": [
+    "acne",
+    "retencion",
+    "pecho",
+    "cabeza",
+    "animo",
+    "libido",
+    "sueno",
+    "aplicacion",
+    "nauseas",
+    "vomitos",
+    "estrenimiento",
+    "diarrea",
+    "acidez",
+    "ninguno"
+   ]
+  }
+ ],
+ "intensidades": {
+  "_": "Solo en la lista de efectos (catálogo ciclo): cada efecto marcado lleva cuánto molesta. La lista general no lleva.",
+  "opciones": [
+   [
+    "leve",
+    "Leve"
+   ],
+   [
+    "moderado",
+    "Moderado"
+   ],
+   [
+    "fuerte",
+    "Fuerte"
+   ]
+  ],
+  "aviso": "Elegí cuánto te molesta",
+  "pregunta": "¿Cuánto te molesta?"
+ },
+ "normalizarIntensidades": [
+  {
+   "catalogo": "ciclo",
+   "senales": [
+    "acne",
+    "nauseas"
+   ],
+   "intensidades": {
+    "nauseas": "moderado",
+    "acne": "leve",
+    "sueno": "fuerte"
+   },
+   "queda": {
+    "acne": "leve",
+    "nauseas": "moderado"
+   }
+  },
+  {
+   "catalogo": "ciclo",
+   "senales": [
+    "acne"
+   ],
+   "intensidades": {
+    "acne": "muchisimo"
+   },
+   "queda": {}
+  },
+  {
+   "catalogo": "ciclo",
+   "senales": [
+    "ninguno"
+   ],
+   "intensidades": {
+    "ninguno": "leve",
+    "acne": "leve"
+   },
+   "queda": {}
+  },
+  {
+   "catalogo": "general",
+   "senales": [
+    "dolor"
+   ],
+   "intensidades": {
+    "dolor": "fuerte"
+   },
+   "queda": {}
+  }
+ ],
+ "faltaIntensidad": [
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "senales",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [
+     "acne",
+     "nauseas"
+    ],
+    "intensidades": {
+     "acne": "leve"
+    },
+    "nota": ""
+   },
+   "falta": true
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "senales",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [
+     "acne",
+     "nauseas"
+    ],
+    "intensidades": {
+     "acne": "leve",
+     "nauseas": "fuerte"
+    },
+    "nota": ""
+   },
+   "falta": false
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "senales",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [
+     "ninguno"
+    ],
+    "intensidades": {},
+    "nota": ""
+   },
+   "falta": false
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "senales",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [],
+    "intensidades": {},
+    "nota": ""
+   },
+   "falta": false
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "senales",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [
+     "dolor"
+    ],
+    "intensidades": {},
+    "nota": ""
+   },
+   "falta": false
+  }
+ ]
 }

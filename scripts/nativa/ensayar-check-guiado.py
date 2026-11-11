@@ -107,9 +107,33 @@ def chequeos(cur, token, otro):
     cur.execute("""INSERT INTO clientes_perfil (cliente_id, perfiles, fuente) VALUES (%s, ARRAY['ciclo'], 'ensayo')
                    ON CONFLICT (cliente_id) DO UPDATE SET perfiles = ARRAY['ciclo', 'peptidos']""", (CUENTA,))
     chequear("get: en_ciclo true", uno(cur, "SELECT mypump_check_guiado_get(%s, %s)", (token, hoy)).get("en_ciclo") is True)
-    uno(cur, "SELECT mypump_check_guiado_guardar(%s, %s, %s::jsonb)", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": ["acne", "retencion"]})))
-    cur.execute("SELECT catalogo, senales, en_ciclo FROM mypump_check_guiado WHERE cliente_id = %s", (CUENTA,))
-    chequear("guarda catálogo ciclo y el perfil del momento", cur.fetchall() == [("ciclo", ["acne", "retencion"], True)])
+    uno(cur, "SELECT mypump_check_guiado_guardar(%s, %s, %s::jsonb)", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": ["acne", "nauseas"]})))
+    cur.execute("SELECT catalogo, senales, intensidades, en_ciclo FROM mypump_check_guiado WHERE cliente_id = %s", (CUENTA,))
+    chequear("guarda catálogo ciclo y el perfil del momento (sin intensidades = vacío)", cur.fetchall() == [("ciclo", ["acne", "nauseas"], {}, True)])
+
+    print("▸ Intensidades y GLP-1")
+    con = {"catalogo": "ciclo", "senales": ["nauseas", "acne"], "intensidades": {"nauseas": "moderado", "acne": "leve"}}
+    chequear("guardar con intensidades = TRUE", uno(cur, "SELECT mypump_check_guiado_guardar(%s, %s, %s::jsonb)", (token, hoy, json.dumps(con))) is True)
+    cur.execute("SELECT senales, intensidades FROM mypump_check_guiado WHERE cliente_id = %s", (CUENTA,))
+    chequear("senales sigue igual y las intensidades van aparte", cur.fetchall() == [(["acne", "nauseas"], {"nauseas": "moderado", "acne": "leve"})])
+    r = uno(cur, "SELECT mypump_check_guiado_get(%s, %s)", (token, hoy))
+    chequear("get devuelve las intensidades", r.get("intensidades") == {"nauseas": "moderado", "acne": "leve"}, str(r))
+    chequear("get: glp1 false sin el subperfil", r.get("glp1") is False, str(r))
+    cur.execute("UPDATE clientes_perfil SET subperfiles = ARRAY['peptidos.glp1'] WHERE cliente_id = %s", (CUENTA,))
+    chequear("get: glp1 true con peptidos.glp1", uno(cur, "SELECT mypump_check_guiado_get(%s, %s)", (token, hoy)).get("glp1") is True)
+    cur.execute("UPDATE clientes_perfil SET subperfiles = ARRAY['peptidos.secretagogos_gh'] WHERE cliente_id = %s", (CUENTA,))
+    chequear("get: otro péptido no es glp1", uno(cur, "SELECT mypump_check_guiado_get(%s, %s)", (token, hoy)).get("glp1") is False)
+    cur.execute("SELECT count(*) FROM clientes_perfil WHERE mypump_check_guiado_glp1(cliente_id)")
+    print(f"  conteo real: {cur.fetchone()[0]} clientes ven además los digestivos (peptidos.glp1)")
+    da_22023(cur, "intensidad de un efecto no marcado", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": ["acne"], "intensidades": {"sueno": "leve"}})))
+    da_22023(cur, "intensidad con valor raro", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": ["acne"], "intensidades": {"acne": "muchisimo"}})))
+    da_22023(cur, "intensidad que no es texto", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": ["acne"], "intensidades": {"acne": 3}})))
+    da_22023(cur, "intensidades que no son objeto", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": ["acne"], "intensidades": ["leve"]})))
+    da_22023(cur, "intensidad de 'ninguno'", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": ["ninguno"], "intensidades": {"ninguno": "leve"}})))
+    da_22023(cur, "intensidades en la lista general", (token, hoy, json.dumps({"catalogo": "general", "senales": ["dolor"], "intensidades": {"dolor": "leve"}})))
+    da_22023(cur, "la clave vieja 'digestivo' ya no existe", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": ["digestivo"]})))
+    todas = ["acne", "retencion", "pecho", "cabeza", "animo", "libido", "sueno", "aplicacion", "nauseas", "vomitos", "estrenimiento", "diarrea", "acidez"]
+    chequear("la lista entera entra (13)", uno(cur, "SELECT mypump_check_guiado_guardar(%s, %s, %s::jsonb)", (token, hoy, json.dumps({"catalogo": "ciclo", "senales": todas, "intensidades": {k: "fuerte" for k in todas}}))) is True)
     # Decisión de Mati (11/11): la lista de efectos es para todo el que usa algo; a un natural, nunca.
     for perfiles, usa in ((["trt"], True), (["peptidos"], True), (["posciclo"], True), (["natural", "peptidos"], True),
                           (["natural"], False), (["sin_definir"], False)):
@@ -136,7 +160,7 @@ def chequeos(cur, token, otro):
     print("▸ Permisos y lo que no se toca")
     chequear("anon puede get y guardar", uno(cur, """SELECT has_function_privilege('anon', 'mypump_check_guiado_get(text, date)', 'EXECUTE')
                                                      AND has_function_privilege('anon', 'mypump_check_guiado_guardar(text, date, jsonb)', 'EXECUTE')"""))
-    chequear("anon no puede preguntar el perfil de otro", not uno(cur, "SELECT has_function_privilege('anon', 'mypump_check_guiado_en_ciclo(text)', 'EXECUTE')"))
+    chequear("anon no puede preguntar el perfil de otro", not uno(cur, "SELECT has_function_privilege('anon', 'mypump_check_guiado_en_ciclo(text)', 'EXECUTE') OR has_function_privilege('anon', 'mypump_check_guiado_glp1(text)', 'EXECUTE')"))
     chequear("anon no lee la tabla", not uno(cur, "SELECT has_table_privilege('anon', 'mypump_check_guiado', 'SELECT')"))
     chequear("la tabla tiene RLS", uno(cur, "SELECT relrowsecurity FROM pg_class WHERE relname = 'mypump_check_guiado'"))
 
