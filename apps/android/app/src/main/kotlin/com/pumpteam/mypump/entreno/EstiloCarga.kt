@@ -40,6 +40,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.pumpteam.mypump.diseno.MyPump
+import com.pumpteam.mypump.diseno.avance
+import com.pumpteam.mypump.diseno.riel
 
 // El lenguaje visual de la carga de series (gemelo de EstiloCarga.swift): un instrumento de gimnasio. Un solo foco por serie
 // (el número grande), pocas cajas, y todo el verde reservado para lo que avanza. Colores y Archivo, los de `Tema.kt`.
@@ -144,18 +146,16 @@ internal fun BotonCircularCarga(
     }
 }
 
-/** El avance del ejercicio, un segmento por serie: hechas en verde, la de ahora a medio llenar y el resto apagadas. */
+/** El avance del ejercicio, un segmento por serie: hechas en verde lleno y el resto en el riel gris. */
+@Suppress("UNUSED_PARAMETER")
 @Composable
 internal fun ProgresoSeries(total: Int, hechas: Int, actual: Int?) {
     val c = MyPump.colores
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         repeat(maxOf(total, 1)) { i ->
             val color by animateColorAsState(
-                when {
-                    i < hechas -> c.marca
-                    i == actual -> c.marca.copy(alpha = 0.36f)
-                    else -> c.campo
-                },
+                // Sin verdes a medias (contraste AA, 10/11): un verde translúcido sobre negro da 1,9:1 y se ensucia. Hecho o riel.
+                if (i < hechas) c.avance else c.riel,
                 EstiloCarga.resorte(),
                 label = "segmento-$i",
             )
