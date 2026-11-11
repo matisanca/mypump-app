@@ -244,7 +244,7 @@ class RevisionUiTest : PruebaUi() {
         p.tocar(texto("Hambre: 2 de 5"))
         p.tocar(texto("Adherencia: 5 de 5"))
         p.esperarQueNoEste(textoQueContiene("Faltan:"))
-        p.nodo(texto("4/4"))
+        p.nodo(texto("4 de 4"))
         p.escribir(etiqueta("nota-check"), "Bien la semana, el sábado me pasé un poco.")
         Telefono.captura("revision-check-completo-claro")
         p.tocar(etiqueta("enviar-check"))
@@ -295,7 +295,7 @@ class RevisionUiTest : PruebaUi() {
         guardarCuenta()
         abrir()
         irARevision()
-        p.nodo(texto("0/3"))
+        p.nodo(texto("0 de 3"))
         p.tocar(etiqueta("foto-frente"))
         p.tocar(etiqueta("sacar-foto"))
         val subida = p.esperar("la foto subió", ms = 30_000) { servidor.fotosSubidas.firstOrNull() }
@@ -309,7 +309,7 @@ class RevisionUiTest : PruebaUi() {
         assertNull("subió con la ubicación", r.exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE))
         p.nodo(texto("Listo, guardada ✓"))
         p.esperar("el marco dice Lista") { p.estado(etiqueta("foto-frente")) == "Lista" }
-        p.nodo(texto("1/3"))
+        p.nodo(texto("1 de 3"))
         // La miniatura va con la URL firmada (`/progreso/urls`).
         p.esperar("se firmaron las URLs") { servidor.a("urls").firstOrNull() }
         p.esperar("se pidió la miniatura firmada") { miniaturas.firstOrNull { it.startsWith("https://fotos.prueba.invalid/$lunes/frente.jpg") } }
@@ -346,7 +346,7 @@ class RevisionUiTest : PruebaUi() {
         p.tocar(etiqueta("foto-frente"))
         p.tocar(etiqueta("sacar-foto"))
         p.nodo(texto("Listo, guardada ✓"))
-        p.nodo(texto("1/3"))
+        p.nodo(texto("1 de 3"))
         p.esperar("se firmó de nuevo") { servidor.firmas > firmasAntes }
         p.esperar("se pidió la miniatura nueva") { miniaturas.firstOrNull { it == servidor.urlDeFoto(lunes, "frente", servidor.firmas) } }
     }
@@ -426,7 +426,7 @@ class RevisionUiTest : PruebaUi() {
         p.nodo(texto("Sin conexión: queda guardada y se sube sola."))
         p.esperar("el marco dice Esperando señal") { p.estado(etiqueta("foto-perfil")) == "Esperando señal" }
         // Cuenta como hecha para la semana (está en la cola).
-        p.nodo(texto("1/3"))
+        p.nodo(texto("1 de 3"))
     }
 
     // ── REV-04: la galería por semana y el comparador desde la 4.ª semana ──

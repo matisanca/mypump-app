@@ -38,10 +38,11 @@ class EntrenoUiTest : PruebaUi() {
     @Test
     fun laListaDelDiaConSusCardsYLoQueLeeTalkBack() {
         cuentaSinSesion()
-        // ENT-09 y GEN-02: "DÍA n · SEMANA x DE y", el nombre, cuántos ejercicios y el anillo.
+        // ENT-09 y GEN-02: "DÍA n · SEMANA x DE y", el nombre y cuántos ejercicios (2.3.0: en la tarjeta principal, con
+        // los segmentos; el renglón «9 ejercicios» y el anillo ya no están).
         p.nodo(texto("DÍA 1 · SEMANA 5 DE 12"))
         assertEquals(listOf("Tirón"), p.textosBajo(etiqueta("entreno-titulo")))
-        assertEquals(listOf("9 ejercicios"), p.textosBajo(etiqueta("entreno-cantidad")))
+        assertFalse(p.existe(etiqueta("entreno-cantidad")))
         p.nodo(texto("0 de 9 ejercicios hechos"))
         // ENT-01: los cuatro días, el primero elegido.
         for (d in listOf("d1", "d2", "d3", "d4")) p.nodo(etiqueta("dia-$d"))
@@ -384,7 +385,7 @@ class EntrenoUiTest : PruebaUi() {
     fun cerrarElDiaYReabrirlo() {
         rutinaDePrueba(semana = 2)
         p.nodo(texto("DÍA 1 · SEMANA 2 DE 4"))
-        assertEquals(listOf("1 ejercicio"), p.textosBajo(etiqueta("entreno-cantidad")))
+        p.nodo(texto("0 de 1 ejercicios hechos"))
         p.tocar(etiqueta("ejercicio-press-d1-0"))
         fijarCarga("60")
         darOK()

@@ -62,7 +62,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloFotos
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.BotonSecundario
+import com.pumpteam.mypump.diseno.EncabezadoAvance
 import com.pumpteam.mypump.diseno.EncabezadoSeccion
+import com.pumpteam.mypump.diseno.apoyo
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.ImagenRemota
@@ -116,22 +118,8 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
     LaunchedEffect(modelo, fotos.size) { if (modelo != null && fotos.isNotEmpty()) modelo.firmar() }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-        EncabezadoSeccion("Fotos de la semana", detalle = if (hechas.size == 3) "Completas" else "${hechas.size}/3")
+        EncabezadoAvance("Fotos de la semana", hechas.size, 3, completo = "Completas")
         Tarjeta(Modifier.animateContentSize(), espaciado = Espacio.m) {
-            if (FotosProgreso.mostrarAviso(modelo?.cargadas?.collectAsStateWithLifecycle()?.value ?: true, hechas)) AvisoFotos()
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Iconos.Candado, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.padding(top = 2.dp).size(14.dp))
-                Text(
-                    buildAnnotatedString {
-                        append("Mismo lugar, misma luz, en ayunas. Las ve ")
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("solo Mati") }
-                        append(": no se publican ni salen de la app.")
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = c.textoSecundario,
-                )
-            }
-
             val lugares: @Composable (Modifier) -> Unit = { m ->
                 for ((pose, etiqueta) in FotosProgreso.poses) {
                     val clave = "$semana|$pose"
@@ -175,6 +163,23 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
                 Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) { lugares(Modifier.weight(1f)) }
             }
 
+            // Los tres marcos primero (es lo que se toca); la guía para sacarlas, debajo y sin caja verde. «Mismo lugar, misma
+            // luz» se dice UNA sola vez (decisión de Mati, 10/11): en la guía cuando está, y si no en la línea de privacidad.
+            val conGuia = FotosProgreso.mostrarAviso(modelo?.cargadas?.collectAsStateWithLifecycle()?.value ?: true, hechas)
+            if (conGuia) AvisoFotos()
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Iconos.Candado, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.padding(top = 2.dp).size(14.dp))
+                Text(
+                    buildAnnotatedString {
+                        append(if (conGuia) "En ayunas. Las ve " else "Mismo lugar, misma luz, en ayunas. Las ve ")
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("solo Mati") }
+                        append(": no se publican ni salen de la app.")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.apoyo,
+                )
+            }
+
             mensaje?.let { m ->
                 val problema = m.startsWith("No") || m.startsWith("Esa") || m.startsWith("Hay")
                 Text(
@@ -211,9 +216,9 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
 
             if (semanas.isEmpty()) {
                 Text(
-                    "Con la primera foto arranca tu historial. Mismo lugar y misma luz cada semana: así la comparación muestra tu cambio y no el del ambiente.",
+                    "Con la primera foto arranca tu historial.",
                     style = Letras.caption,
-                    color = c.textoSecundario,
+                    color = c.apoyo,
                 )
             } else {
                 BotonSecundario(
@@ -260,15 +265,12 @@ private fun AvisoFotos() {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Radio.control))
-            .background(c.marcaSuave)
-            .padding(Espacio.s)
             .semantics(mergeDescendants = true) {}
             .testTag("aviso-fotos"),
         verticalArrangement = Arrangement.spacedBy(Espacio.xs),
     ) {
         Text(FotosProgreso.AVISO_TITULO, style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = c.texto)
-        Text(FotosProgreso.AVISO_CUERPO, style = MaterialTheme.typography.bodyMedium, color = c.texto)
+        Text(FotosProgreso.AVISO_CUERPO, style = MaterialTheme.typography.bodyMedium, color = c.apoyo)
     }
 }
 
@@ -276,7 +278,8 @@ private fun AvisoFotos() {
 private fun MarcoPose(pose: String, nombre: String, estado: EstadoPose, enFila: Boolean) {
     val c = MyPump.colores
     val forma = RoundedCornerShape(Radio.control + 4.dp)
-    val borde = if (estado.lista) c.marcaVivo.copy(alpha = 0.6f) else c.textoSecundario.copy(alpha = 0.35f)
+    // El marco punteado al 70 % (al 35 % casi no se veía en oscuro); con la foto, verde lleno.
+    val borde = if (estado.lista) c.marcaVivo else c.textoSecundario.copy(alpha = 0.7f)
     val semantica = Modifier
         .testTag("foto-$pose")
         .clearAndSetSemantics {

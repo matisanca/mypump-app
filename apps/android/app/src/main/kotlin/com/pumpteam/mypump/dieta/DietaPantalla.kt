@@ -607,7 +607,7 @@ private fun ConsumidoHeroe(kcal: Double, meta: Double, esHoy: Boolean) {
             // TalkBack: «Consumido hoy, 544 de 2.373 kcal» (el `accessibilityValue` de iOS, que leen también las pruebas).
             modifier = Modifier
                 .fillMaxWidth()
-                .clearAndSetSemantics {
+                .semantics(mergeDescendants = true) {
                     contentDescription = if (esHoy) "Consumido hoy" else "Consumido ese día"
                     stateDescription = if (meta > 0) "${Formato.miles(kcal)} de ${Formato.miles(meta)} kcal" else "${Formato.miles(kcal)} kcal"
                 }

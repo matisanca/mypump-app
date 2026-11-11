@@ -51,7 +51,9 @@ import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MarcoPantalla
+import com.pumpteam.mypump.diseno.Letra
 import com.pumpteam.mypump.diseno.MyPump
+import com.pumpteam.mypump.diseno.apoyo
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.rellenoInferior
 import com.pumpteam.mypump.diseno.sinAbajo
@@ -184,6 +186,14 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         .padding(bottom = Espacio.xl + rellenoInferior()),
                     verticalArrangement = Arrangement.spacedBy(Espacio.xl),
                 ) {
+                    // La explicación de la semana va bajo el título: es contexto de toda la pantalla (entre tarjetas parecía un
+                    // párrafo suelto). Pegada a lo que sigue.
+                    Text(
+                        SemanaRevision.EXPLICACION,
+                        style = Letra.apoyo,
+                        color = MyPump.colores.apoyo,
+                        modifier = Modifier.padding(horizontal = 4.dp).testTag("nota-revision-semanal"),
+                    )
                     // La devolución de Mati, arriba de todo. Apagada (el modelo queda sin estado) o sin ninguna publicada, no hay nada.
                     val ultima = devolucion?.ultima
                     if (!esDemo && ultima != null) TarjetaDevolucion(ultima, devolucion.anteriores)
@@ -204,29 +214,10 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                             FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
                             Check(revision, salud, esDemo, alcance, secciones)
                         }
-                        // Lo primero de Revisión (con la semana completa): la recuperación y el progreso (reemplazan al
-                        // corazón que había arriba). En el teléfono, juntas (Espacio.m); en tablet, lado a lado.
-                        BoxWithConstraints {
-                            if (maxWidth >= 600.dp) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m), modifier = Modifier.height(IntrinsicSize.Max)) {
-                                    TarjetaRecuperacionRevision(salud, alAbrirSalud, Modifier.weight(1f).fillMaxHeight())
-                                    TarjetaProgresoRevision(modelo, alAbrirFuerza, Modifier.weight(1f).fillMaxHeight())
-                                }
-                            } else {
-                                Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                                    TarjetaRecuperacionRevision(salud, alAbrirSalud)
-                                    TarjetaProgresoRevision(modelo, alAbrirFuerza)
-                                }
-                            }
-                        }
+                        // La recuperación y el progreso, en una sola tarjeta de dos filas (reemplazan al corazón que había arriba).
+                        TarjetaComoVengo(salud, modelo, alAbrirSalud, alAbrirFuerza)
                         if (!semanaPendiente) AvisoPlanIncompleto(modelo)
                     }
-                    Text(
-                        SemanaRevision.EXPLICACION,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MyPump.colores.textoSecundario,
-                        modifier = Modifier.testTag("nota-revision-semanal"),
-                    )
                     if (!semanaPendiente) {
                         FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
                         Check(revision, salud, esDemo, alcance, secciones)

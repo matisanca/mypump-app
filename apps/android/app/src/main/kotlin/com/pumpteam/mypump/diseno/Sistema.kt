@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -264,7 +265,16 @@ fun FilaDestino(
 
 /** Título de sección con su avance: «Fotos de la semana», «1 de 3» en Archivo y los segmentos debajo, en vez de la fracción gris. */
 @Composable
-fun EncabezadoAvance(titulo: String, hechos: Int, total: Int, modifier: Modifier = Modifier, completo: String = "Completo") {
+fun EncabezadoAvance(
+    titulo: String,
+    hechos: Int,
+    total: Int,
+    modifier: Modifier = Modifier,
+    completo: String = "Completo",
+    /** Cuándo se muestra [completo] en vez de la cuenta (el check: recién al enviarlo, no con las cuatro respuestas). */
+    terminado: Boolean = hechos >= total,
+    etiquetaCompleto: String? = null,
+) {
     val c = MyPump.colores
     Column(
         modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -272,9 +282,9 @@ fun EncabezadoAvance(titulo: String, hechos: Int, total: Int, modifier: Modifier
     ) {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
             Text(titulo, style = Letra.seccion, color = c.texto, modifier = Modifier.weight(1f).semantics { heading() })
-            if (hechos >= total) {
+            if (terminado) {
                 Row(
-                    Modifier.semantics(mergeDescendants = true) {},
+                    Modifier.semantics(mergeDescendants = true) {}.then(if (etiquetaCompleto != null) Modifier.testTag(etiquetaCompleto) else Modifier),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -291,7 +301,7 @@ fun EncabezadoAvance(titulo: String, hechos: Int, total: Int, modifier: Modifier
                 }
             }
         }
-        AvanceSegmentos(total, hechos)
+        AvanceSegmentos(total, if (terminado) total else hechos)
     }
 }
 

@@ -335,7 +335,7 @@ private fun Cabecera(motor: ModeloEntreno, v: VistaEntreno, titulo: String, alCe
             verticalArrangement = Arrangement.spacedBy(Espacio.s),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                DatoHeroe("$hechos/$total", "Hechos", Modifier.weight(1f).testTag("entreno-hechos"))
+                DatoHeroe("$hechos/$total", "Hechos", Modifier.weight(1f))
                 DatoHeroe(minutos?.let { "$it min" } ?: "—", "Tiempo", Modifier.weight(1f))
                 DatoHeroe("${total - hechos} ej", "Restan", Modifier.weight(1f))
             }
