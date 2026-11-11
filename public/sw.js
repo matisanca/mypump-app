@@ -51,6 +51,7 @@ const SHELL = [
   '/js/tecnica-cola.js',
   '/js/tecnica-ui.js',
   '/js/chat-adjuntos.js',
+  '/js/documentos.js',
   '/css/tecnica.css',
   '/js/novedades-plan.js',
   '/js/novedades-ui.js',

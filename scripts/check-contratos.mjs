@@ -55,6 +55,8 @@ firmas.set('mypump_gimnasio_nuevo', new Set(['p_token', 'p_modo']));
 firmas.set('mypump_gimnasio_enviar', new Set(['p_token', 'p_id', 'p_no_hay', 'p_nota', 'p_quitar']));
 firmas.set('mypump_gimnasio_responder', new Set(['p_token', 'p_id', 'p_respuestas']));
 // Técnica por video: propuesta sin aplicar (supabase/propuestas/nativa_tecnica.sql, rama nativa-tecnica).
+// propuesta nativa_contrato_firma.sql (sin aplicar): la web trata el error como «sin documentos»
+firmas.set('mypump_contrato_get', new Set(['p_token']));
 firmas.set('mypump_tecnica_get', new Set(['p_token']));
 // Devolución de Mati: propuesta sin aplicar (supabase/propuestas/nativa_devolucion_semanal.sql, rama nativa-devolucion).
 firmas.set('mypump_devolucion_get', new Set(['p_token']));
