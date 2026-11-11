@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="/css/novedades.css">
 <link rel="stylesheet" href="/css/tecnica.css">
 <link rel="stylesheet" href="/css/devolucion.css">
+<link rel="stylesheet" href="/css/feedback.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--font-size-base);line-height:var(--line-height-normal);-webkit-font-smoothing:antialiased}
@@ -1758,6 +1759,8 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/novedades-ui.js"></script>
 <script src="/js/devolucion.js"></script>
 <script src="/js/chat-adjuntos.js"></script>
+<script src="/js/feedback.js"></script>
+<script src="/js/feedback-ui.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1987,6 +1990,48 @@ function _pintarDevolucion() {
   if (el.innerHTML !== h) el.innerHTML = h;
   el.hidden = !h;
 }
+/* «Feedback del alumno» (js/feedback*.js): «Me duele» por ejercicio y «¿Ya lo tenés?» en Suplementación, detrás de `me_duele` y
+   `suple_estado`. Con las dos apagadas, o sin el servidor nuevo, no se llama a mypump_feedback_get ni se muestra nada. */
+function _fbEjercicio(exId) {
+  const ex = DATA && DATA.dia && DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
+  if (!ex) return null;
+  const ef = getEffectiveEx(ex);
+  return { id: ex.id, nombre: ef.nombre, original: ef._isSwapped ? (ef._origNombre || ex.nombre) : null, diaId: DATA.dia.id || null, tipo: ex.tipo };
+}
+function _fbEnlazar(root) {
+  if (!root || !window.FeedbackUI) return;
+  root.querySelectorAll('[data-duele-ex]').forEach(btn => { btn.onclick = (e) => {
+    e.stopPropagation();
+    const ej = _fbEjercicio(btn.getAttribute('data-duele-ex'));
+    if (ej) window.FeedbackUI.abrir(ej);
+  }; });
+}
+/* Lo que cambia se pone al día en su lugar: no se rearma el entreno (se perdería lo que el alumno está escribiendo). */
+function _fbAlCambiar() {
+  const tren = document.getElementById('scene-train');
+  if (tren) {
+    tren.querySelectorAll('[data-fb-boton],[data-fb-estado]').forEach(el => {
+      const ej = _fbEjercicio(el.getAttribute('data-fb-boton') || el.getAttribute('data-fb-estado'));
+      const html = !ej ? '' : el.hasAttribute('data-fb-boton') ? window.FeedbackUI.botonHtml(ej) : window.FeedbackUI.estadoHtml(ej);
+      if (el._fbHtml === html) return;
+      el._fbHtml = html;
+      el.innerHTML = html;
+      if (el.parentElement && el.parentElement.hasAttribute('data-fb-fila-sola')) el.parentElement.hidden = !html;
+    });
+    _fbEnlazar(tren);
+  }
+  if (STATE.scene === 'supl' && STATE.suplAbierto == null) renderSupl();
+}
+function _fbPalanca(cfg) {
+  if (!window.FeedbackUI || !TOKEN || DEMO) return;
+  window.FeedbackUI.configurar({
+    token: TOKEN,
+    version: null,
+    rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
+    alCambiar: _fbAlCambiar,
+  });
+  window.FeedbackUI.aplicarPalanca(cfg && typeof cfg === 'object' ? (cfg.me_duele === true || cfg.suple_estado === true) : null);
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
@@ -1996,6 +2041,7 @@ async function leerPalancaWeb230() {
   _devPalanca(cfg);
   _metasPalanca(cfg);
   if (typeof chatAdjPalanca === 'function') chatAdjPalanca(cfg).catch(() => {});
+  _fbPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -5963,14 +6009,20 @@ function renderExCard(ex, blockIdx) {
       ${(() => {
         const subs = exGetSubs(ex);
         const canSwap = subs.length > 0;
-        if (!canSwap && !ex._isSwapped) return '';
+        // «Me duele» (palanca `me_duele`): el botón va con las acciones y, debajo, la molestia avisada. Apagada, los huecos quedan vacíos.
+        const fbEj = window.FeedbackUI ? _fbEjercicio(ex.id) : null;
+        const fbBoton = fbEj ? window.FeedbackUI.botonHtml(fbEj) : '';
+        const fbHueco = fbEj ? `<span class="fb-slot" data-fb-boton="${ex.id}">${fbBoton}</span>` : '';
+        const fbEstado = fbEj ? `<div data-fb-estado="${ex.id}">${window.FeedbackUI.estadoHtml(fbEj)}</div>` : '';
+        if (!canSwap && !ex._isSwapped) return fbEj ? `<div class="ex-swap-row" data-fb-fila-sola${fbBoton ? '' : ' hidden'}>${fbHueco}</div>${fbEstado}` : '';
         return `
         <div class="ex-swap-row">
           <button class="ex-swap-btn" data-swap-ex="${ex.id}"${canSwap ? '' : ' disabled title="No hay variantes equivalentes del mismo gesto"'}>
             ↔ ${ex._isSwapped ? 'Cambiar sustituto' : 'Sustituir ejercicio'}
           </button>
+          ${fbHueco}
           ${ex._isSwapped ? `<button class="ex-swap-revert" data-revert-ex="${ex.id}" title="Volver al original">Volver a “${ex._origNombre}”</button>` : ''}
-        </div>`;
+        </div>${fbEstado}`;
       })()}
       ${(() => {
         const coms = getComentariosFor('ejercicio', ex.id);
@@ -6510,6 +6562,7 @@ function bindTrainEvents() {
     const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === btn.getAttribute('data-tecnica-ex'));
     if (ex) window.TecnicaUI.abrirConEjercicio(getEffectiveEx(ex));
   }));
+  _fbEnlazar(document.getElementById('scene-train'));
   // Abrir modal de sustitución de ejercicio
   $$('[data-swap-ex]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
@@ -11946,6 +11999,7 @@ function renderSupl() {
     ${(v.titulo || v.accion) ? `<div class="supl-cab">${v.titulo ? `<div class="supl-cab-tit">${E(v.titulo)}</div>` : ''}${v.accion ? `<div class="supl-cab-acc">${E(v.accion)}</div>` : ''}</div>` : ''}
     ${v.momentos.length ? `<div class="supl-ceja">Tu día</div>${v.momentos.map(m => `
       <div class="supl-momento"><div class="supl-momento-tit">${E(m.titulo)}</div>${m.filas.map(filaHtml).join('')}</div>`).join('')}` : ''}
+    ${window.FeedbackUI ? window.FeedbackUI.supleHtml(s.items) : ''}
     ${v.sigue ? `<div class="supl-sigue"><b>Sigue igual.</b> ${E(v.sigue)}</div>` : ''}
     ${v.sale.length ? `<div class="supl-ceja">Dejás de tomar</div><div class="supl-momento">${v.sale.map(x => `
       <button class="supl-fila" data-supl-item="${x.item}"><div class="supl-fila-top"><span class="supl-nombre">${E(x.nombre)}</span></div>
@@ -11953,6 +12007,7 @@ function renderSupl() {
   root.querySelectorAll('[data-supl-item]').forEach(b => b.onclick = () => {
     STATE.suplAbierto = Number(b.dataset.suplItem); renderSupl();
   });
+  if (window.FeedbackUI) window.FeedbackUI.enlazarSuple(root);
 }
 
 function _suplDetalleHtml(it, v) {

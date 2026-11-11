@@ -62,6 +62,11 @@ firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ej
 firmas.set('mypump_tecnica_cancelar', new Set(['p_token', 'p_id']));
 // Fotos y audios en el chat: propuesta sin aplicar (supabase/propuestas/nativa_chat_adjuntos.sql, rama nativa-chat-adjuntos).
 firmas.set('mypump_chat_adjuntos_estado', new Set(['p_token']));
+// Feedback del alumno: propuesta sin aplicar (supabase/propuestas/nativa_feedback_alumno.sql, rama nativa-feedback).
+firmas.set('mypump_feedback_get', new Set(['p_token']));
+firmas.set('mypump_molestia_registrar', new Set(['p_token', 'p_id', 'p_ejercicio_id', 'p_ejercicio_nombre', 'p_dia_id', 'p_zona', 'p_lado',
+  'p_desde', 'p_cuando', 'p_tipo', 'p_intensidad', 'p_nota', 'p_plataforma', 'p_version']));
+firmas.set('mypump_suple_marcar', new Set(['p_token', 'p_item', 'p_estado', 'p_nota']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.
