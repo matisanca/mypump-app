@@ -187,7 +187,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                     if (navegacion.guia && g != null) {
                                         GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guia = false })
                                     } else if (navegacion.gimnasio && gim != null) {
-                                        GimnasioPantalla(gim, alVolver = { navegacion.gimnasio = false })
+                                        GimnasioPantalla(gim, alVolver = { navegacion.gimnasio = false }, casa = modelo.casa.collectAsStateWithLifecycle().value)
                                     } else {
                                         EntrenoPantalla(modelo, vm.preguntasEntreno)
                                     }
@@ -205,7 +205,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         if (navegacion.guiaEnMisDatos && g != null) {
                                             GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false })
                                         } else if (navegacion.gimnasioEnMisDatos && gim != null) {
-                                            GimnasioPantalla(gim, alVolver = { navegacion.gimnasioEnMisDatos = false })
+                                            GimnasioPantalla(gim, alVolver = { navegacion.gimnasioEnMisDatos = false }, casa = modelo.casa.collectAsStateWithLifecycle().value)
                                         } else if (navegacion.tecnicaEnMisDatos && tec != null) {
                                             com.pumpteam.mypump.tecnica.TecnicaPantalla(tec, modelo, alVolver = { navegacion.tecnicaEnMisDatos = false })
                                         } else if (navegacion.novedadesEnMisDatos && modelo.novedades.value != null) {

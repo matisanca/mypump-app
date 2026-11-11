@@ -35,6 +35,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.BorradorGimnasio
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.datos.ModeloCasa
 import com.pumpteam.mypump.datos.ModeloGimnasio
 import com.pumpteam.mypump.datos.PendienteGimnasio
 import com.pumpteam.mypump.diseno.BotonMarca
@@ -84,6 +87,7 @@ import com.pumpteam.mypump.fotos.BotonFoto
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.raiz.LocalNavegacion
+import com.pumpteam.mypump.reglas.Casa
 import com.pumpteam.mypump.reglas.EstadoGimnasio
 import com.pumpteam.mypump.reglas.Gimnasio
 import com.pumpteam.mypump.reglas.ItemGimnasio
@@ -127,6 +131,9 @@ fun TarjetaGimnasioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     val g by modelo.gimnasio.collectAsStateWithLifecycle()
     val m = g ?: return
     observar(m)
+    // Con un borrador de casa la tarjeta no habla de zonas ni de fotos.
+    val casa by modelo.casa.collectAsStateWithLifecycle()
+    val estadoCasa = casa?.estado?.collectAsStateWithLifecycle()?.value
     if (!m.tarjetaVisible) return
     val c = MyPump.colores
     val navegacion = LocalNavegacion.current
@@ -146,7 +153,10 @@ fun TarjetaGimnasioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(T.tarjetaTitulo, style = MaterialTheme.typography.titleMedium, color = c.texto)
-            Text(detalleTarjeta(m), style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
+            Text(
+                if (Casa.pantalla(estadoCasa) == Casa.Pantalla.LISTA) Casa.Textos.LISTA_TITULO else detalleTarjeta(m),
+                style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario,
+            )
         }
         Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
     }
@@ -163,15 +173,28 @@ private const val A_REVISAR = "revisar"
 private const val A_YA_NO_ESTA = "ya-no-esta"
 private const val A_ZONA = "zona:"
 
-/** Elige la pantalla según lo que diga el servidor (`CONTRATO_APP.md`, sección 4). */
+/**
+ * Lo que va arriba de todo en la raíz de Mi gimnasio (el interruptor «Entreno en casa»), dentro de lo que se desplaza: con la
+ * letra más grande no le saca lugar fijo a la pantalla. null: no hay (palanca `casa` apagada, o no es la raíz).
+ */
+internal val LocalCabezaGimnasio = compositionLocalOf<(@Composable () -> Unit)?> { null }
+
+/**
+ * Elige la pantalla según lo que diga el servidor (`CONTRATO_APP.md`, sección 4). Con [casa] habilitada (palanca `casa`,
+ * `cola-b/CONTRATO_APP.md`, sección 3) suma el interruptor «Entreno en casa» y, en casa, la lista en lugar de las zonas.
+ */
 @Composable
-fun GimnasioPantalla(m: ModeloGimnasio, alVolver: () -> Unit) {
+fun GimnasioPantalla(m: ModeloGimnasio, alVolver: () -> Unit, casa: ModeloCasa? = null) {
     val v = observar(m)
+    val estadoCasa = casa?.estado?.collectAsStateWithLifecycle()?.value
+    val pantallaCasa = Casa.pantalla(estadoCasa)
     // Al volver de una muerte del proceso el estado todavía no está: se decide después de preguntar.
     var preguntado by remember { mutableStateOf(false) }
     LaunchedEffect(m) {
         if (m.palancaRecordada) {
             m.refrescar()
+            // Entrenar en casa: junto con el gimnasio, y solo con su palanca.
+            if (casa?.palancaRecordada == true) casa.refrescar()
             m.drenarEnFondo()
         }
         preguntado = true
@@ -180,7 +203,7 @@ fun GimnasioPantalla(m: ModeloGimnasio, alVolver: () -> Unit) {
 
     var destino by rememberSaveable { mutableStateOf("") }
     // Si la carga pasó a otra etapa, se vuelve a la raíz: lo que importa es lo que dice ella.
-    val etapa = "${m.pantalla}-${v.borrador.envio != null}"
+    val etapa = "${m.pantalla}-${v.borrador.envio != null}-$pantallaCasa"
     var etapaVista by rememberSaveable { mutableStateOf(etapa) }
     if (etapa != etapaVista) {
         etapaVista = etapa
@@ -202,19 +225,30 @@ fun GimnasioPantalla(m: ModeloGimnasio, alVolver: () -> Unit) {
             destino == A_REVISAR -> RevisarGimnasio(m, relleno)
             destino == A_YA_NO_ESTA -> YaNoEstaGimnasio(m, relleno)
             v.borrador.envio != null -> EnviandoGimnasio(m, relleno)
-            else -> when (m.pantalla) {
-                Gimnasio.Pantalla.INICIO -> ArranqueGimnasio(m, relleno)
-                Gimnasio.Pantalla.ZONAS -> ZonasGimnasio(m, relleno, alAbrir = { destino = it })
-                Gimnasio.Pantalla.RECIBIDO -> RecibidoGimnasio(relleno)
-                Gimnasio.Pantalla.PREGUNTAS -> PreguntasGimnasio(m, relleno)
-                Gimnasio.Pantalla.LISTO -> ListoGimnasio(m, relleno, alAbrir = { destino = it })
+            else -> {
+                // La raíz: con casa habilitada, el interruptor arriba de todo (salvo en las preguntas, que van de a una).
+                val cabeza: (@Composable () -> Unit)? = if (casa != null && estadoCasa != null) ({ InterruptorCasa(casa) }) else null
+                CompositionLocalProvider(LocalCabezaGimnasio provides cabeza) {
+                    when {
+                        casa != null && pantallaCasa == Casa.Pantalla.LISTA -> CasaLista(casa, relleno)
+                        casa != null && pantallaCasa == Casa.Pantalla.VIGENTE -> CasaVigente(casa, relleno)
+                        else -> when (m.pantalla) {
+                            Gimnasio.Pantalla.INICIO -> ArranqueGimnasio(m, relleno)
+                            Gimnasio.Pantalla.ZONAS -> ZonasGimnasio(m, relleno, alAbrir = { destino = it })
+                            Gimnasio.Pantalla.RECIBIDO -> RecibidoGimnasio(relleno)
+                            Gimnasio.Pantalla.PREGUNTAS -> PreguntasGimnasio(m, relleno)
+                            Gimnasio.Pantalla.LISTO -> ListoGimnasio(m, relleno, alAbrir = { destino = it })
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun Desplazable(relleno: PaddingValues, contenido: @Composable ColumnScope.() -> Unit) {
+internal fun Desplazable(relleno: PaddingValues, contenido: @Composable ColumnScope.() -> Unit) {
+    val cabeza = LocalCabezaGimnasio.current
     Column(
         Modifier
             .padding(relleno)
@@ -224,13 +258,15 @@ private fun Desplazable(relleno: PaddingValues, contenido: @Composable ColumnSco
             .padding(horizontal = Espacio.m)
             .padding(top = Espacio.s, bottom = Espacio.xl + LocalRellenoInferior.current),
         verticalArrangement = Arrangement.spacedBy(Espacio.m),
-        content = contenido,
-    )
+    ) {
+        cabeza?.invoke()
+        contenido()
+    }
 }
 
 /** Texto suave de error o estado, siempre con el mismo aspecto. */
 @Composable
-private fun NotaGimnasio(texto: String, modifier: Modifier = Modifier, alerta: Boolean = false) {
+internal fun NotaGimnasio(texto: String, modifier: Modifier = Modifier, alerta: Boolean = false) {
     val c = MyPump.colores
     Text(
         texto,
@@ -356,7 +392,7 @@ private fun FilaZona(m: ModeloGimnasio, z: Gimnasio.Zona, falta: Boolean, alToca
 
 /** El círculo de hecho o pendiente. Decorativo: el estado lo dice la fila. */
 @Composable
-private fun Marca(hecha: Boolean) {
+internal fun Marca(hecha: Boolean) {
     val c = MyPump.colores
     if (hecha) {
         Icon(Iconos.TildeEnCirculo, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(22.dp))
@@ -569,6 +605,24 @@ private fun RevisarGimnasio(m: ModeloGimnasio, relleno: PaddingValues) {
 
 @Composable
 private fun Centrado(relleno: PaddingValues, etiqueta: String, contenido: @Composable ColumnScope.() -> Unit) {
+    val cabeza = LocalCabezaGimnasio.current
+    if (cabeza != null) {
+        // Con el interruptor de casa arriba: él primero y el mensaje debajo, todo en el mismo desplazamiento.
+        Column(
+            Modifier.padding(relleno).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Espacio.m)
+                .padding(top = Espacio.s, bottom = Espacio.xl + LocalRellenoInferior.current),
+            verticalArrangement = Arrangement.spacedBy(Espacio.m),
+        ) {
+            cabeza()
+            Column(
+                Modifier.fillMaxWidth().padding(Espacio.s).testTag(etiqueta),
+                verticalArrangement = Arrangement.spacedBy(Espacio.m),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                content = contenido,
+            )
+        }
+        return
+    }
     Column(
         Modifier.padding(relleno).fillMaxSize().verticalScroll(rememberScrollState()).padding(Espacio.l).testTag(etiqueta),
         verticalArrangement = Arrangement.spacedBy(Espacio.m, Alignment.CenterVertically),
