@@ -31,6 +31,13 @@ data class PalancaRemota(
     val metasPasos: Boolean = false,
     /** Devolución de Mati en Revisión (`devolucion_semanal`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. */
     val devolucionSemanal: Boolean = false,
+    /**
+     * Récords y logros (`wins_app`, 2.3.0): el festejo al cerrar la sesión y, con permiso, la cola para Mati. Sin la clave,
+     * apagada: ni se muestra ni se llama a nada nuevo.
+     */
+    val winsApp: Boolean = false,
+    /** La lista previa a la videollamada de comienzo (`lista_previa`, 2.3.0). Sin la clave, apagada. */
+    val listaPrevia: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -48,6 +55,8 @@ data class PalancaRemota(
             elegirHorario = (j["elegir_horario"] as? ValorJson.Booleano)?.valor ?: false,
             metasPasos = (j["metas_pasos"] as? ValorJson.Booleano)?.valor ?: false,
             devolucionSemanal = (j["devolucion_semanal"] as? ValorJson.Booleano)?.valor ?: false,
+            winsApp = (j["wins_app"] as? ValorJson.Booleano)?.valor ?: false,
+            listaPrevia = (j["lista_previa"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */
