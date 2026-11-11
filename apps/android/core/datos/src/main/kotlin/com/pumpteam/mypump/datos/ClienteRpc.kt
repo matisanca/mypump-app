@@ -9,9 +9,23 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
-/** A dónde va la app: el backend de Supabase, el servicio de visión de la Mini y el sitio. */
-data class ConfigBackend(val supabase: String, val anonKey: String, val vision: String, val app: String) {
-    companion object
+/**
+ * A dónde va la app: el backend de Supabase, el servicio de visión de la Mini, el sitio y el servicio de firma.
+ *
+ * [firma] va con valor por defecto porque todavía no está en `public/js/config.js`, de donde sale
+ * `ConfigBackendProduccion.kt`: cuando se sume ahí (`FIRMA_URL`) y al generador, el generado lo pasa y este valor deja de
+ * usarse.
+ */
+data class ConfigBackend(
+    val supabase: String,
+    val anonKey: String,
+    val vision: String,
+    val app: String,
+    val firma: String = FIRMA_PRODUCCION,
+) {
+    companion object {
+        const val FIRMA_PRODUCCION = "https://firma.mypumpteam.com"
+    }
 }
 
 /** Lo que devuelve una llamada al backend: el valor, o el error ya clasificado (`Result<_, ErrorRPC>` de iOS). */
@@ -103,6 +117,18 @@ class ClienteRpc(
             else -> ErrorRpc.Clase.PERMANENTE
         }
         Resultado.Falla(ErrorRpc(clase, r.status, mensaje = j?.get("error")?.comoTexto ?: "servicio no disponible"))
+    }
+
+    /**
+     * `POST <firma>/api/app/documentos` con `{token}`: los documentos del dueño del token, cada uno con su enlace personal
+     * (firmar, o ver y bajar el PDF). 401 si el token no vale. Sin cabecera de auth (como [vision]).
+     */
+    suspend fun enlacesDocumentos(token: String): Resultado<ValorJson> = withContext(Dispatchers.Default) {
+        val pedido = Pedido(
+            url = "${config.firma}/api/app/documentos", metodo = "POST", cabeceras = mapOf("Content-Type" to "application/json"),
+            cuerpo = ValorJson.objeto("token" to texto(token)).serializar().toByteArray(), esperaMs = esperaMs,
+        )
+        enviar(pedido)
     }
 
     internal suspend fun enviar(pedido: Pedido): Resultado<ValorJson> {

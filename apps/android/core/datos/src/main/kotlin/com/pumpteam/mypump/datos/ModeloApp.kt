@@ -336,6 +336,12 @@ class ModeloApp(
     fun usarNovedadesDeMuestra(m: ModeloNovedades) {
         if (_esDemo.value) _novedades.value = m
     }
+    /**
+     * Documentos (contrato y consentimiento): la fila de Mis datos y el aviso de Entreno, solo si `mypump_contrato_get`
+     * devolvió algo. No existe en la demo ni sin cuenta.
+     */
+    private val _documentos = MutableStateFlow<ModeloDocumentos?>(null)
+    val documentos: StateFlow<ModeloDocumentos?> = _documentos.asStateFlow()
 
     private val _salud = MutableStateFlow<ModeloSalud?>(null)
     val salud: StateFlow<ModeloSalud?> = _salud.asStateFlow()
@@ -540,6 +546,7 @@ class ModeloApp(
         _guia.value = null
         _suplementacion.value = null
         _novedades.value = null
+        _documentos.value = null
         val t = almacen.leer()
         token = t
         if (t != null) {
@@ -583,6 +590,7 @@ class ModeloApp(
         _guia.value = null
         _suplementacion.value = null
         _novedades.value = null
+        _documentos.value = null
         _entreno.value = null
     }
 
@@ -632,6 +640,7 @@ class ModeloApp(
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
         _suplementacion.value = ModeloSuplementacion(cliente, t, d, alcance)
         _novedades.value = ModeloNovedades(d)
+        _documentos.value = ModeloDocumentos(cliente, t)
         _salud.value?.cancelarEspera()
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3 del 15-oct).
         _salud.value = ModeloSalud(cliente, t, almacen = AlmacenSaludPorCuenta(preferencias, Disco.huella(t)), alcance = alcance)
@@ -960,6 +969,8 @@ class ModeloApp(
             nov.observar(entrada(rr, rutinaJson.takeIf { rr is Resultado.Ok }), entrada(dd, dietaJson.takeIf { dd is Resultado.Ok }),
                 _suplementacion.value?.entradaNovedades ?: ModeloNovedades.Entrada.NoLlego, semilla)
         }
+        // Documentos: aparte, así no demora la carga (un error es «sin documentos»).
+        _documentos.value?.let { m -> alcance.launch { m.refrescar() } }
         sincronizarGimnasio()
         sincronizarTecnica()
         sincronizarDevolucion()
@@ -1087,6 +1098,8 @@ class ModeloApp(
                 }
             }
         }
+        // Documentos, cada vez: quien firmó en el navegador vuelve y ve «Firmado» (y el aviso se va).
+        _documentos.value?.let { m -> alcance.launch { m.refrescar() } }
         if (toca(Relectura.SALUD)) _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y el historial
         _entreno.value?.alVolverAPrimerPlano()
     }

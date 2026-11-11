@@ -30,6 +30,8 @@ struct MisDatosView: View {
     /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
     /// en el iPhone (para poder exportarlas o borrarlas aunque ya no haya reloj).
     @State private var calibracionVisible = false
+    @State private var verDocumentos = false
+    @Environment(Navegacion.self) private var navegacion: Navegacion?
 
     /// Las páginas legales de la web, en Safari dentro de la app (como hoy).
     enum Pagina: String, Identifiable {
@@ -123,6 +125,16 @@ struct MisDatosView: View {
                         GimnasioRaiz(modelo: g, alCerrar: { verGimnasio = false }).presentationDragIndicator(.visible)
                     }
                 }
+                // Documentos (contrato y consentimiento): solo si `mypump_contrato_get` devolvió alguno.
+                if let docs = modelo.conMuestras ? nil : modelo.documentos, docs.hay {
+                    NavigationLink { DocumentosView(modelo: docs) } label: {
+                        Label { Text(TextosDocumentos.entradaMisDatos) } icon: {
+                            IconoAzulejo("doc.text.fill", color: docs.contratoPendiente ? .alerta : .marcaTexto)
+                        }
+                    }
+                    .badge(docs.contratoPendiente ? Text("Pendiente").foregroundStyle(Color.alerta) : nil)
+                    .accessibilityIdentifier("mis-datos-documentos")
+                }
                 Button { fuentes = true } label: {
                     fila("Respaldo científico del plan", icono: "book.closed.fill", color: .marcaTexto)
                 }
@@ -173,6 +185,16 @@ struct MisDatosView: View {
         .navigationTitle("Mis datos")
         .tint(Color.marcaTexto)
         .sheet(isPresented: $fuentes) { FuentesView() }
+        // El aviso del contrato pendiente pide Documentos: se abre y se consume. Sin documentos (un error, o ya no
+        // hay), queda Mis datos.
+        .navigationDestination(isPresented: $verDocumentos) {
+            if let docs = modelo.documentos { DocumentosView(modelo: docs) }
+        }
+        .onChange(of: navegacion?.documentos ?? false, initial: true) { _, abrir in
+            guard abrir else { return }
+            navegacion?.documentos = false
+            if modelo.documentos?.hay == true { verDocumentos = true }
+        }
         .sheet(item: $pagina) { p in
             NavegadorInterno(url: URL(string: p.rawValue)!).ignoresSafeArea()
         }

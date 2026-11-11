@@ -56,6 +56,7 @@ import com.pumpteam.mypump.salud.SeccionSaludMisDatos
 import com.pumpteam.mypump.guia.lugarDeLaGuia
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.ReglasGuia
+import com.pumpteam.mypump.reglas.TextosDocumentos
 import com.pumpteam.mypump.reglas.TextosGimnasio
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -138,6 +139,19 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                     Separador(sangria = 58.dp)
                 }
             }
+            // Documentos (contrato y consentimiento): solo si `mypump_contrato_get` devolvió alguno.
+            val documentos by modelo.documentos.collectAsStateWithLifecycle()
+            documentos?.let { d ->
+                val lista by d.documentos.collectAsStateWithLifecycle()
+                if (lista.isNotEmpty()) {
+                    val pendiente = TextosDocumentos.hayContratoPendiente(lista)
+                    FilaEnlace(
+                        Iconos.Documento, if (pendiente) c.alerta else c.marcaTexto, TextosDocumentos.entradaMisDatos,
+                        etiqueta = "mis-datos-documentos", detalle = if (pendiente) TextosDocumentos.pendiente else null,
+                    ) { navegacion?.documentosEnMisDatos = true }
+                    Separador(sangria = 58.dp)
+                }
+            }
             FilaEnlace(Iconos.Libro, c.marcaTexto, "Respaldo científico del plan", etiqueta = "mis-datos-respaldo") { fuentes = true }
             Separador(sangria = 58.dp)
             FilaEnlace(Iconos.Privacidad, c.agua, "Política de privacidad") { abrirEnNavegador(contexto, URL_PRIVACIDAD) }
@@ -196,6 +210,8 @@ private fun FilaEnlace(
     titulo: String,
     colorTexto: Color = MyPump.colores.texto,
     etiqueta: String? = null,
+    /** Un texto corto a la derecha, antes del chevron (el «Pendiente» de Documentos). */
+    detalle: String? = null,
     alTocar: () -> Unit,
 ) {
     val c = MyPump.colores
@@ -211,6 +227,7 @@ private fun FilaEnlace(
     ) {
         if (icono != null) IconoAzulejo(icono, color)
         Text(titulo, style = MaterialTheme.typography.bodyLarge, color = colorTexto, modifier = Modifier.weight(1f))
+        if (detalle != null) Text(detalle, style = MaterialTheme.typography.bodyMedium, color = c.alerta)
         Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
     }
 }

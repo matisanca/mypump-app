@@ -15,6 +15,8 @@ final class Navegacion {
     var segmentoSalud: SegmentoSalud?
     /// Abrir Mis datos (desde Revisión).
     var misDatos = false
+    /// Abrir Documentos dentro de Mis datos (el aviso del contrato pendiente); Mis datos lo consume al llegar.
+    var documentos = false
     /// La hoja de Salud. Desde la 2.1.0 Salud no es una pestaña: se abre desde la tarjeta Recuperación de arriba de
     /// Revisión (pedido de Mati, 4-nov), un aviso o un link.
     var saludAbierta = false
@@ -36,6 +38,13 @@ final class Navegacion {
             pestaña = .revision
             misDatos = true
         }
+    }
+
+    /// Documentos: Revisión → Mis datos → Documentos (el aviso «Tenés el contrato pendiente de firma»).
+    func irADocumentos() {
+        pestaña = .revision
+        misDatos = true
+        documentos = true
     }
 
     /// Salud, en la hoja sobre Revisión (los avisos y `?scene=progress|myday` llegan acá). Primero la pestaña: cambiarla

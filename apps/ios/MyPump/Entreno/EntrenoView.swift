@@ -222,6 +222,8 @@ private struct ListaEntreno: View {
                 BannerRevision()
                 // «Pump del día» (2.3.0): solo con la palanca `metas_pasos` y una meta de pasos en el plan.
                 PumpDelDiaSiCorresponde()
+                // El contrato sin firmar: un renglón que lleva a Documentos (no frena nada).
+                AvisoContratoPendiente()
                 // Eventos del Apple Watch que esperan hace horas sin poder pasar (otro día abierto, otra cuenta…).
                 if let t = motor.relojEsperando {
                     AvisoProgresion(icono: "applewatch", texto: Text(t), tono: .alerta)

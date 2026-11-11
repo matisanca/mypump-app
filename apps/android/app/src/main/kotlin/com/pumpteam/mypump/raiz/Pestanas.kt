@@ -157,6 +157,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     BackHandler(enabled = enMisDatos && navegacion.gimnasioEnMisDatos) { navegacion.gimnasioEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.tecnicaEnMisDatos) { navegacion.tecnicaEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.novedadesEnMisDatos) { navegacion.novedadesEnMisDatos = false }
+    BackHandler(enabled = enMisDatos && navegacion.documentosEnMisDatos) { navegacion.documentosEnMisDatos = false }
     BackHandler(enabled = navegacion.pestana == Pestana.ENTRENO && navegacion.gimnasio) { navegacion.gimnasio = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
@@ -208,6 +209,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         val gim = gimnasio
                                         val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
                                         val tec = tecnica
+                                        val documentos by modelo.documentos.collectAsStateWithLifecycle()
+                                        val docs = documentos
                                         if (navegacion.guiaEnMisDatos && g != null) {
                                             GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false }, elegirHorario = com.pumpteam.mypump.guia.Videollamada.elegirHorario(modelo))
                                         } else if (navegacion.gimnasioEnMisDatos && gim != null) {
@@ -216,6 +219,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                             com.pumpteam.mypump.tecnica.TecnicaPantalla(tec, modelo, alVolver = { navegacion.tecnicaEnMisDatos = false })
                                         } else if (navegacion.novedadesEnMisDatos && modelo.novedades.value != null) {
                                             com.pumpteam.mypump.novedades.NovedadesListaPantalla(modelo.novedades.value!!, alVolver = { navegacion.novedadesEnMisDatos = false })
+                                        } else if (navegacion.documentosEnMisDatos && docs != null) {
+                                            com.pumpteam.mypump.misdatos.DocumentosPantalla(docs, alVolver = { navegacion.documentosEnMisDatos = false })
                                         } else {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }
