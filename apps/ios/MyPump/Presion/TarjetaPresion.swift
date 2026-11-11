@@ -7,12 +7,21 @@ import MyPumpDatos
 ///
 /// Es una tarjeta más: no tapa, no frena ni condiciona la rutina. La presión nunca frena el entrenamiento. Con la palanca
 /// apagada, sin el servidor nuevo o sin la sección habilitada, no existe.
+///
+/// «Mi salud» (11/11): la misma tarjeta va en su bloque de presión. En Entreno (`enInicio`) sale solo con algo para hacer
+/// (no en «hoy listo») y el botón lleva a Mi salud, con Presión directo encima en lo que toca.
 struct TarjetaPresion: View {
+    var enInicio = false
     @State private var app = Proveedor.modelo
     @Environment(Navegacion.self) private var navegacion: Navegacion?
 
+    private func visible(_ t: ModeloPresion.Tarjeta) -> Bool {
+        if enInicio, case .hoyListo = t { return false }
+        return true
+    }
+
     var body: some View {
-        if let m = app.presion, let t = m.tarjeta {
+        if let m = app.presion, let t = m.tarjeta, visible(t) {
             Group {
                 if case .hoyListo(let hechas, let total) = t {
                     // Sin botón: tocar la tarjeta abre Presión.
@@ -68,7 +77,7 @@ struct TarjetaPresion: View {
 
     /// Un solo botón, ancho completo y con texto: abre Presión directo en lo que toca.
     private func boton(_ t: String) -> some View {
-        Button(t) { navegacion?.abrirPresion(directo: true) }
+        Button(t) { if enInicio { navegacion?.irAPresion() } else { navegacion?.abrirPresion(directo: true) } }
             .buttonStyle(BotonPresion())
             .accessibilityIdentifier("tarjeta-presion-boton")
     }

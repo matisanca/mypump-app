@@ -47,21 +47,25 @@ final class SuplementacionUITests: XCTestCase {
         // Salud, desde la tarjeta Recuperación de arriba de Revisión (en la demo, sin score: «Con tu cuenta»). Desde la cola A
         // la demo trae historial de salud (peso y pasos), así que el check puede mostrar «Tu salud, últimos 7 días».
         app.pestana("Revisión").tap()
-        let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
-        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "Falta la tarjeta Recuperación en Revisión")
-        XCTAssertTrue(tarjeta.label.contains("Con tu cuenta"), "La tarjeta de la demo dice otra cosa: \(tarjeta.label)")
+        let miSalud = app.buttons["tarjeta-mi-salud"]
+        XCTAssertTrue(miSalud.waitForExistence(timeout: 5), "Falta la tarjeta Mi salud en Revisión")
         let progreso = app.buttons["tarjeta-progreso-revision"]
         XCTAssertTrue(progreso.exists, "Falta la tarjeta Tu progreso")
         // La demo con historial (cola A) ya trae récords de la semana.
         XCTAssertFalse(progreso.label.contains("Tu fuerza y tus récords, ejercicio por ejercicio"),
                        "Con historial no va el texto genérico: \(progreso.label)")
         XCTAssertTrue(progreso.label.contains("esta semana"), "La tarjeta no dice la semana: \(progreso.label)")
+        // La Recuperación, dentro de «Mi salud» (11/11).
+        miSalud.tap()
+        let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "Falta la tarjeta Recuperación en Mi salud")
+        XCTAssertTrue(tarjeta.label.contains("Con tu cuenta"), "La tarjeta de la demo dice otra cosa: \(tarjeta.label)")
         tarjeta.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["segmento-salud"].waitForExistence(timeout: 5), "No abrió Salud")
+        XCTAssertTrue(app.navigationBars["Mi progreso"].waitForExistence(timeout: 5), "No abrió Mi progreso")
         captura("suplementacion-salud-desde-revision")
         app.buttons["salud-cerrar"].tap()
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.descendants(matching: .any)["segmento-salud"].exists, "«Listo» no cerró Salud")
+        XCTAssertTrue(app.navigationBars["Mi progreso"].waitForNonExistence(timeout: 5), "«Listo» no cerró Mi progreso")
     }
 
     private func captura(_ nombre: String) {

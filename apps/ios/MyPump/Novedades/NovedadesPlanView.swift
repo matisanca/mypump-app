@@ -5,7 +5,7 @@ import MyPumpReglas
 // «Novedades de tu plan» (2.3.0, palanca `novedades_plan`). Tres lugares:
 // · la hoja que aparece sola al abrir, una vez por novedad;
 // · la tarjeta de Entreno, durante una semana después de la última;
-// · «Novedades de tu plan» en Mis datos, con todas (el lugar fijo).
+// · en Revisión, debajo de la devolución de Mati: la última y «Ver todo», con todas (el lugar fijo; antes en Mis datos).
 // Los textos los arma `NovedadesPlan` (kit) sin IA, y se leen como escritos por Mati.
 
 /// Qué novedad está abierta en la hoja. La abre la tarjeta, la lista o la raíz al arrancar.
@@ -20,6 +20,9 @@ final class NovedadesUI {
 enum TextosNovedades {
     static let ceja = "Novedades de tu plan"
     static let entradaMisDatos = "Novedades de tu plan"
+    /// Simplificar (11/11): el bloque de Revisión, debajo de la devolución.
+    static let ultimoCambio = "Lo último que cambió en tu plan"
+    static let verTodo = "Ver todo"
     static let vacio = "Cuando Mati cambie tu rutina, tu dieta o tu suplementación, lo vas a ver acá."
     static let listo = "Listo"
 
@@ -269,9 +272,58 @@ struct TarjetaNovedadPlan: View {
     }
 }
 
-// MARK: - Mis datos
+// MARK: - Revisión
 
-/// «Novedades de tu plan» en Mis datos: todas las guardadas, de la más nueva a la más vieja.
+/// Simplificar (11/11): en Revisión, debajo de la devolución de Mati, lo último que cambió en el plan y «Ver todo» (la lista
+/// completa, que antes estaba en Mis datos). Con la palanca `novedades_plan` apagada o sin ninguna novedad, nada.
+struct NovedadesEnRevision: View {
+    let verTodo: () -> Void
+    @State private var modelo = Proveedor.modelo
+
+    var body: some View {
+        if modelo.palanca.novedadesPlan || modelo.esDemo, let n = modelo.novedades?.lista.first {
+            VStack(alignment: .leading, spacing: Espacio.s) {
+                Text(TextosNovedades.ultimoCambio)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .accessibilityAddTraits(.isHeader)
+                Button { NovedadesUI.compartido.abierta = n } label: {
+                    HStack(alignment: .top, spacing: Espacio.s) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(TextosNovedades.cuando(n.dia)).textoCeja()
+                            HStack(spacing: 6) {
+                                Text(n.titular).font(Archivo.fuente(18, peso: 750, relativoA: .headline)).foregroundStyle(.primary)
+                                if !n.vista { Circle().fill(Color.marca).frame(width: 8, height: 8).accessibilityHidden(true) }
+                            }
+                            Text(n.resumen).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                        }
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: Espacio.xs)
+                        Image(systemName: "chevron.right").font(.footnote.weight(.bold)).foregroundStyle(.tertiary)
+                            .padding(.top, 4).accessibilityHidden(true)
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityHint("Abre lo que cambió")
+                .accessibilityIdentifier("revision-novedad-ultima")
+                Button(TextosNovedades.verTodo, action: verTodo)
+                    .buttonStyle(BotonSecundario(tono: .marcaTexto))
+                    .accessibilityIdentifier("revision-novedades-ver-todo")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .tarjeta()
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("revision-novedades")
+        }
+    }
+}
+
+// MARK: - La lista
+
+/// «Novedades de tu plan»: todas las guardadas, de la más nueva a la más vieja (desde Revisión, «Ver todo»).
 struct NovedadesListaView: View {
     let modelo: ModeloNovedades
     /// Estudios y órdenes: un pedido o una orden sin ver también es una novedad, y lleva directo a Estudios.

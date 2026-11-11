@@ -12,7 +12,8 @@ struct RevisionView: View {
     @State private var modelo = Proveedor.modelo
     @Environment(\.horizontalSizeClass) private var claseAncho
     @Environment(Navegacion.self) private var navegacion: Navegacion?
-    @State private var misDatos = false
+    /// Lo empujado encima de Revisión: Mis datos y «Mi salud» (11/11). Un solo camino para cada uno (los avisos usan el mismo).
+    @State private var camino: [RutaRevision] = []
     /// El check guiado abierto, y en qué paso si se pidió uno («Subir fotos»).
     @State private var flujoGuiado: AperturaCheck?
 
@@ -38,20 +39,18 @@ struct RevisionView: View {
     private var muestras: Muestras { datos.paraPantalla() }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $camino) {
             ScrollViewReader { lector in
                 ScrollView {
                     Group {
                         if claseAncho == .regular {
                             VStack(alignment: .leading, spacing: Espacio.l) {
+                                miSalud
                                 TarjetaFotosInicio()
                                 devolucion
+                                novedades
                                 if guiado != nil { check; tuCambio }
-                                HStack(alignment: .top, spacing: Espacio.l) {
-                                    recuperacion.frame(maxWidth: .infinity, alignment: .top)
-                                    progreso.frame(maxWidth: .infinity, alignment: .top)
-                                }
-                                .fixedSize(horizontal: false, vertical: true)
+                                progreso
                                 diaDeRevision
                                 avisoPlan
                                 notaSemanal
@@ -74,8 +73,11 @@ struct RevisionView: View {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
                                 // La explicación de la semana va pegada al título: es contexto de toda la pantalla.
                                 notaSemanal
+                                // «Mi salud» (11/11): arriba de todo, debajo del encabezado. Súper visible (hay alumnos mayores).
+                                miSalud
                                 TarjetaFotosInicio()
                                 devolucion   // lo que Mati le dejó va primero, con la semana a medias o no
+                                novedades    // y lo último que cambió en el plan (simplificar, 11/11)
                                 // Check guiado: la tarjeta va arriba, para que nadie tenga que buscarla.
                                 if guiado != nil { check; tuCambio }
                                 if semanaPendiente {
@@ -132,21 +134,33 @@ struct RevisionView: View {
             .subtituloNavegacion(Self.semanaActual())
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    // Un solo camino a Mis datos (el mismo que usan los avisos): así nunca se apila dos veces.
-                    Button { misDatos = true } label: {
-                        Image(systemName: "person.crop.circle")
-                            // Un estudio o una orden sin ver: el punto sigue hasta la fila «Estudios y órdenes».
-                            .overlay(alignment: .topTrailing) {
-                                if novedadEstudios {
-                                    Circle().fill(Color.marcaVivo).frame(width: 10, height: 10).offset(x: 3, y: -3).accessibilityHidden(true)
-                                }
-                            }
+                    // Un solo camino a Mis datos (el mismo que usan los avisos): así nunca se apila dos veces. El punto de un
+                    // estudio sin ver ya no va acá: está en la tarjeta «Mi salud» (11/11). Con la palabra, no solo el
+                    // dibujito (simplificar, 11/11): un alumno mayor no sabía que era una puerta.
+                    Button { camino = [.misDatos] } label: {
+                        // Un HStack y no un `Label`: en la barra de iOS 26 el `Label` queda solo con el dibujito aunque se le pida
+                        // `.titleAndIcon`.
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.crop.circle").accessibilityHidden(true)
+                            Text("Mis datos")
+                        }
+                        .font(.body.weight(.semibold))
+                        .fixedSize()
                     }
                     .accessibilityLabel("Mis datos")
-                    .accessibilityValue(novedadEstudios ? TextosEstudios.novedad : "")
+                    .accessibilityIdentifier("revision-mis-datos")
                 }
             }
-            .navigationDestination(isPresented: $misDatos) { MisDatosView(datos: datos) }
+            .navigationDestination(for: RutaRevision.self) { ruta in
+                switch ruta {
+                case .misDatos: MisDatosView(datos: datos)
+                case .miSalud: MiSaludView()
+                case .novedades:
+                    if let nov = modelo.novedades {
+                        NovedadesListaView(modelo: nov, estudios: modelo.estudios, irAEstudios: { navegacion?.irAEstudios() })
+                    }
+                }
+            }
         }
         // El aviso pudo llegar antes de saber si la palanca está prendida o si el check ya salió: se resuelve al saberlo.
         .onChange(of: revision?.cargadaUnaVez) { _, _ in resolverApertura() }
@@ -161,11 +175,21 @@ struct RevisionView: View {
                                  pasoInicial: apertura.paso, tuCambio: fuentesTuCambio)
             }
         }
-        .onAppear { if DemoUI.abrir == "misdatos" || DemoUI.abrir == "novedades" { misDatos = true } }
+        .onAppear {
+            if DemoUI.abrir == "misdatos" { camino = [.misDatos] }
+            if DemoUI.abrir == "novedades" { camino = [.novedades] }
+            if DemoUI.abrir == "misalud" { camino = [.miSalud] }
+        }
         .onChange(of: navegacion?.misDatos ?? false, initial: true) { _, abrir in
             guard abrir else { return }
-            misDatos = true
+            camino = [.misDatos]
             navegacion?.misDatos = false
+        }
+        // «Mi salud»: desde la tarjeta, un aviso, un link o las tarjetas de Entreno. Si Mis datos estaba encima, se saca.
+        .onChange(of: navegacion?.miSalud ?? false, initial: true) { _, abrir in
+            guard abrir else { return }
+            if camino != [.miSalud] { camino = [.miSalud] }
+            navegacion?.miSalud = false
         }
     }
 
@@ -180,8 +204,14 @@ struct RevisionView: View {
                 .id("devolucion")
         }
     }
-    /// Hay un estudio pedido o una orden sin ver (nunca en la demo ni en los bocetos).
-    private var novedadEstudios: Bool { !modelo.conMuestras && modelo.estudios?.hayNovedad == true }
+    /// Simplificar (11/11): «Lo último que cambió en tu plan» y «Ver todo», debajo de la devolución (palanca `novedades_plan`).
+    private var novedades: some View {
+        NovedadesEnRevision { camino = [.novedades] }.id("novedades")
+    }
+    /// «Mi salud» (11/11): todo lo de salud en una pantalla. Sin ningún bloque, no está.
+    private var miSalud: some View {
+        TarjetaMiSalud { camino = [.miSalud] }.id("misalud")
+    }
 
     /// Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo). El domingo no agrega nada.
     @ViewBuilder private var diaDeRevision: some View {
@@ -216,24 +246,11 @@ struct RevisionView: View {
         }
     }
 
-    /// Lo principal de Salud; tocarla abre Salud en Recuperación.
-    private var recuperacion: some View {
-        RecuperacionTarjeta(modelo: modelo.conMuestras ? nil : modelo.salud) { navegacion?.irASalud(.recuperacion) }
-            .id("recuperacion")
-    }
-    /// Las dos de Salud son una sola cosa («cómo vengo»): una tarjeta de dos filas con azulejo suave.
+    /// «Cómo vengo»: desde «Mi salud» (11/11) solo «Tu progreso» (la Recuperación se mudó a Mi salud).
     private var comoVengo: some View {
-        VStack(spacing: 0) {
-            recuperacionFila
-            Divider().padding(.leading, 58)
-            progresoFila
-        }
-        .clipShape(.rect(cornerRadius: Radio.tarjeta, style: .continuous))
-        .superficieTarjeta()
-    }
-    private var recuperacionFila: some View {
-        RecuperacionTarjeta(modelo: modelo.conMuestras ? nil : modelo.salud, enFila: true) { navegacion?.irASalud(.recuperacion) }
-            .id("recuperacion")
+        progresoFila
+            .clipShape(.rect(cornerRadius: Radio.tarjeta, style: .continuous))
+            .superficieTarjeta()
     }
     private var progresoFila: some View {
         ProgresoTarjeta(linea: lineaProgreso, enFila: true) { navegacion?.irASalud(.fuerza) }

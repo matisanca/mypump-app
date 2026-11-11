@@ -6,7 +6,7 @@ private typealias T = TextosControles
 
 // «Tu próximo control de salud» (pedido de Mati, 11/11; palanca `controles_app`). Desde `avisar_desde` y mientras el control
 // siga programado, una tarjeta arriba de todo en la primera pestaña con un botón grande «Ver mis estudios» que lleva a
-// Estudios en un toque (el mismo camino que la tarjeta de estudios pendientes). Nunca dice por qué ni nombra el ciclo.
+// Mi salud, en el próximo control y con Estudios debajo, en un toque (el mismo camino que la tarjeta de estudios pendientes). Nunca dice por qué ni nombra el ciclo.
 // Todo sale de `ModeloEstudios` (lo que ya trajo el `get`): acá no se llama a nada.
 
 /// La tarjeta de arriba de Entreno, con el patrón de la destacada: verde, letra grande y el botón blanco de ancho completo.
@@ -49,7 +49,7 @@ struct TarjetaControlInicio: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("control-tarjeta-inicio-nota")
 
-                Button { withAnimation(.snappy) { navegacion?.irAEstudios() } } label: {
+                Button { withAnimation(.snappy) { navegacion?.irAMiSalud(.control) } } label: {
                     Label(t.boton, systemImage: "arrow.right").multilineTextAlignment(.center)
                 }
                 .buttonStyle(BotonSobreVerde())

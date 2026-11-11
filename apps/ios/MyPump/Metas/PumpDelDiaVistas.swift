@@ -69,7 +69,7 @@ struct PumpDelDiaTarjeta: View {
             if enSalud || !conectado {
                 contenido
             } else {
-                Button { navegacion?.irASalud(.recuperacion) } label: { contenido }
+                Button { navegacion?.irAMiSalud(.recuperacion) } label: { contenido }
                     .buttonStyle(FilaPresionable())
                     .accessibilityHint("Abre Salud")
             }
@@ -152,7 +152,7 @@ struct PumpDelDiaTarjeta: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if !enSalud {
-                Button("Conectar Salud") { navegacion?.irASalud(.recuperacion) }
+                Button("Conectar Salud") { navegacion?.irAMiSalud(.recuperacion) }
                     .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
                     .accessibilityIdentifier("pump-conectar")
             }

@@ -49,9 +49,10 @@ final class TecnicaUITests: XCTestCase {
     }
 
     private func abrirMiTecnica(_ escenario: String) {
-        lanzar(escenario, pestana: "revision", extra: ["-abrir", "misdatos"])
-        haciaAbajo("mis-datos-tecnica")
-        tocar("mis-datos-tecnica")
+        // Simplificar (11/11): «Mi técnica» vive en «Mi gimnasio y mi técnica», con su renglón al final de Entreno.
+        lanzar(escenario)
+        app.abrirDondeEntreno()
+        esperar("donde-entreno-bloque-tecnica")
     }
 
     private func elegirYEnviar() {
@@ -145,17 +146,16 @@ final class TecnicaUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 15))
         RunLoop.current.run(until: Date().addingTimeInterval(3))
         XCTAssertFalse(e("tecnica-mandar-ejercicio").exists)
-        lanzar("apagado", pestana: "revision", extra: ["-abrir", "misdatos"])
+        lanzar("apagado")
         RunLoop.current.run(until: Date().addingTimeInterval(4))
-        for _ in 0..<3 { app.swipeUp(velocity: .slow) }
-        XCTAssertFalse(e("mis-datos-tecnica").exists)
+        XCTAssertFalse(e("donde-entreno-entrada").exists)
+        XCTAssertFalse(e("donde-entreno-bloque-tecnica").exists)
     }
 
     func testSinServidorNoHayNada() {
-        lanzar("sinServidor", pestana: "revision", extra: ["-abrir", "misdatos"])
+        lanzar("sinServidor")
         RunLoop.current.run(until: Date().addingTimeInterval(4))
-        for _ in 0..<3 { app.swipeUp(velocity: .slow) }
-        XCTAssertFalse(e("mis-datos-tecnica").exists)
+        XCTAssertFalse(e("donde-entreno-entrada").exists)
     }
 
     func testSacarVideoEnRevision() {

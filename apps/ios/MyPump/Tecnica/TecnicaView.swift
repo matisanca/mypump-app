@@ -60,35 +60,177 @@ struct BotonMandarTecnica: View {
 }
 
 /// Lo que se apila arriba de «Mi técnica».
-private enum DestinoTecnica: Hashable {
+enum DestinoTecnica: Hashable {
     case devolucion(String), elegir, enviar(slug: String, nombre: String)
 }
 
-/// «Mi técnica» en Mis datos: lo mandado, su estado y la devolución. Pila propia con `path`: `navigationDestination(item:)` dejaba
-/// la app en un bucle al 100 % de CPU en iOS 17; por lo mismo acá no hay `List`.
-struct MiTecnicaRaiz: View {
-    let modelo: ModeloTecnica
-    let alCerrar: () -> Void
-    @State private var camino: [DestinoTecnica] = []
+/// Qué bloques tiene «Mi gimnasio y mi técnica»: cada uno con su palanca de siempre (las mismas condiciones que tenían sus
+/// renglones de Mis datos y el botón de casa de Entreno).
+@MainActor
+enum DondeEntrenoUI {
+    /// «Tu gimnasio»: con la entrada habilitada, o con «Entreno en casa» para ofrecer.
+    static func gimnasio(_ m: ModeloApp) -> ModeloGimnasio? {
+        guard let g = m.gimnasio else { return nil }
+        return g.entradaVisible || casa(m) != nil ? g : nil
+    }
+    /// «Entreno en casa» (palanca `casa`), habilitado para la cuenta y con el gimnasio activo.
+    static func casa(_ m: ModeloApp) -> ModeloCasa? {
+        guard m.palanca.casa, m.gimnasio?.estado != nil, let c = m.casa, c.visible else { return nil }
+        return c
+    }
+    static func tecnica(_ m: ModeloApp) -> ModeloTecnica? { m.tecnica.flatMap { $0.habilitado ? $0 : nil } }
+}
+
+/// El renglón grande al final de Entreno (simplificar, 11/11): abre «Mi gimnasio y mi técnica». Con una respuesta de
+/// técnica de los últimos 7 días, un botón que la abre directo (un toque). Sin ninguno de los dos, no existe.
+struct EntradaDondeEntreno: View {
+    @State private var app = Proveedor.modelo
+    @State private var abierta = false
+    @State private var devolucion: String?
 
     var body: some View {
+        let g = DondeEntrenoUI.gimnasio(app) != nil, t = DondeEntrenoUI.tecnica(app)
+        // Si está abierta queda en pie aunque se apague una palanca: si no, la hoja se cierra sola.
+        if let titulo = DondeEntreno.titulo(gimnasio: g, tecnica: t != nil) ?? (abierta ? DondeEntreno.tituloAmbos : nil) {
+            VStack(alignment: .leading, spacing: Espacio.s) {
+                Button { devolucion = nil; abierta = true } label: {
+                    HStack(spacing: Espacio.s) {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(Color.marcaTexto)
+                            .frame(width: 44, height: 44)
+                            .background(Color.marcaSuave, in: .circle)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(titulo).font(.headline).foregroundStyle(.primary)
+                            if let b = DondeEntreno.bajada(gimnasio: g, tecnica: t != nil) {
+                                Text(b).font(.subheadline).foregroundStyle(.secondary)
+                            }
+                        }
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary).accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(FilaPresionable())
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("donde-entreno-entrada")
+                if let r = t.flatMap({ DondeEntreno.respuestaReciente($0.envios) }) {
+                    Button { devolucion = r.id; abierta = true } label: {
+                        Label(DondeEntreno.verRespuesta, systemImage: "video.fill")
+                    }
+                    .buttonStyle(BotonMarca())
+                    .accessibilityHint(r.nombre)
+                    .accessibilityIdentifier("donde-entreno-respuesta")
+                }
+            }
+            .tarjeta()
+            .sheet(isPresented: $abierta) {
+                DondeEntrenoRaiz(devolucion: devolucion, alCerrar: { abierta = false }).presentationDragIndicator(.visible)
+            }
+        }
+    }
+}
+
+/// «Mi gimnasio y mi técnica» (simplificar, 11/11): Tu gimnasio (con el interruptor de «Entreno en casa» adentro, a dos
+/// toques como antes) y Mi técnica (lo mandado, su estado y la respuesta de Mati), cada bloque solo con su palanca. Pila
+/// propia con `path`: `navigationDestination(item:)` dejaba la app en un bucle al 100 % de CPU en iOS 17; por lo mismo acá no
+/// hay `List`.
+struct DondeEntrenoRaiz: View {
+    let alCerrar: () -> Void
+    @State private var camino: [DestinoTecnica]
+    @State private var app = Proveedor.modelo
+    @State private var verGimnasio = false
+    @Environment(\.dynamicTypeSize) private var letra
+
+    /// `devolucion`: la respuesta de técnica a abrir directo (el botón del renglón de Entreno).
+    init(devolucion: String? = nil, alCerrar: @escaping () -> Void) {
+        self.alCerrar = alCerrar
+        _camino = State(initialValue: devolucion.map { [.devolucion($0)] } ?? [])
+    }
+
+    var body: some View {
+        let g = DondeEntrenoUI.gimnasio(app), t = DondeEntrenoUI.tecnica(app)
         NavigationStack(path: $camino) {
-            ListaTecnica(modelo: modelo, abrir: { camino.append($0) })
-                .background(Color.fondo)
-                .navigationTitle(T.entradaMisDatos)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button(T.cerrar, action: alCerrar) } }
-                .navigationDestination(for: DestinoTecnica.self) { d in
-                    switch d {
-                    case .devolucion(let id):
-                        if let e = modelo.envios.first(where: { $0.id == id }), let dev = e.devolucion { DevolucionTecnicaView(modelo: modelo, envio: e, devolucion: dev) }
-                    case .elegir: ElegirEjercicioTecnica(modelo: modelo, abrir: { camino.append($0) })
-                    case .enviar(let slug, let nombre): EnviarTecnica(modelo: modelo, slug: slug, nombre: nombre, alTerminar: { camino = [] })
+            ScrollView {
+                VStack(alignment: .leading, spacing: Espacio.xl) {
+                    if g == nil && t == nil {
+                        NotaTecnica(texto: DondeEntreno.vacio).accessibilityIdentifier("donde-entreno-vacio")
+                    }
+                    if let g {
+                        VStack(alignment: .leading, spacing: Espacio.s) {
+                            titulo(DondeEntreno.tituloGimnasio)
+                            if let c = DondeEntrenoUI.casa(app) {
+                                InterruptorCasa(casa: c, gimnasio: g, compacto: letra.isAccessibilitySize)
+                            }
+                            // Siempre, aunque la carga esté pedida (y también en la tarjeta de Entreno): prendida «casa», la
+                            // lista para marcar vive en «Tu gimnasio», y tiene que quedar a un toque desde acá.
+                            Button { verGimnasio = true } label: {
+                                FilaEnvio(titulo: TextosGimnasio.tarjetaTitulo, detalle: TarjetaGimnasio.detalle(g, app: app), chevron: true)
+                            }
+                            .buttonStyle(FilaPresionable())
+                            .accessibilityIdentifier("donde-entreno-gimnasio")
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("donde-entreno-bloque-gimnasio")
+                    }
+                    if let t {
+                        VStack(alignment: .leading, spacing: Espacio.s) {
+                            titulo(DondeEntreno.tituloTecnica)
+                            ContenidoTecnica(modelo: t, abrir: { camino.append($0) })
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("donde-entreno-bloque-tecnica")
                     }
                 }
+                .padding(Espacio.m)
+                .anchoLectura()
+            }
+            .background(Color.fondo)
+            .navigationTitle(DondeEntreno.titulo(gimnasio: g != nil, tecnica: t != nil) ?? DondeEntreno.tituloAmbos)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(DondeEntreno.cerrar, action: alCerrar) } }
+            .navigationDestination(for: DestinoTecnica.self) { d in
+                if let t = DondeEntrenoUI.tecnica(app) { DestinoTecnicaVista(destino: d, modelo: t, camino: $camino) }
+            }
         }
-        .task { await modelo.refrescar(); modelo.drenarEnFondo() }
-        .onChange(of: modelo.habilitado) { _, si in if !si { alCerrar() } }
+        .accessibilityIdentifier("donde-entreno")
+        .task {
+            async let a: Void = DondeEntrenoUI.tecnica(app)?.refrescar() ?? ()
+            async let b: Void = app.gimnasio?.refrescar() ?? ()
+            async let c: Void = app.palanca.casa ? (app.casa?.refrescar() ?? ()) : ()
+            _ = await (a, b, c)
+            DondeEntrenoUI.tecnica(app)?.drenarEnFondo()
+        }
+        .sheet(isPresented: $verGimnasio) {
+            if let g = app.gimnasio { GimnasioRaiz(modelo: g, alCerrar: { verGimnasio = false }).presentationDragIndicator(.visible) }
+        }
+    }
+
+    private func titulo(_ t: String) -> some View {
+        Text(t).font(.title2.weight(.bold)).foregroundStyle(.primary)
+            .accessibilityAddTraits(.isHeader)
+            .padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Cada pantalla que se apila arriba de la lista de técnica.
+private struct DestinoTecnicaVista: View {
+    let destino: DestinoTecnica
+    let modelo: ModeloTecnica
+    @Binding var camino: [DestinoTecnica]
+
+    var body: some View {
+        switch destino {
+        case .devolucion(let id):
+            if let e = modelo.envios.first(where: { $0.id == id }), let dev = e.devolucion { DevolucionTecnicaView(modelo: modelo, envio: e, devolucion: dev) }
+        case .elegir: ElegirEjercicioTecnica(modelo: modelo, abrir: { camino.append($0) })
+        case .enviar(let slug, let nombre): EnviarTecnica(modelo: modelo, slug: slug, nombre: nombre, alTerminar: { camino = [] })
+        }
     }
 }
 
@@ -111,43 +253,41 @@ private struct FilaEnvio: View {
     }
 }
 
-private struct ListaTecnica: View {
+/// La lista de «Mi técnica» (lo mandado, su estado y la respuesta), sin desplazamiento propio: va dentro de «Mi gimnasio y mi
+/// técnica».
+struct ContenidoTecnica: View {
     let modelo: ModeloTecnica
     let abrir: (DestinoTecnica) -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Espacio.m) {
-                if let a = modelo.aviso { NotaTecnica(texto: a.texto, alerta: true).accessibilityIdentifier("tecnica-aviso-envio") }
-                if modelo.puedeMandar {
-                    Button(T.entradaEjercicio) { modelo.limpiarAviso(); abrir(.elegir) }
-                        .buttonStyle(BotonMarca())
-                        .accessibilityIdentifier("tecnica-mandar")
-                }
-                if let p = modelo.pendiente {
-                    FilaEnvio(titulo: p.nombre, detalle: modelo.subiendo ? T.subiendo : T.esperandoSenal).accessibilityIdentifier("tecnica-fila-pendiente")
-                }
-                ForEach(modelo.envios) { e in
-                    switch e.estado {
-                    case .publicado:
-                        Button { abrir(.devolucion(e.id)) } label: {
-                            FilaEnvio(titulo: e.nombre, detalle: Gimnasio.fechaCorta(e.publicadoEn).map(T.revisadoEl) ?? (e.devolucion?.credito ?? ""), chevron: true)
-                        }
-                        .buttonStyle(FilaPresionable())
-                        .accessibilityIdentifier("tecnica-fila-publicado")
-                    case .rechazado:
-                        FilaEnvio(titulo: e.nombre, detalle: e.rechazoTexto ?? T.rechazoIlegible, alerta: true).accessibilityIdentifier("tecnica-fila-rechazado")
-                    default:
-                        FilaEnvio(titulo: e.nombre, detalle: T.recibido).accessibilityIdentifier("tecnica-fila-enviado")
-                        if e.tieneVideo { SacarVideoTecnica(modelo: modelo, envioId: e.id) }
+        VStack(alignment: .leading, spacing: Espacio.m) {
+            if let a = modelo.aviso { NotaTecnica(texto: a.texto, alerta: true).accessibilityIdentifier("tecnica-aviso-envio") }
+            if modelo.puedeMandar {
+                Button(T.entradaEjercicio) { modelo.limpiarAviso(); abrir(.elegir) }
+                    .buttonStyle(BotonMarca())
+                    .accessibilityIdentifier("tecnica-mandar")
+            }
+            if let p = modelo.pendiente {
+                FilaEnvio(titulo: p.nombre, detalle: modelo.subiendo ? T.subiendo : T.esperandoSenal).accessibilityIdentifier("tecnica-fila-pendiente")
+            }
+            ForEach(modelo.envios) { e in
+                switch e.estado {
+                case .publicado:
+                    Button { abrir(.devolucion(e.id)) } label: {
+                        FilaEnvio(titulo: e.nombre, detalle: Gimnasio.fechaCorta(e.publicadoEn).map(T.revisadoEl) ?? (e.devolucion?.credito ?? ""), chevron: true)
                     }
-                }
-                if modelo.envios.isEmpty && modelo.pendiente == nil {
-                    NotaTecnica(texto: T.sinEnvios).accessibilityIdentifier("tecnica-vacio")
+                    .buttonStyle(FilaPresionable())
+                    .accessibilityIdentifier("tecnica-fila-publicado")
+                case .rechazado:
+                    FilaEnvio(titulo: e.nombre, detalle: e.rechazoTexto ?? T.rechazoIlegible, alerta: true).accessibilityIdentifier("tecnica-fila-rechazado")
+                default:
+                    FilaEnvio(titulo: e.nombre, detalle: T.recibido).accessibilityIdentifier("tecnica-fila-enviado")
+                    if e.tieneVideo { SacarVideoTecnica(modelo: modelo, envioId: e.id) }
                 }
             }
-            .padding(Espacio.m)
-            .anchoLectura()
+            if modelo.envios.isEmpty && modelo.pendiente == nil {
+                NotaTecnica(texto: T.sinEnvios).accessibilityIdentifier("tecnica-vacio")
+            }
         }
     }
 }

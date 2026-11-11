@@ -188,12 +188,16 @@ final class FotosInicioUITests: XCTestCase {
         foto("motivacion-tope")
     }
 
-    /// Completo: la entrada de Mis datos sigue ahí para repetir, con la nota que había.
+    /// Completo: la tarjeta fija de Revisión sigue ahí para repetir, con la nota que había (simplificar, 11/11: el renglón de
+    /// Mis datos se fue porque repetía esta tarjeta). Mis datos ya no la tiene.
     func testEntradaEnMisDatos() {
         lanzar("completo")
         XCTAssertTrue(app.buttons["Mis datos"].firstMatch.waitForExistence(timeout: 15))
         app.buttons["Mis datos"].firstMatch.tap()
-        tocar("mis-datos-fotos-inicio")
+        XCTAssertTrue(app.navigationBars["Mis datos"].waitForExistence(timeout: 10))
+        XCTAssertFalse(e("mis-datos-fotos-inicio").waitForExistence(timeout: 2))
+        app.navigationBars["Mis datos"].buttons.firstMatch.tap()
+        tocar("fotos-inicio-tarjeta")
         esperar("fotos-inicio-listas")
         XCTAssertEqual(e("fotos-inicio-nota").value as? String, "Los hombros")
         foto("mis-datos-completo")

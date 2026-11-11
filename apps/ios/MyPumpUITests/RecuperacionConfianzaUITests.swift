@@ -97,8 +97,12 @@ final class RecuperacionConfianzaUITests: XCTestCase {
     func testLaTarjetaDeRevisionResumeElScore() {
         app.launchArguments = ["-token", token, "-pestana", "revision", "-sinOnboarding", "YES", "-recuperacionDePrueba", "baja"]
         app.launch()
+        // Desde el 11/11 la fila vive en «Mi salud», arriba de todo en Revisión.
+        let miSalud = app.buttons["tarjeta-mi-salud"]
+        XCTAssertTrue(miSalud.waitForExistence(timeout: 20), "Falta la tarjeta Mi salud en Revisión")
+        miSalud.tap()
         let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
-        XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Revisión")
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Mi salud")
         // Desde el upgrade del iPhone es una fila de «Cómo vengo»: el número solo (41 en el doble «baja»), sin «de 100».
         let conScore = NSPredicate(format: "label MATCHES %@", "(?s).*\\b41\\b.*")
         expectation(for: conScore, evaluatedWith: tarjeta)
@@ -109,7 +113,9 @@ final class RecuperacionConfianzaUITests: XCTestCase {
         a.lifetime = .keepAlways
         add(a)
 
-        // El check trae «Tu salud, últimos 7 días» con el promedio de recuperación de la serie.
+        // El check (en Revisión: atrás desde Mi salud) trae «Tu salud, últimos 7 días» con el promedio de recuperación.
+        app.navigationBars["Mi salud"].buttons.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Revisión"].waitForExistence(timeout: 10))
         let bloque = app.descendants(matching: .any)["salud-semana-check"].firstMatch
         for _ in 0..<8 where !(bloque.exists && bloque.isHittable) { app.swipeUp() }
         XCTAssertTrue(bloque.exists, "Falta el bloque de salud en el check")

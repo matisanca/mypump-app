@@ -32,6 +32,10 @@ final class Navegacion {
     var presionDirecta = false
     /// Abrir «Tu guía» en Entreno (el «Ver mi guía» de la bienvenida); Entreno lo consume al llegar.
     var abrirGuia = false
+    /// Abrir «Mi salud» (11/11): Revisión la empuja (sacando Mis datos si estaba encima) y lo consume.
+    var miSalud = false
+    /// El bloque de Mi salud al que desplazarse; Mi salud lo consume al llegar.
+    var bloqueMiSalud: MiSalud.Bloque?
 
     init(pestaña: Raiz.Pestaña) { self.pestaña = pestaña }
 
@@ -51,14 +55,14 @@ final class Navegacion {
             // «aviso»: con el check guiado prendido y el check sin mandar, Revisión abre el paso a paso; si no, nada cambia.
             anclaRevision = "aviso"
             pestaña = .revision
-        case .recuperacion: irASalud(.recuperacion)
+        case .recuperacion: irAMiSalud(.recuperacion)
         case .misDatos:
-            pestaña = .revision
-            misDatos = true
+            // El destino `salud` (el único que llega como Mis datos): desde el 11/11 es Mi salud en Recuperación, como en la
+            // web (la salud se mudó de Mis datos a Mi salud).
+            irAMiSalud(.recuperacion)
         case .presion:
-            // El aviso de presión: a Entreno (donde vive la tarjeta) y, si la sección está habilitada, directo a lo pendiente.
-            pestaña = .entreno
-            Task { @MainActor in self.abrirPresion(directo: true) }
+            // El aviso de presión: Mi salud en su bloque y, si la sección está habilitada, Presión directo en lo pendiente.
+            irAPresion()
         case .estudios: irAEstudios()
         case .fotosInicio:
             pestaña = .revision
@@ -72,12 +76,26 @@ final class Navegacion {
         misDatos = true
         documentos = true
     }
-    /// Mis datos → Estudios y órdenes. Primero Mis datos, que existe siempre: si la sección no está disponible (la palanca
-    /// apagada, la cuenta sin la función, el `get` caído), el alumno queda ahí y nunca en una pantalla en blanco.
+    /// Mi salud → Estudios y órdenes, en la tarjeta nueva. Si la sección no está disponible (la palanca apagada, la cuenta
+    /// sin la función, el `get` caído), el alumno queda en Mi salud con lo demás y nunca en una pantalla en blanco.
     func irAEstudios() {
-        pestaña = .revision
-        misDatos = true
         estudios = true
+        irAMiSalud(.estudios)
+    }
+
+    /// «Mi salud» (11/11), dentro de Revisión, en un bloque (nil: arriba de todo). Lo que antes abría Estudios, Presión o
+    /// Salud → Recuperación llega acá.
+    func irAMiSalud(_ bloque: MiSalud.Bloque?) {
+        bloqueMiSalud = bloque
+        pestaña = .revision
+        miSalud = true
+    }
+
+    /// La tarjeta de presión de Entreno y el aviso: Mi salud en su bloque y, encima, Presión directo en lo que toca (como
+    /// antes: un toque y se está en la toma). Al cerrarla queda Mi salud.
+    func irAPresion() {
+        irAMiSalud(.presion)
+        Task { @MainActor in self.abrirPresion(directo: true) }
     }
 
     func abrirPresion(directo: Bool) {
@@ -85,7 +103,7 @@ final class Navegacion {
         presionAbierta = true
     }
 
-    /// Salud, en la hoja sobre Revisión (los avisos y `?scene=progress|myday` llegan acá). Primero la pestaña: cambiarla
+    /// Salud, en la hoja sobre Revisión (el aviso y `?scene=progress` llegan acá; `myday` va a Mi salud desde el 11/11). Primero la pestaña: cambiarla
     /// cierra la hoja. La hoja se pide en la vuelta siguiente: si quedó `saludAbierta` en true sin mostrarse (otra hoja
     /// abierta cuando llegó un aviso), el false de la pestaña tiene que llegar a SwiftUI antes del true; si no, la tarjeta
     /// dejaba de abrir Salud (revisión, hallazgo 1).
@@ -99,7 +117,7 @@ final class Navegacion {
     func irARevision(_ ancla: String) {
         switch ancla {
         case "peso": irASalud(.cuerpo)
-        case "reloj", "midia": irASalud(.recuperacion)
+        case "reloj", "midia": irAMiSalud(.recuperacion)
         default:
             anclaRevision = ancla
             pestaña = .revision

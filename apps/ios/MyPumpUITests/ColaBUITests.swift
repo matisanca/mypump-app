@@ -193,8 +193,10 @@ final class ColaBUITests: XCTestCase {
 
     private func casa() {
         lanzar("pedido")
-        // El botón de la tarjeta de Entreno lleva directo al interruptor.
-        tocar("casa-tarjeta")
+        // Simplificar (11/11): «Mi gimnasio y mi técnica» (el renglón del final de Entreno) y «Tu gimnasio», con el
+        // interruptor arriba de las zonas.
+        app.abrirDondeEntreno()
+        tocar("donde-entreno-gimnasio")
         esperar("gimnasio-zona-poleas")
         esperar("casa-interruptor")
         XCTAssertEqual(valorInterruptor(), "0")
@@ -235,11 +237,9 @@ final class ColaBUITests: XCTestCase {
     }
 
     private func casaVigente() {
-        lanzar("casaVigente", pestana: "revision")
-        let datos = app.buttons["Mis datos"].firstMatch
-        XCTAssertTrue(datos.waitForExistence(timeout: 20))
-        datos.tap()
-        tocar("mis-datos-gimnasio")
+        lanzar("casaVigente")
+        app.abrirDondeEntreno()
+        tocar("donde-entreno-gimnasio")
         esperar("casa-vigente")
         XCTAssertTrue(texto("Entrenás en casa").exists)
         XCTAssertTrue(texto("hasta 20 kg").exists)
@@ -259,29 +259,27 @@ final class ColaBUITests: XCTestCase {
         XCTAssertEqual(valorInterruptor(), "1")
     }
 
-    /// Con el gimnasio ya cargado no hay tarjeta, pero el botón de casa sigue en Entreno: dos toques hasta el interruptor.
+    /// Con el gimnasio ya cargado no hay tarjeta arriba; el interruptor de casa está en «Mi gimnasio y mi técnica»: dos toques
+    /// (el renglón y el interruptor), como el botón de antes.
     func testCasaConGimnasioCargadoQuedaADosToques() {
         lanzar("gimnasioListo")
-        esperar("casa-tarjeta")
+        XCTAssertTrue(app.pestana("Entreno").waitForExistence(timeout: 20))
         noEsta("gimnasio-tarjeta", 2)
-        foto("casa-6-boton-con-gimnasio")
-        tocar("casa-tarjeta")
+        noEsta("casa-tarjeta", 1)
+        app.abrirDondeEntreno()
         esperar("casa-interruptor")
         XCTAssertEqual(valorInterruptor(), "0")
+        foto("casa-6-boton-con-gimnasio")
     }
 
-    /// Entrenando en casa el botón no hace falta. Primero se ve que lo de casa llegó (si no, pasaría por no haber cargado).
+    /// Entrenando en casa, «Tu gimnasio» lleva a lo cargado de casa y no queda ningún botón suelto arriba de Entreno.
     func testCasaVigenteNoOfreceElBoton() {
-        lanzar("casaVigente", pestana: "revision")
-        let datos = app.buttons["Mis datos"].firstMatch
-        XCTAssertTrue(datos.waitForExistence(timeout: 20))
-        datos.tap()
-        tocar("mis-datos-gimnasio")
-        esperar("casa-vigente")
-        app.terminate()
         lanzar("casaVigente")
         esperar("recorrido-tarjeta")
         noEsta("casa-tarjeta", 4)
+        app.abrirDondeEntreno()
+        tocar("donde-entreno-gimnasio")
+        esperar("casa-vigente")
     }
 
     // MARK: Capturas en oscuro y con letra grande

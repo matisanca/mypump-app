@@ -50,15 +50,12 @@ final class ControlesUITests: XCTestCase {
         pausa(0.3)
     }
     private func abrirEstudios() {
-        // «Mis datos» está en la pestaña Revisión.
+        // «Mi salud» (11/11) está arriba de todo en la pestaña Revisión.
         let revision = app.tabBars.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Revisi")).firstMatch
         XCTAssertTrue(revision.waitForExistence(timeout: 20))
         revision.tap()
-        let datos = app.buttons["Mis datos"].firstMatch
-        XCTAssertTrue(datos.waitForExistence(timeout: 20))
-        datos.tap()
-        traer("mis-datos-estudios")
-        e("mis-datos-estudios").tap()
+        esperar("tarjeta-mi-salud")
+        e("tarjeta-mi-salud").tap()
         esperar("estudios-subir")
     }
 
@@ -66,10 +63,11 @@ final class ControlesUITests: XCTestCase {
 
     func testPalancaApagadaNoMuestraNada() {
         lanzar("controlesApagado")
-        // La tarjeta de estudios pendientes sí (ya existía); la del control, no.
-        esperar("estudios-tarjeta-inicio-boton")
+        // Simplificar (11/11): una sola tarjeta «Mi salud» arriba de Entreno; con estudios pendientes y sin control, una sola cosa.
+        esperar("tarjeta-mi-salud-inicio-boton")
         pausa(2)
-        XCTAssertFalse(e("control-tarjeta-inicio").exists)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("1 para hacer"), e("tarjeta-mi-salud-inicio-texto").label)
+        XCTAssertFalse(conEtiqueta("Tu próximo control de salud").exists)
         XCTAssertFalse(conEtiqueta("Ver mis estudios").exists)
         abrirEstudios()
         esperar("estudios-proximo-control")
@@ -80,9 +78,10 @@ final class ControlesUITests: XCTestCase {
 
     func testSinControlNoMuestraNada() {
         lanzar("sinControl")
-        esperar("estudios-tarjeta-inicio-boton")
+        esperar("tarjeta-mi-salud-inicio-boton")
         pausa(2)
-        XCTAssertFalse(e("control-tarjeta-inicio").exists)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("1 para hacer"), e("tarjeta-mi-salud-inicio-texto").label)
+        XCTAssertFalse(conEtiqueta("Tu próximo control de salud").exists)
         abrirEstudios()
         esperar("estudios-proximo-control")
         XCTAssertTrue(conEtiqueta("Semana del 23/11").exists)
@@ -93,9 +92,10 @@ final class ControlesUITests: XCTestCase {
 
     private func lejano() {
         lanzar("controlLejano")
-        esperar("estudios-tarjeta-inicio-boton")
+        esperar("tarjeta-mi-salud-inicio-boton")
         pausa(2)
-        XCTAssertFalse(e("control-tarjeta-inicio").exists, "falta para avisar: no va arriba")
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("1 para hacer"), "falta para avisar: no va arriba")
+        XCTAssertFalse(conEtiqueta("Tu próximo control de salud").exists)
         abrirEstudios()
         esperar("estudios-proximo-control")
         XCTAssertTrue(conEtiqueta("Control de salud").exists)
@@ -112,18 +112,19 @@ final class ControlesUITests: XCTestCase {
 
     private func enVentana() {
         lanzar("controlEnVentana")
-        esperar("control-tarjeta-inicio-boton")
-        XCTAssertTrue(conEtiqueta("Tu próximo control de salud").exists)
-        XCTAssertTrue(conEtiqueta("El lunes 16/11").exists)
-        XCTAssertTrue(e("control-tarjeta-inicio-nota").label.contains("Te vamos a mandar las órdenes"))
-        let boton = e("control-tarjeta-inicio-boton")
-        XCTAssertTrue(boton.label.hasPrefix("Ver mis estudios"))
-        traer("control-tarjeta-inicio-boton")
+        // Simplificar (11/11): el control cuenta en la tarjeta única «Mi salud» de arriba de Entreno.
+        esperar("tarjeta-mi-salud-inicio-boton")
+        let texto = e("tarjeta-mi-salud-inicio-texto").label
+        XCTAssertTrue(texto.contains("Tu próximo control de salud") || conEtiqueta("Y 1 cosa más").exists, texto)
+        let boton = e("tarjeta-mi-salud-inicio-boton")
+        // Lleva al bloque «Próximo control»: «Ver mi control».
+        if texto.contains("Tu próximo control de salud") { XCTAssertTrue(boton.label.hasPrefix("Ver mi control"), boton.label) }
+        traer("tarjeta-mi-salud-inicio-boton")
         XCTAssertGreaterThanOrEqual(boton.frame.height, 44)
         XCTAssertGreaterThan(boton.frame.width, app.frame.width * 0.6, "botón de ancho completo")
         foto("controles-2-inicio")
         boton.tap()
-        // Un toque: directo a Estudios, con el control en el bloque «Próximo control».
+        // Un toque: directo a Mi salud, con el bloque «Próximo control» arriba y Estudios debajo.
         esperar("estudios-proximo-control", 15)
         XCTAssertTrue(e("estudios-subir").exists)
         XCTAssertTrue(conEtiqueta("El lunes 16/11").exists)
@@ -139,9 +140,10 @@ final class ControlesUITests: XCTestCase {
 
     func testOrdenesEnviadasNoVaArriba() {
         lanzar("controlOrdenes")
-        esperar("estudios-tarjeta-inicio-boton")
+        esperar("tarjeta-mi-salud-inicio-boton")
         pausa(2)
-        XCTAssertFalse(e("control-tarjeta-inicio").exists)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("1 para hacer"), e("tarjeta-mi-salud-inicio-texto").label)
+        XCTAssertFalse(conEtiqueta("Tu próximo control de salud").exists)
         abrirEstudios()
         esperar("estudios-proximo-control")
         XCTAssertTrue(conEtiqueta("Ya te mandamos las órdenes").exists)

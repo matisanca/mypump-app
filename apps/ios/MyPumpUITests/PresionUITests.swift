@@ -16,12 +16,12 @@ final class PresionUITests: XCTestCase {
     override func setUp() async throws { continueAfterFailure = false }
 
     /// `reposo`: los segundos del reposo de antes de la toma, aparte de las demás esperas (`-presionReposo`). `enEntreno`: la app
-    /// abre como siempre, en su primera pestaña; si no, en Mis datos. `destino`: como si se hubiera tocado un aviso con ese destino.
+    /// abre como siempre, en su primera pestaña; si no, en «Mi salud» (11/11; antes Mis datos). `destino`: como si se hubiera tocado un aviso con ese destino.
     private func lanzar(_ escenario: String, segundos: Int = 2, reposo: Int? = 240, enEntreno: Bool = false, destino: String? = nil) {
         app = XCUIApplication()
         let token = "tkpresion" + UUID().uuidString.prefix(8).lowercased()
         app.launchArguments = ["-token", token, "-sinOnboarding", "YES", "-presionDePrueba", escenario, "-presionSegundos", "\(segundos)"]
-        if !enEntreno { app.launchArguments += ["-pestana", "revision", "-abrir", "misdatos"] }
+        if !enEntreno { app.launchArguments += ["-pestana", "revision", "-abrir", "misalud"] }
         if let reposo { app.launchArguments += ["-presionReposo", "\(reposo)"] }
         if let destino { app.launchArguments += ["-destinoDePrueba", destino] }
         if oscuro { app.launchArguments += ["-mypump-theme", "dark"] }
@@ -80,8 +80,8 @@ final class PresionUITests: XCTestCase {
 
     private func abrir(_ escenario: String, segundos: Int = 2, reposo: Int? = 240) {
         lanzar(escenario, segundos: segundos, reposo: reposo)
-        haciaAbajo("mis-datos-presion")
-        tocar("mis-datos-presion")
+        haciaAbajo("mi-salud-ver-presion")
+        tocar("mi-salud-ver-presion")
     }
 
     /// De Inicio hasta la pantalla de anotar. `esperando`: deja correr el reposo (la toma cuenta); si no, «Ya esperé».
@@ -280,17 +280,17 @@ final class PresionUITests: XCTestCase {
 
     // MARK: Fácil de encontrar: la tarjeta de arriba y los avisos
 
+    // Simplificar (11/11): en Entreno la presión va dentro de la tarjeta única «Mi salud» (`tarjeta-mi-salud-inicio`), con la
+    // línea de lo pendiente y el botón de siempre, que sigue yendo directo a la toma.
     func testTarjetaLlevaDirectoALaTomaDeHoy() {
         lanzar("serie0", enEntreno: true)
-        esperar("tarjeta-presion", 40)
-        XCTAssertTrue(app.staticTexts["Tu presión"].exists)
-        XCTAssertTrue(app.staticTexts["Te faltan 3 tomas"].exists)
-        XCTAssertTrue(app.staticTexts["Son 3 tomas, una por día"].exists)
-        XCTAssertEqual(e("tarjeta-presion-boton").label, "Hacer la toma de hoy")
-        XCTAssertTrue(e("tarjeta-presion-boton").isHittable, "arriba de todo, sin scrollear")
-        XCTAssertGreaterThanOrEqual(e("tarjeta-presion-boton").frame.height, 56)
+        esperar("tarjeta-mi-salud-inicio", 40)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("Te faltan 3 tomas de presión"), e("tarjeta-mi-salud-inicio-texto").label)
+        XCTAssertEqual(e("tarjeta-mi-salud-inicio-boton").label, "Hacer la toma de hoy")
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-boton").isHittable, "arriba de todo, sin scrollear")
+        XCTAssertGreaterThanOrEqual(e("tarjeta-mi-salud-inicio-boton").frame.height, 49.5)
         // Dos toques: la tarjeta y el botón de la pantalla.
-        e("tarjeta-presion-boton").tap()
+        e("tarjeta-mi-salud-inicio-boton").tap()
         desdeCuando()
         anotar("124", "78", "62")
         esperar("presion-no-cuenta")
@@ -300,10 +300,10 @@ final class PresionUITests: XCTestCase {
 
     func testTarjetaRepetirAbreLaRepeticion() {
         lanzar("pendienteAlta", enEntreno: true)
-        esperar("tarjeta-presion", 40)
-        XCTAssertTrue(app.staticTexts["Te quedó pendiente repetir la toma. Hacela sentado y tranquilo cuando puedas."].exists)
-        XCTAssertEqual(e("tarjeta-presion-boton").label, "Repetir la toma")
-        e("tarjeta-presion-boton").tap()
+        esperar("tarjeta-mi-salud-inicio", 40)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("Te falta repetir la toma de presión"))
+        XCTAssertEqual(e("tarjeta-mi-salud-inicio-boton").label, "Repetir la toma")
+        e("tarjeta-mi-salud-inicio-boton").tap()
         esperar("presion-alta", 30)
         anotar("150", "90", "68")
         // La repetición retomada no trae las previas ni el reposo: por eso nunca dice «Esta no cuenta».
@@ -316,14 +316,21 @@ final class PresionUITests: XCTestCase {
 
     func testTarjetaPrepararYHoyListo() {
         lanzar("medirDeNuevo", enEntreno: true)
-        esperar("tarjeta-presion", 40)
-        XCTAssertTrue(app.staticTexts["Primero medí tu brazo y anotá tu tensiómetro"].exists)
-        XCTAssertEqual(e("tarjeta-presion-boton").label, "Empezar")
-        e("tarjeta-presion-boton").tap()
+        esperar("tarjeta-mi-salud-inicio", 40)
+        XCTAssertTrue(e("tarjeta-mi-salud-inicio-texto").label.contains("Primero medí tu brazo y anotá tu tensiómetro"))
+        XCTAssertEqual(e("tarjeta-mi-salud-inicio-boton").label, "Empezar")
+        e("tarjeta-mi-salud-inicio-boton").tap()
         esperar("presion-medir-de-nuevo", 30)
         app.terminate()
 
+        // «Hoy listo» no es algo para hacer: en Entreno no sale (11/11); en Mi salud sí, sin botón.
         lanzar("hoyListo", enEntreno: true)
+        XCTAssertTrue(app.tabBars.buttons["Entreno"].waitForExistence(timeout: 40))
+        RunLoop.current.run(until: Date().addingTimeInterval(6))
+        XCTAssertFalse(e("tarjeta-mi-salud-inicio").exists, "en Entreno solo con algo para hacer")
+        XCTAssertFalse(e("tarjeta-presion").exists)
+        app.terminate()
+        lanzar("hoyListo")
         esperar("tarjeta-presion", 40)
         XCTAssertFalse(e("tarjeta-presion-boton").exists, "con la de hoy hecha no hay botón")
         XCTAssertTrue(e("tarjeta-presion").label.contains("La de hoy ya está. La próxima, otro día."))
@@ -332,10 +339,11 @@ final class PresionUITests: XCTestCase {
     }
 
     func testSinNadaParaHacerNoHayTarjetaYLaRutinaSigueIgual() {
-        for escenario in ["sinSerie", "apagado", "sinServidor", "vacio"] {
+        for escenario in ["sinSerie", "apagado", "sinServidor", "vacio", "hoyListo"] {
             lanzar(escenario, enEntreno: true)
             XCTAssertTrue(app.tabBars.buttons["Entreno"].waitForExistence(timeout: 40), escenario)
             RunLoop.current.run(until: Date().addingTimeInterval(6))
+            XCTAssertFalse(e("tarjeta-mi-salud-inicio").exists, escenario)
             XCTAssertFalse(e("tarjeta-presion").exists, escenario)
             app.terminate()
         }
@@ -345,11 +353,14 @@ final class PresionUITests: XCTestCase {
         lanzar("pendienteAlta", enEntreno: true, destino: "presion")
         esperar("presion-alta", 60)
         XCTAssertFalse(e("presion-inicio").isHittable, "no pasa por la pantalla de inicio")
+        // Debajo quedó «Mi salud», en el bloque de presión (11/11): al cerrar se vuelve ahí.
+        XCTAssertTrue(e("mi-salud-bloque-presion").exists)
         app.terminate()
-        // Apagada, el mismo aviso no abre nada.
+        // Apagada, el mismo aviso no abre Presión: queda en Mi salud, sin el bloque.
         lanzar("apagado", enEntreno: true, destino: "presion")
-        XCTAssertTrue(app.tabBars.buttons["Entreno"].waitForExistence(timeout: 40))
+        XCTAssertTrue(app.navigationBars["Mi salud"].waitForExistence(timeout: 40))
         RunLoop.current.run(until: Date().addingTimeInterval(6))
+        XCTAssertFalse(e("mi-salud-bloque-presion").exists)
         XCTAssertFalse(e("presion-alta").exists)
         XCTAssertFalse(e("presion-cerrar-seccion").exists)
     }
@@ -377,12 +388,11 @@ final class PresionUITests: XCTestCase {
     func testPalancaApagadaLaFilaNoExiste() {
         for escenario in ["apagado", "sinServidor"] {
             lanzar(escenario)
-            // La fila iría justo arriba de «Respaldo científico del plan»: con esa a la vista, si existiera se vería.
-            let vecina = app.staticTexts["Respaldo científico del plan"]
-            var n = 0
-            while !(vecina.waitForExistence(timeout: 3) && vecina.isHittable) && n < 8 { app.swipeUp(velocity: .slow); n += 1 }
-            XCTAssertTrue(vecina.exists, escenario)
-            XCTAssertFalse(e("mis-datos-presion").exists, escenario)
+            // Mi salud sin el bloque de presión (lo demás sigue).
+            esperar("mi-salud-bloque-recuperacion", 40)
+            RunLoop.current.run(until: Date().addingTimeInterval(3))
+            XCTAssertFalse(e("mi-salud-bloque-presion").exists, escenario)
+            XCTAssertFalse(e("mi-salud-ver-presion").exists, escenario)
             app.terminate()
         }
     }
@@ -469,8 +479,9 @@ final class PresionUITests: XCTestCase {
     /// La tarjeta de arriba en Entreno, en sus cuatro estados.
     private func capturasTarjeta() {
         for (escenario, nombre) in [("serie0", "toma"), ("serie2", "seguir"), ("pendienteAlta", "repetir"), ("medirDeNuevo", "preparar"), ("hoyListo", "hoy-listo")] {
-            lanzar(escenario, enEntreno: true)
-            esperar("tarjeta-presion", 40)
+            // «Hoy listo» ya no va en Entreno: su foto es la del bloque de Mi salud.
+            lanzar(escenario, enEntreno: escenario != "hoyListo")
+            esperar(escenario == "hoyListo" ? "tarjeta-presion" : "tarjeta-mi-salud-inicio", 40)
             foto("tarjeta-\(nombre)")
             app.terminate()
         }

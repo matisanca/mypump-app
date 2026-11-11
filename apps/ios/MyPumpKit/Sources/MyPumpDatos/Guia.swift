@@ -98,6 +98,8 @@ public final class ModeloGuia {
     static let archivoQuitadaEn = "guia_quitada_en.json"
     static let archivoBienvenida = "guia_bienvenida.json"
     static let archivoTarjetaVista = "guia_tarjeta_vista.json"
+    /// Simplificar (11/11): cuándo detectó el teléfono la guía terminada por primera vez (el servidor no manda la fecha).
+    static let archivoCompletaEn = "guia_completa_en.json"
 
     /// `esperaSala`: cada cuánto se mira si Mati abrió la sala durante la franja (30 s; las pruebas de interfaz lo bajan).
     public init(cliente: ClienteRPC, token: String, outbox: Outbox?, disco: Disco?, esperaSala: Duration = .seconds(ReglasAgenda.salaCada)) {
@@ -112,6 +114,7 @@ public final class ModeloGuia {
         quitadaDeEntreno = disco?.leer(Bool.self, Self.archivoQuitada) ?? false
         quitadaEn = disco?.leer(Double.self, Self.archivoQuitadaEn).map { Date(timeIntervalSince1970: $0) }
         bienvenidaVista = disco?.leer(Bool.self, Self.archivoBienvenida) ?? false
+        completaEn = disco?.leer(Double.self, Self.archivoCompletaEn).map { Date(timeIntervalSince1970: $0) }
         let tarjetaVista = disco?.leer(Bool.self, Self.archivoTarjetaVista) ?? false
         primeraSesionTarjeta = !tarjetaVista
         tarjetaVistaGuardada = tarjetaVista
@@ -179,6 +182,44 @@ public final class ModeloGuia {
     /// Con novedad sin ver, también destacada (la compacta de «ya viste todo» va solo si vio también lo nuevo).
     public var tarjetaDestacada: Bool {
         mostrarTarjeta && (avanceNovedad != nil || ReglasGuia.estiloTarjeta(avanceTarjeta) == .destacada)
+    }
+
+    // MARK: - Tu inicio con Mati (simplificar, 11/11)
+
+    /// Cuándo se vio todo por primera vez en este teléfono (nil: todavía no, o volvió a faltar algo). Sale del disco de la
+    /// cuenta: `entregas_app_resumen` no trae la fecha y no se agrega SQL (DECISIONES.md, iOS simplificar 3).
+    public private(set) var completaEn: Date?
+
+    /// Anota la fecha la primera vez que la guía está terminada, y la borra si vuelve a faltar algo (un video nuevo de
+    /// Mati): al verlo, los 7 días cuentan de nuevo. Sin resumen todavía no se sabe nada y no se toca.
+    public func anotarCompleta(ahora: Date = Date()) {
+        guard resumen?.hayGuia == true else { return }
+        let completa = ReglasGuia.completa(avanceTarjeta, novedad: avanceNovedad)
+        if completa, completaEn == nil {
+            completaEn = ahora
+            disco?.guardar(ahora.timeIntervalSince1970, Self.archivoCompletaEn)
+        } else if !completa, completaEn != nil {
+            completaEn = nil
+            disco?.borrar(Self.archivoCompletaEn)
+        }
+    }
+
+    /// Lo que cambia la cuenta de `anotarCompleta` (para volver a mirarla).
+    public var claveCompleta: String {
+        let a = avanceTarjeta, n = avanceNovedad
+        return "\(resumen?.hayGuia == true)|\(a.total)|\(a.vistos)|\(n?.total ?? -1)|\(n?.vistos ?? -1)"
+    }
+
+    /// La fila discreta «Tu guía» dentro de «Tu inicio con Mati»: con la tarjeta en Entreno, todo visto y dentro de los
+    /// 7 días desde que se terminó.
+    public func filaEnInicio(ahora: Date = Date()) -> Bool {
+        mostrarTarjeta && !tarjetaDestacada && ReglasGuia.filaInicioVigente(completaEn: completaEn, ahora: ahora)
+    }
+
+    /// «Ver mi guía» en Mis datos: con `ok: true` y la guía fuera de Entreno (por la fecha, porque la quitó o porque ya
+    /// pasaron los 7 días de la fila). Mis datos es su lugar fijo: nunca se oculta del todo.
+    public func filaMisDatos(ahora: Date = Date()) -> Bool {
+        resumen?.ok == true && !tarjetaDestacada && !filaEnInicio(ahora: ahora)
     }
 
     /// La bienvenida de la primera vez ya salió: una sola vez por cliente, guardado en el teléfono (en la muestra y la

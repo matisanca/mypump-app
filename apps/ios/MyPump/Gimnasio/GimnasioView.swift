@@ -7,17 +7,16 @@ import MyPumpDatos
 
 private typealias T = TextosGimnasio
 
-/// La tarjeta «Tu gimnasio» arriba en Entreno. Sin cuenta, con la palanca apagada o sin el servidor nuevo, no existe.
+/// La tarjeta «Tu gimnasio» arriba en Entreno, solo mientras falte algo (simplificar, 11/11: lo demás, y el botón de
+/// «¿Entrenás en casa?», está en «Mi gimnasio y mi técnica», con su renglón al final de Entreno). Sin cuenta, con la palanca
+/// apagada o sin el servidor nuevo, no existe.
 struct TarjetaGimnasio: View {
     @State private var app = Proveedor.modelo
     @State private var abierta = false
 
     var body: some View {
         // Si está abierta queda en pie aunque deje de hacer falta: si no, la hoja se cierra antes de ver «Recibido».
-        if let m = app.gimnasio, m.tarjetaVisible || abierta || ofrecerCasa {
-            VStack(spacing: Espacio.xs) {
-            // Con el gimnasio ya cargado la tarjeta no va, pero el botón de casa sí: nadie queda a tres toques.
-            if m.tarjetaVisible || (abierta && !ofrecerCasa) {
+        if let m = app.gimnasio, m.tarjetaVisible || abierta {
             Button { abierta = true } label: {
                 HStack(spacing: Espacio.s) {
                     Image(systemName: "dumbbell.fill")
@@ -28,7 +27,7 @@ struct TarjetaGimnasio: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(T.tarjetaTitulo).font(.headline).foregroundStyle(.primary)
-                        Text(detalle(m)).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
+                        Text(Self.detalle(m, app: app)).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
@@ -40,15 +39,6 @@ struct TarjetaGimnasio: View {
             .buttonStyle(FilaPresionable())
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("gimnasio-tarjeta")
-            }
-            // «¿Entrenás en casa? Tocá acá» (2.3.0): mientras no entrene en casa y se pueda cambiar, un botón grande que
-            // abre Tu gimnasio con el interruptor arriba de todo. Así queda a dos toques.
-            if ofrecerCasa {
-                Button(TextosColaB.Casa.tarjeta) { abierta = true }
-                    .buttonStyle(BotonSecundario(tono: .marcaTexto))
-                    .accessibilityIdentifier("casa-tarjeta")
-            }
-            }
             .sheet(isPresented: $abierta) {
                 GimnasioRaiz(modelo: m, alCerrar: { abierta = false })
                     .presentationDragIndicator(.visible)
@@ -56,13 +46,8 @@ struct TarjetaGimnasio: View {
         }
     }
 
-    /// Palanca `casa` prendida, habilitado para la cuenta, y el interruptor apagado y libre.
-    private var ofrecerCasa: Bool {
-        guard app.palanca.casa, app.gimnasio?.estado != nil, let c = app.casa, c.visible else { return false }
-        return !c.prendido && !c.fijo
-    }
-
-    private func detalle(_ m: ModeloGimnasio) -> String {
+    /// Lo que falta o dónde está la carga (también la fila de «Mi gimnasio y mi técnica»).
+    static func detalle(_ m: ModeloGimnasio, app: ModeloApp) -> String {
         // Con la carga de casa abierta no hay zonas que falten: lo que falta es marcar lo que tiene.
         if app.palanca.casa, let c = app.casa, c.visible {
             switch c.pantalla {
