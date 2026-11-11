@@ -55,6 +55,9 @@ public struct PalancaRemota: Equatable, Sendable {
     public var listaPrevia = false
     /// Check guiado (`check_guiado`). Sin la clave, apagado: la Revisión de siempre y ninguna llamada nueva.
     public var checkGuiado = false
+    /// Documentos, contrato y consentimiento (`contrato_app`). Sin la clave, apagada: no se llama a `mypump_contrato_get`
+    /// ni aparecen el aviso del contrato ni la fila de Mis datos.
+    public var contratoApp = false
 
     public init() {}
 
@@ -88,6 +91,8 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveListaPrevia = "mypump-palanca-lista-previa"
     /// El último valor leído de `check_guiado`: prendido, sin red la Revisión no vuelve a la pantalla anterior.
     static let claveCheckGuiado = "mypump-palanca-check-guiado"
+    /// El último valor leído de `contrato_app`: si la config no contesta, vale lo último que se supo (como en la web).
+    static let claveContratoApp = "mypump-palanca-contrato-app"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
@@ -113,6 +118,10 @@ public struct PalancaRemota: Equatable, Sendable {
         if let v = defaults.string(forKey: "listaPrevia") { p.listaPrevia = v == "YES" }
         #endif
         if defaults.bool(forKey: claveCheckGuiado) { p.checkGuiado = true }
+        if defaults.bool(forKey: claveContratoApp) { p.contratoApp = true }
+        #if DEBUG
+        if let v = defaults.string(forKey: "contratoApp") { p.contratoApp = v == "YES" }
+        #endif
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
@@ -131,6 +140,7 @@ public struct PalancaRemota: Equatable, Sendable {
         defaults.set(winsApp, forKey: Self.claveWins)
         defaults.set(listaPrevia, forKey: Self.claveListaPrevia)
         defaults.set(checkGuiado, forKey: Self.claveCheckGuiado)
+        defaults.set(contratoApp, forKey: Self.claveContratoApp)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
@@ -156,18 +166,20 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["wins_app"] { winsApp = b }
         if case .bool(let b)? = j["lista_previa"] { listaPrevia = b }
         if case .bool(let b)? = j["check_guiado"] { checkGuiado = b }
+        if case .bool(let b)? = j["contrato_app"] { contratoApp = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }
     }
 
-    /// Pruebas de interfaz y capturas (solo DEBUG): `-winsApp YES` y `-listaPrevia YES` valen también sobre lo que contestó
+    /// Pruebas de interfaz y capturas (solo DEBUG): `-winsApp YES`, `-listaPrevia YES` y `-contratoApp YES` valen también sobre lo que contestó
     /// el servidor. En la tienda no hace nada.
     func conArgumentosDePrueba(defaults: UserDefaults = .standard) -> PalancaRemota {
         #if DEBUG
         var p = self
         if let v = defaults.string(forKey: "winsApp") { p.winsApp = v == "YES" }
         if let v = defaults.string(forKey: "listaPrevia") { p.listaPrevia = v == "YES" }
+        if let v = defaults.string(forKey: "contratoApp") { p.contratoApp = v == "YES" }
         return p
         #else
         return self

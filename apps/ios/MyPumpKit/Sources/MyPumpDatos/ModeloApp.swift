@@ -456,6 +456,7 @@ public final class ModeloApp {
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
         novedades = ModeloNovedades(disco: disco)
         documentos = ModeloDocumentos(cliente: cliente, token: t)
+        documentos?.usarPalanca(palanca.contratoApp)   // lo último que se supo, hasta leer la config
         recorrido = ModeloRecorrido(cliente: cliente, token: t, disco: disco)
         compras = ModeloCompras(cliente: cliente, token: t, disco: disco)
         casa = ModeloCasa(cliente: cliente, token: t, disco: disco)
@@ -611,6 +612,7 @@ public final class ModeloApp {
             palancaLeida.recordar()
             estudios?.usarPalanca(palancaLeida.estudiosApp)
             revision?.guiadoPrendido = palancaLeida.checkGuiado
+            documentos?.usarPalanca(palanca.contratoApp)
             await outbox?.usarPalanca(opsLegadas: palancaLeida.opsLegadas)
         }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
@@ -680,7 +682,7 @@ public final class ModeloApp {
         }
         // «Tu recorrido» arriba de Entreno: sin esperar a lo demás.
         Task { await self.sincronizarRecorrido() }
-        // Documentos, igual: un error es «sin documentos» y no frena nada.
+        // Documentos, igual: un error es «sin documentos» y no frena nada. Con `contrato_app` apagada no llama a nada.
         if let documentos { Task { await documentos.cargar() } }
         // El motor que ya arrancó con la copia no se vuelve a cargar, salvo que la rutina haya cambiado: `prepararEntreno`
         // la reemplazó y eso deja el día limpio (sin la sesión ni las series), así que hay que restaurarlo.

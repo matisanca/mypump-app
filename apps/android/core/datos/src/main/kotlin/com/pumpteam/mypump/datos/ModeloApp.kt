@@ -718,7 +718,7 @@ class ModeloApp(
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
         _suplementacion.value = ModeloSuplementacion(cliente, t, d, alcance)
         _novedades.value = ModeloNovedades(d)
-        _documentos.value = ModeloDocumentos(cliente, t)
+        _documentos.value = ModeloDocumentos(cliente, t, d)
         _salud.value?.cancelarEspera()
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3 del 15-oct).
         _salud.value = ModeloSalud(cliente, t, almacen = AlmacenSaludPorCuenta(preferencias, Disco.huella(t)), alcance = alcance)
@@ -980,6 +980,7 @@ class ModeloApp(
             _wins.value?.recordarPalanca(it.winsApp)
             _listaPrevia.value?.recordarPalanca(it.listaPrevia)
             _revision.value?.recordarPalancaGuiado(it.checkGuiado)
+            _documentos.value?.recordarPalanca(it.contratoApp)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -1067,7 +1068,7 @@ class ModeloApp(
             // Apagada (leída en ESTA carga, no por un corte): la base no se queda vieja para cuando se vuelva a prender.
             nov?.olvidarBase()
         }
-        // Documentos: aparte, así no demora la carga (un error es «sin documentos»).
+        // Documentos: aparte, así no demora la carga (un error es «sin documentos»). Con `contrato_app` apagada, nada.
         _documentos.value?.let { m -> alcance.launch { m.refrescar() } }
         sincronizarGimnasio()
         sincronizarFotosInicio()
