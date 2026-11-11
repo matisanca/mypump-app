@@ -181,7 +181,7 @@
     const l = ui.modelo.lista;
     // Estudios y órdenes: un pedido o una orden sin ver también es una novedad, y lleva directo a Estudios.
     let est = null;
-    try { est = global.EstudiosUI && global.EstudiosUI.novedad ? global.EstudiosUI.novedad() : null; } catch (_) { est = null; }
+    try { est = global.EstudiosUI && global.EstudiosUI.novedadDeEstudios ? global.EstudiosUI.novedadDeEstudios() : null; } catch (_) { est = null; }
     const filaEst = est && est.titulo ? `<button type="button" class="nov-fila" data-nov-estudios>
         <span class="nov-tarjeta-ic">${IC.chispas}</span><span class="nov-tarjeta-txt"><strong>${e(est.titulo)}</strong></span><span class="md-chev">${IC.chev}</span></button>` : '';
     const filas = filaEst + (l.length ? l.map((n) => `<button type="button" class="nov-fila" data-nov-id="${e(n.id)}">

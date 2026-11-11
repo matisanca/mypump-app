@@ -790,6 +790,8 @@
     get origen() { return ui.origen; },
     /* Hay algo sin ver: el punto de la pestaña y de la fila de Mis datos. */
     novedad: () => !!(ui.modelo && ui.modelo.estado && ui.modelo.novedad),
+    /* La novedad con su título y destino, para «Novedades de tu plan» (null si no hay nada sin ver). */
+    novedadDeEstudios: () => (ui.modelo && ui.modelo.estado && ui.modelo.novedad) || null,
     titulo: () => T.titulo,
     entradaVisible: () => !!(ui.modelo && ui.modelo.estado),
     subtitulo: () => T.subtituloEntrada(ui.modelo ? ui.modelo.pendientes : 0),
