@@ -11029,6 +11029,8 @@ function _cgAbrir(pasoPedido) {
   });
   // Si hoy ya hay peso cargado, viene puesto.
   const pesoHoy = _cgPesoDeHoy();
+  // El peso del borrador vale solo si es el de hoy: uno de otro día no se manda con la fecha de hoy.
+  if (b.peso.trim() && CheckGuiado.leerPeso(b.peso) !== pesoHoy) b.peso = '';
   if (!b.peso.trim() && pesoHoy != null) b.peso = _cgKg(pesoHoy);
   const pasos = CheckGuiado.pasos(_pendientesSemana().faltanFotos);
   _cg = { b, pasos, listo: false, tocado: !!guardado, yaEnviado: !!ck, aviso: '', foco: document.activeElement,
@@ -11139,6 +11141,8 @@ function _cgSeguir() {
 function _cgEnviar() {
   if (!_cg || _cg.listo) return;
   const b = _cg.b;
+  // Quedó abierto de la semana pasada: no se manda con la fecha de esta. Se cierra y se empieza de nuevo.
+  if (b.semana !== _cgSemana()) { _cg.tocado = false; _cgCerrar(); _cgBorrarBorrador(); return; }
   const falta = CheckGuiado.pasoQueFalta(b);
   if (falta) { _cgIr(falta); return; }
   const hoy = hoyLocal();
@@ -11176,7 +11180,8 @@ function _cgAlTocar(e) {
       _cgMover(1);
       break;
     case 'escala':
-      b.valores[t.dataset.k] = Number(t.dataset.v);
+      // Tocar la elegida la desmarca, como en las apps.
+      b.valores[t.dataset.k] = b.valores[t.dataset.k] === Number(t.dataset.v) ? 0 : Number(t.dataset.v);
       _cg.tocado = true; _cgGuardarBorrador(); _cgRefrescar();
       break;
     case 'senal':
