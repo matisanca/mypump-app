@@ -29,6 +29,18 @@ class DobleGimnasio : Transporte {
     var cabecerasUltimaSubida: Map<String, String> = emptyMap()
 
     val llamadasGimnasio: List<String> get() = llamadas.filter { "gimnasio" in it }
+
+    // ── Entrenar en casa (`cola-b/CONTRATO_APP.md`, sección 3): la misma fila, con `lugar` ──
+    @Volatile var palancaCasa = false
+    @Volatile var casaHabilitada = true
+    @Volatile var sinFuncionCasa = false
+
+    /** Lo que contestan los próximos `mypump_casa_elegir`, en orden: "red" (corte), "reintentar", "nulo" (token caído). */
+    val proximosElegir = ArrayDeque<String>()
+    /** Lo mismo para `mypump_casa_enviar`: "red", "nulo" o un error del contrato. */
+    val proximosEnviarCasa = ArrayDeque<String>()
+    var ultimoEnviarCasa: ValorJson? = null
+    val llamadasCasa: List<String> get() = llamadas.filter { "casa" in it }
     val intentosDeSubida: Int get() = llamadas.count { it == "gimnasio/upload" }
 
     override suspend fun enviar(pedido: Pedido): Respuesta = synchronized(this) {
@@ -47,9 +59,13 @@ class DobleGimnasio : Transporte {
     private fun t(s: String) = ValorJson.Texto(s)
 
     private fun atender(nombre: String, p: Pedido): Pair<Int, String> {
-        if (nombre == "mypump_get_app_config") return 200 to """{"gimnasio_fotos":$palanca}"""
+        if (nombre == "mypump_get_app_config") return 200 to """{"gimnasio_fotos":$palanca,"casa":$palancaCasa}"""
         if (nombre.startsWith("mypump_gimnasio") && sinFuncion) return 404 to """{"code":"PGRST202","message":"no existe"}"""
+        if (nombre.startsWith("mypump_casa") && sinFuncionCasa) return 404 to """{"code":"PGRST202","message":"no existe"}"""
         return when (nombre) {
+            "mypump_casa_get" -> 200 to (if (!casaHabilitada) """{"habilitado":false}""" else vistaCasa().serializar())
+            "mypump_casa_elegir" -> 200 to elegirCasa(cuerpo(p))
+            "mypump_casa_enviar" -> 200 to enviarCasa(cuerpo(p))
             "mypump_gimnasio_get" -> if (!habilitado) 200 to """{"habilitado":false}""" else 200 to vista().serializar()
             "mypump_gimnasio_nuevo" -> nuevo(cuerpo(p))
             "mypump_gimnasio_enviar" -> 200 to enviarCarga(cuerpo(p))
@@ -124,6 +140,76 @@ class DobleGimnasio : Transporte {
         return """{"ok":true,"ya":false,"estado":"respondido"}"""
     }
 
+    // ── Casa ──
+
+    private fun vistaCasa(): ValorJson {
+        fun carga(c: Map<String, ValorJson>?): ValorJson {
+            c ?: return ValorJson.Nulo
+            return ValorJson.objeto(
+                "id" to c["id"]!!, "estado" to c["estado"]!!, "lugar" to (c["lugar"] ?: t("gimnasio")),
+                "equipos" to (c["casa_equipos"] ?: ValorJson.Lista(emptyList())), "sin_equipo" to (c["casa_sin_equipo"] ?: no), "nota" to (c["casa_nota"] ?: ValorJson.Nulo),
+            )
+        }
+        return ValorJson.objeto("habilitado" to si, "tipos" to TIPOS_CASA, "abierta" to carga(abierta), "vigente" to carga(vigente))
+    }
+
+    private fun elegirCasa(j: ValorJson): String {
+        if (proximosElegir.isNotEmpty()) {
+            when (val forzado = proximosElegir.removeFirst()) {
+                "red" -> throw IOException("corte (doble)")
+                "nulo" -> return "null"
+                else -> return """{"ok":false,"error":"$forzado"}"""
+            }
+        }
+        if (!casaHabilitada) return """{"ok":false,"error":"no_habilitado"}"""
+        val aCasa = j["p_casa"] == si
+        val lugar = if (aCasa) "casa" else "gimnasio"
+        val a = abierta
+        if (a != null) {
+            if ((a["lugar"]?.comoTexto ?: "gimnasio") == lugar) return ValorJson.objeto("ok" to si, "ya" to si, "id" to a["id"]!!, "estado" to a["estado"]!!, "lugar" to t(lugar)).serializar()
+            if (a["estado"]?.comoTexto != "borrador") return """{"ok":false,"error":"en_curso"}"""
+            a["lugar"] = t(lugar)
+            if (aCasa) a["modo"] = t("completa")
+            return ValorJson.objeto("ok" to si, "ya" to no, "id" to a["id"]!!, "estado" to t("borrador"), "lugar" to t(lugar)).serializar()
+        }
+        if (!aCasa) return """{"ok":true,"ya":true,"id":null,"lugar":"gimnasio"}"""
+        val id = UUID.randomUUID().toString()
+        abierta = linkedMapOf("id" to t(id), "estado" to t("borrador"), "modo" to t("completa"), "lugar" to t("casa"))
+        return ValorJson.objeto("ok" to si, "ya" to no, "id" to t(id), "estado" to t("borrador"), "lugar" to t("casa")).serializar()
+    }
+
+    private fun enviarCasa(j: ValorJson): String {
+        if (proximosEnviarCasa.isNotEmpty()) {
+            when (val forzado = proximosEnviarCasa.removeFirst()) {
+                "red" -> throw IOException("corte (doble)")
+                "nulo" -> return "null"
+                else -> return """{"ok":false,"error":"$forzado"}"""
+            }
+        }
+        val a = abierta
+        if (a == null || a["id"] != j["p_id"]) return """{"ok":false,"error":"no_encontrado"}"""
+        if (a["lugar"]?.comoTexto != "casa") return """{"ok":false,"error":"no_es_casa"}"""
+        if (a["estado"]?.comoTexto != "borrador") return ValorJson.objeto("ok" to si, "ya" to si, "estado" to a["estado"]!!).serializar()
+        if (!casaHabilitada) return """{"ok":false,"error":"no_habilitado"}"""
+        ultimoEnviarCasa = j
+        val equipos = (j["p_equipos"] as? ValorJson.Lista)?.elementos ?: emptyList()
+        val sin = j["p_sin_equipo"] == si
+        if (equipos.isEmpty() && !sin) return """{"ok":false,"error":"sin_datos"}"""
+        if (equipos.isNotEmpty() && sin) return """{"ok":false,"error":"contradiccion"}"""
+        a["estado"] = t("a_revisar")
+        a["casa_equipos"] = ValorJson.Lista(equipos)
+        a["casa_sin_equipo"] = if (sin) si else no
+        j["p_nota"]?.comoTexto?.trim()?.takeIf { it.isNotEmpty() }?.let { a["casa_nota"] = t(it) }
+        return """{"ok":true,"ya":false,"estado":"a_revisar"}"""
+    }
+
+    /** Mati la aprobó: pasa a ser la vigente. */
+    fun aprobarCasa() {
+        val a = abierta ?: return
+        vigente = LinkedHashMap(a).also { it["estado"] = t("listo") }
+        abierta = null
+    }
+
     private fun vista(): ValorJson {
         fun carga(c: Map<String, ValorJson>?): ValorJson {
             c ?: return ValorJson.Nulo
@@ -149,6 +235,13 @@ class DobleGimnasio : Transporte {
                 {"id":"peso_mancuernas","clase":"numero","zona":"mancuernas","texto":"¿Hasta cuántos kilos llegan las mancuernas?","unidad":"kg","fotos":[]},
                 {"id":"confirmar_empuje","clase":"confirmar","zona":"empuje","texto":"Confirmanos qué de esto hay en tu gimnasio","fotos":[],"items":[{"tipo":"pec_deck","texto":"Pec deck","fotos":[]},{"tipo":"press_inclinado","texto":"Press inclinado","fotos":[]}]},
                 {"id":"foto_1","clase":"foto","zona":"bancos","texto":"Necesitamos otra foto de esta zona, sin gente y con el equipo entero","fotos":[]}]""",
+            )
+        }
+        /** La lista de casa, como la da `mypump_casa_get` (recortada). */
+        val TIPOS_CASA: ValorJson by lazy {
+            parsear(
+                """[{"tipo":"mancuernas","nombre":"Mancuernas","kg":true},{"tipo":"barra_olimpica","nombre":"Barra","kg":false},{"tipo":"discos","nombre":"Discos","kg":true},
+                {"tipo":"banco_plano","nombre":"Banco plano","kg":false},{"tipo":"bandas_elasticas","nombre":"Bandas elásticas","kg":false}]""",
             )
         }
         val EQUIPOS: ValorJson by lazy {
@@ -177,6 +270,31 @@ class DobleGimnasio : Transporte {
                 }
                 "preguntas" -> {
                     d.abierta = linkedMapOf("id" to t(ID), "estado" to t("a_confirmar"), "modo" to t("completa"), "preguntas" to PREGUNTAS)
+                }
+                // Entrenar en casa: con la palanca `casa` prendida.
+                "casaVacio" -> d.palancaCasa = true
+                "casaBorrador" -> {
+                    d.palancaCasa = true
+                    d.abierta = linkedMapOf("id" to t(ID), "estado" to t("borrador"), "modo" to t("completa"), "lugar" to t("casa"))
+                }
+                "casaEnviada" -> {
+                    d.palancaCasa = true
+                    d.abierta = linkedMapOf("id" to t(ID), "estado" to t("a_revisar"), "modo" to t("completa"), "lugar" to t("casa"))
+                }
+                "casaVigente", "casaVigenteSinEquipo" -> {
+                    d.palancaCasa = true
+                    d.vigente = linkedMapOf(
+                        "id" to t(ID), "estado" to t("listo"), "modo" to t("completa"), "lugar" to t("casa"),
+                        "casa_equipos" to (if (nombre == "casaVigente") parsear("""[{"tipo":"mancuernas","kg":20},{"tipo":"banco_plano"}]""") else ValorJson.Lista(emptyList())),
+                        "casa_sin_equipo" to ValorJson.Booleano(nombre != "casaVigente"),
+                    )
+                }
+                "casaConGimnasioVigente" -> {
+                    d.palancaCasa = true
+                    d.vigente = linkedMapOf(
+                        "id" to t(ID), "estado" to t("listo"), "modo" to t("completa"), "resultado" to t("adaptada"),
+                        "publicado_en" to t("2026-11-12T15:00:00+00:00"), "equipos" to EQUIPOS,
+                    )
                 }
                 "listo", "listoSinCambios" -> {
                     d.vigente = linkedMapOf(

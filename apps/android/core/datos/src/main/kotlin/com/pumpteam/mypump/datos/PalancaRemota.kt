@@ -24,6 +24,12 @@ data class PalancaRemota(
     val tecnicaVideo: Boolean = false,
     /** «Novedades de tu plan» (`novedades_plan`). Sin la clave, apagada: no se guarda ni se muestra nada. */
     val novedadesPlan: Boolean = false,
+    /** Fin de plan, «Tu recorrido» (`fin_plan`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. */
+    val finPlan: Boolean = false,
+    /** Compras por país, «Dónde comprarlo» (`compras_pais`). Sin la clave, apagada. */
+    val comprasPais: Boolean = false,
+    /** Entreno en casa (`casa`): el interruptor de Mi gimnasio. Sin la clave, apagada. Necesita `gimnasio_fotos`. */
+    val casa: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -39,6 +45,9 @@ data class PalancaRemota(
             gimnasioFotos = (j["gimnasio_fotos"] as? ValorJson.Booleano)?.valor ?: false,
             tecnicaVideo = (j["tecnica_video"] as? ValorJson.Booleano)?.valor ?: false,
             novedadesPlan = (j["novedades_plan"] as? ValorJson.Booleano)?.valor ?: false,
+            finPlan = (j["fin_plan"] as? ValorJson.Booleano)?.valor ?: false,
+            comprasPais = (j["compras_pais"] as? ValorJson.Booleano)?.valor ?: false,
+            casa = (j["casa"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */
