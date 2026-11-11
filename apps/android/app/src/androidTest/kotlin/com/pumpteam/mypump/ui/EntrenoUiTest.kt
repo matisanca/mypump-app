@@ -26,8 +26,7 @@ class EntrenoUiTest : PruebaUi() {
         p.nodo(etiqueta("entreno-cabecera"))
     }
 
-    private fun demoEnUnEjercicio(lugar: String = "ex_010") {
-        abrir()
+    private fun demoEnUnEjercicio(lugar: String = "ex_010") = abrir().also {
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("ejercicio-$lugar"))
         p.nodo(etiqueta("tabla-series"))
@@ -303,7 +302,7 @@ class EntrenoUiTest : PruebaUi() {
     /** SES-04: el descanso con −15 / +15 y saltar; al terminar suena y, a los 2 s, se cierra solo. */
     @Test
     fun elDescansoConMasMenosYSaltar() {
-        demoEnUnEjercicio()
+        val e = demoEnUnEjercicio()
         fijarCarga("60")
         darOK()
         // Con el panel a la vista el descanso va ahí; la barra flotante se ve en las otras pestañas.
@@ -341,19 +340,31 @@ class EntrenoUiTest : PruebaUi() {
         // Al terminar suena (una vez) y, a los 2 s, la barra se cierra sola. El "¡A la próxima serie!" en verde dura esos 2 s:
         // en un emulador lento puede no llegar a leerse, así que se anota pero no se exige (la regla la prueban los tests del
         // motor, EntrenoTest.descanso).
+        //
+        // Los tiempos se miden en el motor y no en la pantalla: con el emulador cargado, leer el árbol de la pantalla tarda
+        // segundos, y la prueba medía su propia demora («se cerró a los 15 s») o llegaba con el descanso ya cerrado.
+        val motor = requireNotNull(p.modeloCargado(e).second.entreno.value) { "la demo sin el motor de Entreno" }
+        fun quedan(): Int = motor.descanso.value.texto.split(":").let { (m, s) -> m.toInt() * 60 + s.toInt() }
         val antes = SonidoDescanso.reproducciones
-        while (segundos() > 20) p.tocar(etiqueta("descanso-menos"))
-        p.esperar("sonó", ms = 40_000) { SonidoDescanso.reproducciones > antes }
+        while (quedan() > 20) p.tocar(etiqueta("descanso-menos"))
+        p.esperar("sonó", ms = 40_000, enElPrincipal = false) { (SonidoDescanso.reproducciones > antes).takeIf { it } }
         val alSonar = SystemClock.elapsedRealtime()
+        // Quién mira el cierre: un hilo aparte que lee el motor cada 20 ms, mientras la prueba intenta leer la barra verde.
+        var cerradoEn = 0L
+        val vigia = Thread {
+            while (motor.descanso.value.visible && SystemClock.elapsedRealtime() - alSonar < 20_000) Thread.sleep(20)
+            cerradoEn = SystemClock.elapsedRealtime()
+        }.apply { start() }
         val vioListo = try {
             "¡A la próxima serie!" in p.textosBajo(etiqueta("descanso-rotulo")) && !p.habilitado(etiqueta("descanso-saltar"))
         } catch (_: AssertionError) {
             false
         }
         println("Entreno: la barra verde del fin del descanso ${if (vioListo) "se vio" else "no llegó a leerse"}")
-        p.esperarQueNoEste(etiqueta("descanso"), ms = 10_000)
-        val cerro = SystemClock.elapsedRealtime() - alSonar
+        vigia.join()
+        val cerro = cerradoEn - alSonar
         assertTrue("se cerró a los $cerro ms de sonar", cerro < 8_000)
+        p.esperarQueNoEste(etiqueta("descanso"), ms = 15_000)
         assertEquals("sonó una sola vez", antes + 1, SonidoDescanso.reproducciones)
     }
 

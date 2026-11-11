@@ -510,7 +510,9 @@ class RevisionUiTest : PruebaUi() {
         irARevision()
         // Desplazada hasta abajo; el banner la lleva de nuevo a las fotos. Desde la 2.1 Revisión es solo fotos y check: abajo
         // de todo, las fotos quedan arriba, fuera de la vista.
-        p.desplazar(etiqueta("revision-lista"), 5_000f)
+        // Con el dedo, como el cliente: desde el sistema nuevo (11/11) el título grande se pliega con lo primero que se
+        // desplaza, y un ScrollBy semántico se quedaba en plegarlo (la lista no se movía).
+        repeat(6) { if (altura("fotos") >= -0.15f) p.deslizarDeVerdad(etiqueta("revision-lista"), -900) }
         p.esperar("bien abajo") { alturaYa("fotos") < -0.15f }
         p.tocar(etiqueta("pestana-dieta"))
         p.tocar(etiqueta("banner-revision"))
