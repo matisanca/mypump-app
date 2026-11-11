@@ -108,6 +108,12 @@ public struct Escrituras: Sendable {
                 "p_token": t, "p_fecha": p["fecha"] ?? .null, "p_energia": d["energia"] ?? .null, "p_descanso": d["descanso"] ?? .null,
                 "p_hambre": d["hambre"] ?? .null, "p_adherencia": d["adherencia"] ?? .null, "p_nota": nota,
             ]))
+        case ModeloRevision.kindGuiado:
+            // Lo marcado en «¿Notaste algo?» del check guiado. TRUE = guardado; FALSE = palanca apagada en el servidor;
+            // sin la función (propuesta sin aplicar) no hay dónde guardarlo. Las escalas, la nota y el peso no dependen de esto.
+            return .respuesta(Self.sinTablaEsHecho(await cliente.llamar("mypump_check_guiado_guardar", [
+                "p_token": t, "p_fecha": p["fecha"] ?? .null, "p_respuestas": p["respuestas"] ?? .objeto([:]),
+            ])))
         case "chat":
             // Arreglo nativo n.º 4: si el mensaje ya llegó (se mandó, se cortó la señal antes de la respuesta y la cola lo
             // reintenta), no se manda de nuevo. El servidor deduplica el mismo texto dentro de 2 minutos (mig 075), pero

@@ -54,6 +54,8 @@ data class PalancaRemota(
     val winsApp: Boolean = false,
     /** La lista previa a la videollamada de comienzo (`lista_previa`, 2.3.0). Sin la clave, apagada. */
     val listaPrevia: Boolean = false,
+    /** Check guiado (`check_guiado`). Sin la clave, apagado: la Revisión de siempre y ninguna llamada nueva. */
+    val checkGuiado: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -82,6 +84,7 @@ data class PalancaRemota(
             casa = (j["casa"] as? ValorJson.Booleano)?.valor ?: false,
             winsApp = (j["wins_app"] as? ValorJson.Booleano)?.valor ?: false,
             listaPrevia = (j["lista_previa"] as? ValorJson.Booleano)?.valor ?: false,
+            checkGuiado = (j["check_guiado"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

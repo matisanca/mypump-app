@@ -93,8 +93,6 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: Modifier = Modifier) {
-    val alcance = LocalAlcanceApp.current
-    val tactil = LocalHapticFeedback.current
     val fotos = modelo?.fotos?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pendientes = modelo?.pendientes?.collectAsStateWithLifecycle()?.value ?: emptyMap()
     val urls = modelo?.urls?.collectAsStateWithLifecycle()?.value ?: emptyMap()
@@ -132,48 +130,7 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
                 )
             }
 
-            val lugares: @Composable (Modifier) -> Unit = { m ->
-                for ((pose, etiqueta) in FotosProgreso.poses) {
-                    val clave = "$semana|$pose"
-                    val estado = EstadoPose(
-                        lista = pose in hechas,
-                        subiendo = clave in subiendo,
-                        esperando = clave in pendientes,
-                        miniatura = urls[clave],
-                    )
-                    val marco = @Composable { MarcoPose(pose, etiqueta, estado, enFilas) }
-                    if (modelo != null) {
-                        BotonFoto(
-                            clave = pose,
-                            maxPx = ReduccionFoto.LADO_PROGRESO,
-                            calidad = ReduccionFoto.CALIDAD_PROGRESO,
-                            alElegir = { jpeg ->
-                                alcance.launch {
-                                    val r = modelo.subir(pose, jpeg)
-                                    mensaje = r.texto
-                                    tactil.performHapticFeedback(
-                                        if (r == ModeloFotos.Resultado.Guardada) HapticFeedbackType.Confirm else HapticFeedbackType.Reject,
-                                    )
-                                    // Reemplazar una foto de la semana no cambia cuántas hay: sin firmar de nuevo quedaba la
-                                    // miniatura vieja (visto contra la base real). Cada firma es otra URL, así que tampoco
-                                    // sale la vieja de la memoria.
-                                    if (r == ModeloFotos.Resultado.Guardada) modelo.firmar()
-                                }
-                            },
-                            modifier = m,
-                            habilitado = !estado.subiendo,
-                            contenido = marco,
-                        )
-                    } else {
-                        Box(m.clickable { mensaje = "En la demo las fotos no se guardan." }) { marco() }
-                    }
-                }
-            }
-            if (enFilas) {
-                Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) { lugares(Modifier.fillMaxWidth()) }
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) { lugares(Modifier.weight(1f)) }
-            }
+            MarcosFotosSemana(modelo, semana, hechas, pendientes.keys, urls, subiendo, enFilas) { mensaje = it }
 
             mensaje?.let { m ->
                 val problema = m.startsWith("No") || m.startsWith("Esa") || m.startsWith("Hay")
@@ -236,6 +193,67 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
     }
 
     if (galeria) GaleriaFotos(modelo, fotos, urls, peso, alCerrar = { galeria = false })
+}
+
+/**
+ * Los tres lugares de la semana (frente, perfil y espalda) con su subida: lo que comparten «Fotos de la semana» y el paso
+ * de fotos del check guiado. [alMensaje] recibe lo que hay que decirle al cliente después de elegir una foto.
+ */
+@Composable
+internal fun MarcosFotosSemana(
+    modelo: ModeloFotos?,
+    semana: String,
+    hechas: Set<String>,
+    pendientes: Set<String>,
+    urls: Map<String, String>,
+    subiendo: Set<String>,
+    enFilas: Boolean,
+    alMensaje: (String) -> Unit,
+) {
+    val alcance = LocalAlcanceApp.current
+    val tactil = LocalHapticFeedback.current
+    val lugares: @Composable (Modifier) -> Unit = { m ->
+        for ((pose, etiqueta) in FotosProgreso.poses) {
+            val clave = "$semana|$pose"
+            val estado = EstadoPose(
+                lista = pose in hechas,
+                subiendo = clave in subiendo,
+                esperando = clave in pendientes,
+                miniatura = urls[clave],
+            )
+            val marco = @Composable { MarcoPose(pose, etiqueta, estado, enFilas) }
+            if (modelo != null) {
+                BotonFoto(
+                    clave = pose,
+                    maxPx = ReduccionFoto.LADO_PROGRESO,
+                    calidad = ReduccionFoto.CALIDAD_PROGRESO,
+                    alElegir = { jpeg ->
+                        alcance.launch {
+                            val r = modelo.subir(pose, jpeg)
+                            alMensaje(r.texto)
+                            tactil.performHapticFeedback(
+                                if (r == ModeloFotos.Resultado.Guardada) HapticFeedbackType.Confirm else HapticFeedbackType.Reject,
+                            )
+                            // Reemplazar una foto de la semana no cambia cuántas hay: sin firmar de nuevo quedaba la
+                            // miniatura vieja (visto contra la base real). Cada firma es otra URL, así que tampoco
+                            // sale la vieja de la memoria.
+                            if (r == ModeloFotos.Resultado.Guardada) modelo.firmar()
+                        }
+                    },
+                    modifier = m,
+                    habilitado = !estado.subiendo,
+                    contenido = marco,
+                )
+            } else {
+                Box(m.clickable { alMensaje("En la demo las fotos no se guardan.") }) { marco() }
+            }
+        }
+    }
+    if (enFilas) {
+        Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) { lugares(Modifier.fillMaxWidth()) }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) { lugares(Modifier.weight(1f)) }
+    }
 }
 
 /** Cómo está un lugar de la semana: con la foto (y su miniatura, si ya se firmó), subiendo o esperando señal. */

@@ -979,6 +979,7 @@ class ModeloApp(
             _casa.value?.usarPalanca(it.casa && it.gimnasioFotos)
             _wins.value?.recordarPalanca(it.winsApp)
             _listaPrevia.value?.recordarPalanca(it.listaPrevia)
+            _revision.value?.recordarPalancaGuiado(it.checkGuiado)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }

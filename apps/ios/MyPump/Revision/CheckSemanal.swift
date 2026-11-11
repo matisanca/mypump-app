@@ -163,7 +163,7 @@ struct CheckSemanal: View {
 
 /// «Tu salud, últimos 7 días»: los promedios que acompañan al check (`SaludSemana`). Mati los ve en su panel junto a las
 /// respuestas: salen de lo que la app ya sincroniza con el servidor.
-private struct SaludSemanaBloque: View {
+struct SaludSemanaBloque: View {
     let filas: [SaludSemana.Fila]
 
     var body: some View {

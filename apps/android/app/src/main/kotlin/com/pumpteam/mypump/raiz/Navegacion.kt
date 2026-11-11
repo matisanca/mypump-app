@@ -53,6 +53,12 @@ enum class Pestana(val titulo: String) {
 object AnclaRevision {
     const val FOTOS = "fotos"
     const val CHECK = "check"
+
+    /** El aviso de la revisión: con el check guiado prendido y sin enviar abre el paso a paso; si no, Revisión como siempre. */
+    const val AVISO = "aviso"
+
+    /** El banner cuando faltan el check y las fotos: con el check guiado va al check; si no, a las fotos como siempre. */
+    const val PENDIENTES = "pendientes"
 }
 
 /**
@@ -172,7 +178,7 @@ class Navegacion(
             DestinoAviso.CHAT -> pestana = Pestana.CHAT
             // `progress` (lo que era Progreso): Revisión + Salud → Fuerza.
             DestinoAviso.FUERZA -> irASalud(SegmentoSalud.FUERZA)
-            DestinoAviso.REVISION -> irARevision(null)
+            DestinoAviso.REVISION -> irARevision(AnclaRevision.AVISO)
             // `?scene=myday` y el aviso de Mi Día (ya no existe): Revisión + Salud → Recuperación.
             DestinoAviso.RECUPERACION -> irASalud(SegmentoSalud.RECUPERACION)
             DestinoAviso.MIS_DATOS -> irAMisDatos()

@@ -440,6 +440,7 @@ public final class ModeloApp {
         // Las fotos y audios del chat que quedaron en la cola (la app cerrada sin señal) vuelven a su burbuja.
         if let chat { Task { await chat.cargarAdjuntosDeLaCola() } }
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola, disco: disco)
+        revision?.guiadoPrendido = palanca.checkGuiado
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
         fotosInicio = ModeloFotosInicio(cliente: cliente, token: t, disco: disco)
@@ -609,6 +610,7 @@ public final class ModeloApp {
             palanca = palancaLeida.conArgumentosDePrueba()
             palancaLeida.recordar()
             estudios?.usarPalanca(palancaLeida.estudiosApp)
+            revision?.guiadoPrendido = palancaLeida.checkGuiado
             await outbox?.usarPalanca(opsLegadas: palancaLeida.opsLegadas)
         }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).

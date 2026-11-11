@@ -31,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,7 +73,9 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Revisión (gemela de `RevisionView.swift`): arriba de todo la devolución de Mati si hay una publicada (2.3.0); después las tarjetas Recuperación y Tu progreso, que abren Salud (2.1.0, «Salud dentro
@@ -116,6 +119,19 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     // al componer, y se anota en cada cuadro del desplazamiento.
     val secciones = remember { HashMap<String, Float>() }
     var recargando by remember { mutableStateOf(false) }
+    // Check guiado (2.3.0): con la palanca `check_guiado` prendida, la sección del check es la tarjeta que abre el check de
+    // un paso por pantalla. Apagada (o en la demo), todo lo de abajo queda como siempre.
+    val conCheckGuiado = !esDemo && (revision?.guiadoPrendido?.collectAsStateWithLifecycle()?.value ?: false)
+    // Si está abierto lo sabe el modelo: una recreación de la Activity no lo cierra.
+    val flujoGuiado = revision?.flujoGuiado?.collectAsStateWithLifecycle()?.value
+    val revisionDeAhora by rememberUpdatedState(revision)
+    val conCheckGuiadoAhora by rememberUpdatedState(conCheckGuiado)
+    // Con cuenta y la salud del sistema conectada: los últimos días al servidor, sin esperar ni frenar el envío del check.
+    val sincronizarSaludAlEnviar = {
+        val s = salud
+        if (!esDemo && s != null && s.conectado.value) alcance.launch { s.sincronizar() }
+        Unit
+    }
     val margen = with(LocalDensity.current) { Espacio.xs.toPx() }
 
     // Un aviso o el banner de las otras pestañas piden una sección: se va y se consume.
@@ -123,7 +139,20 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     LaunchedEffect(ancla) {
         if (ancla == null) return@LaunchedEffect
         delay(300)
-        irA(ancla, secciones, desplazamiento, margen)
+        val abreElCheck = ancla == AnclaRevision.CHECK || ancla == AnclaRevision.AVISO || ancla == AnclaRevision.PENDIENTES
+        when (ancla) {
+            AnclaRevision.AVISO -> Unit
+            AnclaRevision.PENDIENTES ->
+                irA(if (conCheckGuiadoAhora) AnclaRevision.CHECK else AnclaRevision.FOTOS, secciones, desplazamiento, margen)
+            else -> irA(ancla, secciones, desplazamiento, margen)
+        }
+        // Con el check guiado, el aviso y el banner llevan directo: además de mostrar la tarjeta, abren el check en el paso
+        // que toca. Se espera (poco) a saber si ya se envió: enviado, solo se muestra la tarjeta.
+        val r = revisionDeAhora
+        if (abreElCheck && conCheckGuiadoAhora && r != null) {
+            withTimeoutOrNull(4_000) { r.revisionCargada.first { it } }
+            if (conCheckGuiadoAhora && !r.checkinEnviado) r.abrirFlujoGuiado()
+        }
         navegacion.anclaRevision = null
     }
 
@@ -190,6 +219,13 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     val devoluciones = if (esDemo) demoHistorial?.devoluciones else devolucion
                     val ultima = devoluciones?.ultima
                     if (ultima != null) TarjetaDevolucion(ultima, devoluciones.anteriores)
+                    // Con el check guiado, la tarjeta del check es lo primero de Revisión, siempre: fácil de encontrar.
+                    val conTarjeta = revision?.takeIf { conCheckGuiado }
+                    if (conTarjeta != null) {
+                        CheckGuiadoTarjeta(conTarjeta, fotos, Modifier.seccion(AnclaRevision.CHECK, secciones)) { paso ->
+                            conTarjeta.abrirFlujoGuiado(paso)
+                        }
+                    }
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
                         // Fotos de inicio: arriba de todo, solo con la sección habilitada para esta cuenta.
                         TarjetaFotosInicioDe(modelo)
@@ -205,7 +241,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         if (semanaPendiente) {
                             AvisoPlanIncompleto(modelo)
                             FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
-                            Check(revision, salud, esDemo, alcance, secciones)
+                            if (conTarjeta == null) Check(revision, salud, esDemo, alcance, secciones)
                         }
                         // Lo primero de Revisión (con la semana completa): la recuperación y el progreso (reemplazan al
                         // corazón que había arriba). En el teléfono, juntas (Espacio.m); en tablet, lado a lado.
@@ -232,11 +268,23 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     )
                     if (!semanaPendiente) {
                         FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
-                        Check(revision, salud, esDemo, alcance, secciones)
+                        if (conTarjeta == null) Check(revision, salud, esDemo, alcance, secciones)
                     }
                 }
             }
         }
+    }
+
+    val r = revision
+    if (conCheckGuiado && flujoGuiado != null && r != null) {
+        CheckGuiadoFlujo(
+            revision = r,
+            fotos = fotos,
+            salud = filasSaludSemana(salud),
+            pasoInicial = flujoGuiado.paso,
+            alEnviar = sincronizarSaludAlEnviar,
+            alCerrar = { r.cerrarFlujoGuiado() },
+        )
     }
 }
 

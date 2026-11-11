@@ -50,6 +50,8 @@ enum Proveedor {
             else if let caso = d.string(forKey: "estudiosDePrueba") { transporte = EstudiosDePrueba(doble: .escenario(caso)) }
             // `-colaADePrueba <escenario>`: logros y lista previa de mentira y lo demás de las muestras (ver `DobleColaA`).
             else if let caso = d.string(forKey: "colaADePrueba") { transporte = ColaADePrueba(doble: .escenario(caso)) }
+            // `-checkGuiadoDePrueba <escenario>`: el check guiado contra un servidor de mentira (ver `CheckGuiadoDePrueba`).
+            else if let caso = d.string(forKey: "checkGuiadoDePrueba") { transporte = CheckGuiadoDePrueba(caso: caso) }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
             else if let caso = d.string(forKey: "recuperacionDePrueba") { transporte = RecuperacionDePrueba(caso: caso) }
             // `-semanaDePrueba completa|incompleta`: el check y las fotos de esta semana inventados (ver `SemanaDePrueba`).
@@ -220,6 +222,79 @@ private struct GimnasioDePrueba: Transporte {
            let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
            let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }
         return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+#endif
+
+#if DEBUG
+/// `-checkGuiadoDePrueba general|ciclo|apagado|enviado|sinServidor`: la palanca `check_guiado`, el check de la semana y lo
+/// marcado los contesta este doble en memoria (sin red); la cuenta y el plan salen de las muestras. `enviado` arranca con
+/// el check y las tres fotos de la semana ya subidos; `sinServidor`, con la palanca prendida y la propuesta sin aplicar.
+private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
+    private let caso: String
+    private let candado = NSLock()
+    private var check: String?
+    private var senales: String = "null"
+    private var catalogo: String = "null"
+    private var pesos: [String: Double] = [:]
+
+    init(caso: String) {
+        self.caso = caso
+        if caso == "enviado" {
+            check = #"{"energia":4,"descanso":3,"hambre":2,"adherencia":5,"nota":"Todo en orden"}"#
+            senales = #"["ninguno"]"#
+            catalogo = #""general""#
+        }
+    }
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let f = pedido.url?.path.components(separatedBy: "/").last ?? ""
+        let cuerpo = (pedido.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]) ?? [:]
+        let hoy = FechaLocal.hoy(), lunes = FotosProgreso.lunes(hoy)
+        let texto: String = candado.withLock {
+            switch f {
+            case "mypump_get_app_config": return #"{"check_guiado":\#(caso != "apagado")}"#
+            case "mypump_check_guiado_get":
+                return #"{"activo":true,"en_ciclo":\#(caso == "ciclo"),"semana":"\#(lunes)","catalogo":\#(catalogo),"senales":\#(senales)}"#
+            case "mypump_check_guiado_guardar":
+                if let r = cuerpo["p_respuestas"] as? [String: Any], let d = try? JSONSerialization.data(withJSONObject: r["senales"] ?? []) {
+                    senales = String(decoding: d, as: UTF8.self)
+                    catalogo = "\"\(r["catalogo"] as? String ?? "general")\""
+                }
+                return "true"
+            case "mypump_get_checkin_semana": return check.map { "[\($0)]" } ?? "[]"
+            case "mypump_guardar_checkin":
+                let n = { (k: String) in (cuerpo[k] as? NSNumber)?.intValue ?? 0 }
+                let nota = (cuerpo["p_nota"] as? String).flatMap { try? JSONSerialization.data(withJSONObject: [$0]) }
+                    .map { String(String(decoding: $0, as: UTF8.self).dropFirst().dropLast()) } ?? "null"
+                let fila = #"{"semana_lunes":"\#(lunes)","energia":\#(n("p_energia")),"descanso":\#(n("p_descanso")),"hambre":\#(n("p_hambre")),"adherencia":\#(n("p_adherencia")),"nota":\#(nota)}"#
+                check = fila
+                return "[\(fila)]"
+            case "mypump_get_salud":
+                // Una semana de pesos para la media de 7 días (ayer hacia atrás) y lo que se cargue hoy.
+                let n = DiaCalendario.numero(hoy) ?? 0
+                var filas = (1...7).map { i in #"{"fecha":"\#(DiaCalendario.texto(n - i))","tipo":"peso_kg","valor":\#(78.0 + Double(i % 3) * 0.2),"fuente":"manual"}"# }
+                filas += pesos.map { #"{"fecha":"\#($0.key)","tipo":"peso_kg","valor":\#($0.value),"fuente":"manual"}"# }
+                return "[" + filas.joined(separator: ",") + "]"
+            case "mypump_ingest_salud":
+                for r in cuerpo["p_registros"] as? [[String: Any]] ?? [] {
+                    if let fecha = r["fecha"] as? String, let v = (r["valor"] as? NSNumber)?.doubleValue { pesos[fecha] = v }
+                }
+                return "1"
+            case "mypump_get_fotos_progreso":
+                guard caso == "enviado" else { return "[]" }
+                return "[" + FotosProgreso.poses.map { #"{"semana_lunes":"\#(lunes)","pose":"\#($0.clave)","tomada_el":"\#(lunes)","created_at":"\#(lunes)T12:00:00+00:00","storage_path":"p/\#($0.clave).jpg"}"# }.joined(separator: ",") + "]"
+            case "urls": return #"{"ok":true,"fotos":[]}"#
+            default:
+                if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
+                   let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? String(contentsOf: u, encoding: .utf8) { return d }
+                return "[]"
+            }
+        }
+        if caso == "sinServidor", f.hasPrefix("mypump_check_guiado") {
+            return (Data(#"{"code":"PGRST202","message":"no existe"}"#.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 404, httpVersion: nil, headerFields: nil)!)
+        }
+        return (Data(texto.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
 }
 #endif

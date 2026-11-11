@@ -12,6 +12,8 @@ struct FotosSemana: View {
     let muestras: [FotoProgreso]
     /// Para el pie del comparador ("8 semanas · −2,4 kg").
     let peso: [PesoCorporal.Punto]
+    /// Solo los tres marcos y su mensaje (el paso de fotos del check guiado): la misma subida, sin encabezado ni galería.
+    var soloMarcos = false
     @State private var mensaje: String?
     @State private var galeria = false
     @Environment(\.dynamicTypeSize) private var tamañoLetra
@@ -36,9 +38,38 @@ struct FotosSemana: View {
     }
 
     var body: some View {
+        if soloMarcos {
+            VStack(alignment: .leading, spacing: Espacio.m) { marcos; mensajeDeSubida }
+                .animation(.snappy, value: mensaje)
+                .task(id: fotos.count) { if let modelo, !modelo.fotos.isEmpty { await modelo.firmar() } }
+        } else {
+            completa
+        }
+    }
+
+    /// Con letra de accesibilidad, los tres marcos pasan a ser filas (no entran las palabras).
+    private var marcos: some View {
+        let disposicion = tamañoLetra.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: Espacio.xs))
+            : AnyLayout(HStackLayout(spacing: Espacio.s))
+        return disposicion {
+            ForEach(FotosProgreso.poses, id: \.clave) { pose in lugar(pose) }
+        }
+    }
+
+    @ViewBuilder private var mensajeDeSubida: some View {
+        if let mensaje {
+            Text(mensaje)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(mensaje.hasPrefix("No") || mensaje.hasPrefix("Esa") || mensaje.hasPrefix("Hay") ? Color.alerta : Color.marcaTexto)
+                .transition(.opacity)
+        }
+    }
+
+    private var completa: some View {
         let semanas = FotosProgreso.semanas(fotos)
         let racha = FotosProgreso.racha(fotos)
-        VStack(alignment: .leading, spacing: Espacio.s) {
+        return VStack(alignment: .leading, spacing: Espacio.s) {
             EncabezadoSeccion(titulo: "Fotos de la semana", detalle: hechas.count == 3 ? "Completas" : "\(hechas.count)/3")
             VStack(alignment: .leading, spacing: Espacio.m) {
                 if FotosProgreso.mostrarAviso(cargadas: modelo?.cargadas ?? true, posesDeLaSemana: hechas) { avisoFotos }
@@ -51,20 +82,8 @@ struct FotosSemana: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
-                // Con letra de accesibilidad, los tres marcos pasan a ser filas (no entran las palabras).
-                let disposicion = tamañoLetra.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(spacing: Espacio.xs))
-                    : AnyLayout(HStackLayout(spacing: Espacio.s))
-                disposicion {
-                    ForEach(FotosProgreso.poses, id: \.clave) { pose in lugar(pose) }
-                }
-
-                if let mensaje {
-                    Text(mensaje)
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(mensaje.hasPrefix("No") || mensaje.hasPrefix("Esa") || mensaje.hasPrefix("Hay") ? Color.alerta : Color.marcaTexto)
-                        .transition(.opacity)
-                }
+                marcos
+                mensajeDeSubida
 
                 // F6 (auditoría 10/11): la foto que el servidor rechazó queda a la vista.
                 if let modelo, !modelo.rechazadas.isEmpty {
