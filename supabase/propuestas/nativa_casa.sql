@@ -130,10 +130,9 @@ BEGIN
   IF FOUND THEN
     IF v_fila.lugar = v_lugar THEN RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'id', v_fila.id, 'estado', CASE WHEN v_fila.estado = 'error' THEN 'enviado' ELSE v_fila.estado END, 'lugar', v_fila.lugar); END IF;
     IF v_fila.estado <> 'borrador' THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'en_curso'); END IF;
-    -- Casa es siempre una carga completa: no hay «falta algo» sobre un gimnasio que no es el suyo.
-    UPDATE mypump_gimnasio SET lugar = v_lugar, modo = CASE WHEN p_casa THEN 'completa' ELSE modo END,
-           base_id = CASE WHEN p_casa THEN NULL ELSE base_id END, actualizado_en = NOW()
-     WHERE id = v_fila.id;
+    -- Solo cambia el lugar. `modo` y `base_id` no se tocan acá: si era un «Falta algo» y prendió el interruptor por
+    -- error, al apagarlo sigue siendo el mismo «Falta algo». Casa pasa a carga completa recién al enviarla.
+    UPDATE mypump_gimnasio SET lugar = v_lugar, actualizado_en = NOW() WHERE id = v_fila.id;
     RETURN jsonb_build_object('ok', TRUE, 'ya', FALSE, 'id', v_fila.id, 'estado', 'borrador', 'lugar', v_lugar);
   END IF;
   -- Sin carga abierta: apagar no abre nada (para volver al gimnasio se usa «Cambié de gimnasio», como siempre).
@@ -200,6 +199,8 @@ BEGIN
 
   UPDATE mypump_gimnasio SET
     estado = 'a_revisar',
+    -- Casa es siempre una carga completa: no hay «falta algo» sobre un gimnasio que no es el suyo.
+    modo = 'completa', base_id = NULL,
     momento = CASE WHEN EXISTS (SELECT 1 FROM mypump_rutinas r WHERE r.cliente_id = v_cliente_id AND r.estado = 'activa') THEN 'con_plan' ELSE 'pre_entrega' END,
     casa = jsonb_build_object('equipos', v_equipos, 'sin_equipo', COALESCE(p_sin_equipo, FALSE)),
     inventario = jsonb_build_object('lugar', 'casa', 'equipos', v_inv),

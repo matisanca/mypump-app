@@ -66,7 +66,7 @@ SET search_path = public
 AS $$
   SELECT p IS NULL OR NOT (
     translate(lower(p), 'áéíóúüàèìòù', 'aeiouuaeiou')
-      ~ '(renov|recompra|venc|coach|entrenador|inteligencia artificial|pausa|vacacion|cuota|precio|descuento|oferta|(^|[^a-z])promo(s|cion|ciones)?([^a-z]|$)|(^|[^a-z])pag[oa]s?([^a-z]|$)|(^|[^a-z])ia([^a-z]|$))'
+      ~ '(renov|recompra|venc|coach|entrenador|inteligencia artificial|pausa|vacacion|cuota|precio|descuento|oferta|(^|[^a-z])promo(s|cion|ciones)?([^a-z]|$)|(^|[^a-z])pag[oa]s?([^a-z]|$)|(^|[^a-z])ia([^a-z]|$)|(^|[^a-z])rir([^a-z]|$)|[0-9]{1,2}/[0-9]{1,2}|quedan? [0-9]+ (dia|semana|mes))'
   );
 $$;
 
@@ -240,7 +240,7 @@ BEGIN
   IF v_fila.estado = 'agendado' THEN RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'estado', 'agendado'); END IF;
   IF v_fila.estado = 'pedido' THEN
     -- Reintento, o corrección mientras nadie lo leyó. Ya tomado, queda como está: no se avisa dos veces.
-    IF v_fila.pedido_id <> p_id AND v_fila.tomado_en IS NULL AND v_resp <> v_fila.respuestas THEN
+    IF v_fila.pedido_id <> p_id AND v_fila.tomado_en IS NULL AND v_resp <> '{}'::JSONB AND v_resp <> v_fila.respuestas THEN
       UPDATE mypump_fin_plan SET respuestas = v_resp, actualizado_en = NOW() WHERE cliente_id = v_cliente_id;
     END IF;
     RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'estado', 'pedido');
