@@ -161,7 +161,7 @@ struct RevisionView: View {
                                  pasoInicial: apertura.paso)
             }
         }
-                .onAppear { if DemoUI.abrir == "misdatos" || DemoUI.abrir == "novedades" { misDatos = true } }
+        .onAppear { if DemoUI.abrir == "misdatos" || DemoUI.abrir == "novedades" { misDatos = true } }
         .onChange(of: navegacion?.misDatos ?? false, initial: true) { _, abrir in
             guard abrir else { return }
             misDatos = true

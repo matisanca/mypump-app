@@ -38,25 +38,27 @@ struct EntrenoView: View {
                     }
                 case .sinRutina:
                     ScrollView {
-                        TarjetaFotosInicio(soloSiFaltan: true).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
-                        TarjetaRecorrido().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
-                        TarjetaPresion().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
-                        TarjetaGimnasio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
-                        // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
-                        if let g = GuiaUI.modelo {
-                            TarjetaVideollamadaEntreno(modelo: g, listaPrevia: ListaPreviaUI.dentro(modelo, guia: g), abrirGuia: abrirGuia)
-                                .padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                        // Sin rutina, las mismas tarjetas de arriba y en el mismo orden que con rutina (`ListaEntreno`): en el
+                        // flujo nuevo la guía, la videollamada y el contrato pueden llegar antes que el plan.
+                        Group {
+                            TarjetaPresion()
+                            if let g = GuiaUI.modelo {
+                                TarjetaVideollamadaEntreno(modelo: g, listaPrevia: ListaPreviaUI.dentro(modelo, guia: g), abrirGuia: abrirGuia)
+                            }
+                            if let l = ListaPreviaUI.sola(modelo, guia: GuiaUI.modelo) {
+                                TarjetaListaPrevia(vista: l, abrirGuia: abrirGuiaSiHay)
+                            }
+                            TarjetaRecorrido()
+                            TarjetaEstudiosInicio()
+                            // Sin rutina no hay «más abajo»: la guía va en el lugar de la destacada, sea cual sea su estilo.
+                            if let g = GuiaUI.modelo { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
+                            TarjetaFotosInicio(soloSiFaltan: true)
+                            TarjetaGimnasio()
+                            TarjetaNovedadPlan()
+                            // El contrato sin firmar (palanca `contrato_app`): justo el pre-inicio, antes de que haya rutina.
+                            AvisoContratoPendiente()
                         }
-                        if let l = ListaPreviaUI.sola(modelo, guia: GuiaUI.modelo) {
-                            TarjetaListaPrevia(vista: l, abrirGuia: abrirGuiaSiHay)
-                                .padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
-                        }
-                        // Un estudio pedido o una orden nueva, también sin rutina y en el mismo orden: después del link de
-                        // la entrega y antes de la guía.
-                        TarjetaEstudiosInicio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
-                        if let g = GuiaUI.modelo {
-                            TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
-                        }
+                        .padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         ContentUnavailableView("Todavía no hay rutina", systemImage: "dumbbell",
                                                description: Text("Cuando Mati publique tu rutina, la vas a ver acá."))
                             .padding(.top, 80)
@@ -223,8 +225,6 @@ private struct ListaEntreno: View {
         ScrollViewReader { lector in
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
-                // «Tu guía» mientras falte ver algo: verde y primera, arriba de todo (pedido de Mati, 4-nov). Abajo,
-                // el aviso de Revisión.
                 // «Tu presión», primera de todas mientras haya algo para hacer. Es una tarjeta más: no toca ni condiciona la rutina.
                 TarjetaPresion()
                 // 2.3.0: la videollamada fija arriba, desde que se agenda hasta que termina (aunque la tarjeta de la guía esté oculta).

@@ -37,6 +37,11 @@ final class Navegacion {
 
     /// NOT-03: train/diet/progress/myday/revision/salud/estudios; lo desconocido ya llega como Chat.
     func ir(a destino: DestinoAviso) {
+        // Un aviso de otro destino (chat, dieta…) con Presión abierta: la hoja se cierra, si no tapaba a donde se fue.
+        if case .presion = destino {} else {
+            presionAbierta = false
+            presionDirecta = false
+        }
         switch destino {
         case .entreno: pestaña = .entreno
         case .dieta: pestaña = .dieta

@@ -96,7 +96,15 @@ class Navegacion(
     presion: Boolean = false,
     presionDirecta: Boolean = false,
 ) {
-    var pestana by mutableStateOf(pestana)
+    private var pestanaElegida by mutableStateOf(pestana)
+
+    /** Al salir de Revisión se olvida el pedido de las fotos de inicio que no se pudo abrir (como el `didSet` de iOS). */
+    var pestana: Pestana
+        get() = pestanaElegida
+        set(valor) {
+            pestanaElegida = valor
+            if (valor != Pestana.REVISION) fotosInicio = false
+        }
     var misDatos by mutableStateOf(misDatos)
 
     /** «Tu guía», abierta desde su tarjeta en Entreno (cuelga de Entreno, como Mis datos de Revisión). */
@@ -194,6 +202,8 @@ class Navegacion(
 
     /** NOT-03 / ACC-09: train, diet, progress, myday, revision, salud; lo desconocido ya llega como Chat. */
     fun ir(destino: DestinoAviso) {
+        // Un aviso de otro destino (chat, dieta…) con Presión abierta: se cierra, si no tapaba a donde se fue. Como iOS.
+        if (destino != DestinoAviso.PRESION) cerrarPresion()
         when (destino) {
             DestinoAviso.ENTRENO -> pestana = Pestana.ENTRENO
             DestinoAviso.DIETA -> pestana = Pestana.DIETA
