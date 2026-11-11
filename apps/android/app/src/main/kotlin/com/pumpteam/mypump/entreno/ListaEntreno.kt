@@ -95,7 +95,13 @@ import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloEntreno
 import com.pumpteam.mypump.diseno.AnchoLectura
+import com.pumpteam.mypump.diseno.AvanceSegmentos
+import com.pumpteam.mypump.diseno.BotonAccion
 import com.pumpteam.mypump.diseno.BotonSecundario
+import com.pumpteam.mypump.diseno.DatoHeroe
+import com.pumpteam.mypump.diseno.Heroe
+import com.pumpteam.mypump.diseno.Letra
+import com.pumpteam.mypump.diseno.apoyo
 import com.pumpteam.mypump.diseno.BotonVolver
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
@@ -210,8 +216,15 @@ fun ListaEntreno(
                     TarjetaFotosInicioDe(modelo, soloSiFaltan = true)
                     TarjetaGimnasioDe(modelo)
                     com.pumpteam.mypump.novedades.TarjetaNovedadDe(modelo)
+                    // Los días arriba de la tarjeta principal: se elige el día y la tarjeta lo muestra.
+                    // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
+                    if (motor.dias.size > 1) SelectorDias(motor, v)
                     // Hasta dónde llega la cabecera (con la tarjeta arriba, no es solo su alto): el título pasa a la barra después.
-                    Cabecera(motor, v, titulo, Modifier.onGloballyPositioned { altoCabecera = (it.positionInParent().y + it.size.height).toInt() })
+                    Cabecera(
+                        motor, v, titulo,
+                        alCerrarDia = { cerrando = true },
+                        modifier = Modifier.onGloballyPositioned { altoCabecera = (it.positionInParent().y + it.size.height).toInt() },
+                    )
                     if (deEjemplo) {
                         // Con cuenta y un motor de ejemplo (Mati todavía no publicó el plan): el aviso de la web (ACC-08).
                         AvisoTenido(
@@ -228,8 +241,6 @@ fun ListaEntreno(
                     com.pumpteam.mypump.metas.PumpDelDiaDe(modelo)
                     // El contrato sin firmar: un renglón que lleva a Documentos (no frena nada).
                     com.pumpteam.mypump.misdatos.AvisoContratoPendiente(modelo)
-                    // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
-                    if (motor.dias.size > 1) SelectorDias(motor, v)
                     if (motor.vacio) {
                         DiaVacio()
                     } else {
@@ -283,24 +294,32 @@ fun BarraEntreno(
 
 // ── Cabecera ──
 
+/**
+ * La tarjeta principal del día (la firma de Entreno, igual en claro y en oscuro): el nombre, cómo voy (hechos, tiempo y lo
+ * que resta, con un segmento por ejercicio) y el botón del día o el reloj de la sesión. Antes eran cuatro bloques sueltos.
+ */
 @Composable
-private fun Cabecera(motor: ModeloEntreno, v: VistaEntreno, titulo: String, modifier: Modifier = Modifier) {
-    val c = MyPump.colores
+private fun Cabecera(motor: ModeloEntreno, v: VistaEntreno, titulo: String, alCerrarDia: () -> Unit, modifier: Modifier = Modifier) {
     val d = v.dia.dia
     val total = motor.totalEjercicios
     val hechos = motor.hechos
     val cerrado = v.dia.diaFinalizado || motor.hecho(d)
     val escala = LocalDensity.current.fontScale
-    Row(
-        modifier = modifier.fillMaxWidth().padding(top = Espacio.xs).testTag("entreno-cabecera"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Espacio.m),
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    var tic by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            tic++
+        }
+    }
+    val minutos = remember(tic / 30, v) { motor.minutos }
+    Heroe(modifier.testTag("entreno-cabecera")) {
+        val c = MyPump.colores
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Ceja("Día ${motor.numero(d)} · Semana ${motor.semanaMostrada} de ${motor.totalMostrado}", Modifier.testTag("entreno-semana"))
             if (escala >= 1.3f) {
                 // Con letra grande el nombre del día baja de renglón en vez de achicarse.
-                Text(titulo, style = Letras.tituloDia, color = c.texto, maxLines = 3, modifier = Modifier.semantics { heading() }.testTag("entreno-titulo"))
+                Text(titulo, style = Letras.tituloDia.copy(fontSize = 34.sp, lineHeight = 40.sp), color = c.texto, maxLines = 3, modifier = Modifier.semantics { heading() }.testTag("entreno-titulo"))
             } else {
                 BasicText(
                     titulo,
@@ -310,36 +329,31 @@ private fun Cabecera(motor: ModeloEntreno, v: VistaEntreno, titulo: String, modi
                     modifier = Modifier.semantics { heading() }.testTag("entreno-titulo"),
                 )
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                Icon(
-                    if (cerrado) Iconos.Verificado else Iconos.Lista,
-                    contentDescription = null,
-                    tint = if (cerrado) c.marcaTexto else c.textoSecundario,
-                    modifier = Modifier.size(15.dp),
-                )
+        }
+        Column(
+            Modifier.clearAndSetSemantics { contentDescription = "$hechos de $total ejercicios hechos" }.testTag("avance-dia"),
+            verticalArrangement = Arrangement.spacedBy(Espacio.s),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                DatoHeroe("$hechos/$total", "Hechos", Modifier.weight(1f).testTag("entreno-hechos"))
+                DatoHeroe(minutos?.let { "$it min" } ?: "—", "Tiempo", Modifier.weight(1f))
+                DatoHeroe("${total - hechos} ej", "Restan", Modifier.weight(1f))
+            }
+            AvanceSegmentos(total, hechos, alto = 6.dp)
+        }
+        if (cerrado) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Iconos.Verificado, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
                 Text(
-                    // iOS dice "1 ejercicios" con un solo ejercicio; acá va en singular.
-                    if (cerrado) "Día cerrado esta semana" else if (total == 1) "1 ejercicio" else "$total ejercicios",
-                    style = Letras.subtitulo.copy(fontWeight = FontWeight.Medium),
-                    color = if (cerrado) c.marcaTexto else c.textoSecundario,
+                    "Día cerrado esta semana",
+                    style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold),
+                    color = c.marcaTexto,
                     modifier = Modifier.testTag("entreno-cantidad"),
                 )
             }
         }
-        val lado = (68f * escala).coerceAtMost(108f).dp
-        AnilloProgreso(
-            fraccion = hechos.toDouble() / maxOf(total, 1),
-            grosor = 7.dp,
-            modifier = Modifier
-                .size(lado)
-                .clearAndSetSemantics { contentDescription = "$hechos de $total ejercicios hechos" }
-                .testTag("anillo-dia"),
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("$hechos", style = Numeros.chico.merge(Letras.cifras), color = c.texto, maxLines = 1)
-                Text("de $total", style = Letras.caption2.copy(fontWeight = FontWeight.Medium), color = c.textoSecundario, maxLines = 1)
-            }
-        }
+        // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre).
+        if (!motor.vacio && !motor.todoHecho) Cronometro(motor, remember(tic, v) { motor.cronometro() }, alCerrarDia)
     }
 }
 
@@ -389,8 +403,7 @@ private fun BotonDia(motor: ModeloEntreno, d: Dia, activo: Boolean, hecho: Boole
     val alcance = LocalAlcanceApp.current
     val haptico = LocalHapticFeedback.current
     val corto = Bonito.titulo(motor.nombreCorto(d)).ifEmpty { "Día" }
-    val forma = RoundedCornerShape(Radio16)
-    val invertido = if (c.oscuro) Color.Black else Color.White
+    val forma = CircleShape
     val descripcion = buildString {
         append("Día ${motor.numero(d)}, $corto")
         if (hecho) append(", cerrado esta semana")
@@ -401,15 +414,16 @@ private fun BotonDia(motor: ModeloEntreno, d: Dia, activo: Boolean, hecho: Boole
             modifier = Modifier
                 .defaultMinSize(minWidth = 70.dp, minHeight = 44.dp)
                 .clip(forma)
-                .background(if (activo) c.texto else c.tarjeta)
-                .then(if (activo) Modifier else Modifier.border(1.dp, c.borde, forma))
+                .background(c.tarjeta)
+                // La selección es un anillo verde, como la serie actual de la carga: el negro es de la tarjeta principal.
+                .border(if (activo) 2.dp else 1.dp, if (activo) c.marca else c.borde, forma)
                 .clickable(role = Role.Tab) {
                     val id = d.id ?: return@clickable
                     if (activo) return@clickable
                     haptico.performHapticFeedback(HapticFeedbackType.SegmentTick)
                     alcance.launch { motor.cambiarDia(id) }
                 }
-                .padding(vertical = Espacio.xs, horizontal = 14.dp)
+                .padding(vertical = Espacio.xs, horizontal = 18.dp)
                 .semantics {
                     contentDescription = descripcion
                     selected = activo
@@ -421,10 +435,10 @@ private fun BotonDia(motor: ModeloEntreno, d: Dia, activo: Boolean, hecho: Boole
             Text(
                 "DÍA ${motor.numero(d)}",
                 style = Letras.caption2.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp),
-                color = if (activo) invertido.copy(alpha = 0.65f) else c.textoSecundario,
+                color = if (activo) c.marcaTexto else c.apoyo,
                 maxLines = 1,
             )
-            Text(corto, style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = if (activo) invertido else c.texto, maxLines = 1)
+            Text(corto, style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = c.texto, maxLines = 1)
         }
         Row(Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-6).dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             if (mensajes > 0) {
@@ -441,8 +455,6 @@ private fun BotonDia(motor: ModeloEntreno, d: Dia, activo: Boolean, hecho: Boole
     }
 }
 
-private val Radio16 = 16.dp
-
 // ── El cuerpo del día ──
 
 @Composable
@@ -458,11 +470,7 @@ private fun CuerpoDia(
     val alcance = LocalAlcanceApp.current
     var trabajando by remember { mutableStateOf(false) }
     val banner = motor.banner
-    // U3 (auditoría del 10/11): «Empezar entrenamiento» va antes de los carteles. Con la tarjeta de la guía y el de
-    // calibración, quedaba debajo de la barra de pestañas. Con el día cerrado o todo hecho no hay cronómetro (está la
-    // tarjeta de cierre).
-    if (!motor.todoHecho) Cronometro(motor, v, alCerrarDia)
-
+    // «Empezar entrenamiento» y el reloj van en la tarjeta principal, antes de los carteles (U3, auditoría del 10/11).
     if (banner.cambian > 0) {
         AvisoTenido(
             Iconos.Tendencia,
@@ -499,7 +507,7 @@ private fun CuerpoDia(
         primero += b.ejercicios.size
     }
 
-    if (motor.todoHecho) TarjetaCierre(motor, v, alCerrarDia) else ResumenSesion(motor, v, alCerrarDia)
+    if (motor.todoHecho) TarjetaCierre(motor, v, alCerrarDia) else ResumenSesion(motor, alCerrarDia)
 
     if (motor.puedeAvanzar) {
         // "Pasar a Semana N" con la confirmación de la web (cambia si el día está incompleto). Si no salió, "Recargar".
@@ -555,25 +563,17 @@ private fun CuerpoDia(
     }
 }
 
-/** "Empezar entrenamiento", la sesión en curso con su tiempo, o "Sin cerrar" con más de 6 h (SES-03). */
+/** Dentro de la tarjeta principal: "Empezar entrenamiento", la sesión en curso con su tiempo, o "Sin cerrar" con más de 6 h (SES-03). */
 @Composable
-private fun Cronometro(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: () -> Unit) {
+private fun Cronometro(motor: ModeloEntreno, cronometro: TiempoEntreno.Cronometro?, alCerrarDia: () -> Unit) {
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
     val haptico = LocalHapticFeedback.current
-    var tic by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1_000)
-            tic++
-        }
-    }
-    val cronometro = remember(tic, v) { motor.cronometro() }
     when (cronometro) {
-        TiempoEntreno.Cronometro.Empezar -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-            BotonConIcono(
+        TiempoEntreno.Cronometro.Empezar -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            BotonAccion(
                 TextosEntreno.EMPEZAR,
-                Iconos.Play,
+                icono = Iconos.Play,
                 modifier = Modifier.testTag("empezar-entrenamiento"),
                 alTocar = {
                     haptico.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -582,7 +582,7 @@ private fun Cronometro(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: () ->
             )
             Text(
                 "Arranca el cronómetro de la sesión. O empezá directo: corre solo con tu primera serie.",
-                style = Letras.caption.copy(fontSize = 13.sp),
+                style = Letras.caption.copy(fontSize = 13.sp, lineHeight = 18.sp),
                 color = c.textoSecundario,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
@@ -590,16 +590,15 @@ private fun Cronometro(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: () ->
         }
         is TiempoEntreno.Cronometro.EnCurso ->
             CronometroSesion(cronometro.texto, if (cronometro.porBoton) null else "Arrancó con tu primera serie", alCerrarDia)
-        TiempoEntreno.Cronometro.SinCerrar -> Tarjeta(Modifier.testTag("sin-cerrar")) {
+        TiempoEntreno.Cronometro.SinCerrar -> Column(Modifier.fillMaxWidth().testTag("sin-cerrar"), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
                 Icon(Iconos.Reloj, contentDescription = null, tint = c.alerta, modifier = Modifier.size(20.dp))
-                Text("Sin cerrar", style = MaterialTheme.typography.titleMedium)
+                Text("Sin cerrar", style = MaterialTheme.typography.titleMedium, color = c.texto)
             }
             Text("Quedó abierta de antes. No te preocupes, no perdiste nada.", style = Letras.subtitulo, color = c.textoSecundario)
             BotonSecundario(
                 "Empezar de nuevo",
                 alTocar = { motor.reiniciarCronometro() },
-                compacto = true,
                 tono = c.marcaTexto,
                 modifier = Modifier.testTag("empezar-de-nuevo"),
             )
@@ -608,36 +607,41 @@ private fun Cronometro(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: () ->
     }
 }
 
-/** La sesión en curso: punto que late, "EN CURSO" y el tiempo, y "Cerrar". */
+/** La sesión en curso: punto que late, "EN CURSO", el tiempo como número grande de la tarjeta, y "Cerrar". */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CronometroSesion(texto: String, detalle: String?, alCerrar: () -> Unit) {
     val c = MyPump.colores
     val reducir = reducirMovimiento()
-    Row(
-        modifier = Modifier.fillMaxWidth().superficieTarjeta().padding(Espacio.m).testTag("cronometro"),
-        verticalAlignment = Alignment.CenterVertically,
+    FlowRow(
+        modifier = Modifier.fillMaxWidth().testTag("cronometro"),
+        verticalArrangement = Arrangement.spacedBy(Espacio.xs),
         horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
-            if (!reducir) {
-                val pulso = rememberInfiniteTransition(label = "pulso")
-                val f by pulso.animateFloat(0f, 1f, infiniteRepeatable(tween(1_400, easing = FastOutLinearInEasing), RepeatMode.Restart), label = "late")
-                Box(
-                    Modifier
-                        .size(10.dp)
-                        .scale(1f + 1.2f * f)
-                        .graphicsLayer { alpha = 1f - f }
-                        .border(2.dp, c.marcaVivo.copy(alpha = 0.5f), CircleShape),
-                )
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+                if (!reducir) {
+                    val pulso = rememberInfiniteTransition(label = "pulso")
+                    val f by pulso.animateFloat(0f, 1f, infiniteRepeatable(tween(1_400, easing = FastOutLinearInEasing), RepeatMode.Restart), label = "late")
+                    Box(
+                        Modifier
+                            .size(10.dp)
+                            .scale(1f + 1.2f * f)
+                            .graphicsLayer { alpha = 1f - f }
+                            // El anillo que late se apaga con `alpha` de la capa: el color va lleno (en oscuro, verde lleno o nada).
+                            .border(2.dp, c.marcaVivo, CircleShape),
+                    )
+                }
+                Box(Modifier.size(10.dp).clip(CircleShape).background(c.marcaVivo))
             }
-            Box(Modifier.size(10.dp).clip(CircleShape).background(c.marcaVivo))
+            Column(Modifier.semantics(mergeDescendants = true) {}) {
+                Ceja("En curso")
+                Text(texto, style = Letra.heroe.copy(fontSize = 44.sp, lineHeight = 48.sp), color = c.texto, maxLines = 1, modifier = Modifier.testTag("cronometro-tiempo"))
+                if (detalle != null) Text(detalle, style = Letras.caption, color = c.textoSecundario)
+            }
         }
-        Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
-            Ceja("En curso")
-            Text(texto, style = Numeros.mediano.merge(Letras.cifras), color = c.texto, modifier = Modifier.testTag("cronometro-tiempo"))
-            if (detalle != null) Text(detalle, style = Letras.caption, color = c.textoSecundario)
-        }
-        BotonConIcono("Cerrar", Iconos.Bandera, alTocar = alCerrar, principal = false, compacto = true)
+        BotonConIcono("Cerrar", Iconos.Bandera, alTocar = alCerrar, principal = false, compacto = true, modifier = Modifier.align(Alignment.CenterVertically).defaultMinSize(minHeight = 48.dp))
     }
 }
 
@@ -880,26 +884,10 @@ private fun TarjetaCierre(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: ()
     }
 }
 
-/** El pie mientras se entrena: hechos, tiempo y lo que resta, y cerrar (habilitado con la sesión iniciada). */
+/** El pie mientras se entrena: cerrar el día (habilitado con la sesión iniciada). Hechos, tiempo y lo que resta van en la tarjeta principal. */
 @Composable
-private fun ResumenSesion(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: () -> Unit) {
-    var tic by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(30_000)
-            tic++
-        }
-    }
-    val minutos = remember(tic, v) { motor.minutos }
-    val restan = motor.totalEjercicios - motor.hechos
-    Tarjeta(Modifier.testTag("resumen-sesion"), espaciado = Espacio.m) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            CeldaResumen("Hechos", "${motor.hechos}/${motor.totalEjercicios}", Modifier.weight(1f))
-            SeparadorVertical()
-            CeldaResumen("Tiempo", minutos?.let { "$it min" } ?: "—", Modifier.weight(1f))
-            SeparadorVertical()
-            CeldaResumen("Restan", "$restan ej", Modifier.weight(1f))
-        }
+private fun ResumenSesion(motor: ModeloEntreno, alCerrarDia: () -> Unit) {
+    Box(Modifier.fillMaxWidth().testTag("resumen-sesion")) {
         BotonConIcono(
             "Terminar el entrenamiento de hoy",
             Iconos.Bandera,
