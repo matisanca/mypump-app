@@ -140,6 +140,12 @@ def main():
                  uno(cur, prohibido, ("Laboratorio. Insulinemia basal, Somatotrofina, hemograma. Finasteride. Diagnóstico: resistencia a la insulina. Sin cobertura",
                                       json.dumps(["Insulinemia basal", "Somatotrofina"]))) is False
                  and uno(cur, prohibido, ("Laboratorio. Insulinemia basal. Aplicar insulina. Sin cobertura", json.dumps(["Insulinemia basal"]))) is True)
+        chequear("«mg» o «ui» como práctica no blanquean una dosis",
+                 uno(cur, prohibido, ("Laboratorio. Hemograma. 250 mg. Sin cobertura", json.dumps(["mg"]))) is True
+                 and uno(cur, prohibido, ("Laboratorio. Hemograma. 5000 ui. Sin cobertura", json.dumps(["ui"]))) is True)
+        chequear("insulinorresistencia e insulinoresistencia son diagnóstico",
+                 uno(cur, prohibido, ("Laboratorio. Hemograma. Diagnóstico: insulinorresistencia. Sin cobertura", "[]")) is False
+                 and uno(cur, prohibido, ("Laboratorio. Hemograma. Diagnóstico: insulinoresistencia. Sin cobertura", "[]")) is False)
         print("▸ Pedidos")
         pedir = ("SELECT mypump_estudios_pedir(%s, %s, %s, %s, %s::date, 'ensayo', %s::date, %s, %s::jsonb)")
         r = uno(cur, pedir, (CUENTA, "laboratorio", "orden", "ord-1", "2030-01-10", None, None, json.dumps(["Hemograma completo"])))
