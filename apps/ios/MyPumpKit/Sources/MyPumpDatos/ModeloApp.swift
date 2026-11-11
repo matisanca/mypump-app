@@ -125,6 +125,8 @@ public final class ModeloApp {
     public private(set) var guia: ModeloGuia?
     /// La pestaña Suplementación (2.1.0): aparece solo si `mypump_suplementacion` devolvió una fila con ítems.
     public private(set) var suplementacion: ModeloSuplementacion?
+    /// «Novedades de tu plan» (2.3.0): existe con cuenta; solo compara y muestra con la palanca `novedades_plan` prendida.
+    public private(set) var novedades: ModeloNovedades?
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet {
@@ -256,6 +258,7 @@ public final class ModeloApp {
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
+        novedades = nil
         esDemo = false
         sinRedEn = []
         fase = .sinToken
@@ -302,11 +305,18 @@ public final class ModeloApp {
         if let e = entreno { Task { await e.cargar() } }
     }
 
+    /// La demo con una novedad de muestra (capturas y revisión de diseño). Solo en la demo: nunca toca una cuenta.
+    public func usarNovedadesDeMuestra(_ m: ModeloNovedades) {
+        guard esDemo else { return }
+        novedades = m
+    }
+
     /// Salir de la demo vuelve a la bienvenida (o a la cuenta, si había una guardada).
     public func salirDeDemo() async {
         esDemo = false
         rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; entreno = nil; guia = nil
         suplementacion = nil
+        novedades = nil
         token = almacen.leer()
         if let t = token {
             prepararCuenta(t)
@@ -325,6 +335,7 @@ public final class ModeloApp {
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
+        novedades = nil
     }
 
     /// Hay un mapa de reemplazos de comida sin la marca de migrados: el servidor quizás nunca los vio y, hasta decidirlo, la
@@ -385,6 +396,7 @@ public final class ModeloApp {
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
+        novedades = ModeloNovedades(disco: disco)
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3).
         salud = ModeloSalud(cliente: cliente, token: t, almacen: AlmacenSaludPorCuenta(base: AlmacenSaludDefaults(), cuenta: Disco.huella(t)))
         Task { [weak self] in
@@ -564,6 +576,27 @@ public final class ModeloApp {
         if !desdeCache { cargasConRed += 1 }
         prepararEntreno()
         fase = .listo
+        // «Novedades de tu plan»: lo que llegó contra lo que ya se vio, después de la suplementación. La semilla (si todavía no
+        // hay base) es lo que el teléfono tenía antes de esta carga.
+        if palanca.novedadesPlan, let nov = novedades {
+            func entrada(_ r: Result<JSONValue, ErrorRPC>, _ fila: JSONValue?) -> ModeloNovedades.Entrada {
+                if case .failure = r { return .noLlego }
+                return fila.map { .hay($0) } ?? .ninguna
+            }
+            func guardado(_ v: JSONValue?) -> ModeloNovedades.Entrada {
+                guard let v, v != .null else { return .noLlego }
+                return .hay(v)
+            }
+            let semillaSupl: ModeloNovedades.Entrada = suplementacion?.respuesta.flatMap(ModeloNovedades.json).map { .hay($0) } ?? .noLlego
+            let semilla = (rutina: guardado(copia?.rutina), dieta: guardado(copia?.dieta), suplementacion: semillaSupl)
+            let er = entrada(rr, rutinaJSON), ed = entrada(dd, dietaJSON)
+            let supl = suplementacion
+            Task {
+                await supl?.cargar()
+                guard vigente(), self.novedades === nov else { return }
+                nov.observar(rutina: er, dieta: ed, suplementacion: supl?.entradaNovedades ?? .noLlego, semilla: semilla)
+            }
+        }
         // Suplementación sin esperar a lo demás: decide si la pestaña está (con copia guardada ya se ve desde el arranque).
         if let suplementacion { Task { await suplementacion.cargar() } }
         // El motor que ya arrancó con la copia no se vuelve a cargar, salvo que la rutina haya cambiado: `prepararEntreno`
@@ -750,7 +783,14 @@ public final class ModeloApp {
         // La tarjeta de «Tu guía», que solo lee (`entregas_app_resumen`), sin frenar lo demás.
         if let guia, toca(.guia) { Task { await guia.actualizarResumen() } }
         // Suplementación: Mati la pudo cambiar después de la llamada.
-        if let suplementacion, toca(.suplementacion) { Task { await suplementacion.cargar() } }
+        if let suplementacion, toca(.suplementacion) {
+            let nov = palanca.novedadesPlan ? novedades : nil
+            Task {
+                await suplementacion.cargar()
+                guard let nov, self.novedades === nov else { return }
+                nov.observar(rutina: .noLlego, dieta: .noLlego, suplementacion: suplementacion.entradaNovedades, soloConBase: true)
+            }
+        }
         await outbox?.drenar()
         // Las marcas de hoy se releen en cada vuelta: las pudo cambiar la web u otro teléfono (DIE-05, D25) y es un pedido chico.
         await hidratarMarcas()
@@ -847,6 +887,14 @@ public final class ModeloApp {
                 cargarMarcas()
                 await hidratarDieta()
             }
+        }
+        // «Novedades de tu plan»: lo releído también se compara con lo ya visto. La rutina que no se aplicó (hay un entreno
+        // abierto) no se anuncia todavía: queda para la próxima carga, contra la base.
+        if palanca.novedadesPlan, let nov = novedades {
+            var er = ModeloNovedades.Entrada.noLlego, ed = ModeloNovedades.Entrada.noLlego
+            if aplicarRutina, case .success(let j)? = rr { er = j.primeraFila.map { .hay($0) } ?? .ninguna }
+            if case .success(let j) = dd { ed = j.primeraFila.map { .hay($0) } ?? .ninguna }
+            nov.observar(rutina: er, dieta: ed, suplementacion: .noLlego, soloConBase: true)
         }
         if var c = copia {
             c.ts = Date().timeIntervalSince1970 * 1000

@@ -105,7 +105,7 @@ struct RevisionView: View {
             }
             .navigationDestination(isPresented: $misDatos) { MisDatosView(datos: datos) }
         }
-        .onAppear { if DemoUI.abrir == "misdatos" { misDatos = true } }
+        .onAppear { if DemoUI.abrir == "misdatos" || DemoUI.abrir == "novedades" { misDatos = true } }
         .onChange(of: navegacion?.misDatos ?? false, initial: true) { _, abrir in
             guard abrir else { return }
             misDatos = true

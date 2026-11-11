@@ -277,6 +277,15 @@ class ModeloApp(
     private val _suplementacion = MutableStateFlow<ModeloSuplementacion?>(null)
     val suplementacion: StateFlow<ModeloSuplementacion?> = _suplementacion.asStateFlow()
 
+    /** «Novedades de tu plan» (2.3.0): existe con cuenta; solo compara y se muestra con la palanca `novedades_plan`. */
+    private val _novedades = MutableStateFlow<ModeloNovedades?>(null)
+    val novedades: StateFlow<ModeloNovedades?> = _novedades.asStateFlow()
+
+    /** La demo con novedades de muestra (capturas). Solo en la demo: nunca toca una cuenta. */
+    fun usarNovedadesDeMuestra(m: ModeloNovedades) {
+        if (_esDemo.value) _novedades.value = m
+    }
+
     private val _salud = MutableStateFlow<ModeloSalud?>(null)
     val salud: StateFlow<ModeloSalud?> = _salud.asStateFlow()
 
@@ -479,6 +488,7 @@ class ModeloApp(
         _guia.value?.cerrar()
         _guia.value = null
         _suplementacion.value = null
+        _novedades.value = null
         val t = almacen.leer()
         token = t
         if (t != null) {
@@ -518,6 +528,7 @@ class ModeloApp(
         _guia.value?.cerrar()
         _guia.value = null
         _suplementacion.value = null
+        _novedades.value = null
         _entreno.value = null
     }
 
@@ -560,6 +571,7 @@ class ModeloApp(
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
         _suplementacion.value = ModeloSuplementacion(cliente, t, d, alcance)
+        _novedades.value = ModeloNovedades(d)
         _salud.value?.cancelarEspera()
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3 del 15-oct).
         _salud.value = ModeloSalud(cliente, t, almacen = AlmacenSaludPorCuenta(preferencias, Disco.huella(t)), alcance = alcance)
@@ -809,6 +821,8 @@ class ModeloApp(
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
         // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
         val copia = leerCopia()
+        // «Novedades de tu plan»: lo que el teléfono tenía antes de esta carga, por si todavía no hay base.
+        val suplAntes = disco?.leer(ModeloSuplementacion.ARCHIVO)
         val faltaron = LinkedHashSet<Parte>()
         val rutinaJson = when (rr) {
             is Resultado.Ok -> rr.valor.primeraFila
@@ -865,6 +879,21 @@ class ModeloApp(
             // «Tu guía»: solo el resumen (no marca `abierto_en`); el `get` es solo al abrir la sección.
             launch { _guia.value?.refrescarResumen() }
             launch { _suplementacion.value?.refrescar() }
+        }
+        if (!vigente()) return
+        // «Novedades de tu plan» (palanca `novedades_plan`): lo que llegó contra lo que ya se vio.
+        val nov = _novedades.value
+        if (_palanca.value.novedadesPlan && nov != null) {
+            fun entrada(r: Resultado<*>, fila: ValorJson?): ModeloNovedades.Entrada = when {
+                r is Resultado.Falla -> ModeloNovedades.Entrada.NoLlego
+                fila == null -> ModeloNovedades.Entrada.Ninguna
+                else -> ModeloNovedades.Entrada.Hay(fila.aJson())
+            }
+            fun guardado(v: ValorJson?): ModeloNovedades.Entrada = v?.let { ModeloNovedades.Entrada.Hay(it.aJson()) } ?: ModeloNovedades.Entrada.NoLlego
+            val semilla = Triple(guardado(copia?.rutina), guardado(copia?.dieta),
+                suplAntes?.let { ModeloNovedades.Entrada.Hay(it) } ?: ModeloNovedades.Entrada.NoLlego)
+            nov.observar(entrada(rr, rutinaJson.takeIf { rr is Resultado.Ok }), entrada(dd, dietaJson.takeIf { dd is Resultado.Ok }),
+                _suplementacion.value?.entradaNovedades ?: ModeloNovedades.Entrada.NoLlego, semilla)
         }
         sincronizarGimnasio()
         sincronizarTecnica()
@@ -965,7 +994,15 @@ class ModeloApp(
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }
         // Suplementación: aparte, así no demora lo que sigue (es solo lectura).
-        if (toca(Relectura.SUPLEMENTACION)) _suplementacion.value?.let { m -> alcance.launch { m.refrescar() } }
+        if (toca(Relectura.SUPLEMENTACION)) _suplementacion.value?.let { m ->
+            val nov = if (_palanca.value.novedadesPlan) _novedades.value else null
+            alcance.launch {
+                m.refrescar()
+                if (nov != null && _novedades.value === nov) {
+                    nov.observar(ModeloNovedades.Entrada.NoLlego, ModeloNovedades.Entrada.NoLlego, m.entradaNovedades, soloConBase = true)
+                }
+            }
+        }
         if (toca(Relectura.SALUD)) _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y el historial
         _entreno.value?.alVolverAPrimerPlano()
     }
@@ -1062,6 +1099,14 @@ class ModeloApp(
                 cargarMarcas()
                 hidratarDieta()
             }
+        }
+        // «Novedades de tu plan»: lo releído también se compara con lo ya visto. La rutina que no se aplicó (hay un entreno
+        // abierto) no se anuncia todavía: queda para la próxima carga, contra la base.
+        if (_palanca.value.novedadesPlan) _novedades.value?.let { nov ->
+            fun entrada(r: Resultado<ValorJson>?, vale: Boolean): ModeloNovedades.Entrada =
+                if (r !is Resultado.Ok || !vale) ModeloNovedades.Entrada.NoLlego
+                else r.valor.primeraFila?.let { ModeloNovedades.Entrada.Hay(it.aJson()) } ?: ModeloNovedades.Entrada.Ninguna
+            nov.observar(entrada(rr, aplicarRutina), entrada(dd, true), ModeloNovedades.Entrada.NoLlego, soloConBase = true)
         }
         copia?.let { disco?.guardar(ARCHIVO_COPIA, it.copy(ts = System.currentTimeMillis().toDouble()).aValor()) }
         return rr is Resultado.Ok || dd is Resultado.Ok

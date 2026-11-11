@@ -18,6 +18,8 @@ public final class ModeloSuplementacion {
     public private(set) var respuesta: RespuestaSuplementacion?
     /// Lo que se ve vino de la copia guardada porque la última carga no llegó.
     public private(set) var desdeCache = false
+    /// La última carga contestó (con o sin suplementación). Para «Novedades de tu plan»: un corte no se compara.
+    @ObservationIgnored public private(set) var ultimaLlego = false
 
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
@@ -58,8 +60,10 @@ public final class ModeloSuplementacion {
         switch await cliente.filas(Self.funcion, ["p_token": .texto(token)], como: RespuestaSuplementacion.self) {
         case .failure:
             desdeCache = respuesta != nil
+            ultimaLlego = false
         case .success(let filas):
             desdeCache = false
+            ultimaLlego = true
             if let f = filas.first, f.hay {
                 if f != respuesta { respuesta = f }
                 disco?.guardar(f, Self.archivo)
@@ -68,5 +72,11 @@ public final class ModeloSuplementacion {
                 disco?.borrar(Self.archivo)
             }
         }
+    }
+
+    /// Lo de la última carga, para «Novedades de tu plan».
+    public var entradaNovedades: ModeloNovedades.Entrada {
+        guard ultimaLlego else { return .noLlego }
+        return respuesta.flatMap(ModeloNovedades.json).map { .hay($0) } ?? .ninguna
     }
 }

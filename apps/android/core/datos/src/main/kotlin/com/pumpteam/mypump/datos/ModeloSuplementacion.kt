@@ -84,6 +84,15 @@ class ModeloSuplementacion(
 
     private var refrescando = false
 
+    /** La última consulta contestó (con o sin suplementación). Para «Novedades de tu plan»: un corte no se compara. */
+    @Volatile var ultimaLlego = false
+        private set
+
+    /** Lo de la última consulta, para «Novedades de tu plan». */
+    val entradaNovedades: ModeloNovedades.Entrada
+        get() = if (!ultimaLlego) ModeloNovedades.Entrada.NoLlego
+        else _plan.value?.let { ModeloNovedades.Entrada.Hay(it.aValor().aJson()) } ?: ModeloNovedades.Entrada.Ninguna
+
     suspend fun refrescar() {
         lecturaInicial.join()
         if (esDemo || refrescando) return
@@ -92,9 +101,16 @@ class ModeloSuplementacion(
             when (val r = cliente.filas(RPC, mapOf("p_token" to ValorJson.Texto(token)), ::leerFila)) {
                 is Resultado.Falla -> {
                     // La función no existe (todavía no se aplicó la migración): para la app no hay suplementación.
-                    if (r.error.status == 404 || r.error.codigo == "PGRST202") olvidar() else _desdeCache.value = _plan.value != null
+                    if (r.error.status == 404 || r.error.codigo == "PGRST202") {
+                        olvidar()
+                        ultimaLlego = true
+                    } else {
+                        _desdeCache.value = _plan.value != null
+                        ultimaLlego = false
+                    }
                 }
                 is Resultado.Ok -> {
+                    ultimaLlego = true
                     if (r.valor.isEmpty()) {
                         olvidar()
                         return
