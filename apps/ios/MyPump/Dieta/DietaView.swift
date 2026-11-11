@@ -13,6 +13,8 @@ struct DietaView: View {
     /// La opción que se eligió mirar, por día (cada día tiene la suya: la de ayer no cambia lo que se ve hoy).
     @State private var opcionesPorDia: [String: [String: Int]] = [:]
     @State private var porcionesAbiertas: Set<String> = []
+    /// Las comidas marcadas que se ven abiertas (U4): las demás marcadas, plegadas.
+    @State private var abiertas: Set<String> = []
     @State private var reemplazo: Reemplazo?
     @State private var revertir: Reemplazo?
     @State private var analizandoFoto = false
@@ -173,15 +175,18 @@ struct DietaView: View {
                             .padding(.horizontal, 4)
                             .accessibilityIdentifier("ajustes-sin-guardar")
                     }
-                    ForEach(Array(modelo.comidasVista.enumerated()), id: \.element.id) { n, c in
-                        tarjeta(c, numero: n + 1, ajustada: dia[c.id])
-                    }
                 }
                 // Afuera de la lista perezosa: en iOS 17 una `.sheet` o un `.alert` de una vista que vive adentro de un
                 // `LazyVStack` no se presenta, y "A mano" y "Con foto" no hacían nada (lo agarró DietaUITests en 17.5; en
-                // 18 y 26 andaba).
+                // 18 y 26 andaba). U4 (auditoría del 10/11): arriba de las comidas, cerca del anillo. Al fondo, un alumno
+                // real no la encontró.
                 if modelo.token != nil {
                     ComidasLibresSeccion(modelo: modelo, analizando: $analizandoFoto)
+                }
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    ForEach(Array(modelo.comidasVista.enumerated()), id: \.element.id) { n, c in
+                        tarjeta(c, numero: n + 1, ajustada: dia[c.id])
+                    }
                 }
                 PieRespaldo(origen: .dieta)
                     .padding(.top, 4)
@@ -288,6 +293,7 @@ struct DietaView: View {
         // Con letra de accesibilidad lo de cada renglón va uno debajo del otro: lado a lado se cortaban las palabras
         // ("Op-ción A · 3 ali-men-tos") y el total quedaba ilegible ("T / OT / AL").
         let apilada = tamañoLetra.isAccessibilitySize
+        let plegada = marca != nil && !abiertas.contains(c.id)
         let titulo = VStack(alignment: .leading, spacing: 1) {
             Text(c.nombre ?? "Comida \(numero)").font(.title3.weight(.semibold))
             Text("Opción \(nombreOpcion) · \(alimentos.count) \(alimentos.count == 1 ? "alimento" : "alimentos")"
@@ -327,157 +333,166 @@ struct DietaView: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityValue(marca?.estado == .comido ? "La comiste" : marca?.estado == .saltado ? "La salteaste" : "")
-            if c.opciones.count > 1 {
-                let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
-                disposicion {
-                    Text("Opción").font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
-                    Picker("Opción", selection: Binding(get: { o }, set: { nuevo in elegirOpcion(c.id, nuevo) })) {
-                        ForEach(Array(c.opciones.enumerated()), id: \.offset) { i, op in Text(op.nombre ?? Self.letra(i)).tag(i) }
+            // U4 (auditoría del 10/11): la comida ya marcada se pliega (la página era muy larga). La que se acaba de marcar
+            // queda abierta para destildar lo que no comió; tocando el título se abre o se cierra.
+            .contentShape(.rect)
+            .onTapGesture { if marca != nil { withAnimation(.snappy) { alternarPlegada(c.id, plegada: plegada) } } }
+            .accessibilityHint(marca != nil ? (plegada ? "Tocá para ver el detalle" : "Tocá para plegarla") : "")
+            .accessibilityAddTraits(marca != nil ? .isButton : [])
+            if !plegada {
+                if c.opciones.count > 1 {
+                    let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
+                    disposicion {
+                        Text("Opción").font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                        Picker("Opción", selection: Binding(get: { o }, set: { nuevo in elegirOpcion(c.id, nuevo) })) {
+                            ForEach(Array(c.opciones.enumerated()), id: \.offset) { i, op in Text(op.nombre ?? Self.letra(i)).tag(i) }
+                        }
+                        .pickerStyle(.segmented)
+                        .disabled(!editable)
+                        // Solo cuando la elige el cliente: la opción también cambia sola con una marca que llega de la web.
+                        .sensoryFeedback(.selection, trigger: o) { _, nueva in opcion[c.id] == nueva }
+                        .accessibilityIdentifier("opciones-\(c.id)")
                     }
-                    .pickerStyle(.segmented)
-                    .disabled(!editable)
-                    // Solo cuando la elige el cliente: la opción también cambia sola con una marca que llega de la web.
-                    .sensoryFeedback(.selection, trigger: o) { _, nueva in opcion[c.id] == nueva }
-                    .accessibilityIdentifier("opciones-\(c.id)")
                 }
-            }
-            if !omitida {
-                BotonesMarca(estado: marca?.estado, comidaId: c.id) { nuevo in
-                    // La opción que se ve queda fija: si venía de la marca, desmarcar o «Salté» no la cambian (en la web
-                    // tampoco salta) y un «Comí» después es con la que se está mirando.
-                    if opcion[c.id] == nil { opcion[c.id] = o }
-                    Task { await modelo.marcar(c.id, nuevo, opcion: o) }
+                if !omitida {
+                    BotonesMarca(estado: marca?.estado, comidaId: c.id) { nuevo in
+                        // La opción que se ve queda fija: si venía de la marca, desmarcar o «Salté» no la cambian (en la web
+                        // tampoco salta) y un «Comí» después es con la que se está mirando.
+                        if opcion[c.id] == nil { opcion[c.id] = o }
+                        if nuevo != nil { abiertas.insert(c.id) }
+                        Task { await modelo.marcar(c.id, nuevo, opcion: o) }
+                    }
+                    .disabled(!puedeMarcar)
                 }
-                .disabled(!puedeMarcar)
-            }
-            if let oMarcada {
-                if let excluidos {
-                    let contado = alimentos.filter { !excluidos.contains($0.i) }.reduce(0.0) { $0 + ($1.hoy.kcal ?? 0) }
-                        + agregados.enumerated().filter { !excluidos.contains(alimentos.count + $0.offset) }.reduce(0.0) { $0 + $1.element.kcal }
-                    let texto = excluidos.isEmpty ? "Destildá lo que no comiste: solo cuenta lo tildado."
-                                                  : "Cuenta lo tildado: \(contado.enteroSeguro) de \((total.kcal ?? 0).enteroSeguro) kcal."
-                    // Un solo elemento con el texto: si no, VoiceOver (y las pruebas) agarraban el ícono ("checklist").
-                    Label(texto, systemImage: "checklist")
-                        .font(.footnote).foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(texto)
-                        .accessibilityIdentifier("tildes-\(c.id)")
-                } else {
-                    let comida = c.opciones[safe: oMarcada]?.nombre ?? Self.letra(oMarcada)
-                    let texto = "Comiste la opción \(comida). Para marcar qué dejaste, volvé a esa."
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label(texto, systemImage: "eye")
+                if let oMarcada {
+                    if let excluidos {
+                        let contado = alimentos.filter { !excluidos.contains($0.i) }.reduce(0.0) { $0 + ($1.hoy.kcal ?? 0) }
+                            + agregados.enumerated().filter { !excluidos.contains(alimentos.count + $0.offset) }.reduce(0.0) { $0 + $1.element.kcal }
+                        let texto = excluidos.isEmpty ? "Destildá lo que no comiste: solo cuenta lo tildado."
+                                                      : "Cuenta lo tildado: \(contado.enteroSeguro) de \((total.kcal ?? 0).enteroSeguro) kcal."
+                        // Un solo elemento con el texto: si no, VoiceOver (y las pruebas) agarraban el ícono ("checklist").
+                        Label(texto, systemImage: "checklist")
                             .font(.footnote).foregroundStyle(.secondary)
+                            .contentTransition(.numericText())
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel(texto)
                             .accessibilityIdentifier("tildes-\(c.id)")
-                        Button("Ver la opción \(comida)") { elegirOpcion(c.id, oMarcada) }
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color.marcaTexto)
-                            .frame(minHeight: 44)
-                            .accessibilityIdentifier("ver-opcion-\(c.id)")
-                    }
-                }
-            }
-            if let ajustada, AvisoAjuste.hayQueMostrar(ajustada, propia: propia) {
-                AvisoAjuste(ajustada: ajustada, propia: propia, esHoy: !modelo.enDiaPasado)
-                    .accessibilityIdentifier("ajuste-aviso-\(c.id)")
-            }
-            if !omitida {
-                VStack(spacing: 0) {
-                    ForEach(alimentos, id: \.i) { item in
-                        let clave = "\(c.id)|\(o)|\(item.i)"
-                        FilaAlimento(original: item.original, mostrado: item.hoy, sustituido: item.efectivo.sustituido,
-                                     enElPlan: item.hoy.qty != item.efectivo.alimento.qty ? item.efectivo.alimento : nil,
-                                     tildado: excluidos.map { !$0.contains(item.i) }, idTilde: "comido-\(c.id)-\(item.i)",
-                                     alTildar: { Task { await modelo.alternarAlimento(c.id, item.i) } },
-                                     tildeHabilitado: puedeMarcar,
-                                     idCantidad: "cantidad-\(c.id)-\(item.i)",
-                                     alTocarCantidad: { cantidadAbierta = CantidadAlimento(comidaId: c.id, que: .delPlan(item.i)) },
-                                     cantidadHabilitada: editable,
-                                     conReemplazo: !modelo.enDiaPasado,
-                                     porcionAbierta: porcionesAbiertas.contains(clave)) {
-                            withAnimation(.snappy) {
-                                if porcionesAbiertas.contains(clave) { porcionesAbiertas.remove(clave) } else { porcionesAbiertas.insert(clave) }
-                            }
-                        } alReemplazar: {
-                            reemplazo = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
-                        } alRevertir: {
-                            revertir = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
-                        }
-                        // Colgada de la fila: en iOS 26 la confirmación es un globo que apunta a lo que se tocó. Colgada de toda
-                        // la pantalla salía arriba, tapando el aviso de la demo y apuntando al gráfico de calorías.
-                        .confirmationDialog("¿Volver al alimento del plan?",
-                                            isPresented: Binding(get: { revertir?.id == clave }, set: { if !$0 { revertir = nil } }),
-                                            titleVisibility: .visible, presenting: revertir) { r in
-                            Button("Volver a \(r.original.nombre)") { Task { await modelo.revertir(comidaId: r.comidaId, opt: r.opt, idx: r.idx) } }
-                            Button("Cancelar", role: .cancel) {}
-                        } message: { r in
-                            Text("Hoy estás comiendo \(r.mostrado.nombre).")
-                        }
-                        if item.i < alimentos.count - 1 || !agregados.isEmpty { Divider() }
-                    }
-                    ForEach(Array(agregados.enumerated()), id: \.element.ts) { j, a in
-                        let k = alimentos.count + j
-                        FilaAgregado(agregado: a, tildado: excluidos.map { !$0.contains(k) }, idTilde: "comido-\(c.id)-\(k)",
-                                     idCantidad: "agregado-\(c.id)-\(j)",
-                                     alTildar: { Task { await modelo.alternarAlimento(c.id, k) } },
-                                     tildeHabilitado: puedeMarcar, cantidadHabilitada: editable && (marca?.estado != .comido || puedeMarcar),
-                                     alTocar: { cantidadAbierta = CantidadAlimento(comidaId: c.id, que: .agregado(a.ts)) })
-                        if j < agregados.count - 1 { Divider() }
-                    }
-                }
-                Group {
-                    let rotulo = Text("Total").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).tracking(0.5)
-                    if apilada {
-                        VStack(alignment: .leading, spacing: 6) {
-                            rotulo
-                            MacroMini(letra: "P", valor: total.prot, color: .proteina)
-                            MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
-                            MacroMini(letra: "G", valor: total.fat, color: .grasa)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
-                        HStack(spacing: 16) {
-                            rotulo
-                            Spacer(minLength: 4)
-                            MacroMini(letra: "P", valor: total.prot, color: .proteina)
-                            MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
-                            MacroMini(letra: "G", valor: total.fat, color: .grasa)
+                        let comida = c.opciones[safe: oMarcada]?.nombre ?? Self.letra(oMarcada)
+                        let texto = "Comiste la opción \(comida). Para marcar qué dejaste, volvé a esa."
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label(texto, systemImage: "eye")
+                                .font(.footnote).foregroundStyle(.secondary)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(texto)
+                                .accessibilityIdentifier("tildes-\(c.id)")
+                            Button("Ver la opción \(comida)") { elegirOpcion(c.id, oMarcada) }
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Color.marcaTexto)
+                                .frame(minHeight: 44)
+                                .accessibilityIdentifier("ver-opcion-\(c.id)")
                         }
                     }
                 }
-                .padding(.horizontal, 12).padding(.vertical, 9)
-                .background(Color(uiColor: .tertiarySystemFill).opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
-            }
-            // «Agregar alimento» (D1) a la vista en cada comida, como en MyFitnessPal; al lado, el ajuste de siempre. Con la
-            // letra de accesibilidad, uno debajo del otro.
-            let botones = apilada ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
-            if editable { botones {
-                // Ni en la que hoy no come ni en la que salteó (revisión del 3-nov).
-                if !omitida, marca?.estado != .saltado, marca?.estado != .comido || puedeMarcar {
-                    Button { agregandoA = ComidaAAjustar(id: c.id) } label: {
-                        Label("Agregar alimento", systemImage: "plus.circle.fill")
+                if let ajustada, AvisoAjuste.hayQueMostrar(ajustada, propia: propia) {
+                    AvisoAjuste(ajustada: ajustada, propia: propia, esHoy: !modelo.enDiaPasado)
+                        .accessibilityIdentifier("ajuste-aviso-\(c.id)")
+                }
+                if !omitida {
+                    VStack(spacing: 0) {
+                        ForEach(alimentos, id: \.i) { item in
+                            let clave = "\(c.id)|\(o)|\(item.i)"
+                            FilaAlimento(original: item.original, mostrado: item.hoy, sustituido: item.efectivo.sustituido,
+                                         enElPlan: item.hoy.qty != item.efectivo.alimento.qty ? item.efectivo.alimento : nil,
+                                         tildado: excluidos.map { !$0.contains(item.i) }, idTilde: "comido-\(c.id)-\(item.i)",
+                                         alTildar: { Task { await modelo.alternarAlimento(c.id, item.i) } },
+                                         tildeHabilitado: puedeMarcar,
+                                         idCantidad: "cantidad-\(c.id)-\(item.i)",
+                                         alTocarCantidad: { cantidadAbierta = CantidadAlimento(comidaId: c.id, que: .delPlan(item.i)) },
+                                         cantidadHabilitada: editable,
+                                         conReemplazo: !modelo.enDiaPasado,
+                                         porcionAbierta: porcionesAbiertas.contains(clave)) {
+                                withAnimation(.snappy) {
+                                    if porcionesAbiertas.contains(clave) { porcionesAbiertas.remove(clave) } else { porcionesAbiertas.insert(clave) }
+                                }
+                            } alReemplazar: {
+                                reemplazo = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
+                            } alRevertir: {
+                                revertir = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
+                            }
+                            // Colgada de la fila: en iOS 26 la confirmación es un globo que apunta a lo que se tocó. Colgada de toda
+                            // la pantalla salía arriba, tapando el aviso de la demo y apuntando al gráfico de calorías.
+                            .confirmationDialog("¿Volver al alimento del plan?",
+                                                isPresented: Binding(get: { revertir?.id == clave }, set: { if !$0 { revertir = nil } }),
+                                                titleVisibility: .visible, presenting: revertir) { r in
+                                Button("Volver a \(r.original.nombre)") { Task { await modelo.revertir(comidaId: r.comidaId, opt: r.opt, idx: r.idx) } }
+                                Button("Cancelar", role: .cancel) {}
+                            } message: { r in
+                                Text("Hoy estás comiendo \(r.mostrado.nombre).")
+                            }
+                            if item.i < alimentos.count - 1 || !agregados.isEmpty { Divider() }
+                        }
+                        ForEach(Array(agregados.enumerated()), id: \.element.ts) { j, a in
+                            let k = alimentos.count + j
+                            FilaAgregado(agregado: a, tildado: excluidos.map { !$0.contains(k) }, idTilde: "comido-\(c.id)-\(k)",
+                                         idCantidad: "agregado-\(c.id)-\(j)",
+                                         alTildar: { Task { await modelo.alternarAlimento(c.id, k) } },
+                                         tildeHabilitado: puedeMarcar, cantidadHabilitada: editable && (marca?.estado != .comido || puedeMarcar),
+                                         alTocar: { cantidadAbierta = CantidadAlimento(comidaId: c.id, que: .agregado(a.ts)) })
+                            if j < agregados.count - 1 { Divider() }
+                        }
+                    }
+                    Group {
+                        let rotulo = Text("Total").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).tracking(0.5)
+                        if apilada {
+                            VStack(alignment: .leading, spacing: 6) {
+                                rotulo
+                                MacroMini(letra: "P", valor: total.prot, color: .proteina)
+                                MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
+                                MacroMini(letra: "G", valor: total.fat, color: .grasa)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            HStack(spacing: 16) {
+                                rotulo
+                                Spacer(minLength: 4)
+                                MacroMini(letra: "P", valor: total.prot, color: .proteina)
+                                MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
+                                MacroMini(letra: "G", valor: total.fat, color: .grasa)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 9)
+                    .background(Color(uiColor: .tertiarySystemFill).opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
+                }
+                // «Agregar alimento» (D1) a la vista en cada comida, como en MyFitnessPal; al lado, el ajuste de siempre. Con la
+                // letra de accesibilidad, uno debajo del otro.
+                let botones = apilada ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
+                if editable { botones {
+                    // Ni en la que hoy no come ni en la que salteó (revisión del 3-nov).
+                    if !omitida, marca?.estado != .saltado, marca?.estado != .comido || puedeMarcar {
+                        Button { agregandoA = ComidaAAjustar(id: c.id) } label: {
+                            Label("Agregar alimento", systemImage: "plus.circle.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color.marcaTexto)
+                        .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
+                        .accessibilityIdentifier("agregar-\(c.id)")
+                    }
+                    Button { ajustando = ComidaAAjustar(id: c.id) } label: {
+                        Label(propia ? "Cambiar el ajuste" : (omitida ? "Ajustar esta comida" : "Ajustar"), systemImage: "slider.horizontal.3")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.marcaTexto)
                     .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
-                    .accessibilityIdentifier("agregar-\(c.id)")
-                }
-                Button { ajustando = ComidaAAjustar(id: c.id) } label: {
-                    Label(propia ? "Cambiar el ajuste" : (omitida ? "Ajustar esta comida" : "Ajustar"), systemImage: "slider.horizontal.3")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.marcaTexto)
-                .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
-                .accessibilityLabel(propia ? "Cambiar el ajuste" : "Ajustar esta comida")
-                .accessibilityIdentifier("ajustar-\(c.id)")
-            } }
+                    .accessibilityLabel(propia ? "Cambiar el ajuste" : "Ajustar esta comida")
+                    .accessibilityIdentifier("ajustar-\(c.id)")
+                } }
+            }
         }
         .tarjeta()
         .animation(.snappy, value: o)
@@ -488,6 +503,10 @@ struct DietaView: View {
     /// Cambiar la opción de una comida ajustada: las cantidades a mano eran de la otra opción y se descartan (las kcal
     /// sumadas o restadas, «no la como» y compensar siguen). Si la marcó «Comí» (D25), mirar otra no toca el ajuste: lo
     /// comido es la opción de la marca, con sus porciones de hoy.
+    private func alternarPlegada(_ id: String, plegada: Bool) {
+        if plegada { abiertas.insert(id) } else { abiertas.remove(id) }
+    }
+
     private func elegirOpcion(_ comidaId: String, _ nueva: Int) {
         withAnimation(.snappy) { opcion[comidaId] = nueva }
         if modelo.marcasVista[comidaId]?.estado == .comido { return }

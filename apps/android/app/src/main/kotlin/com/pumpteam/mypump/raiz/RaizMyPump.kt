@@ -134,7 +134,8 @@ private fun RaizConModelo(vm: ModeloAppViewModel, m: ModeloApp) {
 @Composable
 private fun AvisoDeLink(aviso: ModeloApp.AvisoLink, alCerrar: () -> Unit) {
     val (titulo, texto) = when (aviso) {
-        ModeloApp.AvisoLink.VENCIDO -> "Este link ya no sirve" to "Seguís con tu cuenta."
+        ModeloApp.AvisoLink.VENCIDO -> "Ese link ya no está activo" to "Seguís con tu cuenta."
+        ModeloApp.AvisoLink.MAL_FORMADO -> "No pudimos abrir ese link" to "Llegó cortado. Escribile a Mati y te manda uno nuevo."
         ModeloApp.AvisoLink.SIN_CONEXION -> "Sin conexión" to "No pudimos abrir ese link. Probá de nuevo cuando tengas señal."
     }
     Alerta(

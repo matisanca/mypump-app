@@ -137,7 +137,7 @@ public enum SaludVista {
             case .trayendoHistorial: "Puede tardar un rato la primera vez. Podés seguir usando la app."
             case .faltanDatosDeLaNoche: "Fijate que el reloj esté sincronizando con la app Salud del iPhone."
             case .soloPasos: "Para el score de recuperación hace falta lo que se mide durmiendo — pulso en reposo, sueño y variabilidad — y eso lo da un reloj o un anillo (Apple Watch, Oura, Garmin…). En cuanto uses uno, esto se arma solo."
-            case .noLlegaNada: "Fijate que esté todo activado en Ajustes → Privacidad y seguridad → Salud → MyPump."
+            case .noLlegaNada: "Fijate que esté todo activado en Ajustes → Privacidad y seguridad → Salud → Pump Team."
             case .esperando: "Si tenés reloj o anillo, con eso el score arranca mucho más rápido."
             }
         }
@@ -231,11 +231,11 @@ public enum SaludVista {
         let banda = fila.banda ?? "media"
         let motivos = self.motivos(fila)
         let frase: String?
-        if fila.discordancia == true { frase = "Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís." }
-        else if fila.estadoAutonomico == "maladaptacion" { frase = "Tu cuerpo viene peleando con la carga. Hoy conviene aflojar." }
-        else if fila.estadoAutonomico == "fatiga_acumulada" { frase = "Venís con fatiga acumulada de varios días." }
+        if fila.discordancia == true { frase = "Tus números de hoy no coinciden con cómo te sentís. Seguí tu plan." }
+        else if fila.estadoAutonomico == "maladaptacion" { frase = "Tu recuperación viene baja hace varios días. Seguí tu plan y contámelo por el chat." }
+        else if fila.estadoAutonomico == "fatiga_acumulada" { frase = "Venís con varios días de recuperación baja. Seguí tu plan y contámelo por el chat." }
         else if motivos.isEmpty {
-            frase = banda == "alta" ? "Venís bien. Aprovechalo." : banda == "baja" ? "Hoy tu cuerpo pide más descanso." : "Estás en tu rango normal."
+            frase = banda == "alta" ? "Recuperación alta hoy." : banda == "baja" ? "Recuperación baja hoy. Seguí tu plan y si se repite varios días, contámelo por el chat." : "Estás en tu rango normal."
         } else { frase = nil }
         let vieja = conScore != nil && ultima != nil && conScore != ultima
         let puntos = serie.compactMap { r in r.score.map { (fecha: r.fecha, score: $0) } }

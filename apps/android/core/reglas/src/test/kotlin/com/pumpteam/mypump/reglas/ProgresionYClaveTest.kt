@@ -36,7 +36,7 @@ private fun fallasProgresion(archivo: Path): Pair<Int, List<String>> {
         } else {
             val o = nota.jsonObject
             // Desvío a propósito de la web (Mati, 2.3.0): nunca RIR en pantalla.
-            val esperado = o["texto"]!!.jsonPrimitive.content.replace("Bajamos el RIR: acercate", "Acercate")
+            val esperado = o["texto"]!!.jsonPrimitive.content.replace("Bajamos el RIR: acercate más al fallo en cada serie.", "Llevá cada serie al fallo.")
             val ok = n != null && n.texto == esperado &&
                 n.cambia == (o["cambia"] == JsonPrimitive(true)) && n.calibracion == (o["calibracion"] == JsonPrimitive(true))
             if (!ok) fallas += "nota ${e.id} sem $semana: esperado $o, kotlin $n"

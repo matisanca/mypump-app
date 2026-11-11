@@ -39,7 +39,7 @@ class HallazgosMenoresUiTest : PruebaUi() {
         // El link viejo de WhatsApp, tocado con la app abierta (`singleTask`: llega a la misma Activity).
         val vencido = "linkVencidoDePrueba_00000000"
         app.startActivity(intentDeLink("https://app.mypumpteam.com/?t=$vencido").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        p.nodo(texto("Este link ya no sirve"))
+        p.nodo(texto("Ese link ya no está activo"))
         p.nodo(texto("Seguís con tu cuenta."))
         p.tocar(etiqueta("aviso-link-entendido"))
         p.esperarQueNoEste(etiqueta("aviso-link"))

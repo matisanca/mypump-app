@@ -8,12 +8,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
@@ -167,7 +169,7 @@ object CentroAvisos {
         nm.createNotificationChannels(
             listOf(
                 NotificationChannel(CANAL_MENSAJES, "Mensajes de Mati", NotificationManager.IMPORTANCE_HIGH).apply {
-                    description = "Lo que te escribe Mati y su aviso de los domingos para la revisión."
+                    description = "Lo que te escribe Mati y el aviso semanal de tu revisión."
                 },
                 NotificationChannel(CANAL_DESCANSO, "Fin del descanso", NotificationManager.IMPORTANCE_HIGH).apply {
                     description = "Cuando termina el descanso entre series y la app no está a la vista."
@@ -498,29 +500,66 @@ object CentroAvisos {
 
     // ── El fin del descanso (D8) ──
 
-    private fun alarmaDescanso(c: Context, crear: Boolean): PendingIntent? = PendingIntent.getBroadcast(
+    private fun alarmaDescanso(c: Context, crear: Boolean, finMs: Long = 0): PendingIntent? = PendingIntent.getBroadcast(
         c,
         ID_DESCANSO,
-        Intent(c, ReceptorAvisos::class.java).setAction(ACCION_FIN_DESCANSO),
+        Intent(c, ReceptorAvisos::class.java).setAction(ACCION_FIN_DESCANSO).putExtra(EXTRA_FIN, finMs),
         PendingIntent.FLAG_IMMUTABLE or (if (crear) PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_NO_CREATE),
     )
 
+    const val EXTRA_FIN = "fin"
+
+    /** El fin que el receptor está esperando despierto (0 si ninguno): al volver a la app o al saltear, se olvida. */
+    @Volatile private var finEsperado = 0L
+
+    private fun agendarSalto(c: Context, finMs: Long, cuando: Long) {
+        val pi = alarmaDescanso(c, crear = true, finMs = finMs) ?: return
+        c.getSystemService(AlarmManager::class.java)?.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cuando, pi)
+    }
+
     /**
-     * La app pasó a segundo plano con un descanso corriendo: una alarma inexacta para cuando termina, sin
-     * `SCHEDULE_EXACT_ALARM` y también en reposo (`AllowWhileIdle`). Con la pantalla prendida llega en el momento; con la
-     * pantalla apagada Android puede esperar a despertar el teléfono hasta el final de la ventana que le da a una alarma
-     * inexacta (el 75 % de lo que faltaba): un descanso de 90 s puede avisar hasta un minuto tarde si nada lo despierta
-     * antes (ver el README). Mientras el proceso corre, el aviso sale antes desde el reloj del descanso
-     * ([mostrarFinDescanso]). Solo con permiso: nunca lo pide.
+     * Sonó una alarma del descanso con la app atrás (F8): si falta mucho, la próxima de la cadena ([SaltosDescanso]); si
+     * faltan unos segundos, se espera despierto y se avisa en el segundo.
+     */
+    fun alSonarDescanso(c: Context, finMs: Long, pendiente: BroadcastReceiver.PendingResult) {
+        val ahora = System.currentTimeMillis()
+        val proximo = if (finMs > 0) SaltosDescanso.proximo(ahora, finMs) else null
+        val falta = finMs - ahora
+        when {
+            proximo != null -> {
+                agendarSalto(c, finMs, proximo)
+                pendiente.finish()
+            }
+            finMs > 0 && falta > 0 -> {
+                finEsperado = finMs
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (finEsperado == finMs && !enPrimerPlano) mostrarFinDescanso(c)
+                    finEsperado = 0
+                    pendiente.finish()
+                }, falta)
+            }
+            else -> {
+                mostrarFinDescanso(c)
+                pendiente.finish()
+            }
+        }
+    }
+
+    /**
+     * La app pasó a segundo plano con un descanso corriendo: alarmas inexactas encadenadas hasta el fin ([SaltosDescanso]),
+     * sin `SCHEDULE_EXACT_ALARM` y también en reposo (`AllowWhileIdle`). Antes era una sola alarma para el fin, y con la
+     * pantalla apagada un descanso de 90 s podía avisar hasta un minuto tarde (auditoría del 10/11, F8). Mientras el proceso
+     * corre, el aviso sale antes desde el reloj del descanso ([mostrarFinDescanso]). Solo con permiso: nunca lo pide.
      */
     fun programarFinDescanso(c: Context, finMs: Long) {
         if (!concedido(c) || finMs - System.currentTimeMillis() <= 1_000) return
-        val pi = alarmaDescanso(c, crear = true) ?: return
-        c.getSystemService(AlarmManager::class.java)?.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, finMs, pi)
+        // F8: la primera de una cadena de alarmas cortas que despierta antes del fin (o el fin, si faltan unos segundos).
+        agendarSalto(c, finMs, SaltosDescanso.proximo(System.currentTimeMillis(), finMs) ?: finMs)
     }
 
     /** Volvió a la app o se salteó el descanso: ni la alarma ni el aviso. */
     fun cancelarFinDescanso(c: Context) {
+        finEsperado = 0
         cancelarAlarmaDescanso(c)
         c.getSystemService(NotificationManager::class.java)?.cancel(ETIQUETA, ID_DESCANSO)
         cancelarDescansoEnCurso(c)

@@ -56,7 +56,7 @@ func verificar(_ archivo: URL) throws -> (total: Int, fallas: [String]) {
             if n != nil { fallas.append("nota \(e.id) sem \(c.semana): esperado null, swift \(String(describing: n))") }
         default:
             // Desvío a propósito de la web (Mati, 2.3.0): nunca RIR en pantalla.
-            let esperado = c.nota["texto"]?.comoTexto?.replacingOccurrences(of: "Bajamos el RIR: acercate", with: "Acercate")
+            let esperado = c.nota["texto"]?.comoTexto?.replacingOccurrences(of: "Bajamos el RIR: acercate más al fallo en cada serie.", with: "Llevá cada serie al fallo.")
             let ok = n?.texto == esperado
                 && n?.cambia == (c.nota["cambia"] == .bool(true))
                 && n?.calibracion == (c.nota["calibracion"] == .bool(true))

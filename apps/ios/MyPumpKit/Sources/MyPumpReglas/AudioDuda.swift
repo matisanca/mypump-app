@@ -53,7 +53,7 @@ public enum ReglasAudioDuda {
     public static func texto(_ a: AvisoAudio) -> String {
         switch a {
         case .permisoNegado:
-            "Tu celu no me dio permiso para el micrófono. En Ajustes, MyPump, Micrófono, activalo. O escribime la duda acá arriba."
+            "Tu celu no me dio permiso para el micrófono. En Ajustes, Pump Team, Micrófono, activalo. O escribime la duda acá arriba."
         case .sinMicrofono: "No encontré un micrófono en este dispositivo. Escribime la duda acá arriba."
         case .ocupado: "El micrófono lo está usando otra app. Cerrala y probá de nuevo."
         case .muyCorto: "No se escuchó nada, probá de nuevo."

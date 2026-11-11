@@ -586,7 +586,7 @@ object EstadosEjercicio {
     }
 }
 
-/** Series, reps y volumen del día (la card de cierre y los modales de "Cerrar sesión de hoy"). */
+/** Series, reps y volumen del día (la card de cierre y los modales de "Terminar el entrenamiento de hoy"). */
 class ResumenDia(ejercicios: List<EjercicioEnSesion>) {
     val series: Int
     val reps: Double

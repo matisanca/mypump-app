@@ -19,8 +19,8 @@ struct AccesoView: View {
                 Spacer(minLength: 24)
                 Marca()
                 if modelo.fase == .tokenInvalido {
-                    Aviso(icono: "link.badge.plus", titulo: "Este link ya no sirve",
-                          texto: "Pedile a Mati un link nuevo y pegalo acá abajo.")
+                    Aviso(icono: "link.badge.plus", titulo: "Este link ya no está activo",
+                          texto: "Escribile a Mati y te manda uno nuevo. Después pegalo acá abajo.")
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 tarjetaLink

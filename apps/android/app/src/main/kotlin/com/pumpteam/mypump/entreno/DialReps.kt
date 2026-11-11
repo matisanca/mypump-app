@@ -64,6 +64,7 @@ import kotlin.math.truncate
 
 /** Cuánto hay que deslizar para sumar o restar una repetición. */
 private val ESCALON = 26.dp
+internal const val TOPE_POR_ARRASTRE = 5
 
 /**
  * El dial de repeticiones (gemelo de DialReps.swift): el número grande con el anterior y el siguiente apenas visibles.
@@ -120,12 +121,14 @@ private fun Rueda(reps: Int?, diferencia: Int?, referencia: String?, modifier: M
     val desplazamiento = remember { Animatable(0f) }
     val estado = rememberDraggableState { delta ->
         acumulado += delta
-        val pasos = truncate(-acumulado / escalon).toInt()
+        // U2 (auditoría del 10/11): un desplazamiento largo con el pulgar sobre el dial llevaba las reps de 10 a 46. Un
+        // arrastre mueve como mucho TOPE_POR_ARRASTRE; para más, se suelta y se vuelve a arrastrar.
+        val pasos = truncate(-acumulado / escalon).toInt().coerceIn(-TOPE_POR_ARRASTRE, TOPE_POR_ARRASTRE)
         if (pasos != aplicados) {
             cambiar(pasos - aplicados)
             aplicados = pasos
         }
-        if (!reducir) alcance.launch { desplazamiento.snapTo(acumulado + pasos * escalon) }
+        if (!reducir) alcance.launch { desplazamiento.snapTo((acumulado + pasos * escalon).coerceIn(-escalon, escalon)) }
     }
     // Con letra grande o una pantalla baja, sin los números de al lado: el panel no puede comerse la pantalla.
     val letraGrande = densidad.fontScale >= 1.3f

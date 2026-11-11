@@ -50,6 +50,19 @@ public final class ModeloApp {
     /// Lo que le falta a la dieta publicada (`normalizarDieta`): para el aviso "a tu plan le falta información".
     public private(set) var problemasDieta: [String] = []
     public private(set) var estadoGuardado: EstadoGuardado = .quieto
+    /// F5 (auditoría 10/11): cuántas cosas la cola no pudo guardar (quedan a la vista con «Reintentar» hasta que salgan).
+    public private(set) var perdidos = 0
+    /// F5: lo mínimo que se sigue intentando algo que el servidor rechaza antes de darlo por perdido.
+    public static let ventanaAbandono: Double = 30 * 60 * 1000
+
+    /// F5: «Reintentar» de «No se pudo guardar».
+    public func reintentarPerdidos() async {
+        guard let cola = outbox else { return }
+        await cola.reintentarPerdidos()
+        perdidos = await cola.perdidos.count
+        await cola.drenar()
+        perdidos = await cola.perdidos.count
+    }
 
     // Dieta
     public private(set) var excluir: [String] = []
@@ -146,7 +159,7 @@ public final class ModeloApp {
         self.almacen = almacen
         self.raizDisco = raizDisco
         token = almacen.leer()
-        fase = token == nil ? .sinToken : .cargando
+        fase = token == nil ? Self.faseSinCuenta : .cargando
         tipoDia = UserDefaults.standard.string(forKey: "mypump_tipo_dia")
         if let token { prepararCuenta(token) }
     }
@@ -159,6 +172,14 @@ public final class ModeloApp {
         case vencido
         /// No se pudo revisar el link (sin red): no se cambia de cuenta sin saber si anda.
         case sinConexion
+        /// Un link de la app que llegó cortado o mal copiado (F10): antes la app se abría y no decía nada.
+        case malFormado
+    }
+
+    /// Sin cuenta guardada: si la última que hubo la dio de baja la base, se sigue explicando (F10, auditoría del 10/11).
+    /// Antes, al volver a abrir la app después de «Este link ya no sirve», se veía la bienvenida vacía sin decir qué pasó.
+    static var faseSinCuenta: Fase {
+        UserDefaults.standard.string(forKey: "mypump_token_invalido") == nil ? .sinToken : .tokenInvalido
     }
 
     /// Lo muestra la raíz y lo borra al cerrarlo.
@@ -169,7 +190,10 @@ public final class ModeloApp {
     /// cliente (el token que adoptó la migración): ahí no se le muestra nada.
     @discardableResult
     public func entrar(con texto: String, avisar: Bool = true) async -> Bool {
-        guard let t = FormatoToken.extraer(de: texto) else { return false }
+        guard let t = FormatoToken.extraer(de: texto) else {
+            if avisar, FormatoToken.pareceLink(texto) { avisoLink = .malFormado }
+            return false
+        }
         // El link puede llegar antes que la vuelta a primer plano: con una cuenta que no se pudo leer al nacer, no la pisa.
         _ = await retomarCuentaGuardada()
         entradas += 1
@@ -224,6 +248,7 @@ public final class ModeloApp {
 
     public func salir() {
         almacen.guardar(nil)
+        UserDefaults.standard.removeObject(forKey: "mypump_token_invalido")   // salió él: la próxima vez, la bienvenida
         borrarCodigosDelDisco()
         token = nil
         disco = nil
@@ -288,7 +313,7 @@ public final class ModeloApp {
             fase = .cargando
             await cargar()
         } else {
-            fase = .sinToken
+            fase = Self.faseSinCuenta
         }
     }
 
@@ -314,6 +339,27 @@ public final class ModeloApp {
         }
     }
 
+    /// La base dice que el link ya no sirve: se olvida (la cola y la carpeta quedan para el link nuevo de la misma persona).
+    private func marcarLinkCaido(_ t: String) {
+        if almacen.leer() == t { almacen.guardar(nil) }
+        UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
+        chat?.pararSondeo()
+        fase = .tokenInvalido
+    }
+
+    @ObservationIgnored private var revisandoCaida = false
+
+    /// F10: con la app abierta, la cola vio que el link dejó de andar. Antes se avisaba «sin conexión» para siempre; ahora se
+    /// confirma con la base (un `[]` sin error) y se muestra «Este link ya no está activo».
+    func alCaerElToken(_ t: String) async {
+        guard t == token, !esDemo, fase == .listo, !revisandoCaida else { return }
+        revisandoCaida = true
+        defer { revisandoCaida = false }
+        guard case .success(.lista(let filas)) = await cliente.llamar("mypump_get_cliente_info", ["p_token": .texto(t)]),
+              filas.isEmpty, t == token, !esDemo else { return }
+        marcarLinkCaido(t)
+    }
+
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
@@ -321,8 +367,11 @@ public final class ModeloApp {
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones, carpetaAudios: disco.url("audios"))
-        let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true, retenerSwaps: Self.faltaDecidirSwaps(en: disco)) { op in
-            await escrituras.ejecutar(op)
+        let cola = Outbox(archivo: disco.url("outbox.json"), ventanaAbandono: Self.ventanaAbandono, retenerLegadas: true,
+                          retenerSwaps: Self.faltaDecidirSwaps(en: disco)) { [weak self] op in
+            let r = await escrituras.ejecutar(op)
+            if case .tokenCaido = r { await self?.alCaerElToken(t) }
+            return r
         }
         UltimaCuenta.anotar(t)
         outbox = cola
@@ -339,6 +388,8 @@ public final class ModeloApp {
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3).
         salud = ModeloSalud(cliente: cliente, token: t, almacen: AlmacenSaludPorCuenta(base: AlmacenSaludDefaults(), cuenta: Disco.huella(t)))
         Task { [weak self] in
+            let n = await cola.perdidos.count
+            await MainActor.run { self?.perdidos = n }
             await cola.observar(estado: { e in Task { @MainActor in self?.estadoGuardado = e } },
                                 abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } },
                                 guardadas: { ops in Task { @MainActor in self?.alGuardar(ops) } })
@@ -357,6 +408,7 @@ public final class ModeloApp {
     /// Lo que la cola abandonó (va a fallidos, no se borra). Un mensaje del chat se marca en su burbuja para
     /// reintentarlo ("no salió → Reintentar"), como `marcarChatFallido` de la web.
     private func alAbandonar(_ ops: [Operacion]) {
+        if let cola = outbox { Task { [weak self] in let n = await cola.perdidos.count; self?.perdidos = n } }
         guia?.alAbandonar(ops)
         for op in ops where op.kind == Self.kindAjustes { ajusteAbandonado(op) }
         for op in ops where op.kind == "chat" {
@@ -373,7 +425,14 @@ public final class ModeloApp {
         var ts: Double
     }
 
+    /// Cuántas cargas completas están en curso. Con la copia guardada la fase pasa a `.listo` antes de pedir nada (F2):
+    /// mientras tanto, volver a la app o a la red no lanza otra carga en paralelo (revisión del 10/11).
+    @ObservationIgnored private var cargasEnCurso = 0
+    var cargando: Bool { cargasEnCurso > 0 }
+
     public func cargar() async {
+        cargasEnCurso += 1
+        defer { cargasEnCurso -= 1 }
         if esDemo { return }   // la demo no toca la red (y "tirar para actualizar" no la cierra)
         guard let t = token else { fase = .sinToken; return }
         // Todo lo que sigue es de ESTE token: si mientras tanto entró otro (un link tocado al abrir la app), lo que vuelva
@@ -385,10 +444,32 @@ public final class ModeloApp {
         let chatAlEmpezar = chat
         let traidasAlEmpezar = chat?.ultimasTraidas
 
+        // F2 (auditoría 10/11): con el plan guardado en el teléfono, se muestra ya y se actualiza por detrás. Antes se
+        // miraba el logo hasta 20 a 40 segundos con mala señal, aunque el plan estuviera guardado.
+        var motorDeLaCopia: ModeloEntreno?
+        var rutinaDeLaCopia: RutinaActiva?
+        if fase == .cargando, let copia = disco?.leer(CopiaOffline.self, "offline.json") {
+            aplicar(copia, cargarMotor: false)
+            if let e = entreno {
+                motorDeLaCopia = e
+                rutinaDeLaCopia = e.rutina
+                cargaDelMotor = Task {
+                    await self.cargarCatalogo()
+                    await e.aplicarLegadoDelDisco()
+                    await e.cargar()
+                }
+            }
+            fase = .listo
+        }
+
         // Sin red o servicio caído: la copia offline, si hay. La cuenta sigue guardada.
         func sinRespuesta(_ clase: ErrorRPC.Clase) {
             ultimaFalla = clase
-            if let copia = disco?.leer(CopiaOffline.self, "offline.json") {
+            if motorDeLaCopia != nil || (fase == .listo && info != nil) {
+                // Ya se está mostrando la copia: solo se avisa que es la guardada.
+                desdeCache = true
+                fase = .listo
+            } else if let copia = disco?.leer(CopiaOffline.self, "offline.json") {
                 aplicar(copia)
                 desdeCache = true
                 fase = .listo
@@ -416,10 +497,7 @@ public final class ModeloApp {
         ultimaFalla = nil
         // `[]` sin error = token inválido o revocado (la base no tira error: devuelve vacío).
         guard case .lista(let filas) = respuestaInfo, let primera = filas.first else {
-            if almacen.leer() == t { almacen.guardar(nil) }
-            UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
-            chat?.pararSondeo()
-            fase = .tokenInvalido
+            marcarLinkCaido(t)
             return
         }
         info = decodificar(ClienteInfo.self, primera)
@@ -488,7 +566,9 @@ public final class ModeloApp {
         fase = .listo
         // Suplementación sin esperar a lo demás: decide si la pestaña está (con copia guardada ya se ve desde el arranque).
         if let suplementacion { Task { await suplementacion.cargar() } }
-        if let e = entreno {
+        // El motor que ya arrancó con la copia no se vuelve a cargar, salvo que la rutina haya cambiado: `prepararEntreno`
+        // la reemplazó y eso deja el día limpio (sin la sesión ni las series), así que hay que restaurarlo.
+        if let e = entreno, e !== motorDeLaCopia || e.rutina != rutinaDeLaCopia {
             cargaDelMotor = Task {
                 await self.cargarCatalogo()
                 await e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
@@ -512,6 +592,7 @@ public final class ModeloApp {
         await sincronizarTecnica()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
+        anotarCargaCompleta()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
         if let salud { Task { await salud.alAbrir() } }
         // La tarjeta de «Tu guía»: el resumen, que solo lee (no marca que abrió la guía).
@@ -602,7 +683,7 @@ public final class ModeloApp {
 
     /// Volvió la red (el monitor de la raíz): sale lo pendiente y, si se estaba mostrando la copia guardada, se trae todo.
     public func alVolverLaRed() async {
-        guard fase == .listo, !esDemo, token != nil else { return }
+        guard fase == .listo, !esDemo, token != nil, !cargando else { return }
         if desdeCache { await cargar(); return }
         await outbox?.drenar()
         await fotos?.drenar()
@@ -648,7 +729,7 @@ public final class ModeloApp {
     /// todo de nuevo.
     public func alVolverAPrimerPlano() async {
         if await retomarCuentaGuardada() { return }
-        guard fase == .listo, !esDemo, token != nil else { return }
+        guard fase == .listo, !esDemo, token != nil, !cargando else { return }
         await conAvisos?()
         if desdeCache { await cargar(); return }
         // Primero lo "de hoy" si cambió el día (lo que se toque ahora tiene que caer en el día nuevo), después las colas.
@@ -662,20 +743,118 @@ public final class ModeloApp {
             // Cambió el día: se vuelve a hoy (el que se miraba pudo salir de la ventana del servidor).
             await irADia(nil)
         }
+        // F7 (auditoría 10/11): la rutina y la dieta se pedían solo al arrancar, y iOS deja la app viva días. Un plan
+        // publicado hoy no se veía hasta cerrarla del todo. Ahora se vuelven a pedir pasados unos minutos.
+        if toca(.plan), !(await refrescarPlan()) { olvidar(.plan) }   // sin respuesta: se intenta en la próxima vuelta
+        // F11: lo demás tampoco se relee en cada vuelta (el alumno entra y sale veinte veces en un entreno).
         // La tarjeta de «Tu guía», que solo lee (`entregas_app_resumen`), sin frenar lo demás.
-        if let guia { Task { await guia.actualizarResumen() } }
-        // Suplementación, cada vez (como las marcas de Dieta): Mati la pudo cambiar después de la llamada.
-        if let suplementacion { Task { await suplementacion.cargar() } }
+        if let guia, toca(.guia) { Task { await guia.actualizarResumen() } }
+        // Suplementación: Mati la pudo cambiar después de la llamada.
+        if let suplementacion, toca(.suplementacion) { Task { await suplementacion.cargar() } }
         await outbox?.drenar()
-        // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
+        // Las marcas de hoy se releen en cada vuelta: las pudo cambiar la web u otro teléfono (DIE-05, D25) y es un pedido chico.
         await hidratarMarcas()
         await refrescarDiaPasado()
         await chat?.sondear()
         await fotos?.drenar()
-        await sincronizarGimnasio()
-        await sincronizarTecnica()
-        await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
+        if toca(.gimnasio) {
+            await sincronizarGimnasio()
+            await sincronizarTecnica()
+        }
+        if toca(.salud) { await salud?.alVolver() }   // con Apple Health conectada: 7 días y retomar el historial
         _ = await entreno?.alVolverAPrimerPlano()
+    }
+
+    // MARK: - F7 y F11: cada cuánto se relee al volver a la app
+
+    /// Lo que se relee al volver a la app, con su tiempo mínimo entre una lectura y la siguiente.
+    public enum Relectura: CaseIterable, Sendable {
+        case plan, guia, suplementacion, gimnasio, salud
+
+        public var cada: TimeInterval {
+            switch self {
+            case .plan: 5 * 60
+            case .guia, .suplementacion, .gimnasio: 10 * 60
+            case .salud: 60 * 60
+            }
+        }
+    }
+
+    /// El reloj de las relecturas (las pruebas lo mueven).
+    @ObservationIgnored public var relojRelecturas: () -> Date = { Date() }
+    @ObservationIgnored private var ultimaRelectura: [Relectura: Date] = [:]
+
+    /// Si ya pasó su tiempo mínimo desde la última vez (y la anota). Una carga completa cuenta como lectura de todo.
+    func toca(_ r: Relectura) -> Bool {
+        let ahora = relojRelecturas()
+        if let u = ultimaRelectura[r], ahora.timeIntervalSince(u) < r.cada { return false }
+        ultimaRelectura[r] = ahora
+        return true
+    }
+
+    func olvidar(_ r: Relectura) { ultimaRelectura[r] = nil }
+
+    func anotarCargaCompleta() {
+        let ahora = relojRelecturas()
+        for r in Relectura.allCases { ultimaRelectura[r] = ahora }
+    }
+
+    /// Hay un entrenamiento abierto ahora: arrancó hace menos de 4 horas y no se cerró. El plan no se cambia en el medio
+    /// (lo que se está cargando tiene que caer en la rutina que se ve); se aplica en la próxima vuelta.
+    var entrenoAbierto: Bool {
+        guard let e = entreno, e.sesionIniciada, !e.dia.diaFinalizado, let ini = e.inicioSesion else { return false }
+        return relojRelecturas().timeIntervalSince1970 * 1000 - ini < 4 * 3600 * 1000
+    }
+
+    /// F7: la rutina y la dieta de nuevo, sin el resto de la carga. Lo que no llega (red) no toca nada; la rutina no se
+    /// cambia con un entrenamiento abierto. Devuelve si alguna de las dos respondió.
+    @discardableResult
+    func refrescarPlan() async -> Bool {
+        guard let t = token, !esDemo else { return false }
+        let p: [String: JSONValue] = ["p_token": .texto(t)]
+        let conEntreno = entrenoAbierto
+        async let d = cliente.llamar("mypump_get_dieta_activa", p)
+        let rr: Result<JSONValue, ErrorRPC>? = conEntreno ? nil : await cliente.llamar("mypump_get_rutina_activa", p)
+        let dd = await d
+        guard token == t, !esDemo else { return false }
+        var copia = disco?.leer(CopiaOffline.self, "offline.json")
+        // El entreno pudo empezar mientras viajaba el pedido: entonces la rutina nueva queda solo en la copia guardada.
+        let aplicarRutina = !entrenoAbierto
+        if case .success(let j)? = rr {
+            let fila = j.primeraFila
+            let nueva = fila.flatMap { decodificar(RutinaActiva.self, $0) }
+            copia?.rutina = fila
+            if aplicarRutina, nueva != rutina {
+                rutina = nueva
+                prepararEntreno()
+                // Motor nuevo, o el mismo con la rutina reemplazada (eso deja el día limpio): se restaura.
+                if let e = entreno {
+                    cargaDelMotor = Task {
+                        await self.cargarCatalogo()
+                        await e.cargar()
+                    }
+                }
+            }
+        }
+        if case .success(let j) = dd {
+            let fila = j.primeraFila
+            let nueva = dietaNormalizada(fila)
+            copia?.dieta = fila
+            if nueva != dieta {
+                dieta = nueva
+                if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] } else { swaps = [:] }
+                cargarAjustes()
+                cargarMarcas()
+                await hidratarDieta()
+            }
+        }
+        if var c = copia {
+            c.ts = Date().timeIntervalSince1970 * 1000
+            disco?.guardar(c, "offline.json")
+        }
+        if case .success? = rr { return true }
+        if case .success = dd { return true }
+        return false
     }
 
     /// GEN-05 (`avisarPlanIncompleto`): arriba de Revisión cuando al plan publicado le falta algo. No es para el
@@ -711,8 +890,8 @@ public final class ModeloApp {
         return revision.revisionDia
     }
 
-    private func aplicar(_ c: CopiaOffline) {
-        defer { prepararEntreno(); if let e = entreno { cargaDelMotor = Task { await e.cargar() } } }
+    private func aplicar(_ c: CopiaOffline, cargarMotor: Bool = true) {
+        defer { prepararEntreno(); if cargarMotor, let e = entreno { cargaDelMotor = Task { await e.cargar() } } }
         info = decodificar(ClienteInfo.self, c.info)
         rutina = c.rutina.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaNormalizada(c.dieta)

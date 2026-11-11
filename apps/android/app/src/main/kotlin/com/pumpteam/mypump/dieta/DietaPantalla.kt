@@ -206,6 +206,8 @@ fun DietaPantalla(modelo: ModeloApp) {
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
     // Las manos abiertas ("comida|opción|alimento") y la posición que se reemplaza o se vuelve al plan.
     var porciones by rememberSaveable { mutableStateOf(setOf<String>()) }
+    /** Las comidas marcadas que se ven abiertas (U4): las demás marcadas, plegadas. */
+    var abiertas by rememberSaveable { mutableStateOf(setOf<String>()) }
     var reemplazando by rememberSaveable { mutableStateOf<String?>(null) }
     var revirtiendo by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(fechaVista) {
@@ -304,6 +306,11 @@ fun DietaPantalla(modelo: ModeloApp) {
                                         // Revisión del 3-nov: un día que la base rechazó quedaba solo en el teléfono, sin que nadie lo supiera.
                                         item(key = "ajustes-sin-guardar") { AvisoSinGuardar(esHoy, Modifier.widthIn(max = AnchoLectura)) }
                                     }
+                                    // Las comidas libres, solo con cuenta: en la demo no están (como en la web). U4 (auditoría del
+                                    // 10/11): arriba de las comidas, cerca del anillo. Al fondo, un alumno real no la encontró.
+                                    if (!esDemo && modelo.token != null) {
+                                        item(key = "comidas-libres") { ComidasLibresSeccion(modelo, libres, Modifier.widthIn(max = AnchoLectura)) }
+                                    }
                                     itemsIndexed(comidas, key = { i, c -> "$i-${c.id}" }) { n, c ->
                                         val o = vigentes[c.id] ?: 0
                                         TarjetaComida(
@@ -314,8 +321,12 @@ fun DietaPantalla(modelo: ModeloApp) {
                                             swaps = swaps,
                                             alElegir = { nueva -> elegir(c, nueva) },
                                             marca = marcas[c.id],
+                                            // U4: la marcada se pliega; la que se acaba de marcar queda abierta para destildar.
+                                            plegada = marcas[c.id] != null && c.id !in abiertas,
+                                            alAlternar = { abiertas = if (c.id in abiertas) abiertas - c.id else abiertas + c.id },
                                             // Con el alcance de la app: la marca sale aunque se cambie de pestaña al toque.
                                             alMarcar = { e ->
+                                                if (e != null) abiertas = abiertas + c.id
                                                 // La opción que se ve queda fija: si venía de la marca, desmarcar o «Salté» no la
                                                 // cambian (en la web tampoco salta) y un «Comí» después es con la que se mira.
                                                 val actual = opcionVigente(c)
@@ -339,10 +350,6 @@ fun DietaPantalla(modelo: ModeloApp) {
                                             puedeMarcar = puedeMarcar,
                                             esHoy = esHoy,
                                         )
-                                    }
-                                    // Las comidas libres, solo con cuenta: en la demo no están (como en la web).
-                                    if (!esDemo && modelo.token != null) {
-                                        item(key = "comidas-libres") { ComidasLibresSeccion(modelo, libres, Modifier.widthIn(max = AnchoLectura)) }
                                     }
                                     item(key = "pie") { PieRespaldo(OrigenRespaldo.DIETA, Modifier.widthIn(max = AnchoLectura).padding(top = Espacio.xxs)) }
                                 }
@@ -750,6 +757,9 @@ private fun TarjetaComida(
     puedeMarcar: Boolean = true,
     /** En un día anterior no se ofrecen los reemplazos (son del plan, no de un día) y los textos no dicen «hoy». */
     esHoy: Boolean = true,
+    /** U4 (auditoría del 10/11): la comida marcada se ve plegada; tocando el título se abre o se cierra. */
+    plegada: Boolean = false,
+    alAlternar: () -> Unit = {},
 ) {
     val c = MyPump.colores
     // Con los reemplazos como clave: un parámetro que no se usa no cuenta para recomponer, y la tarjeta seguía mostrando
@@ -782,13 +792,16 @@ private fun TarjetaComida(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.semantics(mergeDescendants = true) {
-                when (estado) {
-                    MarcaComida.Estado.COMIDO -> stateDescription = "La comiste"
-                    MarcaComida.Estado.SALTADO -> stateDescription = "La salteaste"
-                    null -> {}
+            modifier = Modifier
+                .clickable(enabled = estado != null, role = Role.Button, onClickLabel = if (plegada) "ver el detalle" else "plegarla", onClick = alAlternar)
+                .semantics(mergeDescendants = true) {
+                    when (estado) {
+                        MarcaComida.Estado.COMIDO -> stateDescription = "La comiste"
+                        MarcaComida.Estado.SALTADO -> stateDescription = "La salteaste"
+                        null -> {}
+                    }
                 }
-            },
+                .testTag("encabezado-${comida.id}"),
         ) {
             Box(Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(fondoIcono), contentAlignment = Alignment.Center) {
                 Icon(
@@ -821,56 +834,58 @@ private fun TarjetaComida(
                 Text("kcal", style = MaterialTheme.typography.labelSmall, color = c.textoSecundario)
             }
         }
-        if (comida.opciones.size > 1) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Opción", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = c.textoSecundario)
-                Segmentado(
-                    opciones = comida.opciones.mapIndexed { i, op -> op.nombre ?: letra(i) },
-                    elegida = opcion,
-                    alElegir = alElegir,
-                    habilitado = editable,
-                    etiquetaPrueba = { "opcion-${comida.id}-$it" },
-                    modifier = Modifier.weight(1f),
-                )
+        if (!plegada) {
+            if (comida.opciones.size > 1) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Opción", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = c.textoSecundario)
+                    Segmentado(
+                        opciones = comida.opciones.mapIndexed { i, op -> op.nombre ?: letra(i) },
+                        elegida = opcion,
+                        alElegir = alElegir,
+                        habilitado = editable,
+                        etiquetaPrueba = { "opcion-${comida.id}-$it" },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
-        }
-        if (!omitida) BotonesMarca(estado, comida.id, puedeMarcar, alMarcar)
-        if (oMarcada != null) {
-            if (excluidos != null) {
-                val contado = (hoy + agregados.map { it.alimento }).filterIndexed { i, _ -> i !in excluidos }.sumOf { it.kcal ?: 0.0 }
-                PistaMarca(
-                    if (excluidos.isEmpty()) "Destildá lo que no comiste: solo cuenta lo tildado."
-                    else "Cuenta lo tildado: ${Formato.miles(contado)} de ${Formato.miles(total.kcal)} kcal.",
-                    Modifier.testTag("tildes-${comida.id}"),
-                )
-            } else {
-                val comio = comida.opciones.getOrNull(oMarcada)?.nombre ?: letra(oMarcada)
-                Column {
-                    PistaMarca("Comiste la opción $comio. Para marcar qué dejaste, volvé a esa.", Modifier.testTag("tildes-${comida.id}"))
-                    TextButton(
-                        onClick = { alElegir(oMarcada) },
-                        contentPadding = PaddingValues(horizontal = 4.dp),
-                        modifier = Modifier.testTag("ver-opcion-${comida.id}"),
-                    ) {
-                        Text("Ver la opción $comio", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
+            if (!omitida) BotonesMarca(estado, comida.id, puedeMarcar, alMarcar)
+            if (oMarcada != null) {
+                if (excluidos != null) {
+                    val contado = (hoy + agregados.map { it.alimento }).filterIndexed { i, _ -> i !in excluidos }.sumOf { it.kcal ?: 0.0 }
+                    PistaMarca(
+                        if (excluidos.isEmpty()) "Destildá lo que no comiste: solo cuenta lo tildado."
+                        else "Cuenta lo tildado: ${Formato.miles(contado)} de ${Formato.miles(total.kcal)} kcal.",
+                        Modifier.testTag("tildes-${comida.id}"),
+                    )
+                } else {
+                    val comio = comida.opciones.getOrNull(oMarcada)?.nombre ?: letra(oMarcada)
+                    Column {
+                        PistaMarca("Comiste la opción $comio. Para marcar qué dejaste, volvé a esa.", Modifier.testTag("tildes-${comida.id}"))
+                        TextButton(
+                            onClick = { alElegir(oMarcada) },
+                            contentPadding = PaddingValues(horizontal = 4.dp),
+                            modifier = Modifier.testTag("ver-opcion-${comida.id}"),
+                        ) {
+                            Text("Ver la opción $comio", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
+                        }
                     }
                 }
             }
-        }
-        if (ajustada != null && hayQueMostrarAviso(ajustada, propia)) AvisoAjuste(ajustada, propia, esHoy, Modifier.testTag("ajuste-aviso-${comida.id}"))
-        if (!omitida) {
-            TotalYAlimentos(
-                comida, opcion, alimentos.map { it.first }, alimentos.map { it.second }, hoy, total, porciones, alTocarMano, alReemplazar,
-                alRevertir, excluidos, alTildar, agregados = agregados, alCantidad = alCantidad, alAgregado = alAgregado,
-                tildeHabilitado = puedeMarcar, cantidadHabilitada = editable, agregadoHabilitado = editable && !agregadosFijos, conReemplazo = esHoy,
-            )
-        }
-        if (editable) Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-            // Ni en la que hoy no come ni en la que salteó (revisión del 3-nov).
-            if (!omitida && estado != MarcaComida.Estado.SALTADO && !agregadosFijos) {
-                BotonDeTarjeta(IconosAjuste.Mas, "Agregar alimento", Modifier.weight(1f).testTag("agregar-${comida.id}"), alAgregar)
+            if (ajustada != null && hayQueMostrarAviso(ajustada, propia)) AvisoAjuste(ajustada, propia, esHoy, Modifier.testTag("ajuste-aviso-${comida.id}"))
+            if (!omitida) {
+                TotalYAlimentos(
+                    comida, opcion, alimentos.map { it.first }, alimentos.map { it.second }, hoy, total, porciones, alTocarMano, alReemplazar,
+                    alRevertir, excluidos, alTildar, agregados = agregados, alCantidad = alCantidad, alAgregado = alAgregado,
+                    tildeHabilitado = puedeMarcar, cantidadHabilitada = editable, agregadoHabilitado = editable && !agregadosFijos, conReemplazo = esHoy,
+                )
             }
-            BotonDeTarjeta(IconosAjuste.Ajustar, if (propia) "Cambiar el ajuste" else "Ajustar esta comida", Modifier.weight(1f).testTag("ajustar-${comida.id}"), alAjustar)
+            if (editable) Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                // Ni en la que hoy no come ni en la que salteó (revisión del 3-nov).
+                if (!omitida && estado != MarcaComida.Estado.SALTADO && !agregadosFijos) {
+                    BotonDeTarjeta(IconosAjuste.Mas, "Agregar alimento", Modifier.weight(1f).testTag("agregar-${comida.id}"), alAgregar)
+                }
+                BotonDeTarjeta(IconosAjuste.Ajustar, if (propia) "Cambiar el ajuste" else "Ajustar esta comida", Modifier.weight(1f).testTag("ajustar-${comida.id}"), alAjustar)
+            }
         }
     }
 }

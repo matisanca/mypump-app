@@ -295,7 +295,7 @@ class SaludUiTest : PruebaUi() {
         }
         irAMisDatos()
         p.tocar(etiqueta("mis-datos-salud"))
-        p.nodo(texto("No está llegando ningún dato. Revisá que esté todo activado en Ajustes → Salud y bienestar → Health Connect → MyPump."))
+        p.nodo(texto("No está llegando ningún dato. Revisá que esté todo activado en Ajustes → Salud y bienestar → Health Connect → Pump Team."))
         p.nodo(texto("Reintentar"))
         sinApple()
         // Supuesto del teléfono: a dónde lleva el botón se ve con el Health Connect de verdad. Acá el estado está forzado

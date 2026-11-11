@@ -13,6 +13,7 @@ struct DialReps: View {
     var deshabilitado = false
 
     private static let escalon: CGFloat = 26
+    static let topePorArrastre = 5
     @GestureState private var tocando = false
     @State private var desplazamiento: CGFloat = 0
     @State private var aplicados = 0
@@ -132,9 +133,11 @@ struct DialReps: View {
             .updating($tocando) { _, s, _ in s = true }
             .onChanged { v in
                 guard !deshabilitado else { return }
-                let pasos = Int((-v.translation.height / Self.escalon).rounded(.towardZero))
+                // U2 (auditoría del 10/11): un desplazamiento largo con el pulgar sobre el dial llevaba las reps de 10 a 46.
+                // Un arrastre mueve como mucho `topePorArrastre`; para más, se suelta y se vuelve a arrastrar.
+                let pasos = max(-Self.topePorArrastre, min(Self.topePorArrastre, Int((-v.translation.height / Self.escalon).rounded(.towardZero))))
                 if pasos != aplicados { alCambiar(pasos - aplicados); aplicados = pasos; escalones += 1 }
-                desplazamiento = v.translation.height + CGFloat(pasos) * Self.escalon
+                desplazamiento = max(-Self.escalon, min(Self.escalon, v.translation.height + CGFloat(pasos) * Self.escalon))
             }
             .onEnded { _ in
                 aplicados = 0

@@ -333,19 +333,27 @@ private struct ListaEntreno: View {
     @ViewBuilder
     private var cuerpo: some View {
         let banner = motor.banner
-        if banner.cambian > 0 {
-            AvisoProgresion(icono: "chart.line.uptrend.xyaxis",
-                            texto: Text("Esta semana \(Text(banner.cambian == 1 ? "1 ejercicio cambia" : "\(banner.cambian) ejercicios cambian").bold()) carga o volumen. Mirá el detalle al abrir cada uno."))
-        } else if banner.calibracion {
-            AvisoProgresion(icono: "scope",
-                            texto: Text("Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3): no te guardes reps."))
-        }
-
+        // U3 (auditoría del 10/11): «Empezar entrenamiento» va antes de los carteles. Con la tarjeta de la guía y el de
+        // calibración, quedaba debajo de la barra de pestañas.
         // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre): ni su lugar en la pila.
         if !motor.todoHecho {
             TimelineView(.periodic(from: .now, by: 1)) { _ in
                 cronometro(motor.cronometro())
             }
+        }
+
+        if banner.cambian > 0 {
+            AvisoProgresion(icono: "chart.line.uptrend.xyaxis",
+                            texto: Text("Esta semana \(Text(banner.cambian == 1 ? "1 ejercicio cambia" : "\(banner.cambian) ejercicios cambian").bold()) carga o volumen. Mirá el detalle al abrir cada uno."))
+        } else if banner.calibracion {
+            AvisoProgresion(icono: "scope",
+                            texto: Text("Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto."))
+        }
+
+        // F1 (auditoría 10/11): sin respuesta del servidor, las series se pintan con lo guardado en el teléfono.
+        if motor.seriesSinConfirmar {
+            AvisoProgresion(icono: "icloud.slash",
+                            texto: Text("Sin conexión. Ves las series guardadas en este teléfono."))
         }
 
         ForEach(motor.bloques, id: \.indice) { b in
@@ -442,7 +450,7 @@ private struct ListaEntreno: View {
                     .labelStyle(IconoTeñido(color: .marcaTexto))
                     .font(.subheadline.weight(.semibold))
             } else {
-                Button { cerrando = true } label: { Label("Cerrar sesión de hoy", systemImage: "flag.checkered") }
+                Button { cerrando = true } label: { Label("Terminar el entrenamiento de hoy", systemImage: "flag.checkered") }
                     .buttonStyle(BotonMarca())
                     .accessibilityIdentifier("cerrar-sesion")
             }
@@ -464,7 +472,7 @@ private struct ListaEntreno: View {
                 celda("Restan", "\(restan) ej")
             }
             Button { cerrando = true } label: {
-                Label("Cerrar sesión de hoy", systemImage: "flag.checkered")
+                Label("Terminar el entrenamiento de hoy", systemImage: "flag.checkered")
             }
             .buttonStyle(BotonSecundario())
             .disabled(!motor.cierreHabilitado)

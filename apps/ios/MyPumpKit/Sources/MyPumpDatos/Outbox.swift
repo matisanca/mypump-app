@@ -18,14 +18,17 @@ public struct Operacion: Codable, Sendable, Equatable {
     /// Un audio de «Tu guía» que espera a que se terminen de mandar otros (`pendientes`): desde cuándo (ms). Con más de 2 h
     /// esperando va a fallidos. nil si nunca esperó.
     public var esperaDesde: Double?
+    /// F5 (auditoría 10/11): cuándo la rechazó el servidor por primera vez (ms). Se abandona recién pasada la ventana de
+    /// `Outbox.ventanaAbandono`, no al minuto. nil si nunca la rechazó.
+    public var primerRechazo: Double?
 
     public init(id: String, kind: String, payload: JSONValue, dedupeKey: String?, tries: Int = 0, ts: Double, legado: Bool? = nil,
-                intentada: Bool? = nil, esperaDesde: Double? = nil) {
+                intentada: Bool? = nil, esperaDesde: Double? = nil, primerRechazo: Double? = nil) {
         self.id = id; self.kind = kind; self.payload = payload; self.dedupeKey = dedupeKey; self.tries = tries; self.ts = ts
-        self.legado = legado; self.intentada = intentada; self.esperaDesde = esperaDesde
+        self.legado = legado; self.intentada = intentada; self.esperaDesde = esperaDesde; self.primerRechazo = primerRechazo
     }
 
-    enum CodingKeys: String, CodingKey { case id = "_id", kind, payload, dedupeKey, tries, ts, legado, intentada, esperaDesde }
+    enum CodingKeys: String, CodingKey { case id = "_id", kind, payload, dedupeKey, tries, ts, legado, intentada, esperaDesde, primerRechazo }
 }
 
 /// El aviso de guardado que ve el cliente (el toast de la web, `showSaveState`).
@@ -100,9 +103,15 @@ public actor Outbox {
         public let op: Operacion
         public let motivo: String
         public let cuando: Double
+        /// F5: la abandonó la cola tras sus intentos (se puede volver a mandar con «Reintentar»). nil en las que se
+        /// archivan a propósito (de la migración, de un tipo que esta versión no conoce).
+        public var reintentable: Bool?
     }
 
     public let maxIntentos: Int
+    /// F5 (auditoría 10/11): lo mínimo que se sigue intentando una op rechazada antes de abandonarla (ms). Antes eran los
+    /// 8 intentos, más o menos un minuto: un mal rato del servidor o una versión publicada con un cambio la perdía.
+    public let ventanaAbandono: Double
     private let archivo: URL?
     private var ejecutor: Ejecutor
     private var estado = Persistido()
@@ -143,12 +152,13 @@ public actor Outbox {
 
     /// `retenerLegadas`: la app arranca reteniendo las ops de la migración hasta leer la palanca (`usarPalanca`), así un
     /// toque antes de la primera carga no las manda con la palanca apagada.
-    public init(archivo: URL?, maxIntentos: Int = 8, reintentoAutomatico: Bool = true, retenerLegadas: Bool = false,
+    public init(archivo: URL?, maxIntentos: Int = 8, ventanaAbandono: Double = 0, reintentoAutomatico: Bool = true, retenerLegadas: Bool = false,
                 retenerSwaps: Bool = false, reloj: @escaping @Sendable () -> Double = { Date().timeIntervalSince1970 * 1000 },
                 ejecutor: @escaping Ejecutor) {
         self.archivo = archivo
         self.reloj = reloj
         self.maxIntentos = maxIntentos
+        self.ventanaAbandono = ventanaAbandono
         self.ejecutor = ejecutor
         self.reintentoAutomatico = reintentoAutomatico
         self.retenerLegadas = retenerLegadas
@@ -276,6 +286,34 @@ public actor Outbox {
         guardar()
     }
 
+    /// F5: lo que la cola abandonó y el cliente puede volver a mandar (sin las silenciosas, los audios ni el chat, que tienen
+    /// su propio «Reintentar» en su pantalla).
+    public var perdidos: [Fallido] {
+        estado.fallidos.filter { $0.reintentable == true && !Self.silenciosas.contains($0.op.kind) && !Self.esAudio($0.op) && $0.op.kind != "chat" }
+    }
+
+    /// F5: «Reintentar» de «No se pudo guardar»: lo perdido vuelve a la cola con los intentos en cero (si ya hay una más
+    /// nueva con la misma clave, gana esa y la vieja se descarta). Devuelve cuántas volvieron.
+    @discardableResult
+    public func reintentarPerdidos() -> Int {
+        let lista = perdidos
+        guard !lista.isEmpty else { return 0 }
+        let ids = Set(lista.map(\.op.id))
+        estado.fallidos.removeAll { ids.contains($0.op.id) }
+        var vueltas = 0
+        for f in lista.sorted(by: { $0.op.ts < $1.op.ts }) {
+            if let k = f.op.dedupeKey, estado.ops.contains(where: { $0.dedupeKey == k }) { continue }
+            var op = f.op
+            op.tries = 0
+            op.primerRechazo = nil
+            estado.ops.append(op)
+            vueltas += 1
+        }
+        guardar()
+        if vueltas > 0 { programar(en: .zero) }
+        return vueltas
+    }
+
     /// Olvida los fallidos con esa clave (una op posterior con la misma clave se guardó: ya no hay nada que se perdió).
     public func olvidarFallidos(clave: String) {
         let antes = estado.fallidos.count
@@ -398,7 +436,10 @@ public actor Outbox {
         }
         if !abandonadas.isEmpty {
             let ahora = Date().timeIntervalSince1970 * 1000
-            estado.fallidos.append(contentsOf: abandonadas.map { Fallido(op: $0, motivo: motivoDirecto[$0.id] ?? "abandonada tras \($0.tries) intentos", cuando: ahora) })
+            estado.fallidos.append(contentsOf: abandonadas.map {
+                Fallido(op: $0, motivo: motivoDirecto[$0.id] ?? "abandonada tras \($0.tries) intentos", cuando: ahora,
+                        reintentable: motivoDirecto[$0.id] == nil ? true : nil)
+            })
         }
         guardar()
 
@@ -552,10 +593,21 @@ public actor Outbox {
     }
 
     /// Suma un intento a la op (en la cola real, no en la copia). Devuelve true si sigue pendiente.
+    /// Un dato que la base no acepta (SQLSTATE 22 y 23, o un `raise` de la función) no se arregla reintentando media hora:
+    /// se deja de intentar a los `maxIntentos` y queda en «No se pudo guardar». Lo vacío, los 5xx y una función que no
+    /// existe (una versión a medio publicar) sí esperan la ventana.
+    static func esRechazoDeDatos(_ motivo: String) -> Bool {
+        let codigo = motivo.split(separator: ":", maxSplits: 1).first.map(String.init) ?? ""
+        return codigo == "P0001" || (codigo.count == 5 && (codigo.hasPrefix("22") || codigo.hasPrefix("23")))
+    }
+
     private func registrarFallo(_ op: Operacion, motivo: String, resueltas: inout Set<String>, abandonadas: inout [Operacion]) -> Bool {
         guard let i = estado.ops.firstIndex(where: { $0.id == op.id }) else { return false }
         estado.ops[i].tries += 1
-        if estado.ops[i].tries >= maxIntentos {
+        let ahora = reloj()
+        if estado.ops[i].primerRechazo == nil { estado.ops[i].primerRechazo = ahora }
+        let ventana = Self.esRechazoDeDatos(motivo) ? 0 : ventanaAbandono
+        if estado.ops[i].tries >= maxIntentos, ahora - (estado.ops[i].primerRechazo ?? ahora) >= ventana {
             resueltas.insert(op.id)
             abandonadas.append(estado.ops[i])
             return false

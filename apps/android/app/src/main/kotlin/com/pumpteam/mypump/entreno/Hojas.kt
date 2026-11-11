@@ -316,7 +316,7 @@ private fun FilaSustituto(s: SustitutoEjercicio, elegida: Boolean, etiqueta: Str
 }
 
 /**
- * "Cerrar sesión de hoy" (SES-06, CerrarDiaView.swift): el resumen (series, reps, volumen y minutos), las series por
+ * "Terminar el entrenamiento de hoy" (SES-06, CerrarDiaView.swift): el resumen (series, reps, volumen y minutos), las series por
  * músculo de hoy con lo de la semana (2.1, S2), lo que queda sin completar si se cierra antes, y las notas para Mati. El
  * motor vacía la cola antes de cerrar; si no se pudo, lo dice. Al abrirla, si el historial de Progreso no está, se pide
  * (para que la semana sume los días anteriores).
@@ -373,7 +373,7 @@ fun HojaCerrarDia(modelo: ModeloApp, motor: ModeloEntreno, v: VistaEntreno, alCe
         dragHandle = { AsaHoja() },
         modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag("hoja-cerrar-dia"),
     ) {
-        EncabezadoHoja("Cerrar sesión de hoy", cancelar = AccionHoja("Cancelar", "cancelar-cierre", habilitada = !enviando, alTocar = ::cerrar))
+        EncabezadoHoja("Terminar el entrenamiento de hoy", cancelar = AccionHoja("Cancelar", "cancelar-cierre", habilitada = !enviando, alTocar = ::cerrar))
         Column(
             Modifier.verticalScroll(rememberScrollState()).padding(Espacio.m),
             verticalArrangement = Arrangement.spacedBy(Espacio.l),

@@ -99,7 +99,13 @@ class ModeloApp(
     /** El día local de la última carga completa: si al volver a la app cambió, se recarga lo que es "de hoy". */
     private var diaCargado: String? = null
 
-    private val _fase = MutableStateFlow(if (token == null) Fase.SIN_TOKEN else Fase.CARGANDO)
+    private val _fase = MutableStateFlow(if (token == null) faseSinCuenta() else Fase.CARGANDO)
+
+    /**
+     * Sin cuenta guardada: si la última que hubo la dio de baja la base, se sigue explicando (F10, auditoría del 10/11). Antes,
+     * al volver a abrir la app después de «Este link ya no sirve», se veía la bienvenida vacía sin decir qué pasó.
+     */
+    private fun faseSinCuenta(): Fase = if (preferencias.leer(CLAVE_TOKEN_INVALIDO) == null) Fase.SIN_TOKEN else Fase.TOKEN_INVALIDO
     val fase: StateFlow<Fase> = _fase.asStateFlow()
 
     private val _info = MutableStateFlow<ClienteInfo?>(null)
@@ -141,6 +147,10 @@ class ModeloApp(
 
     private val _estadoGuardado = MutableStateFlow(EstadoGuardado.QUIETO)
     val estadoGuardado: StateFlow<EstadoGuardado> = _estadoGuardado.asStateFlow()
+    private val _perdidos = MutableStateFlow(0)
+
+    /** F5 (auditoría 10/11): cuántas cosas la cola no pudo guardar (quedan a la vista con «Reintentar» hasta que salgan). */
+    val perdidos: StateFlow<Int> = _perdidos.asStateFlow()
 
     // Dieta
     private val _excluir = MutableStateFlow<List<String>>(emptyList())
@@ -309,6 +319,9 @@ class ModeloApp(
 
         /** No se pudo revisar el link (sin red): no se cambia de cuenta sin saber si anda. */
         SIN_CONEXION,
+
+        /** Un link de la app que llegó cortado o mal copiado (F10): antes la app se abría y no decía nada. */
+        MAL_FORMADO,
     }
 
     /** Lo muestra la raíz y lo borra al cerrarlo ([cerrarAvisoLink]). */
@@ -326,7 +339,10 @@ class ModeloApp(
      * (el token que adoptó la migración): ahí no se le muestra nada.
      */
     suspend fun entrar(texto: String, avisar: Boolean = true): Boolean {
-        val t = FormatoToken.extraer(texto) ?: return false
+        val t = FormatoToken.extraer(texto) ?: run {
+            if (avisar && FormatoToken.pareceLink(texto)) _avisoLink.value = AvisoLink.MAL_FORMADO
+            return false
+        }
         // El link puede llegar antes que la vuelta a primer plano: con una cuenta que no se pudo leer al nacer, no la pisa.
         retomarCuentaGuardada()
         entradas += 1
@@ -381,6 +397,7 @@ class ModeloApp(
 
     fun salir() {
         almacen.guardar(null)
+        preferencias.guardar(CLAVE_TOKEN_INVALIDO, null)   // salió él: la próxima vez, la bienvenida
         // Lo buscado por código se va con la cuenta: se borra del teléfono.
         disco?.borrar(ARCHIVO_CODIGOS)
         soltarCuentaEnMemoria()
@@ -469,7 +486,7 @@ class ModeloApp(
             _fase.value = Fase.CARGANDO
             cargar()
         } else {
-            _fase.value = Fase.SIN_TOKEN
+            _fase.value = faseSinCuenta()
         }
     }
 
@@ -522,8 +539,13 @@ class ModeloApp(
         outbox?.cerrar()
         // Las ops de la migración esperan a la palanca remota (`cargar` la lee y se la pasa): hallazgo 2 del 15-oct.
         UltimaCuenta.anotar(t, preferencias)
-        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true, retenerSwaps = faltaDecidirSwaps(d)) { op ->
-            escrituras.ejecutar(op)
+        val cola = Outbox(
+            archivo = d.archivo("outbox.json"), ventanaAbandonoMs = VENTANA_ABANDONO_MS, alcance = alcance, retenerLegadas = true,
+            retenerSwaps = faltaDecidirSwaps(d),
+        ) { op ->
+            val r = escrituras.ejecutar(op)
+            if (r is ResultadoOp.TokenCaido) alCaerElToken(t)
+            r
         }
         outbox = cola
         _chat.value?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
@@ -544,8 +566,18 @@ class ModeloApp(
         // Los avisos llegan desde el hilo de la cola: los StateFlow se pueden tocar desde cualquier hilo y así el orden se
         // conserva (en iOS se pasa al principal con un Task por aviso).
         alcance.launch {
+            _perdidos.value = cola.perdidos().size
             cola.observar(estado = { e -> _estadoGuardado.value = e }, abandonadas = ::alAbandonar, guardadas = ::alGuardar)
         }
+    }
+
+    /** F5: «Reintentar» de «No se pudo guardar». */
+    suspend fun reintentarPerdidos() {
+        val cola = outbox ?: return
+        cola.reintentarPerdidos()
+        _perdidos.value = cola.perdidos().size
+        cola.drenar()
+        _perdidos.value = cola.perdidos().size
     }
 
     /** Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…". */
@@ -572,6 +604,7 @@ class ModeloApp(
      * ("no salió → Reintentar"), como `marcarChatFallido` de la web.
      */
     private fun alAbandonar(ops: List<Operacion>) {
+        outbox?.let { cola -> alcance.launch { _perdidos.value = cola.perdidos().size } }
         _guia.value?.alAbandonar(ops)
         // La cola abandonó el día (8 intentos o un rechazo de la base, como el 22023 de un día demasiado grande).
         if (ops.any { it.kind == AjustesDieta.KIND && it.dedupeKey == AjustesDieta.clave(FechaLocal.hoy()) }) _ajustesSinGuardar.value = true
@@ -606,9 +639,54 @@ class ModeloApp(
         }
     }
 
+    /** La base dice que el link ya no sirve: se olvida (la cola y la carpeta quedan para el link nuevo de la misma persona). */
+    private fun marcarLinkCaido(t: String) {
+        if (almacen.leer() == t) almacen.guardar(null)
+        preferencias.guardar(CLAVE_TOKEN_INVALIDO, t)
+        _chat.value?.pararSondeo()
+        _fase.value = Fase.TOKEN_INVALIDO
+    }
+
+    private val revisandoCaida = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * F10: con la app abierta, la cola vio que el link dejó de andar. Antes se avisaba «sin conexión» para siempre; ahora se
+     * confirma con la base (un `[]` sin error) y se muestra «Este link ya no está activo».
+     */
+    internal suspend fun alCaerElToken(t: String) {
+        if (t != token || _esDemo.value || _fase.value != Fase.LISTO || !revisandoCaida.compareAndSet(false, true)) return
+        try {
+            val r = cliente.llamar("mypump_get_cliente_info", mapOf("p_token" to ValorJson.Texto(t)))
+            val vacia = ((r as? Resultado.Ok)?.valor as? ValorJson.Lista)?.elementos?.isEmpty() == true
+            if (!vacia) return
+            // La cola corre en su propio hilo: lo que toca la pantalla y las preferencias va en el del modelo (revisión 10/11).
+            withContext(alcance.coroutineContext[kotlin.coroutines.ContinuationInterceptor] ?: kotlin.coroutines.EmptyCoroutineContext) {
+                if (t == token && !_esDemo.value) marcarLinkCaido(t)
+            }
+        } finally {
+            revisandoCaida.set(false)
+        }
+    }
+
     private fun leerCopia(): CopiaOffline? = CopiaOffline.desde(disco?.leer(ARCHIVO_COPIA))
 
+    /**
+     * Cuántas cargas completas están en curso. Con la copia guardada la fase pasa a LISTO antes de pedir nada (F2): mientras
+     * tanto, volver a la app o a la red no lanza otra carga en paralelo (revisión del 10/11).
+     */
+    private val cargasEnCurso = java.util.concurrent.atomic.AtomicInteger(0)
+    internal val cargando: Boolean get() = cargasEnCurso.get() > 0
+
     suspend fun cargar() {
+        cargasEnCurso.incrementAndGet()
+        try {
+            cargarSinGuarda()
+        } finally {
+            cargasEnCurso.decrementAndGet()
+        }
+    }
+
+    private suspend fun cargarSinGuarda() {
         if (_esDemo.value) return   // la demo no toca la red (y "tirar para actualizar" no la cierra)
         val t = token ?: run {
             _fase.value = Fase.SIN_TOKEN
@@ -623,9 +701,35 @@ class ModeloApp(
         val chatAlEmpezar = _chat.value
         val traidasAlEmpezar = chatAlEmpezar?.ultimasTraidas
 
+        // F2 (auditoría 10/11): con el plan guardado en el teléfono, se muestra ya y se actualiza por detrás. Antes se miraba
+        // el logo hasta 20 a 40 segundos con mala señal, aunque el plan estuviera guardado.
+        var motorDeLaCopia: ModeloEntreno? = null
+        var rutinaDeLaCopia: RutinaActiva? = null
+        if (_fase.value == Fase.CARGANDO) {
+            leerCopia()?.let { c ->
+                aplicar(c, cargarMotor = false)
+                _entreno.value?.let { e ->
+                    motorDeLaCopia = e
+                    rutinaDeLaCopia = e.rutina.value
+                    cargaDelMotor = alcance.launch {
+                        cargarCatalogo()
+                        e.aplicarLegadoDelDisco()
+                        e.cargar()
+                    }
+                }
+                _fase.value = Fase.LISTO
+            }
+        }
+
         // Sin red o servicio caído: la copia offline, si hay. La cuenta sigue guardada.
         fun sinRespuesta(clase: ErrorRpc.Clase) {
             _ultimaFalla.value = clase
+            if (motorDeLaCopia != null || (_fase.value == Fase.LISTO && _info.value != null)) {
+                // Ya se está mostrando la copia: solo se avisa que es la guardada.
+                _desdeCache.value = true
+                _fase.value = Fase.LISTO
+                return
+            }
             val copia = leerCopia()
             if (copia != null) {
                 aplicar(copia)
@@ -657,10 +761,7 @@ class ModeloApp(
         // `[]` sin error = token inválido o revocado (la base no tira error: devuelve vacío).
         val primera = (respuestaInfo as? ValorJson.Lista)?.elementos?.firstOrNull()
         if (primera == null) {
-            if (almacen.leer() == t) almacen.guardar(null)
-            preferencias.guardar(CLAVE_TOKEN_INVALIDO, t)
-            _chat.value?.pararSondeo()
-            _fase.value = Fase.TOKEN_INVALIDO
+            marcarLinkCaido(t)
             return
         }
         _info.value = decodificar(primera.aJson(), ClienteInfo::desde)
@@ -738,7 +839,9 @@ class ModeloApp(
         prepararEntreno()
         _fase.value = Fase.LISTO
         if (faltaron.isEmpty()) _cargasConRed.update { it + 1 }
-        _entreno.value?.let { e ->
+        // El motor que ya arrancó con la copia no se vuelve a cargar, salvo que la rutina haya cambiado: `prepararEntreno` la
+        // reemplazó y eso deja el día limpio (sin la sesión ni las series), así que hay que restaurarlo.
+        _entreno.value?.takeIf { it !== motorDeLaCopia || it.rutina.value != rutinaDeLaCopia }?.let { e ->
             cargaDelMotor = alcance.launch {
                 cargarCatalogo()
                 e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
@@ -767,13 +870,14 @@ class ModeloApp(
         sincronizarTecnica()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
+        anotarCargaCompleta()
         // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
         _salud.value?.let { s -> alcance.launch { s.alAbrir() } }
     }
 
     /** Volvió la red (el monitor de conectividad): sale lo pendiente y, si se mostraba la copia guardada, se trae todo. */
     suspend fun alVolverLaRed() {
-        if (_fase.value != Fase.LISTO || _esDemo.value || token == null) return
+        if (_fase.value != Fase.LISTO || _esDemo.value || token == null || cargando) return
         if (_desdeCache.value) {
             cargar()
             return
@@ -827,7 +931,7 @@ class ModeloApp(
      */
     suspend fun alVolverAPrimerPlano() {
         if (retomarCuentaGuardada()) return
-        if (_fase.value != Fase.LISTO || _esDemo.value || token == null) return
+        if (_fase.value != Fase.LISTO || _esDemo.value || token == null || cargando) return
         if (_desdeCache.value) {
             cargar()
             return
@@ -843,21 +947,124 @@ class ModeloApp(
             // Cambió el día: se vuelve a hoy (el que se miraba pudo salir de la ventana del servidor).
             irADia(null)
         }
+        // F7 (auditoría 10/11): la rutina y la dieta se pedían solo al arrancar. Un plan publicado hoy no se veía hasta
+        // cerrar la app del todo. Ahora se vuelven a pedir pasados unos minutos.
+        if (toca(Relectura.PLAN) && !refrescarPlan()) olvidar(Relectura.PLAN)   // sin respuesta: se intenta en la próxima vuelta
         outbox?.drenar()
-        // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
+        // Las marcas de hoy se releen en cada vuelta: las pudo cambiar la web u otro teléfono (DIE-05, D25) y es un pedido
+        // chico. F11: lo demás no se relee en cada vuelta (el alumno entra y sale veinte veces en un entreno).
         hidratarMarcas()
         refrescarDiaPasado()
         _chat.value?.sondear()
         _fotos.value?.drenar()
-        sincronizarGimnasio()
-        sincronizarTecnica()
-        _guia.value?.refrescarResumen()
+        if (toca(Relectura.GIMNASIO)) {
+            sincronizarGimnasio()
+            sincronizarTecnica()
+        }
+        if (toca(Relectura.GUIA)) _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }
         // Suplementación: aparte, así no demora lo que sigue (es solo lectura).
-        _suplementacion.value?.let { m -> alcance.launch { m.refrescar() } }
-        _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y retomar el historial (visibilitychange)
+        if (toca(Relectura.SUPLEMENTACION)) _suplementacion.value?.let { m -> alcance.launch { m.refrescar() } }
+        if (toca(Relectura.SALUD)) _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y el historial
         _entreno.value?.alVolverAPrimerPlano()
+    }
+
+    // ── F7 y F11: cada cuánto se relee al volver a la app ──
+
+    /** Lo que se relee al volver a la app, con su tiempo mínimo (ms) entre una lectura y la siguiente. */
+    enum class Relectura(val cadaMs: Long) {
+        PLAN(5 * 60_000L),
+        GUIA(10 * 60_000L),
+        SUPLEMENTACION(10 * 60_000L),
+        GIMNASIO(10 * 60_000L),
+        SALUD(60 * 60_000L),
+    }
+
+    /** El reloj de las relecturas (ms; las pruebas lo mueven). */
+    var relojRelecturas: () -> Long = System::currentTimeMillis
+    private val ultimaRelectura = HashMap<Relectura, Long>()
+
+    /** Si ya pasó su tiempo mínimo desde la última vez (y la anota). Una carga completa cuenta como lectura de todo. */
+    internal fun toca(r: Relectura): Boolean {
+        val ahora = relojRelecturas()
+        val u = ultimaRelectura[r]
+        if (u != null && ahora - u < r.cadaMs) return false
+        ultimaRelectura[r] = ahora
+        return true
+    }
+
+    private fun olvidar(r: Relectura) {
+        ultimaRelectura.remove(r)
+    }
+
+    private fun anotarCargaCompleta() {
+        val ahora = relojRelecturas()
+        for (r in Relectura.entries) ultimaRelectura[r] = ahora
+    }
+
+    /**
+     * Hay un entrenamiento abierto ahora: arrancó hace menos de 4 horas y no se cerró. El plan no se cambia en el medio
+     * (reemplazar la rutina cierra la tarjeta de carga y deja el día limpio); se aplica en la próxima vuelta.
+     */
+    private val entrenoAbierto: Boolean
+        get() {
+            val e = _entreno.value ?: return false
+            val ini = e.inicioSesion.value ?: return false
+            return e.sesionIniciada.value && !e.dia.value.diaFinalizado && relojRelecturas() - ini < 4 * 3600_000.0
+        }
+
+    /**
+     * F7: la rutina y la dieta de nuevo, sin el resto de la carga. Lo que no llega (red) no toca nada. Devuelve si alguna de
+     * las dos respondió.
+     */
+    internal suspend fun refrescarPlan(): Boolean {
+        val t = token ?: return false
+        if (_esDemo.value) return false
+        val p = mapOf("p_token" to texto(t))
+        val conEntreno = entrenoAbierto
+        val rr: Resultado<ValorJson>?
+        val dd: Resultado<ValorJson>
+        coroutineScope {
+            val r = if (conEntreno) null else async { cliente.llamar("mypump_get_rutina_activa", p) }
+            val d = async { cliente.llamar("mypump_get_dieta_activa", p) }
+            rr = r?.await()
+            dd = d.await()
+        }
+        if (token != t || _esDemo.value) return false
+        var copia = leerCopia()
+        // El entreno pudo empezar mientras viajaba el pedido: entonces la rutina nueva queda solo en la copia guardada.
+        val aplicarRutina = !entrenoAbierto
+        if (rr is Resultado.Ok) {
+            val fila = rr.valor.primeraFila
+            val nueva = fila?.let { decodificar(it.aJson(), RutinaActiva::desde) }
+            copia = copia?.copy(rutina = fila)
+            if (aplicarRutina && nueva != _rutina.value) {
+                _rutina.value = nueva
+                prepararEntreno()
+                // Motor nuevo, o el mismo con la rutina reemplazada (eso deja el día limpio): se restaura.
+                _entreno.value?.let { e ->
+                    cargaDelMotor = alcance.launch {
+                        cargarCatalogo()
+                        e.cargar()
+                    }
+                }
+            }
+        }
+        if (dd is Resultado.Ok) {
+            val fila = dd.valor.primeraFila
+            val nueva = dietaNormalizada(fila)
+            copia = copia?.copy(dieta = fila)
+            if (nueva != _dieta.value) {
+                _dieta.value = nueva
+                _swaps.value = nueva?.id?.let(::leerSwaps) ?: emptyMap()
+                cargarAjustes()
+                cargarMarcas()
+                hidratarDieta()
+            }
+        }
+        copia?.let { disco?.guardar(ARCHIVO_COPIA, it.copy(ts = System.currentTimeMillis().toDouble()).aValor()) }
+        return rr is Resultado.Ok || dd is Resultado.Ok
     }
 
     // ── Entreno ──
@@ -989,7 +1196,7 @@ class ModeloApp(
     val diaDeRevision: Int
         get() = if (_esDemo.value) SemanaRevision.DIA_POR_DEFECTO else _revision.value?.revisionDia?.value ?: SemanaRevision.DIA_POR_DEFECTO
 
-    private fun aplicar(c: CopiaOffline) {
+    private fun aplicar(c: CopiaOffline, cargarMotor: Boolean = true) {
         _info.value = decodificar(c.info.aJson(), ClienteInfo::desde)
         _rutina.value = c.rutina?.let { decodificar(it.aJson(), RutinaActiva::desde) }
         _dieta.value = dietaNormalizada(c.dieta)
@@ -997,7 +1204,7 @@ class ModeloApp(
         cargarAjustes()
         cargarMarcas()
         prepararEntreno()
-        _entreno.value?.let { e -> cargaDelMotor = alcance.launch { e.cargar() } }
+        if (cargarMotor) _entreno.value?.let { e -> cargaDelMotor = alcance.launch { e.cargar() } }
     }
 
     // ── Dieta ──
@@ -1711,6 +1918,8 @@ class ModeloApp(
     }
 
     companion object {
+        /** F5: lo mínimo que se sigue intentando algo que el servidor rechaza antes de darlo por perdido. */
+        const val VENTANA_ABANDONO_MS = 30L * 60 * 1000
         /** Ver [faltaDecidirSwaps]. */
         internal fun faltaDecidirSwapsEn(d: Disco): Boolean = d.carpeta.list().orEmpty().any { n ->
             if (!n.startsWith("swaps_") || !n.endsWith(".json")) return@any false

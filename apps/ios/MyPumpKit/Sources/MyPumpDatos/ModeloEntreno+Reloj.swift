@@ -202,7 +202,7 @@ extension ModeloEntreno {
             guard cierreHabilitado || inicioSesion != nil, !dia.diaFinalizado else { return r(.aplicado) }
             switch await cerrarDia(notas: "", fin: ec.creado) {
             case .cerrado, .demo: return r(.aplicado)
-            case .sinSesion, .fallo: return r(.pendiente, "No se pudo cerrar la sesión en el iPhone (sin conexión).")
+            case .sinSesion, .fallo: return r(.pendiente, "No se pudo terminar el entrenamiento en el iPhone, sin conexión.")
             }
         }
     }

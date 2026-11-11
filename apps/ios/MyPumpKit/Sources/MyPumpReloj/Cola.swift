@@ -7,7 +7,7 @@ public enum EventoReloj: Equatable, Sendable {
     case iniciar(diaId: String, semana: Int)
     /// Una serie confirmada con la corona. `indice` es 0-based (la serie 1 es 0). `kg` nil = sin kg (peso corporal).
     case serie(diaId: String, semana: Int, lugar: String, indice: Int, reps: Int, kg: Double?)
-    /// «Terminar» en el reloj: cierra la sesión de hoy en el teléfono (como «Cerrar sesión de hoy», sin notas).
+    /// «Terminar» en el reloj: cierra la sesión de hoy en el teléfono (como «Terminar el entrenamiento de hoy», sin notas).
     case terminar(diaId: String, semana: Int)
 
     public var diaId: String {

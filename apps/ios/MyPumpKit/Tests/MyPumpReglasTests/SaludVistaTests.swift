@@ -192,11 +192,11 @@ struct SaludVistaTests {
         // Sin motivos, la frase sale de la banda; discordancia y estado autonómico ganan.
         let baja = [RecuperacionDia(fecha: hoy, score: 30, estado: "ok", banda: "baja")]
         if case .conScore(let b) = SaludVista.cardRecuperacion(serie: baja, conectado: true, mostrar: true, salud: [], historial: nil, sinDatos: false, hoy: hoy) {
-            #expect(b.frase == "Hoy tu cuerpo pide más descanso." && b.notaVieja == nil && b.grafico.isEmpty)
+            #expect(b.frase == "Recuperación baja hoy. Seguí tu plan y si se repite varios días, contámelo por el chat." && b.notaVieja == nil && b.grafico.isEmpty)
         } else { Issue.record("esperaba score") }
         let fat = [RecuperacionDia(fecha: hoy, score: 40, estado: "ok", banda: "baja", estadoAutonomico: "fatiga_acumulada", discordancia: true)]
         if case .conScore(let f) = SaludVista.cardRecuperacion(serie: fat, conectado: true, mostrar: true, salud: [], historial: nil, sinDatos: false, hoy: hoy) {
-            #expect(f.frase == "Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís.")
+            #expect(f.frase == "Tus números de hoy no coinciden con cómo te sentís. Seguí tu plan.")
         } else { Issue.record("esperaba score") }
     }
 

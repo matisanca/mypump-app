@@ -115,7 +115,7 @@ object TextosEntreno {
     const val SIN_COMENTARIOS = "Todavía no hay comentarios. Dejale una nota a Mati o contale cómo te fue."
     const val COMENTARIO_FALLO = "No se pudo enviar el comentario. Probá de nuevo."
     const val CERRAR_SIN_SESION = "No se pudo guardar la sesión. Revisá tu conexión e intentá de nuevo."
-    const val CERRAR_FALLO = "No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo."
+    const val CERRAR_FALLO = "No se pudo terminar el entrenamiento. Revisá tu conexión e intentá de nuevo."
     const val SIN_VARIANTES = "No hay otra variante equivalente del mismo gesto para este ejercicio."
 }
 
@@ -133,7 +133,7 @@ data class BannerSemana(
                 return "📈 Esta semana $cambian ${if (cambian == 1) "ejercicio cambia" else "ejercicios cambian"} carga o volumen. Mirá el detalle al abrir cada uno."
             }
             if (calibracion) {
-                return "🎯 Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3) — no te guardes reps."
+                return "Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto."
             }
             return null
         }
@@ -151,14 +151,14 @@ object SemanaEntreno {
     /** ENT-14: el botón "Pasar a Semana N →" se ve si no es la demo y no es la última semana. */
     fun puedeAvanzar(semana: Int, total: Int, demo: Boolean): Boolean = !demo && semana < total
 
-    /** ENT-15: en la última semana, con un bloque en cola, "🎉 Empezar bloque nuevo →". */
+    /** ENT-15: en la última semana, con un bloque en cola, "Empezar bloque nuevo". */
     fun puedeEmpezarBloque(semana: Int, total: Int, tieneSiguiente: Boolean, demo: Boolean): Boolean =
         !demo && semana >= total && tieneSiguiente
 
     /** El rótulo del botón (`semana_offset` solo cambia rótulos, ENT-09). */
     fun botonAvanzar(semana: Int, offset: Int): String = "Pasar a Semana ${semana + offset + 1} →"
-    const val BOTON_BLOQUE_NUEVO = "🎉 Empezar bloque nuevo →"
-    const val DETALLE_BLOQUE_NUEVO = "Terminaste tu plan. Tu próximo bloque ya está listo."
+    const val BOTON_BLOQUE_NUEVO = "Empezar bloque nuevo"
+    const val DETALLE_BLOQUE_NUEVO = "Terminaste este bloque. El próximo ya está listo."
 
     /** `confirmAvanzarSemana`: null en la última semana (no hay a dónde avanzar). */
     fun preguntaAvanzar(semana: Int, total: Int, offset: Int, diaCompleto: Boolean): Pregunta? {
@@ -189,8 +189,8 @@ object SemanaEntreno {
     /** `confirmEmpezarBloqueNuevo` */
     val preguntaBloqueNuevo = Pregunta(
         titulo = "¡Nuevo bloque!",
-        cuerpo = "Terminaste tu plan 💪. Tu coach ya te dejó preparado el siguiente bloque. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo — tus cargas anteriores quedan guardadas.",
-        confirmar = "🎉 Empezar bloque nuevo →", cancelar = "Ahora no",
+        cuerpo = "Terminaste este bloque. Ya te dejé preparado el siguiente. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo y tus cargas anteriores quedan guardadas.",
+        confirmar = "Empezar bloque nuevo", cancelar = "Ahora no",
     )
 
     /** `doEmpezarBloqueNuevo` cuando no salió. */
@@ -199,7 +199,7 @@ object SemanaEntreno {
         cuerpo = if (sinRed) {
             "No llegó la respuesta del servidor. Recargá para ver si el bloque nuevo ya quedó activo."
         } else {
-            "No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribile a tu coach."
+            "No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribime por el chat."
         },
         confirmar = if (sinRed) "Recargar" else "Ok", cancelar = if (sinRed) "Cerrar" else "",
     )

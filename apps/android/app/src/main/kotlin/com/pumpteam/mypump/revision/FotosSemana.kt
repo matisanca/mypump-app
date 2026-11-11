@@ -99,6 +99,7 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
     val pendientes = modelo?.pendientes?.collectAsStateWithLifecycle()?.value ?: emptyMap()
     val urls = modelo?.urls?.collectAsStateWithLifecycle()?.value ?: emptyMap()
     val subiendo = modelo?.subiendo?.collectAsStateWithLifecycle()?.value ?: emptySet()
+    val rechazadas = modelo?.rechazadas?.collectAsStateWithLifecycle()?.value ?: emptyMap()
     val semana = modelo?.semanaActual ?: FotosProgreso.lunes(FechaLocal.hoy())
     val hechas = remember(fotos, pendientes, semana) {
         FotosProgreso.posesDeLaSemana(fotos, pendientes.values.map { it.pose to it.fecha }, semana)
@@ -183,6 +184,22 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
                     color = if (problema) c.alerta else c.marcaTexto,
                     modifier = Modifier.testTag("mensaje-fotos"),
                 )
+            }
+
+            // F6 (auditoría 10/11): la foto que el servidor rechazó queda a la vista.
+            if (modelo != null) {
+                for (clave in rechazadas.keys.sorted()) {
+                    Column(Modifier.testTag("foto-rechazada"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Iconos.Alerta, contentDescription = null, tint = c.alerta, modifier = Modifier.size(16.dp))
+                            Text("Esta foto no se pudo subir", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = c.alerta)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            TextButton(onClick = { alcance.launch { modelo.reintentarRechazada(clave) } }) { Text("Reintentar") }
+                            TextButton(onClick = { modelo.descartarRechazada(clave) }) { Text("Descartar", color = c.peligro) }
+                        }
+                    }
+                }
             }
 
             if (racha >= 2) {

@@ -167,7 +167,7 @@ class ModeloEntreno(
     private val _iniciadaConBoton = MutableStateFlow(false)
     val iniciadaConBoton: StateFlow<Boolean> = _iniciadaConBoton.asStateFlow()
 
-    /** Hay sesión en el servidor (o se pidió crearla): el botón "Cerrar sesión de hoy" se ve habilitado. */
+    /** Hay sesión en el servidor (o se pidió crearla): el botón "Terminar el entrenamiento de hoy" se ve habilitado. */
     private val _sesionIniciada = MutableStateFlow(false)
     val sesionIniciada: StateFlow<Boolean> = _sesionIniciada.asStateFlow()
 
@@ -197,6 +197,17 @@ class ModeloEntreno(
     var alCambiarRutina: ((CambioRutina) -> Unit)? = null
 
     private var sesionesLocales: Map<String, SesionLocal> = disco?.let { leerSesiones(it) } ?: emptyMap()
+
+    /**
+     * F1 (auditoría 10/11): las series y los estados que este teléfono mandó a la cola, por clave (lo último gana). Se
+     * pintan al reabrir sin red: antes, lo que ya había subido solo lo conocía el servidor y se veía vacío.
+     */
+    private var anotadas: Map<String, EscrituraAnotada> =
+        podarAnotadas(disco?.leer(Archivo.ANOTADAS)?.let(ValorJson::desde)?.let(::leerAnotadas) ?: emptyMap(), reloj().toEpochMilli().toDouble())
+    private val _seriesSinConfirmar = MutableStateFlow(false)
+
+    /** F1: lo que se ve del día salió de lo guardado en el teléfono porque el servidor no contestó (sin confirmar). */
+    val seriesSinConfirmar: StateFlow<Boolean> = _seriesSinConfirmar.asStateFlow()
     private var sinHistorialPorClave = false
     private val generacionHistorial = HashMap<String, Int>()
     private val historialEnVuelo = HashMap<String, Job>()
@@ -409,7 +420,7 @@ class ModeloEntreno(
     fun cronometro(): TiempoEntreno.Cronometro? =
         TiempoEntreno.cronometro(_inicioSesion.value, ahoraMs, _iniciadaConBoton.value, _dia.value.diaFinalizado, todoHecho)
 
-    /** El botón "Cerrar sesión de hoy" del pie se ve habilitado. */
+    /** El botón "Terminar el entrenamiento de hoy" del pie se ve habilitado. */
     val cierreHabilitado: Boolean get() = _sesionIniciada.value || hechos > 0
 
     /** La card de un ejercicio del día, con todo lo que muestra (ENT-10/11). */
@@ -817,6 +828,7 @@ class ModeloEntreno(
         // Las fechas de la sesión anterior no se heredan (una clave repetida, otro bloque con los mismos lugares): vuelven
         // del servidor (`registrado_en`) y de la cola, y lo que se toque desde ahora se anota de nuevo.
         _fechasSeries.value = emptyMap()
+        _seriesSinConfirmar.value = false
         mutarDia {
             it.sesionId = null
             it.diaFinalizado = false
@@ -871,7 +883,8 @@ class ModeloEntreno(
         if (s == null || id == null) {
             // Sin sesión conocida (sin red, o todavía no se pudo crear): lo que está en la cola para este día se pinta igual.
             // Antes las series confirmadas sin señal aparecían vacías y un toque las pisaba (revisión del 14-oct, hallazgo 5).
-            aplicarPendientes()
+            // Sin respuesta del servidor, también lo que ya había subido desde este teléfono (F1).
+            aplicarPendientes(conAnotadas = remota is ConsultaSesion.SinRespuesta)
             return
         }
         mutarDia {
@@ -919,7 +932,7 @@ class ModeloEntreno(
         val t = token
         val sid = _dia.value.sesionId
         if (t == null || sid == null) {
-            aplicarPendientes()
+            aplicarPendientes(conAnotadas = true)
             return
         }
         val p = mapOf("p_token" to texto(t), "p_sesion_id" to texto(sid))
@@ -930,21 +943,41 @@ class ModeloEntreno(
         }
         if (seq != restauracion || _dia.value.sesionId != sid) return
         estados.valorONull()?.let { f -> mutarDia { it.aplicarEstados(f) } }
-        registros.valorONull()?.let { f ->
+        val filas = registros.valorONull()
+        filas?.let { f ->
             for (r in f) r.registradoEn?.let { anotarFecha(r.ejercicioId, r.serie, FechaLocal.de(it, zona)) }
             mutarDia { it.aplicarRegistros(f) }
         }
-        aplicarPendientes()
+        // F1: si el servidor no devolvió las series, lo que ya subió desde este teléfono se pinta (sin confirmar) para que
+        // un toque no pise la serie buena con una cargada de memoria.
+        aplicarPendientes(conAnotadas = filas == null)
     }
 
     /**
      * Lo que está en la cola sin mandar para el día y la semana que se miran se pinta encima de lo del servidor: es lo
      * más nuevo (una serie corregida sin red le gana a la que el servidor ya tenía).
      */
-    internal suspend fun aplicarPendientes() {
-        val ops = outbox?.operaciones() ?: return
+    internal suspend fun aplicarPendientes(conAnotadas: Boolean = false) {
         val diaId = _dia.value.dia.id ?: return
         val semana = this.semana
+        val ops = mutableListOf<Operacion>()
+        val enCola = outbox?.operaciones() ?: emptyList()
+        if (conAnotadas) {
+            val rutinaId = _rutina.value.id
+            // Lo que sigue en la cola manda (con su fecha): lo anotado solo cubre lo que ya subió.
+            val claves = enCola.mapNotNull { it.dedupeKey }.toSet()
+            // Lo que terminó en fallidos (el servidor lo rechazó o la cola lo abandonó) no se pinta como hecho. Es la misma
+            // escritura si coincide lo mandado: una corrección posterior que sí subió se sigue pintando.
+            val caidas = outbox?.fallidos()?.map { it.op } ?: emptyList()
+            val propias = anotadas.filter { (clave, a) ->
+                clave !in claves && caidas.none { it.dedupeKey == clave && it.payload == a.payload } && a.rutinaId == rutinaId && a.payload["diaId"]?.comoTexto == diaId &&
+                    a.payload["semana"]?.comoNumero == semana.toDouble()
+            }.values
+            if (propias.isNotEmpty()) _seriesSinConfirmar.value = true
+            propias.sortedBy { it.ts }.forEach { ops += Operacion(id = "anotada", kind = it.kind, payload = it.payload, dedupeKey = null, ts = it.ts) }
+        }
+        ops += enCola
+        if (ops.isEmpty()) return
         mutarDia { d ->
             for (op in ops) {
                 val p = op.payload
@@ -987,7 +1020,7 @@ class ModeloEntreno(
         /** "No se pudo guardar la sesión. Revisá tu conexión e intentá de nuevo." */
         SIN_SESION,
 
-        /** "No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo." */
+        /** "No se pudo terminar el entrenamiento. Revisá tu conexión e intentá de nuevo." */
         FALLO,
 
         /** Demo: no se cierra nada. */
@@ -1703,7 +1736,7 @@ class ModeloEntreno(
         for (e in (g["escrituras"] as? ValorJson.Lista)?.elementos ?: emptyList()) {
             val kind = e["kind"]?.comoTexto ?: continue
             val payload = e["payload"] ?: continue
-            outbox?.encolar(kind, payload, e["clave"]?.comoTexto)
+            encolarYAnotar(kind, payload, e["clave"]?.comoTexto)
         }
         d.borrar(Archivo.OK_DEMORADO)
     }
@@ -1795,7 +1828,7 @@ class ModeloEntreno(
         var completo: DiaCompletado? = null
         for (e in efectos) {
             when (e) {
-                is DiaEnCurso.Efecto.Encolar -> outbox?.encolar(e.kind, e.payload, e.clave)
+                is DiaEnCurso.Efecto.Encolar -> encolarYAnotar(e.kind, e.payload, e.clave)
                 is DiaEnCurso.Efecto.IniciarDescanso -> {
                     mutarDescanso { it.iniciar(e.segundos, ahoraMs) }
                     guardarDescanso()
@@ -1892,6 +1925,32 @@ class ModeloEntreno(
 
         /** SER-14: el desfase del reloj con el servidor. */
         const val RELOJ = "reloj-servidor.json"
+
+        /** F1: lo que este teléfono mandó del día (`anotadas`), con su rutina. */
+        const val ANOTADAS = "entreno-anotadas.json"
+    }
+
+    /** F1: una serie o un estado mandados desde este teléfono (lo que se pinta si al reabrir el servidor no contesta). */
+    data class EscrituraAnotada(val kind: String, val payload: ValorJson, val ts: Double, val rutinaId: String?)
+
+    /** Toda escritura del día pasa por acá: a la cola y, si es una serie o un estado, anotada en el teléfono (F1). */
+    private suspend fun encolarYAnotar(kind: String, payload: ValorJson, clave: String?) {
+        outbox?.encolar(kind, payload, clave)
+        if ((kind != "carga" && kind != "estado") || clave == null || demo) return
+        anotadas = anotadas + (clave to EscrituraAnotada(kind, payload, ahoraMs, _rutina.value.id))
+        disco?.guardar(
+            Archivo.ANOTADAS,
+            ValorJson.Objeto(
+                anotadas.mapValues { (_, a) ->
+                    ValorJson.objeto(
+                        "kind" to texto(a.kind),
+                        "payload" to a.payload,
+                        "ts" to ValorJson.Numero(a.ts),
+                        "rutinaId" to (a.rutinaId?.let(::texto) ?: ValorJson.Nulo),
+                    )
+                },
+            ),
+        )
     }
 
     internal val ahoraMs: Double get() = reloj().toEpochMilli().toDouble()
@@ -2018,3 +2077,17 @@ internal fun enteroTruncado(d: Double): Int {
     val t = maxOf(-1e15, minOf(1e15, d))
     return if (t >= Int.MAX_VALUE) Int.MAX_VALUE else if (t <= Int.MIN_VALUE) Int.MIN_VALUE else t.toInt()
 }
+
+/** F1: cuánto se guarda lo mandado. Una semana alcanza para el día que se mira sin que el archivo crezca. */
+internal const val VIGENCIA_ANOTADAS_MS = 7.0 * 24 * 3600 * 1000
+
+internal fun podarAnotadas(a: Map<String, ModeloEntreno.EscrituraAnotada>, ahora: Double): Map<String, ModeloEntreno.EscrituraAnotada> =
+    a.filterValues { ahora - it.ts < VIGENCIA_ANOTADAS_MS }
+
+internal fun leerAnotadas(v: ValorJson): Map<String, ModeloEntreno.EscrituraAnotada> =
+    ((v as? ValorJson.Objeto)?.campos ?: emptyMap()).mapNotNull { (k, e) ->
+        val kind = e["kind"]?.comoTexto ?: return@mapNotNull null
+        val payload = e["payload"] ?: return@mapNotNull null
+        val ts = e["ts"]?.comoNumero ?: return@mapNotNull null
+        k to ModeloEntreno.EscrituraAnotada(kind, payload, ts, e["rutinaId"]?.comoTexto)
+    }.toMap()

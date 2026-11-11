@@ -213,7 +213,7 @@ extension ModeloEntreno {
     /// servidor, así `aplicarPendientes` la pinta.
     func recuperarDeshacerGuardado() async {
         guard let g = disco?.leer(OKGuardado.self, Archivo.okDemorado) else { return }
-        for e in g.escrituras { await outbox?.encolar(e.kind, e.payload, dedupeKey: e.clave) }
+        for e in g.escrituras { await encolarYAnotar(e.kind, e.payload, clave: e.clave) }
         disco?.borrar(Archivo.okDemorado)
     }
 

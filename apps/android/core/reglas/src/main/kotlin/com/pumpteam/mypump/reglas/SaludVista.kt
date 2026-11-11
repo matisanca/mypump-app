@@ -32,13 +32,13 @@ data class TextosSalud(
         val IOS = TextosSalud(
             app = "Salud de Apple", boton = "Conectar Apple Health", dispositivo = "iPhone y Apple Watch", telefono = "tu iPhone",
             esteTel = "Este iPhone", sinApp = "Este iPhone no tiene Salud de Apple.", relojes = "Apple Watch, Oura, Garmin…",
-            sincroniza = "la app Salud del iPhone", desdeApp = "la app de iPhone", revocar = "Ajustes → Privacidad y seguridad → Salud → MyPump",
+            sincroniza = "la app Salud del iPhone", desdeApp = "la app de iPhone", revocar = "Ajustes → Privacidad y seguridad → Salud → Pump Team",
         )
         val ANDROID = TextosSalud(
             app = "Health Connect", boton = "Conectar Health Connect", dispositivo = "Tu teléfono y tu reloj", telefono = "tu teléfono",
             esteTel = "Este teléfono", sinApp = "Este teléfono no tiene Health Connect. Se instala gratis desde Google Play.",
             relojes = "Galaxy Watch, Mi Band, Garmin, Fitbit…", sincroniza = "Health Connect", desdeApp = "la app del teléfono",
-            revocar = "Ajustes → Salud y bienestar → Health Connect → MyPump",
+            revocar = "Ajustes → Salud y bienestar → Health Connect → Pump Team",
         )
     }
 }
@@ -283,12 +283,12 @@ object SaludVista {
         val banda = fila.banda ?: "media"
         val motivos = motivos(fila)
         val frase = when {
-            fila.discordancia == true -> "Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís."
-            fila.estadoAutonomico == "maladaptacion" -> "Tu cuerpo viene peleando con la carga. Hoy conviene aflojar."
-            fila.estadoAutonomico == "fatiga_acumulada" -> "Venís con fatiga acumulada de varios días."
+            fila.discordancia == true -> "Tus números de hoy no coinciden con cómo te sentís. Seguí tu plan."
+            fila.estadoAutonomico == "maladaptacion" -> "Tu recuperación viene baja hace varios días. Seguí tu plan y contámelo por el chat."
+            fila.estadoAutonomico == "fatiga_acumulada" -> "Venís con varios días de recuperación baja. Seguí tu plan y contámelo por el chat."
             motivos.isEmpty() -> when (banda) {
-                "alta" -> "Venís bien. Aprovechalo."
-                "baja" -> "Hoy tu cuerpo pide más descanso."
+                "alta" -> "Recuperación alta hoy."
+                "baja" -> "Recuperación baja hoy. Seguí tu plan y si se repite varios días, contámelo por el chat."
                 else -> "Estás en tu rango normal."
             }
             else -> null

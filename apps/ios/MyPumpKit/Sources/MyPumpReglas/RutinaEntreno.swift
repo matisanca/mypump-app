@@ -120,7 +120,7 @@ public enum TextosEntreno {
     public static let sinComentarios = "Todavía no hay comentarios. Dejale una nota a Mati o contale cómo te fue."
     public static let comentarioFallo = "No se pudo enviar el comentario. Probá de nuevo."
     public static let cerrarSinSesion = "No se pudo guardar la sesión. Revisá tu conexión e intentá de nuevo."
-    public static let cerrarFallo = "No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo."
+    public static let cerrarFallo = "No se pudo terminar el entrenamiento. Revisá tu conexión e intentá de nuevo."
     public static let sinVariantes = "No hay otra variante equivalente del mismo gesto para este ejercicio."
 }
 
@@ -137,7 +137,7 @@ public struct BannerSemana: Equatable, Sendable {
             return "📈 Esta semana \(cambian) \(cambian == 1 ? "ejercicio cambia" : "ejercicios cambian") carga o volumen. Mirá el detalle al abrir cada uno."
         }
         if calibracion {
-            return "🎯 Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3) — no te guardes reps."
+            return "Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto."
         }
         return nil
     }
@@ -154,15 +154,15 @@ public enum SemanaEntreno {
     /// ENT-14: el botón "Pasar a Semana N →" se ve si no es la demo y no es la última semana.
     public static func puedeAvanzar(semana: Int, total: Int, demo: Bool) -> Bool { !demo && semana < total }
 
-    /// ENT-15: en la última semana, con un bloque en cola, "🎉 Empezar bloque nuevo →".
+    /// ENT-15: en la última semana, con un bloque en cola, "Empezar bloque nuevo".
     public static func puedeEmpezarBloque(semana: Int, total: Int, tieneSiguiente: Bool, demo: Bool) -> Bool {
         !demo && semana >= total && tieneSiguiente
     }
 
     /// El rótulo del botón (`semana_offset` solo cambia rótulos, ENT-09).
     public static func botonAvanzar(semana: Int, offset: Int) -> String { "Pasar a Semana \(semana + offset + 1) →" }
-    public static let botonBloqueNuevo = "🎉 Empezar bloque nuevo →"
-    public static let detalleBloqueNuevo = "Terminaste tu plan. Tu próximo bloque ya está listo."
+    public static let botonBloqueNuevo = "Empezar bloque nuevo"
+    public static let detalleBloqueNuevo = "Terminaste este bloque. El próximo ya está listo."
 
     /// `confirmAvanzarSemana`: nil en la última semana (no hay a dónde avanzar).
     public static func preguntaAvanzar(semana: Int, total: Int, offset: Int, diaCompleto: Bool) -> Pregunta? {
@@ -187,14 +187,14 @@ public enum SemanaEntreno {
     /// `confirmEmpezarBloqueNuevo`
     public static let preguntaBloqueNuevo = Pregunta(
         titulo: "¡Nuevo bloque!",
-        cuerpo: "Terminaste tu plan 💪. Tu coach ya te dejó preparado el siguiente bloque. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo — tus cargas anteriores quedan guardadas.",
-        confirmar: "🎉 Empezar bloque nuevo →", cancelar: "Ahora no")
+        cuerpo: "Terminaste este bloque. Ya te dejé preparado el siguiente. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo y tus cargas anteriores quedan guardadas.",
+        confirmar: "Empezar bloque nuevo", cancelar: "Ahora no")
 
     /// `doEmpezarBloqueNuevo` cuando no salió.
     public static func errorBloqueNuevo(sinRed: Bool) -> Pregunta {
         Pregunta(titulo: sinRed ? "Sin conexión" : "Ups",
                  cuerpo: sinRed ? "No llegó la respuesta del servidor. Recargá para ver si el bloque nuevo ya quedó activo."
-                     : "No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribile a tu coach.",
+                     : "No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribime por el chat.",
                  confirmar: sinRed ? "Recargar" : "Ok", cancelar: sinRed ? "Cerrar" : "")
     }
 

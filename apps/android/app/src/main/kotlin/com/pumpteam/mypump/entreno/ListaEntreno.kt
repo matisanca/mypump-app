@@ -445,6 +445,11 @@ private fun CuerpoDia(
     val alcance = LocalAlcanceApp.current
     var trabajando by remember { mutableStateOf(false) }
     val banner = motor.banner
+    // U3 (auditoría del 10/11): «Empezar entrenamiento» va antes de los carteles. Con la tarjeta de la guía y el de
+    // calibración, quedaba debajo de la barra de pestañas. Con el día cerrado o todo hecho no hay cronómetro (está la
+    // tarjeta de cierre).
+    if (!motor.todoHecho) Cronometro(motor, v, alCerrarDia)
+
     if (banner.cambian > 0) {
         AvisoTenido(
             Iconos.Tendencia,
@@ -460,13 +465,20 @@ private fun CuerpoDia(
     } else if (banner.calibracion) {
         AvisoTenido(
             Iconos.Mira,
-            AnnotatedString("Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3): no te guardes reps."),
+            AnnotatedString("Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto."),
             modifier = Modifier.testTag("banner-calibracion"),
         )
     }
 
-    // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre).
-    if (!motor.todoHecho) Cronometro(motor, v, alCerrarDia)
+    // F1 (auditoría 10/11): sin respuesta del servidor, las series se pintan con lo guardado en el teléfono.
+    val sinConfirmar by motor.seriesSinConfirmar.collectAsStateWithLifecycle()
+    if (sinConfirmar) {
+        AvisoTenido(
+            Iconos.SinNube,
+            AnnotatedString("Sin conexión. Ves las series guardadas en este teléfono."),
+            modifier = Modifier.testTag("aviso-series-guardadas"),
+        )
+    }
 
     var primero = 1
     for (b in motor.bloques) {
@@ -850,7 +862,7 @@ private fun TarjetaCierre(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: ()
                 Text("Tu sesión de hoy quedó guardada.", style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold))
             }
         } else {
-            BotonConIcono("Cerrar sesión de hoy", Iconos.Bandera, alTocar = alCerrarDia, modifier = Modifier.testTag("cerrar-sesion"))
+            BotonConIcono("Terminar el entrenamiento de hoy", Iconos.Bandera, alTocar = alCerrarDia, modifier = Modifier.testTag("cerrar-sesion"))
         }
     }
 }
@@ -876,7 +888,7 @@ private fun ResumenSesion(motor: ModeloEntreno, v: VistaEntreno, alCerrarDia: ()
             CeldaResumen("Restan", "$restan ej", Modifier.weight(1f))
         }
         BotonConIcono(
-            "Cerrar sesión de hoy",
+            "Terminar el entrenamiento de hoy",
             Iconos.Bandera,
             alTocar = alCerrarDia,
             principal = false,

@@ -2,7 +2,7 @@ import SwiftUI
 import MyPumpReglas
 import MyPumpDatos
 
-/// "Cerrar sesión de hoy" (SES-06): el resumen (series, reps, volumen y minutos), las series por músculo de hoy (S2, con
+/// "Terminar el entrenamiento de hoy" (SES-06): el resumen (series, reps, volumen y minutos), las series por músculo de hoy (S2, con
 /// la semana al lado), lo que queda sin completar si se cierra antes, y las notas para Mati. El motor vacía la cola
 /// antes de cerrar.
 struct CerrarDiaView: View {
@@ -106,7 +106,7 @@ struct CerrarDiaView: View {
                 .sensoryFeedback(.success, trigger: cerrados)
                 .accessibilityIdentifier("confirmar-cierre")
             }
-            .navigationTitle("Cerrar sesión de hoy")
+            .navigationTitle("Terminar el entrenamiento de hoy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { cerrar() } } }
         }

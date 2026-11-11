@@ -107,6 +107,56 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
     private val _subiendo = MutableStateFlow<Set<String>>(emptySet())
     val subiendo: StateFlow<Set<String>> = _subiendo.asStateFlow()
 
+    /** F6 (auditoría 10/11): una foto que el servidor rechazó al subirse sola, con el motivo. */
+    data class FotoRechazada(val foto: FotoPendiente, val motivo: String)
+
+    /**
+     * F6: las que el servidor rechazó al subirlas solas (antes se borraban sin avisar). Quedan a la vista con «Reintentar» y
+     * «Descartar». "<lunes>|<pose>" → la foto y el motivo.
+     */
+    private val _rechazadas = MutableStateFlow<Map<String, FotoRechazada>>(leerRechazadas())
+    val rechazadas: StateFlow<Map<String, FotoRechazada>> = _rechazadas.asStateFlow()
+
+    /** F6: «Reintentar» de una foto rechazada: vuelve a la cola (si el alumno no sacó otra de esa pose) y se sube. */
+    suspend fun reintentarRechazada(clave: String) {
+        val r = _rechazadas.value[clave] ?: return
+        _rechazadas.update { it - clave }
+        guardarRechazadas()
+        if (_pendientes.value[clave] == null) {
+            _pendientes.update { it + (clave to r.foto) }
+            guardarCola()
+        }
+        drenar()
+    }
+
+    /** F6: «Descartar» de una foto rechazada. */
+    fun descartarRechazada(clave: String) {
+        if (_rechazadas.value[clave] == null) return
+        _rechazadas.update { it - clave }
+        guardarRechazadas()
+    }
+
+    private fun leerRechazadas(): Map<String, FotoRechazada> {
+        val o = disco?.leer(ARCHIVO_RECHAZADAS) as? JsonObject ?: return emptyMap()
+        val m = LinkedHashMap<String, FotoRechazada>()
+        for ((k, v) in o) {
+            val j = ValorJson.desde(v)
+            val f = j["foto"]?.let(FotoPendiente::desde) ?: continue
+            m[k] = FotoRechazada(f, j["motivo"]?.comoTexto ?: "")
+        }
+        return m
+    }
+
+    private fun guardarRechazadas() {
+        val d = disco ?: return
+        val r = _rechazadas.value
+        if (r.isEmpty()) {
+            d.borrar(ARCHIVO_RECHAZADAS)
+            return
+        }
+        d.guardar(ARCHIVO_RECHAZADAS, ValorJson.Objeto(r.mapValues { ValorJson.objeto("foto" to it.value.foto.aValor(), "motivo" to texto(it.value.motivo)) }))
+    }
+
     private val drenando = Mutex()
 
     /** Las que el servidor no pudo guardar (5xx) en esta sesión: la próxima pasada las deja para el final. */
@@ -140,6 +190,11 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
         val clave = "${FotosProgreso.lunes(fecha)}|$pose"
         if (_pendientes.value.size >= FotosProgreso.MAX_PENDIENTES && clave !in _pendientes.value) return Resultado.ColaLlena
         if (dataUrl.length > FotosProgreso.MAX_CARACTERES) return Resultado.MuyPesada
+        // Una foto nueva de esa pose y semana reemplaza a la rechazada: si no, «Reintentar» subía la vieja encima (revisión 10/11).
+        if (clave in _rechazadas.value) {
+            _rechazadas.update { it - clave }
+            guardarRechazadas()
+        }
         val item = FotoPendiente(pose, fecha, dataUrl)
         _pendientes.update { it + (clave to item) }
         val guardo = guardarCola()
@@ -202,6 +257,11 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
                         subioAlgo = true
                     }
                     is Envio.Fatal -> {
+                        // F6: no se borra en silencio: queda en «Esta foto no se pudo subir» hasta que la reintente o la descarte.
+                        if (_pendientes.value[clave] == item) {
+                            _rechazadas.update { it + (clave to FotoRechazada(item, r.motivo)) }
+                            guardarRechazadas()
+                        }
                         sacar(clave, item)
                         conErrorDelServidor.remove(clave)
                     }
@@ -338,5 +398,6 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
 
     companion object {
         const val ARCHIVO = FotoPendiente.ARCHIVO
+        const val ARCHIVO_RECHAZADAS = "fotos-rechazadas.json"
     }
 }

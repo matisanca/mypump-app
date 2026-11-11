@@ -452,7 +452,7 @@ class EntrenoUiTest : PruebaUi() {
         assertTrue(servidor.a("mypump_avanzar_semana").single().contains("\"p_semana_destino\":4"))
         // Última semana con otro bloque en cola: no hay a dónde avanzar, sí "Empezar bloque nuevo".
         assertFalse(p.existe(etiqueta("avanzar-semana")))
-        p.nodo(texto("Terminaste tu plan. Tu próximo bloque ya está listo."))
+        p.nodo(texto("Terminaste este bloque. El próximo ya está listo."))
         p.tocar(etiqueta("empezar-bloque"))
         p.nodo(texto("¡Nuevo bloque!"))
         servidor.respuestas["mypump_get_rutina_activa"] = rutina(semana = 1, siguiente = false, id = "r-bloque-2")

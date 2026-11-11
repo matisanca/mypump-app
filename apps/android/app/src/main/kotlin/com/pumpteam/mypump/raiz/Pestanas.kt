@@ -117,6 +117,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val navegacion = rememberNavegacion()
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
     val desdeCache by modelo.desdeCache.collectAsStateWithLifecycle()
+    val perdidos by modelo.perdidos.collectAsStateWithLifecycle()
     val estadoGuardado by modelo.estadoGuardado.collectAsStateWithLifecycle()
     val destino by vm.destino.collectAsStateWithLifecycle()
     val estadosPestanas = rememberSaveableStateHolder()
@@ -169,11 +170,16 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
         Box(Modifier.fillMaxSize().background(MyPump.colores.fondo)) {
             CompositionLocalProvider(LocalRellenoInferior provides abajo + Espacio.xs, LocalPanelesCarga provides panelesCarga) {
                 Column(Modifier.fillMaxSize().consumeWindowInsets(WindowInsets.navigationBars)) {
-                    val conBanner = esDemo || desdeCache
+                    val conPerdidos = !esDemo && perdidos > 0
+                    val conBanner = esDemo || desdeCache || conPerdidos
                     if (esDemo) {
                         BarraDemo(alSalir = { vm.salirDeDemo() })
                     } else if (desdeCache) {
                         BannerSinConexion()
+                    }
+                    if (conPerdidos) {
+                        val alcancePerdidos = rememberCoroutineScope()
+                        BannerPerdidos(perdidos, conBarraDeEstado = !desdeCache) { alcancePerdidos.launch { modelo.reintentarPerdidos() } }
                     }
                     Box(Modifier.weight(1f).then(if (conBanner) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier)) {
                         estadosPestanas.SaveableStateProvider(navegacion.pestana.name) {
@@ -402,6 +408,36 @@ private fun BarraDemo(alSalir: () -> Unit) {
     }
 }
 
+/**
+ * F5 (auditoría 10/11): lo que la cola no pudo guardar queda a la vista con «Reintentar» (antes era un cartel de 9 s que el
+ * alumno casi nunca veía porque estaba entrenando).
+ */
+@Composable
+private fun BannerPerdidos(cantidad: Int, conBarraDeEstado: Boolean, alReintentar: () -> Unit) {
+    val c = MyPump.colores
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(c.tarjeta)
+            .then(if (conBarraDeEstado) Modifier.windowInsetsPadding(WindowInsets.statusBars) else Modifier)
+            .padding(horizontal = Espacio.m, vertical = Espacio.xs)
+            .testTag("banner-perdidos"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Iconos.Alerta, contentDescription = null, tint = c.peligro, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            if (cantidad == 1) "Algo no se pudo guardar" else "$cantidad cosas no se pudieron guardar",
+            style = MaterialTheme.typography.labelMedium, color = c.peligro, modifier = Modifier.weight(1f),
+        )
+        Text(
+            "Reintentar",
+            style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = c.marcaTexto,
+            modifier = Modifier.clickable(onClick = alReintentar).padding(Espacio.xs).testTag("reintentar-perdidos"),
+        )
+    }
+}
+
 /** Arriba de todo cuando lo que se ve es la copia guardada en el teléfono (OFF-06). */
 @Composable
 private fun BannerSinConexion() {
@@ -510,7 +546,7 @@ private fun AvisoGuardado(estado: EstadoGuardado, modifier: Modifier = Modifier)
             EstadoGuardado.GUARDANDO -> Triple("Guardando…", Iconos.Intercambio, c.textoSecundario)
             EstadoGuardado.GUARDADO -> Triple("Guardado", Iconos.Verificado, c.exito)
             EstadoGuardado.SIN_CONEXION -> Triple("Sin conexión, se reintenta solo", Iconos.SinWifi, c.alerta)
-            EstadoGuardado.PERDIDO -> Triple("Algo no se pudo guardar. Revisalo y cargalo de nuevo", Iconos.Alerta, c.peligro)
+            EstadoGuardado.PERDIDO -> Triple("Algo no se pudo guardar. Arriba podés reintentarlo", Iconos.Alerta, c.peligro)
             EstadoGuardado.QUIETO -> Triple("", Iconos.Pegar, c.textoSecundario)
         }
         // La pastilla de iOS (AvisoGuardado.swift): de vidrio, al centro, con el texto y el borde del color del estado. El
