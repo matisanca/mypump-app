@@ -97,8 +97,12 @@ final class RecuperacionConfianzaUITests: XCTestCase {
     func testLaTarjetaDeRevisionResumeElScore() {
         app.launchArguments = ["-token", token, "-pestana", "revision", "-sinOnboarding", "YES", "-recuperacionDePrueba", "baja"]
         app.launch()
+        // Desde el 11/11 la fila vive en «Mi salud», arriba de todo en Revisión.
+        let miSalud = app.buttons["tarjeta-mi-salud"]
+        XCTAssertTrue(miSalud.waitForExistence(timeout: 20), "Falta la tarjeta Mi salud en Revisión")
+        miSalud.tap()
         let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
-        XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Revisión")
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Mi salud")
         // Desde el upgrade del iPhone es una fila de «Cómo vengo»: el número solo (41 en el doble «baja»), sin «de 100».
         let conScore = NSPredicate(format: "label MATCHES %@", "(?s).*\\b41\\b.*")
         expectation(for: conScore, evaluatedWith: tarjeta)

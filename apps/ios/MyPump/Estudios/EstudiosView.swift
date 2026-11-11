@@ -11,40 +11,15 @@ extension Color {
     static let ambarEstudios = Color(claro: UIColor(hex: 0xB45309), oscuro: UIColor(hex: 0xFFB020))
 }
 
-/// La fila de Mis datos: «Estudios y órdenes» y, abajo, cuántos faltan. Con un pedido o una orden sin ver, un punto
-/// (VoiceOver: «Novedad»).
-struct FilaEstudiosMisDatos: View {
+/// «Estudios y órdenes», un bloque de «Mi salud» (11/11; antes una pantalla dentro de Mis datos): lo que falta hacer, las
+/// órdenes y lo que llegó. Documentos, fechas y estados: sin valores ni interpretación. El «Próximo control» va aparte, como
+/// primer bloque de Mi salud (`ProximoControlEstudios`). Vive dentro del `ScrollView` de Mi salud: `lector` es el suyo.
+struct EstudiosBloque: View {
     let modelo: ModeloEstudios
-    let abrir: () -> Void
-
-    var body: some View {
-        Button(action: abrir) {
-            HStack(spacing: Espacio.s) {
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(T.entradaMisDatos).foregroundStyle(.primary)
-                        Text(T.subtituloEntrada(modelo.pendientes)).font(.subheadline).foregroundStyle(.secondary)
-                    }
-                    .multilineTextAlignment(.leading)
-                } icon: { IconoAzulejo("doc.text.fill", color: .marcaTexto) }
-                Spacer(minLength: 0)
-                if modelo.hayNovedad { PuntoNovedad().accessibilityIdentifier("mis-datos-estudios-novedad") }
-                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary).accessibilityHidden(true)
-            }
-            .contentShape(.rect)
-        }
-        .accessibilityIdentifier("mis-datos-estudios")
-    }
-}
-
-/// «Estudios»: lo que falta hacer, las órdenes y lo que llegó. Documentos, fechas y estados: sin valores ni interpretación.
-struct EstudiosView: View {
-    let modelo: ModeloEstudios
-    /// Mayor que cero y distinto cada vez que se llega desde un aviso o desde la tarjeta de arriba de Entreno: con lo
-    /// último del servidor, la pantalla se desplaza hasta la primera tarjeta nueva.
-    var enfocar = 0
+    let lector: ScrollViewProxy?
     @Environment(Navegacion.self) private var navegacion: Navegacion?
-    /// Avisos que llegaron con esta pantalla ya abierta: también llevan a la tarjeta nueva.
+    /// Un aviso, un link o una tarjeta de arriba de Entreno pidieron Estudios (`Navegacion.estudios`), también con Mi salud
+    /// ya abierta: con lo último del servidor, se desplaza hasta la primera tarjeta nueva.
     @State private var pedidosAca = 0
     /// Lo que llegó como nuevo en esta visita: la etiqueta «Nuevo» no se va mientras el alumno la está mirando, aunque
     /// ya se haya avisado al servidor que la vio.
@@ -69,35 +44,23 @@ struct EstudiosView: View {
     }
 
     var body: some View {
-        ScrollViewReader { lector in
-            ScrollView {
-                VStack(alignment: .leading, spacing: Espacio.l) {
-                    if modelo.errorDeCarga {
-                        NotaEstudios(texto: T.errorDeCarga, icono: "arrow.clockwise", tono: .secondary).accessibilityIdentifier("estudios-error-carga")
-                    }
-                    if let e = modelo.estado { contenido(e) }
-                }
-                .padding(.horizontal, Espacio.m)
-                .padding(.top, Espacio.xs)
-                .padding(.bottom, Espacio.xl)
-                .anchoLectura()
+        VStack(alignment: .leading, spacing: Espacio.l) {
+            if modelo.errorDeCarga {
+                NotaEstudios(texto: T.errorDeCarga, icono: "arrow.clockwise", tono: .secondary).accessibilityIdentifier("estudios-error-carga")
             }
-            // Respetan la palanca: apagada, ni el `get` ni la cola llaman a nada.
-            .task(id: enfocar + pedidosAca) {
-                await modelo.sincronizar()
-                guard enfocar + pedidosAca > 0, !Task.isCancelled, let ancla = modelo.estado.flatMap(Estudios.ancla) else { return }
-                // Que la lista termine de armarse con lo que llegó antes de moverla.
-                try? await Task.sleep(for: .milliseconds(350))
-                guard !Task.isCancelled else { return }
-                withAnimation(.snappy) { lector.scrollTo(ancla, anchor: .top) }
-            }
+            if let e = modelo.estado { contenido(e) }
         }
-        .background(Color.fondo)
-        .navigationTitle(T.titulo)
-        .navigationBarTitleDisplayMode(.large)
-        .refreshable { await modelo.sincronizar() }
-        // Tocaron otro aviso de Estudios con la pantalla ya abierta: no hay a dónde ir, se trae lo nuevo y se muestra.
-        .onChange(of: navegacion?.estudios ?? false) { _, pedido in
+        // Respetan la palanca: apagada, ni el `get` ni la cola llaman a nada.
+        .task(id: pedidosAca) {
+            await modelo.sincronizar()
+            guard pedidosAca > 0, !Task.isCancelled, let ancla = modelo.estado.flatMap(Estudios.ancla) else { return }
+            // Que la lista termine de armarse con lo que llegó antes de moverla.
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { lector?.scrollTo(ancla, anchor: .top) }
+        }
+        // Lo pidieron al llegar o con Mi salud ya abierta: se trae lo nuevo y se va a la tarjeta nueva.
+        .onChange(of: navegacion?.estudios ?? false, initial: true) { _, pedido in
             guard pedido else { return }
             navegacion?.estudios = false
             pedidosAca += 1
@@ -126,7 +89,6 @@ struct EstudiosView: View {
     @ViewBuilder
     private func contenido(_ e: EstadoEstudios) -> some View {
         let b = Estudios.bloques(e)
-        if let c = e.proximoControl { ProximoControlEstudios(control: c) }
         if b.pendientes {
             VStack(alignment: .leading, spacing: Espacio.s) {
                 EncabezadoSeccion(titulo: T.teFaltaHacer)
@@ -244,7 +206,8 @@ struct NotaEstudios: View {
     }
 }
 
-private struct ProximoControlEstudios: View {
+/// «Próximo control», el primer bloque de Mi salud.
+struct ProximoControlEstudios: View {
     let control: ProximoControl
     @ScaledMetric(relativeTo: .body) private var lado: CGFloat = 44
     @Environment(\.dynamicTypeSize) private var letra

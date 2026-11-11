@@ -50,15 +50,12 @@ final class ControlesUITests: XCTestCase {
         pausa(0.3)
     }
     private func abrirEstudios() {
-        // «Mis datos» está en la pestaña Revisión.
+        // «Mi salud» (11/11) está arriba de todo en la pestaña Revisión.
         let revision = app.tabBars.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Revisi")).firstMatch
         XCTAssertTrue(revision.waitForExistence(timeout: 20))
         revision.tap()
-        let datos = app.buttons["Mis datos"].firstMatch
-        XCTAssertTrue(datos.waitForExistence(timeout: 20))
-        datos.tap()
-        traer("mis-datos-estudios")
-        e("mis-datos-estudios").tap()
+        esperar("tarjeta-mi-salud")
+        e("tarjeta-mi-salud").tap()
         esperar("estudios-subir")
     }
 
@@ -123,7 +120,7 @@ final class ControlesUITests: XCTestCase {
         XCTAssertGreaterThan(boton.frame.width, app.frame.width * 0.6, "botón de ancho completo")
         foto("controles-2-inicio")
         boton.tap()
-        // Un toque: directo a Estudios, con el control en el bloque «Próximo control».
+        // Un toque: directo a Mi salud, en el bloque «Próximo control» y con Estudios debajo.
         esperar("estudios-proximo-control", 15)
         XCTAssertTrue(e("estudios-subir").exists)
         XCTAssertTrue(conEtiqueta("El lunes 16/11").exists)

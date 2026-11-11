@@ -41,7 +41,7 @@ struct EntrenoView: View {
                         // Sin rutina, las mismas tarjetas de arriba y en el mismo orden que con rutina (`ListaEntreno`): en el
                         // flujo nuevo la guía, la videollamada y el contrato pueden llegar antes que el plan.
                         Group {
-                            TarjetaPresion()
+                            TarjetaPresion(enInicio: true)
                             if let g = GuiaUI.modelo {
                                 TarjetaVideollamadaEntreno(modelo: g, listaPrevia: ListaPreviaUI.dentro(modelo, guia: g), abrirGuia: abrirGuia)
                             }
@@ -228,7 +228,7 @@ private struct ListaEntreno: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 // «Tu presión», primera de todas mientras haya algo para hacer. Es una tarjeta más: no toca ni condiciona la rutina.
-                TarjetaPresion()
+                TarjetaPresion(enInicio: true)
                 // 2.3.0: la videollamada fija arriba, desde que se agenda hasta que termina (aunque la tarjeta de la guía esté oculta).
                 if let g = GuiaUI.modelo {
                     TarjetaVideollamadaEntreno(modelo: g, listaPrevia: ListaPreviaUI.dentro(Proveedor.modelo, guia: g), abrirGuia: abrirGuia)

@@ -3,7 +3,7 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// «Recuperación», arriba de todo en Revisión (2.1.0, pedido de Mati del 4-nov): lo principal de Salud, en corto. Toda la
+/// «Recuperación» (2.1.0, pedido de Mati del 4-nov; desde el 11/11 en «Mi salud», ya no en Revisión): lo principal de Salud, en corto. Toda la
 /// tarjeta abre Salud en Recuperación (sueño, corazón, fuerza y cuerpo). El estado sale de `SaludVista.cardRecuperacion`,
 /// el mismo de la card grande de Salud; acá solo se resume. Sin cuenta (demo y bocetos), `modelo` es nil.
 struct RecuperacionTarjeta: View {

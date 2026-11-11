@@ -54,27 +54,25 @@ final class EstudiosUITests: XCTestCase {
         for _ in 0..<veces { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))); pausa(0.3) }
     }
 
-    private func abrirMisDatos() {
-        let datos = app.buttons["Mis datos"].firstMatch
-        XCTAssertTrue(datos.waitForExistence(timeout: 20))
-        datos.tap()
-        XCTAssertTrue(app.navigationBars["Mis datos"].waitForExistence(timeout: 10))
+    /// «Mi salud» (11/11): Estudios vive ahí; se entra por la tarjeta de arriba de Revisión.
+    private func abrirMiSalud() {
+        esperar("tarjeta-mi-salud")
+        e("tarjeta-mi-salud").tap()
+        XCTAssertTrue(app.navigationBars["Mi salud"].waitForExistence(timeout: 10))
     }
 
     private func abrirEstudios() {
-        abrirMisDatos()
-        tocar("mis-datos-estudios")
-        esperar("estudios-subir")
+        abrirMiSalud()
+        traer("estudios-subir")
     }
 
     /// La pantalla entera, la hoja de subida con tres archivos, el envío, el detalle de una orden y el PDF dentro de la app.
     private func recorrido() {
         lanzar("completo", extra: ["-estudiosLento", "YES"])
-        abrirMisDatos()
-        traer("mis-datos-estudios")
-        XCTAssertTrue(texto("Te faltan 3 estudios").exists)
-        foto("0-mis-datos")
-        e("mis-datos-estudios").tap()
+        esperar("tarjeta-mi-salud")
+        XCTAssertTrue(e("tarjeta-mi-salud").label.contains("Tenés un estudio para hacer"))
+        foto("0-revision")
+        abrirMiSalud()
         esperar("estudios-proximo-control")
         XCTAssertTrue(texto("Semana del 23/11").exists)
         XCTAssertTrue(texto("Era para el jueves 5/11").exists)
@@ -238,24 +236,24 @@ final class EstudiosUITests: XCTestCase {
 
     func testVacio() {
         lanzar("vacio")
-        abrirMisDatos()
-        traer("mis-datos-estudios")
-        XCTAssertTrue(texto("Todo al día").exists)
-        e("mis-datos-estudios").tap()
+        esperar("tarjeta-mi-salud")
+        XCTAssertTrue(e("tarjeta-mi-salud").label.contains("Estudios y recuperación"))
+        abrirMiSalud()
         esperar("estudios-vacio")
         XCTAssertTrue(texto("Acá vas a ver los estudios que te pida Mati, tus órdenes y lo que nos mandes.").exists)
         XCTAssertTrue(e("estudios-subir").exists)
         foto("7-vacio")
     }
 
-    /// Apagada, sin el servidor nuevo o sin habilitar para la cuenta: Mis datos queda como hoy.
+    /// Apagada, sin el servidor nuevo o sin habilitar para la cuenta: Mi salud no tiene el bloque de estudios.
     func testApagadoNoMuestraNada() {
         for caso in ["apagado", "sinServidor", "noHabilitado"] {
             lanzar(caso)
-            abrirMisDatos()
-            XCTAssertTrue(app.staticTexts["Política de privacidad"].waitForExistence(timeout: 10) || app.buttons["Política de privacidad"].waitForExistence(timeout: 2))
+            abrirMiSalud()
+            esperar("mi-salud-bloque-recuperacion")
             pausa(2)
-            XCTAssertFalse(e("mis-datos-estudios").exists, caso)
+            XCTAssertFalse(e("mi-salud-bloque-estudios").exists, caso)
+            XCTAssertFalse(e("estudios-subir").exists, caso)
             XCTAssertFalse(texto("Estudios y órdenes").exists, caso)
             app.terminate()
         }
@@ -320,14 +318,15 @@ final class EstudiosUITests: XCTestCase {
         XCTAssertFalse(e("estudios-tarjeta-inicio-boton").exists)
     }
 
-    /// El punto en la fila de Mis datos (leído «Novedad») se apaga cuando la orden nueva estuvo a la vista.
+    /// La tarjeta «Mi salud» dice «Tenés una orden nueva» y deja de decirlo cuando la orden nueva estuvo a la vista.
     func testElPuntoDeLaFilaSeApagaAlVerLaOrden() {
         lanzar("ordenNueva")
-        abrirMisDatos()
-        traer("mis-datos-estudios")
-        XCTAssertTrue(e("mis-datos-estudios-novedad").exists || e("mis-datos-estudios").label.contains("Novedad"))
-        foto("10-novedad-mis-datos")
-        e("mis-datos-estudios").tap()
+        esperar("tarjeta-mi-salud")
+        XCTAssertTrue(e("tarjeta-mi-salud").label.contains("Tenés una orden nueva"))
+        foto("10-novedad-revision")
+        // Desde la tarjeta se llega a Estudios en la tarjeta nueva, como desde un aviso.
+        app.terminate()
+        lanzar("ordenNueva", extra: ["-destinoDePrueba", "estudios"])
         // La orden nueva está más abajo que los pedidos: la pantalla se desplaza sola hasta ella.
         esperar("estudios-orden-\(id(12))")
         pausa(1.5)
@@ -335,33 +334,33 @@ final class EstudiosUITests: XCTestCase {
         XCTAssertTrue(conEtiqueta("Nuevo").exists)
         pausa(3)
         app.navigationBars.buttons.firstMatch.tap()
-        traer("mis-datos-estudios")
+        esperar("tarjeta-mi-salud")
         pausa(1)
-        XCTAssertFalse(e("mis-datos-estudios-novedad").exists)
-        XCTAssertFalse(e("mis-datos-estudios").label.contains("Novedad"))
+        XCTAssertFalse(e("tarjeta-mi-salud").label.contains("Tenés una orden nueva"))
     }
 
-    /// Tocar el aviso con la app cerrada (`destino = estudios`): Mis datos → Estudios, con la tarjeta nueva a la vista.
+    /// Tocar el aviso con la app cerrada (`destino = estudios`): Mi salud → Estudios, con la tarjeta nueva a la vista.
     func testElAvisoAbreEstudios() {
         lanzar("novedad", pestana: "entreno", extra: ["-destinoDePrueba", "estudios"])
         esperar("estudios-pendiente-\(id(2))")
         XCTAssertTrue(e("estudios-pendiente-\(id(2))").isHittable)
         XCTAssertTrue(conEtiqueta("Nuevo").waitForExistence(timeout: 5))
-        // Atrás vuelve a Mis datos, de donde cuelga.
+        XCTAssertTrue(app.navigationBars["Mi salud"].exists)
+        // Atrás vuelve a Revisión, de donde cuelga Mi salud.
         app.navigationBars.buttons.firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Mis datos"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Revisión"].waitForExistence(timeout: 10))
     }
 
-    /// Sin la sección (palanca apagada, sin el servidor nuevo, cuenta sin la función) el aviso deja en Mis datos: nunca en
-    /// blanco ni en el Chat.
-    func testElAvisoSinLaSeccionCaeEnMisDatos() {
+    /// Sin la sección (palanca apagada, sin el servidor nuevo, cuenta sin la función) el aviso deja en Mi salud, con lo
+    /// demás: nunca en blanco ni en el Chat.
+    func testElAvisoSinLaSeccionCaeEnMiSalud() {
         for caso in ["apagado", "sinServidor", "noHabilitado"] {
             lanzar(caso, pestana: "entreno", extra: ["-destinoDePrueba", "estudios"])
-            XCTAssertTrue(app.navigationBars["Mis datos"].waitForExistence(timeout: 30), caso)
+            XCTAssertTrue(app.navigationBars["Mi salud"].waitForExistence(timeout: 30), caso)
             pausa(7)   // más que el tope de la espera
-            XCTAssertTrue(app.navigationBars["Mis datos"].exists, caso)
+            XCTAssertTrue(app.navigationBars["Mi salud"].exists, caso)
+            XCTAssertTrue(e("mi-salud-bloque-recuperacion").exists, caso)
             XCTAssertFalse(e("estudios-subir").exists, caso)
-            XCTAssertFalse(e("mis-datos-estudios").exists, caso)
             app.terminate()
         }
     }

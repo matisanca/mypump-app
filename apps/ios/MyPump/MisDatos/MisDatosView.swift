@@ -28,17 +28,12 @@ struct MisDatosView: View {
     @State private var verTecnica = false
     /// `-abrir novedades` (capturas): la lista de novedades directo.
     @State private var verNovedades = DemoUI.abrir == "novedades"
-    @State private var verPresion = false
     @State private var pagina: Pagina?
     /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
     /// en el iPhone (para poder exportarlas o borrarlas aunque ya no haya reloj).
     @State private var calibracionVisible = false
     @State private var verDocumentos = false
     @Environment(Navegacion.self) private var navegacion: Navegacion?
-    /// «Estudios y órdenes» abierta: por la fila, por un aviso o por la tarjeta de arriba de Entreno (un solo camino).
-    @State private var verEstudios = false
-    /// Cambia cada vez que se llega pidiendo la tarjeta nueva: Estudios se desplaza hasta ella.
-    @State private var enfocarEstudios = 0
 
     /// Las páginas legales de la web, en Safari dentro de la app (como hoy).
     enum Pagina: String, Identifiable {
@@ -49,20 +44,8 @@ struct MisDatosView: View {
 
     var body: some View {
         Form {
-            // Recuperación y salud (SAL-09…13): el resumen de hoy y, al tocarlo, todos los datos de ModeloSalud.
-            if let salud = modelo.conMuestras ? nil : modelo.salud {
-                Section {
-                    NavigationLink {
-                        SaludDetalleView(modelo: salud)
-                    } label: {
-                        ResumenRecuperacion(salud: salud)
-                    }
-                    .accessibilityIdentifier("mis-datos-salud")
-                } footer: {
-                    Text("Sueño, pulso, variabilidad y actividad, si mostrar el score, y la conexión con Salud de Apple.")
-                }
-            }
-
+            // La recuperación (SAL-09…13), «Estudios y órdenes» y «Presión arterial» se mudaron a «Mi salud» (11/11): acá queda
+            // una sola fila que lleva ahí. Los datos de salud (score, Salud de Apple) se abren desde la card de Recuperación.
             if permiso != nil && !conPermiso && !modelo.conMuestras {
                 Section {
                     Button {
@@ -124,14 +107,8 @@ struct MisDatosView: View {
                     }
                     .accessibilityIdentifier("mis-datos-guia")
                 }
-                if let est = modelo.estudios, est.habilitado {
-                    // Como en Android, la fila siempre enfoca: lo nuevo si hay (como el aviso y la tarjeta de Entreno) o, si no,
-                    // lo primero que falta (`Estudios.ancla`). Siempre igual, no según cómo se abrió antes.
-                    FilaEstudiosMisDatos(modelo: est) {
-                        enfocarEstudios += 1
-                        verEstudios = true
-                    }
-                }
+                // «Mi salud» (11/11): donde estaban la recuperación, «Estudios y órdenes» y «Presión arterial».
+                if filaMiSalud { FilaMiSaludMisDatos() }
                 if let t = modelo.tecnica, t.habilitado || verTecnica {
                     Button { verTecnica = true } label: {
                         fila(TextosTecnica.entradaMisDatos, icono: "video.fill", color: .marcaTexto)
@@ -139,15 +116,6 @@ struct MisDatosView: View {
                     .accessibilityIdentifier("mis-datos-tecnica")
                     .sheet(isPresented: $verTecnica) {
                         MiTecnicaRaiz(modelo: t, alCerrar: { verTecnica = false }).presentationDragIndicator(.visible)
-                    }
-                }
-                if let p = modelo.presion, p.habilitado || verPresion {
-                    Button { verPresion = true } label: {
-                        fila(TextosPresion.N.entrada, icono: "heart.text.square.fill", color: .marcaTexto)
-                    }
-                    .accessibilityIdentifier("mis-datos-presion")
-                    .sheet(isPresented: $verPresion) {
-                        PresionRaiz(modelo: p, alCerrar: { verPresion = false }).presentationDragIndicator(.visible)
                     }
                 }
                 if let g = modelo.gimnasio, g.entradaVisible || verGimnasio {
@@ -226,23 +194,6 @@ struct MisDatosView: View {
             }
         }
         .navigationTitle("Mis datos")
-        .navigationDestination(isPresented: $verEstudios) {
-            if let est = modelo.estudios { EstudiosView(modelo: est, enfocar: enfocarEstudios) }
-        }
-        // Un aviso de Estudios, `?scene=estudios` o la tarjeta de arriba de Entreno: ya se está en Mis datos (que existe
-        // siempre) y se pasa a Estudios cuando se sabe que la sección está. Con la app recién abierta el `get` puede no
-        // haber vuelto: se espera con tope. Si no está (palanca apagada, cuenta sin la función, `get` caído), se queda acá.
-        .task(id: navegacion?.estudios ?? false) {
-            guard navegacion?.estudios == true else { return }
-            let seccion = await modelo.estudiosParaAviso()
-            guard !Task.isCancelled, navegacion?.estudios == true else { return }
-            navegacion?.estudios = false
-            guard seccion != nil else { return }
-            enfocarEstudios += 1
-            verEstudios = true
-        }
-        // Se fue de Mis datos antes de saberlo: el pedido no queda esperando para la próxima vez que entre.
-        .onDisappear { if !verEstudios { navegacion?.estudios = false } }
         .tint(Color.marcaTexto)
         .sheet(isPresented: $fuentes) { FuentesView() }
         // El aviso del contrato pendiente pide Documentos: se abre y se consume. Sin documentos (un error, o ya no
@@ -273,6 +224,11 @@ struct MisDatosView: View {
             || !DatosCalibracion.sesiones().isEmpty
     }
 
+    /// La fila «Mi salud»: con cuenta (estaba la recuperación) o con Estudios o Presión habilitados.
+    private var filaMiSalud: Bool {
+        (!modelo.conMuestras && modelo.salud != nil) || modelo.estudios?.habilitado == true || modelo.presion?.habilitado == true
+    }
+
     private var conPermiso: Bool { [.authorized, .provisional, .ephemeral].contains(permiso) }
 
     /// Pide el permiso (si ya lo negó, iOS no vuelve a mostrar la hoja: se lleva a Ajustes). Con el sí, `activar`
@@ -293,62 +249,6 @@ struct MisDatosView: View {
             Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
         }
         .contentShape(.rect)
-    }
-}
-
-/// La recuperación de hoy en una fila: el anillo con el score (o los días de calibración) y qué pasa, con lo mismo que
-/// muestra la card de Salud → Recuperación.
-private struct ResumenRecuperacion: View {
-    let salud: ModeloSalud
-
-    var body: some View {
-        let estado = Self.estado(salud.cardRecuperacion)
-        HStack(spacing: Espacio.m) {
-            AnilloProgreso(fraccion: estado.fraccion, grosor: 7, color: estado.color) {
-                if let numero = estado.numero {
-                    Text(numero).font(.numeroMediano).contentTransition(.numericText())
-                } else {
-                    Image(systemName: estado.icono)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(width: 72, height: 72)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Recuperación").font(.headline)
-                Text(estado.texto).font(.subheadline).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.vertical, Espacio.xs)
-        .accessibilityElement(children: .combine)
-    }
-
-    private struct Estado {
-        var numero: String?
-        var icono = "waveform.path.ecg"
-        var fraccion: Double = 0
-        var color: Color = .sueno
-        var texto: String
-    }
-
-    private static func estado(_ card: SaludVista.CardRecuperacion) -> Estado {
-        switch card {
-        case .sinConectar:
-            return Estado(texto: "Conectá tu reloj o Salud de Apple")
-        case .conectadoSinScore(let caso, _):
-            return Estado(icono: "hourglass", texto: caso.frase)
-        case .calibrando(let dias, let porcentaje, _, _):
-            return Estado(icono: "chart.bar.fill", fraccion: Double(porcentaje) / 100, texto: "Calibrando: \(dias) de 14 días")
-        case .oculto:
-            return Estado(icono: "eye.slash", texto: "Tenés el score apagado")
-        case .conScore(let c):
-            let score = c.fila.score ?? 0
-            let confianza = c.confianza.map { " · \($0.etiqueta.lowercased())" } ?? ""
-            return Estado(numero: "\(score)", fraccion: Double(score) / 100,
-                          color: CardRecuperacionView.color(c.banda, apagado: c.confianza?.apagado == true),
-                          texto: "\(score)/100 · \(c.bandaTexto)\(confianza)")
-        }
     }
 }
 

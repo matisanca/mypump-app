@@ -46,6 +46,8 @@ enum Proveedor {
             else if let caso = d.string(forKey: "tecnicaDePrueba") { transporte = TecnicaDePrueba(doble: .escenario(caso)) }
             // `-feedbackDePrueba <escenario>`: «Me duele» y las marcas de suplementos contra el doble (ver `FeedbackDePrueba`).
             else if let caso = d.string(forKey: "feedbackDePrueba") { transporte = FeedbackDePrueba(doble: .escenario(caso, ejercicios: FeedbackDePrueba.ejercicios)) }
+            // `-miSaludDePrueba <estudios>/<presión>`: «Mi salud» con los dos dobles a la vez (ver `MiSaludDePrueba`).
+            else if let caso = d.string(forKey: "miSaludDePrueba") { transporte = MiSaludDePrueba(caso: caso) }
             // `-estudiosDePrueba <escenario>`: el servidor de estudios de mentira y lo demás de las muestras (ver `EstudiosDePrueba`).
             else if let caso = d.string(forKey: "estudiosDePrueba") { transporte = EstudiosDePrueba(doble: .escenario(caso)) }
             // `-colaADePrueba <escenario>`: logros y lista previa de mentira y lo demás de las muestras (ver `DobleColaA`).
@@ -216,6 +218,40 @@ private struct PresionDePrueba: Transporte {
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
         let f = pedido.url?.path.components(separatedBy: "/").last ?? ""
         if f.hasPrefix("mypump_presion") || f == "mypump_get_app_config" { return try await doble.enviar(pedido) }
+        var cuerpo = Data("[]".utf8)
+        if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
+           let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }
+        return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
+/// `-miSaludDePrueba <estudios>/<presión>` (p. ej. `completo/serie0`, `apagado/apagado`): «Mi salud» entera con datos
+/// inventados y sin red. Estudios y controles los contesta `DobleEstudios`, la presión `DoblePresion`, las palancas son las
+/// de los dos juntas, y lo demás (la cuenta, el plan, la salud) sale de las muestras.
+private struct MiSaludDePrueba: Transporte {
+    let estudios: DobleEstudios
+    let presion: DoblePresion
+
+    init(caso: String) {
+        let partes = caso.split(separator: "/").map(String.init)
+        estudios = .escenario(partes.first ?? "completo")
+        presion = .escenario(partes.count > 1 ? partes[1] : "serie0")
+    }
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = pedido.url?.path ?? ""
+        let f = ruta.components(separatedBy: "/").last ?? ""
+        if f == "mypump_get_app_config" {
+            let (a, r) = try await estudios.enviar(pedido)
+            let (b, _) = try await presion.enviar(pedido)
+            var junto = (try? JSONSerialization.jsonObject(with: a) as? [String: Any]) ?? [:]
+            for (k, v) in (try? JSONSerialization.jsonObject(with: b) as? [String: Any]) ?? [:] { junto[k] = v }
+            return ((try? JSONSerialization.data(withJSONObject: junto)) ?? a, r)
+        }
+        if f.hasPrefix("mypump_presion") { return try await presion.enviar(pedido) }
+        if ruta.contains("/estudios/") || f.hasPrefix("mypump_estudios") || f == "mypump_controles_get" || pedido.url?.host?.hasSuffix(".invalid") == true {
+            return try await estudios.enviar(pedido)
+        }
         var cuerpo = Data("[]".utf8)
         if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
            let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }

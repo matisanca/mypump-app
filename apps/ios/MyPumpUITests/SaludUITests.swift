@@ -90,16 +90,21 @@ final class SaludUITests: XCTestCase {
         XCTAssertTrue(control.buttons["Fuerza"].isSelected, "El viejo «Progreso» tiene que abrir Fuerza")
     }
 
-    /// 2.1.0: Salud no está en la barra; arriba de todo en Revisión, la tarjeta Recuperación la abre, y «Listo» vuelve.
+    /// 2.1.0: Salud no está en la barra. Desde «Mi salud» (11/11) la fila Recuperación vive ahí (arriba de todo en Revisión):
+    /// la abre, y «Listo» vuelve a Mi salud. «Tu progreso» sigue en Revisión.
     func testLaTarjetaDeRevisionAbreSalud() throws {
         guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else { throw XCTSkip("Falta MYPUMP_TOKEN") }
         app.launchArguments = ["-token", token, "-pestana", "revision", "-sinOnboarding", "YES"]
         app.launch()
-        let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
-        XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Revisión")
+        let miSalud = app.buttons["tarjeta-mi-salud"]
+        XCTAssertTrue(miSalud.waitForExistence(timeout: 20), "Falta la tarjeta Mi salud en Revisión")
         XCTAssertFalse(app.tabBars.buttons["Salud"].exists, "Salud quedó en la barra")
         XCTAssertTrue(app.pestana("Revisión").exists && app.pestana("Entreno").exists)
-        captura("revision-con-recuperacion")
+        XCTAssertFalse(app.buttons["tarjeta-recuperacion-revision"].exists, "Recuperación se mudó a Mi salud")
+        captura("revision-con-mi-salud")
+        miSalud.tap()
+        let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Mi salud")
         tarjeta.tap()
         XCTAssertTrue(app.navigationBars["Salud"].waitForExistence(timeout: 5), "La tarjeta no abrió Salud")
         XCTAssertTrue(control.buttons["Recuperación"].isSelected, "No abrió en Recuperación")
@@ -107,21 +112,23 @@ final class SaludUITests: XCTestCase {
         // La tarjeta existe detrás de la hoja: lo que prueba el cierre es que la barra de Salud se va.
         XCTAssertTrue(app.navigationBars["Salud"].waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
 
-        // «Tu progreso», debajo: abre Salud en Fuerza.
+        // Volver a tocar Recuperación después de cerrar: la hoja vuelve a abrir (y en Recuperación).
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5))
+        tarjeta.tap()
+        XCTAssertTrue(control.buttons["Recuperación"].waitForExistence(timeout: 5))
+        XCTAssertTrue(control.buttons["Recuperación"].isSelected)
+        app.buttons["salud-cerrar"].tap()
+        XCTAssertTrue(app.navigationBars["Salud"].waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
+        // Atrás, a Revisión: «Tu progreso» abre Salud en Fuerza.
+        app.navigationBars["Mi salud"].buttons.firstMatch.tap()
         let progreso = app.buttons["tarjeta-progreso-revision"]
         XCTAssertTrue(progreso.waitForExistence(timeout: 5), "Falta la tarjeta Tu progreso")
-        XCTAssertGreaterThan(progreso.frame.minY, tarjeta.frame.minY, "Tu progreso va debajo de Recuperación")
         progreso.tap()
         XCTAssertTrue(control.buttons["Fuerza"].waitForExistence(timeout: 5))
         XCTAssertTrue(control.buttons["Fuerza"].isSelected, "Tu progreso no abrió Fuerza")
         captura("salud-fuerza-desde-progreso")
         app.buttons["salud-cerrar"].tap()
         XCTAssertTrue(app.navigationBars["Salud"].waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
-        // Volver a tocar Recuperación después de cerrar: la hoja vuelve a abrir (y en Recuperación).
-        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5))
-        tarjeta.tap()
-        XCTAssertTrue(control.buttons["Recuperación"].waitForExistence(timeout: 5))
-        XCTAssertTrue(control.buttons["Recuperación"].isSelected)
     }
 
     /// El cierre del día en la demo, con 3 series confirmadas: «Series por músculo hoy».
