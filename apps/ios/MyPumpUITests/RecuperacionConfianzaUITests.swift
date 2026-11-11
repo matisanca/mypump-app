@@ -113,7 +113,9 @@ final class RecuperacionConfianzaUITests: XCTestCase {
         a.lifetime = .keepAlways
         add(a)
 
-        // El check trae «Tu salud, últimos 7 días» con el promedio de recuperación de la serie.
+        // El check (en Revisión: atrás desde Mi salud) trae «Tu salud, últimos 7 días» con el promedio de recuperación.
+        app.navigationBars["Mi salud"].buttons.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Revisión"].waitForExistence(timeout: 10))
         let bloque = app.descendants(matching: .any)["salud-semana-check"].firstMatch
         for _ in 0..<8 where !(bloque.exists && bloque.isHittable) { app.swipeUp() }
         XCTAssertTrue(bloque.exists, "Falta el bloque de salud en el check")

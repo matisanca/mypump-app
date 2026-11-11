@@ -57,8 +57,9 @@ final class Navegacion {
             pestaña = .revision
         case .recuperacion: irAMiSalud(.recuperacion)
         case .misDatos:
-            pestaña = .revision
-            misDatos = true
+            // El destino `salud` (el único que llega como Mis datos): desde el 11/11 es Mi salud en Recuperación, como en la
+            // web (la salud se mudó de Mis datos a Mi salud).
+            irAMiSalud(.recuperacion)
         case .presion:
             // El aviso de presión: Mi salud en su bloque y, si la sección está habilitada, Presión directo en lo pendiente.
             irAPresion()

@@ -162,6 +162,16 @@ final class MiSaludUITests: XCTestCase {
         XCTAssertTrue(e("tarjeta-recuperacion-revision").isHittable, "llega al bloque de recuperación")
     }
 
+    /// `salud` (antes Mis datos) abre Mi salud en Recuperación, como en la web.
+    func testAvisoDeSaludAbreMiSaludEnRecuperacion() {
+        lanzar(pestana: "entreno", extra: ["-destinoDePrueba", "salud"])
+        XCTAssertTrue(app.navigationBars["Mi salud"].waitForExistence(timeout: 30))
+        esperar("tarjeta-recuperacion-revision")
+        pausa(1.5)
+        XCTAssertTrue(e("tarjeta-recuperacion-revision").isHittable)
+        XCTAssertFalse(app.navigationBars["Mis datos"].exists)
+    }
+
     /// Lo que no es salud sigue a donde iba: `progress` abre Salud en Fuerza, sin pasar por Mi salud.
     func testAvisoDeProgresoSigueEnFuerza() {
         lanzar(pestana: "entreno", extra: ["-destinoDePrueba", "progress"])

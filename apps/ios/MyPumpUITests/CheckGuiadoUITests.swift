@@ -209,13 +209,15 @@ final class CheckGuiadoUITests: XCTestCase {
         XCTAssertEqual(e("check-guiado-abrir").label, "Empezar")
     }
 
-    /// Fácil de encontrar: la tarjeta es lo primero de Revisión, arriba de Recuperación, sin deslizar.
+    /// Fácil de encontrar: la tarjeta va arriba en Revisión (debajo de Mi salud), sin deslizar.
     func testLaTarjetaEsLoPrimeroDeRevision() {
         lanzar("general")
         esperar("check-guiado-tarjeta")
         XCTAssertTrue(e("check-guiado-abrir").isHittable, "El botón del check tiene que verse sin deslizar")
-        let recuperacion = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Recuperación'")).firstMatch
-        if recuperacion.exists { XCTAssertLessThan(e("check-guiado-tarjeta").frame.minY, recuperacion.frame.minY) }
+        // Desde «Mi salud» (11/11) la tarjeta de Mi salud va arriba de todo (pedido de Mati) y la Recuperación vive adentro: el
+        // check queda antes de «Tu progreso» y se ve sin deslizar.
+        let progreso = app.buttons["tarjeta-progreso-revision"]
+        if progreso.exists { XCTAssertLessThan(e("check-guiado-tarjeta").frame.minY, progreso.frame.minY) }
         XCTAssertGreaterThanOrEqual(e("check-guiado-abrir").frame.height, 56)
         XCTAssertFalse(e("enviar-check").exists, "El check de antes no convive con el guiado")
     }
