@@ -30,7 +30,10 @@ final class Navegacion {
         case .dieta: pestaña = .dieta
         case .chat: pestaña = .chat
         case .fuerza: irASalud(.fuerza)
-        case .revision: pestaña = .revision
+        case .revision:
+            // «aviso»: con el check guiado prendido y el check sin mandar, Revisión abre el paso a paso; si no, nada cambia.
+            anclaRevision = "aviso"
+            pestaña = .revision
         case .recuperacion: irASalud(.recuperacion)
         case .misDatos:
             pestaña = .revision
@@ -85,7 +88,9 @@ struct BannerRevision: View {
         if !modelo.conMuestras, let texto = FotosProgreso.textoRecordatorio(faltaCheck: p.faltaCheck, faltanFotos: p.faltanFotos) {
             Button {
                 withAnimation(.snappy) {
-                    navegacion?.anclaRevision = p.faltaCheck && !p.faltanFotos ? "check" : "fotos"
+                    // Con el check guiado, si falta el check va directo al paso a paso (que trae las fotos adentro).
+                    let directo = p.faltaCheck && (!p.faltanFotos || modelo.palanca.checkGuiado)
+                    navegacion?.anclaRevision = directo ? "check" : "fotos"
                     navegacion?.pestaña = .revision
                 }
             } label: {

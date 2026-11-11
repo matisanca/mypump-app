@@ -13,6 +13,24 @@ struct RevisionView: View {
     @Environment(\.horizontalSizeClass) private var claseAncho
     @Environment(Navegacion.self) private var navegacion: Navegacion?
     @State private var misDatos = false
+    /// El check guiado abierto, y en qué paso si se pidió uno («Subir fotos»).
+    @State private var flujoGuiado: AperturaCheck?
+
+    /// Un aviso o el banner pidieron el check: se abre apenas se sabe que corresponde (`resolverApertura`).
+    @State private var abrirPendiente = false
+
+    private func resolverApertura() {
+        guard abrirPendiente, let revision, revision.cargadaUnaVez else { return }
+        abrirPendiente = false
+        if let guiado, !guiado.checkinEnviado, flujoGuiado == nil { flujoGuiado = AperturaCheck(paso: nil) }
+    }
+
+    private struct AperturaCheck: Identifiable {
+        let id = UUID()
+        let paso: CheckGuiado.Paso?
+    }
+    /// Check guiado: con cuenta y con la palanca `check_guiado` prendida. Apagada, la Revisión de siempre.
+    private var guiado: ModeloRevision? { modelo.palanca.checkGuiado ? revision : nil }
 
     private var revision: ModeloRevision? { modelo.conMuestras ? nil : modelo.revision }
     private var modeloFotos: ModeloFotos? { modelo.conMuestras ? nil : modelo.fotos }
@@ -26,6 +44,7 @@ struct RevisionView: View {
                     Group {
                         if claseAncho == .regular {
                             VStack(alignment: .leading, spacing: Espacio.l) {
+                                if guiado != nil { check }
                                 HStack(alignment: .top, spacing: Espacio.l) {
                                     recuperacion.frame(maxWidth: .infinity, alignment: .top)
                                     progreso.frame(maxWidth: .infinity, alignment: .top)
@@ -40,18 +59,23 @@ struct RevisionView: View {
                                         .frame(maxWidth: .infinity, alignment: .top)
                                         .fixedSize(horizontal: false, vertical: true)
                                         .topeArriba()
-                                    VStack(alignment: .leading, spacing: Espacio.xl) { check }
-                                        .frame(maxWidth: .infinity, alignment: .top)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .topeArriba()
+                                    if guiado == nil {
+                                        VStack(alignment: .leading, spacing: Espacio.xl) { check }
+                                            .frame(maxWidth: .infinity, alignment: .top)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                            .topeArriba()
+                                    }
                                 }
                             }
                             .anchoLectura(Ancho.doble)
                         } else {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
+                                // Check guiado: la tarjeta va primera, para que nadie tenga que buscarla.
+                                if guiado != nil { check }
                                 // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
                                 VStack(spacing: Espacio.m) { recuperacion; progreso }
-                                diaDeRevision; avisoPlan; notaSemanal; fotos; check
+                                diaDeRevision; avisoPlan; notaSemanal; fotos
+                                if guiado == nil { check }
                             }
                                 .anchoLectura()
                         }
@@ -74,14 +98,18 @@ struct RevisionView: View {
                     guard let ancla = DemoUI.ir else { return }
                     try? await Task.sleep(for: .milliseconds(350))
                     lector.scrollTo(ancla, anchor: .top)
+                    if ancla == "check" { abrirPendiente = true; resolverApertura() }
                 }
                 // Un aviso o el banner de las otras pestañas piden una sección: se va y se consume.
                 .onChange(of: navegacion?.anclaRevision, initial: true) { _, ancla in
                     guard let ancla else { return }
                     Task {
                         try? await Task.sleep(for: .milliseconds(300))
-                        withAnimation(.snappy) { lector.scrollTo(ancla, anchor: .top) }
+                        // «aviso» (tocar la notificación de revisión) no desplaza: solo abre el check guiado si corresponde.
+                        if ancla != "aviso" { withAnimation(.snappy) { lector.scrollTo(ancla, anchor: .top) } }
                         navegacion?.anclaRevision = nil
+                        // Check guiado: el aviso y el banner llevan directo al paso a paso, no solo a la tarjeta.
+                        if ancla == "check" || ancla == "aviso" { abrirPendiente = true; resolverApertura() }
                     }
                 }
             }
@@ -97,6 +125,15 @@ struct RevisionView: View {
                 }
             }
             .navigationDestination(isPresented: $misDatos) { MisDatosView(datos: datos) }
+        }
+        // El aviso pudo llegar antes de saber si la palanca está prendida o si el check ya salió: se resuelve al saberlo.
+        .onChange(of: revision?.cargadaUnaVez) { _, _ in resolverApertura() }
+        .onChange(of: modelo.palanca.checkGuiado) { _, _ in resolverApertura() }
+        .fullScreenCover(item: $flujoGuiado) { apertura in
+            if let guiado {
+                CheckGuiadoFlujo(revision: guiado, fotos: modeloFotos, saludSemana: saludSemana, sincronizarSalud: sincronizarSalud,
+                                 pasoInicial: apertura.paso)
+            }
         }
         .onAppear { if DemoUI.abrir == "misdatos" { misDatos = true } }
         .onChange(of: navegacion?.misDatos ?? false, initial: true) { _, abrir in
@@ -171,7 +208,18 @@ struct RevisionView: View {
             .accessibilityIdentifier("nota-revision-semanal")
     }
 
-    private var check: some View {
+    @ViewBuilder private var check: some View {
+        if let guiado {
+            CheckGuiadoTarjeta(revision: guiado, faltanFotos: (modeloFotos?.posesDeLaSemana.count ?? 3) < 3) { paso in
+                flujoGuiado = AperturaCheck(paso: paso)
+            }
+            .id("check")
+        } else {
+            checkDeSiempre
+        }
+    }
+
+    private var checkDeSiempre: some View {
         CheckSemanal(revision: revision, muestra: DemoUI.lleno ? MuestrasExtra.checkinLleno : muestras.checkin,
                      saludSemana: saludSemana, sincronizarSalud: sincronizarSalud).id("check")
     }

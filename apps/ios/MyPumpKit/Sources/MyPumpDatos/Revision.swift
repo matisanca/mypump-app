@@ -39,6 +39,8 @@ public final class ModeloRevision {
     public var guiadoPrendido = false
     /// Lo último que dijo `mypump_check_guiado_get` (queda en el disco: sin señal, la lista de «¿Notaste algo?» no cambia).
     public private(set) var guiado: GuiadoServidor?
+    /// Ya se preguntó al servidor al menos una vez (haya contestado o no): recién ahí se sabe si el check está enviado.
+    public private(set) var cargadaUnaVez = false
     /// Lo que el alumno lleva contestado del check guiado de esta semana y todavía no mandó.
     public private(set) var borradorGuiado: CheckGuiado.Borrador?
 
@@ -92,6 +94,7 @@ public final class ModeloRevision {
         // Un check de esta semana que todavía no salió también (se mandó sin señal): si no, se vería sin enviar.
         await aplicarCheckPendiente()
         if guiadoPrendido { await aplicarGuiadoPendiente() }
+        cargadaUnaVez = true
     }
 
     /// Lo marcado en «¿Notaste algo?» que todavía no salió gana sobre lo que trae el servidor, como el check.

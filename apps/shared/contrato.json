@@ -1477,6 +1477,50 @@
    "la_usa_el_cliente": true,
    "outbox_kind": null,
    "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_tecnica.sql"
+  },
+  {
+   "nombre": "mypump_check_guiado_get",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    }
+   ],
+   "devuelve": "jsonb",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null,
+   "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_check_guiado.sql"
+  },
+  {
+   "nombre": "mypump_check_guiado_guardar",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    },
+    {
+     "nombre": "p_respuestas",
+     "tipo": "jsonb"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "check_guiado",
+   "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_check_guiado.sql"
   }
  ]
 }
