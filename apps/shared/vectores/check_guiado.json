@@ -1,0 +1,1007 @@
+{
+ "_": "Check guiado (2.3.0). Casos escritos a mano: iPhone (CheckGuiadoTests), Android (CheckGuiadoTest) y la web (test-check-guiado.mjs) tienen que dar lo mismo.",
+ "catalogos": {
+  "general": [
+   [
+    "dolor",
+    "Dolor o molestia al entrenar"
+   ],
+   [
+    "digestion",
+    "Digestión pesada o malestar"
+   ],
+   [
+    "animo",
+    "Ánimo bajo"
+   ],
+   [
+    "enfermo",
+    "Estuve enfermo"
+   ],
+   [
+    "ninguno",
+    "Nada de esto"
+   ]
+  ],
+  "ciclo": [
+   [
+    "acne",
+    "Acné o piel grasa"
+   ],
+   [
+    "retencion",
+    "Retención de líquido o hinchazón"
+   ],
+   [
+    "pecho",
+    "Sensibilidad en el pecho"
+   ],
+   [
+    "cabeza",
+    "Dolor de cabeza o presión alta"
+   ],
+   [
+    "animo",
+    "Irritabilidad o cambios de ánimo"
+   ],
+   [
+    "libido",
+    "Cambios en el deseo sexual"
+   ],
+   [
+    "sueno",
+    "Insomnio o sudor de noche"
+   ],
+   [
+    "aplicacion",
+    "Dolor en la zona de aplicación"
+   ],
+   [
+    "ninguno",
+    "Nada de esto"
+   ]
+  ]
+ },
+ "titulos": {
+  "peso": "¿Cuánto pesaste hoy?",
+  "escalas": "¿Cómo venís esta semana?",
+  "fotos": "Tus fotos de la semana",
+  "senales": {
+   "general": "¿Algo de esto esta semana?",
+   "ciclo": "¿Notaste algo de esto?"
+  },
+  "nota": "¿Algo que quieras contarme?",
+  "resumen": "Así va tu check"
+ },
+ "apoyos": {
+  "peso": "En ayunas, al despertar.",
+  "escalas": "Del 1 al 5. Mati lo ve antes de tu devolución.",
+  "fotos": "Frente, perfil y espalda. Mismo lugar y misma luz que siempre. Las ve solo Mati.",
+  "senales": {
+   "general": "Marcá lo que te haya pasado. Si no hubo nada, mejor.",
+   "ciclo": "Marcá lo que haya aparecido esta semana. Mati lo mira antes de tu devolución."
+  },
+  "nota": "Es opcional. Lo lee Mati.",
+  "resumen": "Tocá una fila si querés cambiar algo."
+ },
+ "omitir": {
+  "peso": "Hoy no me pesé",
+  "escalas": null,
+  "fotos": "Las subo después",
+  "senales": null,
+  "nota": null,
+  "resumen": null
+ },
+ "tarjeta": {
+  "sinEmpezar": [
+   "Un minuto: tu peso, cómo venís y tus fotos. Mati lo ve antes de tu devolución.",
+   "Empezar"
+  ],
+  "aMedias": [
+   "Lo dejaste por la mitad. Seguís donde quedaste.",
+   "Seguir"
+  ],
+  "enviado": [
+   "Enviado. Mati lo ve antes de tu devolución.",
+   "Cambiar algo"
+  ],
+  "enviadoSinFotos": [
+   "Enviado. Te faltan las fotos de la semana.",
+   "Subir fotos"
+  ]
+ },
+ "pasos": [
+  {
+   "faltanFotos": true,
+   "pasos": [
+    "peso",
+    "escalas",
+    "fotos",
+    "senales",
+    "nota",
+    "resumen"
+   ]
+  },
+  {
+   "faltanFotos": false,
+   "pasos": [
+    "peso",
+    "escalas",
+    "senales",
+    "nota",
+    "resumen"
+   ]
+  }
+ ],
+ "alternar": [
+  {
+   "senales": [],
+   "clave": "dolor",
+   "queda": [
+    "dolor"
+   ]
+  },
+  {
+   "senales": [
+    "dolor"
+   ],
+   "clave": "animo",
+   "queda": [
+    "dolor",
+    "animo"
+   ]
+  },
+  {
+   "senales": [
+    "dolor",
+    "animo"
+   ],
+   "clave": "dolor",
+   "queda": [
+    "animo"
+   ]
+  },
+  {
+   "senales": [
+    "dolor",
+    "animo"
+   ],
+   "clave": "ninguno",
+   "queda": [
+    "ninguno"
+   ]
+  },
+  {
+   "senales": [
+    "ninguno"
+   ],
+   "clave": "dolor",
+   "queda": [
+    "dolor"
+   ]
+  },
+  {
+   "senales": [
+    "ninguno"
+   ],
+   "clave": "ninguno",
+   "queda": []
+  }
+ ],
+ "normalizar": [
+  {
+   "catalogo": "general",
+   "senales": [
+    "animo",
+    "dolor",
+    "animo"
+   ],
+   "queda": [
+    "dolor",
+    "animo"
+   ]
+  },
+  {
+   "catalogo": "general",
+   "senales": [
+    "ninguno",
+    "dolor"
+   ],
+   "queda": [
+    "dolor"
+   ]
+  },
+  {
+   "catalogo": "general",
+   "senales": [
+    "ninguno"
+   ],
+   "queda": [
+    "ninguno"
+   ]
+  },
+  {
+   "catalogo": "general",
+   "senales": [
+    "acne",
+    "retencion"
+   ],
+   "queda": []
+  },
+  {
+   "catalogo": "ciclo",
+   "senales": [
+    "sueno",
+    "acne",
+    "inventada"
+   ],
+   "queda": [
+    "acne",
+    "sueno"
+   ]
+  },
+  {
+   "catalogo": "ciclo",
+   "senales": [],
+   "queda": []
+  }
+ ],
+ "textoSenales": [
+  {
+   "catalogo": "ciclo",
+   "senales": [
+    "retencion",
+    "acne"
+   ],
+   "texto": "Acné o piel grasa, Retención de líquido o hinchazón"
+  },
+  {
+   "catalogo": "general",
+   "senales": [
+    "ninguno"
+   ],
+   "texto": "Nada de esto"
+  },
+  {
+   "catalogo": "general",
+   "senales": [],
+   "texto": ""
+  }
+ ],
+ "puedeSeguir": [
+  {
+   "paso": "peso",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": false
+  },
+  {
+   "paso": "peso",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "  ",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": false
+  },
+  {
+   "paso": "peso",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "78,4",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": true
+  },
+  {
+   "paso": "escalas",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3
+    },
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": false
+  },
+  {
+   "paso": "escalas",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 0,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": false
+  },
+  {
+   "paso": "escalas",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": true
+  },
+  {
+   "paso": "fotos",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 2,
+   "puede": false
+  },
+  {
+   "paso": "fotos",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 3,
+   "puede": true
+  },
+  {
+   "paso": "senales",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": false
+  },
+  {
+   "paso": "senales",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [
+     "acne"
+    ],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": false
+  },
+  {
+   "paso": "senales",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "ciclo",
+    "senales": [
+     "acne"
+    ],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": true
+  },
+  {
+   "paso": "senales",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [
+     "ninguno"
+    ],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": true
+  },
+  {
+   "paso": "nota",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": true
+  },
+  {
+   "paso": "resumen",
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "fotosHechas": 0,
+   "puede": true
+  }
+ ],
+ "faltaParaEnviar": [
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "falta": "Faltan: Energía, Descanso, Hambre, Adherencia",
+   "paso": "escalas"
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "falta": "Faltan: Hambre",
+   "paso": "escalas"
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "falta": "Falta: ¿Algo de esto esta semana?",
+   "paso": "senales"
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [],
+    "nota": ""
+   },
+   "falta": "Falta: ¿Notaste algo de esto?",
+   "paso": "senales"
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [
+     "ninguno"
+    ],
+    "nota": ""
+   },
+   "falta": null,
+   "paso": null
+  },
+  {
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [
+     "acne",
+     "sueno"
+    ],
+    "nota": ""
+   },
+   "falta": null,
+   "paso": null
+  }
+ ],
+ "abrir": [
+  {
+   "caso": "nada guardado ni enviado: empieza por el peso",
+   "guardado": null,
+   "semana": "2026-11-09",
+   "catalogo": "general",
+   "enviado": null,
+   "senalesEnviadas": null,
+   "catalogoEnviado": null,
+   "queda": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   }
+  },
+  {
+   "caso": "el borrador de esta semana se retoma tal cual",
+   "guardado": {
+    "semana": "2026-11-09",
+    "paso": "senales",
+    "peso": "78,4",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "semana": "2026-11-09",
+   "catalogo": "general",
+   "enviado": null,
+   "senalesEnviadas": null,
+   "catalogoEnviado": null,
+   "queda": {
+    "semana": "2026-11-09",
+    "paso": "senales",
+    "peso": "78,4",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   }
+  },
+  {
+   "caso": "el borrador de la semana pasada no sirve",
+   "guardado": {
+    "semana": "2026-11-02",
+    "paso": "nota",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [],
+    "nota": "vieja"
+   },
+   "semana": "2026-11-09",
+   "catalogo": "general",
+   "enviado": null,
+   "senalesEnviadas": null,
+   "catalogoEnviado": null,
+   "queda": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   }
+  },
+  {
+   "caso": "ya enviado y sin borrador: abre en el resumen con lo enviado",
+   "guardado": null,
+   "semana": "2026-11-09",
+   "catalogo": "ciclo",
+   "enviado": {
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "nota": "todo bien"
+   },
+   "senalesEnviadas": [
+    "acne"
+   ],
+   "catalogoEnviado": "ciclo",
+   "queda": {
+    "semana": "2026-11-09",
+    "paso": "resumen",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [
+     "acne"
+    ],
+    "nota": "todo bien"
+   }
+  },
+  {
+   "caso": "enviado con la app anterior (sin lo marcado): resumen, y falta marcar",
+   "guardado": null,
+   "semana": "2026-11-09",
+   "catalogo": "general",
+   "enviado": {
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "nota": ""
+   },
+   "senalesEnviadas": null,
+   "catalogoEnviado": null,
+   "queda": {
+    "semana": "2026-11-09",
+    "paso": "resumen",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   }
+  },
+  {
+   "caso": "cambió el perfil: lo marcado con la otra lista no vale (borrador)",
+   "guardado": {
+    "semana": "2026-11-09",
+    "paso": "nota",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "general",
+    "senales": [
+     "dolor"
+    ],
+    "nota": ""
+   },
+   "semana": "2026-11-09",
+   "catalogo": "ciclo",
+   "enviado": null,
+   "senalesEnviadas": null,
+   "catalogoEnviado": null,
+   "queda": {
+    "semana": "2026-11-09",
+    "paso": "nota",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [],
+    "nota": ""
+   }
+  },
+  {
+   "caso": "cambió el perfil: lo marcado con la otra lista no vale (enviado)",
+   "guardado": null,
+   "semana": "2026-11-09",
+   "catalogo": "ciclo",
+   "enviado": {
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "nota": ""
+   },
+   "senalesEnviadas": [
+    "dolor"
+   ],
+   "catalogoEnviado": "general",
+   "queda": {
+    "semana": "2026-11-09",
+    "paso": "resumen",
+    "peso": "",
+    "valores": {
+     "energia": 4,
+     "descanso": 3,
+     "hambre": 2,
+     "adherencia": 5
+    },
+    "catalogo": "ciclo",
+    "senales": [],
+    "nota": ""
+   }
+  }
+ ],
+ "retomar": [
+  {
+   "paso": "senales",
+   "pasos": [
+    "peso",
+    "escalas",
+    "senales",
+    "nota",
+    "resumen"
+   ],
+   "abre": "senales"
+  },
+  {
+   "paso": "fotos",
+   "pasos": [
+    "peso",
+    "escalas",
+    "senales",
+    "nota",
+    "resumen"
+   ],
+   "abre": "peso"
+  },
+  {
+   "paso": "resumen",
+   "pasos": [
+    "peso",
+    "escalas",
+    "fotos",
+    "senales",
+    "nota",
+    "resumen"
+   ],
+   "abre": "resumen"
+  }
+ ],
+ "estado": [
+  {
+   "enviado": false,
+   "borrador": null,
+   "semana": "2026-11-09",
+   "faltanFotos": true,
+   "estado": "sinEmpezar"
+  },
+  {
+   "enviado": false,
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "semana": "2026-11-09",
+   "faltanFotos": true,
+   "estado": "sinEmpezar"
+  },
+  {
+   "enviado": false,
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "78,4",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "semana": "2026-11-09",
+   "faltanFotos": true,
+   "estado": "aMedias"
+  },
+  {
+   "enviado": false,
+   "borrador": {
+    "semana": "2026-11-02",
+    "paso": "peso",
+    "peso": "78,4",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": ""
+   },
+   "semana": "2026-11-09",
+   "faltanFotos": false,
+   "estado": "sinEmpezar"
+  },
+  {
+   "enviado": true,
+   "borrador": null,
+   "semana": "2026-11-09",
+   "faltanFotos": true,
+   "estado": "enviadoSinFotos"
+  },
+  {
+   "enviado": true,
+   "borrador": {
+    "semana": "2026-11-09",
+    "paso": "peso",
+    "peso": "",
+    "valores": {},
+    "catalogo": "general",
+    "senales": [],
+    "nota": "cambio a medias"
+   },
+   "semana": "2026-11-09",
+   "faltanFotos": false,
+   "estado": "enviado"
+  }
+ ],
+ "payload": {
+  "_": "Lo que sale por la cola al enviar. checkin y peso son los de siempre, sin un campo más.",
+  "borrador": {
+   "semana": "2026-11-09",
+   "paso": "resumen",
+   "peso": "78,4",
+   "valores": {
+    "energia": 4,
+    "descanso": 3,
+    "hambre": 2,
+    "adherencia": 5
+   },
+   "catalogo": "ciclo",
+   "senales": [
+    "sueno",
+    "acne"
+   ],
+   "nota": " todo bien "
+  },
+  "fecha": "2026-11-11",
+  "ops": [
+   {
+    "kind": "checkin",
+    "dedupeKey": "checkin_2026-11-11",
+    "payload": {
+     "fecha": "2026-11-11",
+     "datos": {
+      "energia": 4,
+      "descanso": 3,
+      "hambre": 2,
+      "adherencia": 5,
+      "nota": "todo bien"
+     }
+    }
+   },
+   {
+    "kind": "peso",
+    "dedupeKey": "peso_2026-11-11",
+    "payload": {
+     "fecha": "2026-11-11",
+     "valor": 78.4
+    }
+   },
+   {
+    "kind": "check_guiado",
+    "dedupeKey": "check_guiado_2026-11-11",
+    "payload": {
+     "fecha": "2026-11-11",
+     "respuestas": {
+      "catalogo": "ciclo",
+      "senales": [
+       "acne",
+       "sueno"
+      ]
+     }
+    }
+   }
+  ],
+  "rpc": {
+   "check_guiado": {
+    "funcion": "mypump_check_guiado_guardar",
+    "parametros": {
+     "p_fecha": "2026-11-11",
+     "p_respuestas": {
+      "catalogo": "ciclo",
+      "senales": [
+       "acne",
+       "sueno"
+      ]
+     }
+    }
+   }
+  }
+ }
+}
