@@ -108,6 +108,8 @@ internal fun CheckGuiadoFlujo(
     pasoInicial: Paso?,
     alEnviar: () -> Unit,
     alCerrar: () -> Unit,
+    /** «Tu cambio»: en «Listo», la semana 1 al lado de hoy, de frente, si ya hay dos semanas. */
+    tuCambio: FuentesTuCambio? = null,
 ) {
     val alcance = LocalAlcanceApp.current
     val tactil = LocalHapticFeedback.current
@@ -277,7 +279,7 @@ internal fun CheckGuiadoFlujo(
         ) {
             Column(Modifier.widthIn(max = AnchoLectura).fillMaxSize()) {
                 if (listo) {
-                    PasoListo(alCerrar = alCerrar)
+                    PasoListo(alCerrar = alCerrar, tuCambio = tuCambio)
                     return@Column
                 }
                 BarraCheck(indice, pasos.size, conAtras = indice > 0 || desdeResumen, alCerrar = ::cerrar, alAtras = ::atras)
@@ -676,7 +678,7 @@ private fun FilaResumen(etiqueta: String, valor: String, id: String, falta: Bool
 
 /** Enviado: «Listo», a quién le llega y «Cerrar». */
 @Composable
-private fun PasoListo(alCerrar: () -> Unit) {
+private fun PasoListo(alCerrar: () -> Unit, tuCambio: FuentesTuCambio? = null) {
     val c = MyPump.colores
     Column(Modifier.fillMaxSize()) {
         Column(
@@ -695,6 +697,7 @@ private fun PasoListo(alCerrar: () -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.testTag("cg-listo-texto"),
             )
+            ParListoTuCambio(tuCambio)
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = EstiloCheck.margen).padding(top = Espacio.xs, bottom = Espacio.m)) {
             BotonPrincipalCheck("Cerrar", alCerrar, Modifier.testTag("cg-cerrar-listo"))

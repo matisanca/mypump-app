@@ -11,6 +11,8 @@ struct CheckGuiadoFlujo: View {
     let fotos: ModeloFotos?
     let saludSemana: [SaludSemana.Fila]
     let sincronizarSalud: (() -> Void)?
+    /// «Tu cambio»: en «Listo», la semana 1 al lado de hoy, de frente, si ya hay dos semanas.
+    let tuCambio: FuentesTuCambio?
 
     @Environment(\.dismiss) private var cerrar
     @State private var borrador: CheckGuiado.Borrador
@@ -26,8 +28,9 @@ struct CheckGuiadoFlujo: View {
     @FocusState private var escribiendo: Bool
 
     init(revision: ModeloRevision, fotos: ModeloFotos?, saludSemana: [SaludSemana.Fila], sincronizarSalud: (() -> Void)?,
-         pasoInicial: CheckGuiado.Paso? = nil) {
+         pasoInicial: CheckGuiado.Paso? = nil, tuCambio: FuentesTuCambio? = nil) {
         self.revision = revision; self.fotos = fotos; self.saludSemana = saludSemana; self.sincronizarSalud = sincronizarSalud
+        self.tuCambio = tuCambio
         var b = revision.abrirGuiado()
         let pasos = CheckGuiado.pasos(faltanFotos: (fotos?.posesDeLaSemana.count ?? 3) < 3)
         // El peso de hoy, si ya está cargado, viene puesto.
@@ -402,23 +405,39 @@ struct CheckGuiadoFlujo: View {
         }
     }
 
+    /// El par de frente para «Listo»: solo con las dos fotos (semana 1 y la última).
+    private var parListo: TuCambio.Vista? {
+        guard let v = tuCambio?.vista(pose: TuCambio.poseInicial), v.modo == .par, v.antes != nil, v.despues != nil else { return nil }
+        return v
+    }
+
     private var pantallaListo: some View {
         VStack(spacing: Espacio.l) {
-            Spacer()
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 84, weight: .bold))
-                .foregroundStyle(Color.marca)
-                .accessibilityHidden(true)
-            VStack(spacing: Espacio.xs) {
-                Text("Listo").font(.tituloCheck).accessibilityAddTraits(.isHeader)
-                Text("Mati lo ve antes de tu devolución.")
-                    .font(.body)
-                    .foregroundStyle(Color.apoyoCheck)
-                    .multilineTextAlignment(.center)
+            if let par = parListo, let tuCambio {
+                // Con «Tu cambio»: lo de siempre más arriba y el par de frente debajo; con letra grande, desliza.
+                ScrollView {
+                    VStack(spacing: Espacio.l) {
+                        iconoListo(56)
+                        textoListo
+                        VStack(spacing: Espacio.s) {
+                            Text(TuCambio.listoTitulo).font(.title3.weight(.bold)).accessibilityAddTraits(.isHeader)
+                            ParTuCambio(vista: par, fuentes: tuCambio).frame(maxWidth: 360)
+                            if let pie = par.pie { Text(pie).font(.headline).accessibilityIdentifier("cg-listo-pie") }
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("cg-listo-tucambio")
+                        .task { await tuCambio.firmar() }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, Espacio.xl)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+            } else {
+                Spacer()
+                iconoListo(84)
+                textoListo
+                Spacer()
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("cg-listo")
-            Spacer()
             Button("Cerrar") { cerrar() }
                 .buttonStyle(BotonCheck())
                 .accessibilityIdentifier("cg-cerrar-listo")
@@ -426,6 +445,25 @@ struct CheckGuiadoFlujo: View {
         .padding(20)
         .frame(maxWidth: Ancho.lectura)
         .frame(maxWidth: .infinity)
+    }
+
+    private func iconoListo(_ lado: CGFloat) -> some View {
+        Image(systemName: "checkmark.circle.fill")
+            .font(.system(size: lado, weight: .bold))
+            .foregroundStyle(Color.marca)
+            .accessibilityHidden(true)
+    }
+
+    private var textoListo: some View {
+        VStack(spacing: Espacio.xs) {
+            Text("Listo").font(.tituloCheck).accessibilityAddTraits(.isHeader)
+            Text("Mati lo ve antes de tu devolución.")
+                .font(.body)
+                .foregroundStyle(Color.apoyoCheck)
+                .multilineTextAlignment(.center)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("cg-listo")
     }
 }
 
