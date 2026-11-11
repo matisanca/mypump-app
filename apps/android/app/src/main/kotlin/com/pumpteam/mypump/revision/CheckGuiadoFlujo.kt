@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -137,6 +139,9 @@ internal fun CheckGuiadoFlujo(
     var listo by rememberSaveable { mutableStateOf(false) }
     var enviando by remember { mutableStateOf(false) }
     var aviso by rememberSaveable { mutableStateOf<String?>(null) }
+    // Con la lista larga, el efecto sin intensidad puede quedar fuera de la pantalla: cada vez que se avisa, se lo trae.
+    var pedidosDeIntensidad by remember { mutableStateOf(0) }
+    val traerIntensidad = remember { BringIntoViewRequester() }
     var mensajeFotos by remember { mutableStateOf<String?>(null) }
     // Se llegó a un paso desde una fila del resumen: «Seguir» y «Atrás» vuelven al resumen.
     var desdeResumen by rememberSaveable { mutableStateOf(false) }
@@ -254,6 +259,7 @@ internal fun CheckGuiadoFlujo(
                 // Un efecto marcado sin su intensidad: no avanza y lo dice (se va al elegir).
                 if (CheckGuiado.faltaIntensidad(b)) {
                     aviso = CheckGuiado.AVISO_INTENSIDAD
+                    pedidosDeIntensidad += 1
                     tactil.performHapticFeedback(HapticFeedbackType.Reject)
                     return
                 }
@@ -329,6 +335,12 @@ internal fun CheckGuiadoFlujo(
                                     // estaba marcado se sigue viendo aunque el perfil haya cambiado: si no, no se podría sacar.
                                     val glp1 = servidor?.glp1 ?: false
                                     val conIntensidad = b.catalogo == CheckGuiado.Catalogo.CICLO
+                                    val primeraSinIntensidad = CheckGuiado.opciones(b.catalogo).firstOrNull {
+                                        it.clave in b.senales && it.clave != CheckGuiado.NINGUNO && b.intensidades[it.clave] == null
+                                    }?.clave
+                                    LaunchedEffect(pedidosDeIntensidad) {
+                                        if (pedidosDeIntensidad > 0 && primeraSinIntensidad != null) runCatching { traerIntensidad.bringIntoView() }
+                                    }
                                     for (o in CheckGuiado.opciones(b.catalogo)) {
                                         val elegida = o.clave in b.senales
                                         if (o.clave in CheckGuiado.DIGESTIVAS && !glp1 && !elegida) continue
@@ -345,7 +357,7 @@ internal fun CheckGuiadoFlujo(
                                         )
                                         // En la lista de efectos, debajo de cada uno marcado: cuánto molesta.
                                         if (conIntensidad && elegida && o.clave != CheckGuiado.NINGUNO) {
-                                            IntensidadCheck(
+                                            Box(if (o.clave == primeraSinIntensidad) Modifier.bringIntoViewRequester(traerIntensidad) else Modifier) { IntensidadCheck(
                                                 efecto = o,
                                                 elegida = b.intensidades[o.clave],
                                                 falta = aviso == CheckGuiado.AVISO_INTENSIDAD,
@@ -353,7 +365,7 @@ internal fun CheckGuiadoFlujo(
                                                     cambiar(b.copy(intensidades = b.intensidades + (o.clave to cuanto)))
                                                     tactil.performHapticFeedback(HapticFeedbackType.SegmentTick)
                                                 },
-                                            )
+                                            ) }
                                         }
                                     }
                                 }
