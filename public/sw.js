@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v56-20261110';
+const VERSION       = 'v57-20261110';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = '/js/vendor/supabase-js.min.js';   // vendorizada el 20-sep-2026 (antes CDN)
@@ -50,6 +50,10 @@ const SHELL = [
   '/js/tecnica-cola.js',
   '/js/tecnica-ui.js',
   '/css/tecnica.css',
+  '/js/fotos-inicio.js',
+  '/js/fotos-inicio-cola.js',
+  '/js/fotos-inicio-ui.js',
+  '/css/fotos-inicio.css',
   '/js/healthkit-bridge.js',
   '/js/notificaciones.js',
   '/js/app.js',
@@ -88,6 +92,8 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/gimnasio/')) return;
   // Técnica por video: lo mismo. La subida es POST y el video firmado es de otro origen.
   if (url.pathname.startsWith('/tecnica/')) return;
+  // Fotos de inicio: lo mismo. Son fotos del cuerpo: nunca a un cache.
+  if (url.pathname.startsWith('/inicio/')) return;
   // Lib de Supabase (vendorizada, mismo origen) → cache-first: cambia solo
   // cuando se reemplaza el archivo (y con él, VERSION).
   if (url.origin === location.origin && url.pathname === SUPABASE_LIB) {

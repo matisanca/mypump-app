@@ -58,6 +58,9 @@ firmas.set('mypump_gimnasio_responder', new Set(['p_token', 'p_id', 'p_respuesta
 firmas.set('mypump_tecnica_get', new Set(['p_token']));
 firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ejercicio_nombre', 'p_nota']));
 firmas.set('mypump_tecnica_cancelar', new Set(['p_token', 'p_id']));
+// Fotos de inicio: propuesta sin aplicar (supabase/propuestas/nativa_fotos_inicio*, rama de fotos de inicio). Hasta aplicarla contesta PGRST202 y la web no muestra nada.
+firmas.set('mypump_fotos_inicio_get', new Set(['p_token']));
+firmas.set('mypump_fotos_inicio_nota', new Set(['p_token', 'p_nota']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.
