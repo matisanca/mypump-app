@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import java.time.Instant
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloGuia
@@ -46,6 +48,10 @@ fun TarjetaGuiaDe(modelo: ModeloApp, modifier: Modifier = Modifier, solo: Reglas
             },
             modifier = modifier,
             novedad = novedad,
+            // Grande mientras haya riesgo de que la pasen por alto; en fila solo con la guía de base completa y la
+            // novedad con más de 7 días. Con letra grande, siempre grande.
+            enFila = novedad != null && LocalDensity.current.fontScale < 1.3f &&
+                TamanoGuia.vaEnFila(novedad, resumen, Instant.now()),
         )
         ReglasGuia.EstiloTarjeta.COMPACTA -> TarjetaGuia(resumen, alAbrir = { navegacion?.guia = true }, modifier = modifier)
     }

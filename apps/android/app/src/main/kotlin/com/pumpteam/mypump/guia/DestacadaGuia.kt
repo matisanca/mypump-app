@@ -81,7 +81,10 @@ import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.vidrio
 import com.pumpteam.mypump.entreno.reducirMovimiento
+import com.pumpteam.mypump.modelos.AgendaEntrega
 import com.pumpteam.mypump.modelos.ResumenGuia
+import java.time.Duration
+import java.time.Instant
 import com.pumpteam.mypump.raiz.Navegacion
 import com.pumpteam.mypump.raiz.Pestana
 import com.pumpteam.mypump.reglas.ReglasGuia
@@ -101,6 +104,28 @@ import kotlinx.coroutines.launch
 val VerdeGuia = Color(0xFF157A28)
 
 /**
+ * Cuándo la tarjeta de la guía va GRANDE y cuándo pasa a la fila verde (decisión de Mati, 10/11; gemelo de
+ * `TarjetaGuiaDestacada.vaEnFila` de iOS). Va grande siempre que haya riesgo de que la pasen por alto. En fila solo cuando
+ * se cumplen las dos cosas:
+ * · el cliente ya terminó la guía de base (lo único sin ver es la tanda nueva), y
+ * · la novedad lleva más de [DIAS_GRANDE] días publicada (`novedad_en`, la fecha del servidor: vale igual en todos sus
+ *   teléfonos y no se reinicia al reinstalar).
+ * Sin fecha legible, o sin saber cuántos son los nuevos, grande. La primera vez («Empezá por acá») es siempre grande.
+ */
+object TamanoGuia {
+    /** Cuántos días va grande una novedad antes de pasar a la fila. Se cambia acá. */
+    const val DIAS_GRANDE = 7L
+
+    fun vaEnFila(novedad: ReglasNovedad.Tarjeta, resumen: ResumenGuia, ahora: Instant): Boolean {
+        val nuevos = novedad.total ?: return false
+        val baseCompleta = (resumen.total - resumen.vistos) <= (nuevos - novedad.vistos)
+        if (!baseCompleta) return false
+        val desde = AgendaEntrega.instante(resumen.novedadEn) ?: return false
+        return Duration.between(desde, ahora) > Duration.ofDays(DIAS_GRANDE)
+    }
+}
+
+/**
  * La tarjeta verde arriba de Entreno mientras falta ver algo: «EMPEZÁ POR ACÁ», el título, el avance, la barra blanca, el
  * botón blanco y, arriba a la derecha, «Ocultar» (48 dp de toque). Tocar la tarjeta también abre la guía.
  */
@@ -113,8 +138,14 @@ fun TarjetaGuiaDestacada(
     modifier: Modifier = Modifier,
     /** Con novedad (2.2.0): «NOVEDAD EN TU GUÍA», el mismo verde, y el avance de los nuevos solamente. */
     novedad: ReglasNovedad.Tarjeta? = null,
+    /** La novedad ya conocida (ver [TamanoGuia]): una fila verde, primera y con su botón, sin correr el entrenamiento hacia abajo. */
+    enFila: Boolean = false,
 ) {
     val texto = novedad?.let(ReglasNovedad::textoTarjeta) ?: ReglasGuia.textoDestacada(resumen)
+    if (enFila && novedad != null) {
+        FilaGuiaNovedad(texto, alAbrir, alOcultar, modifier)
+        return
+    }
     val boton = if (novedad != null) ReglasNovedad.BOTON else ReglasGuia.botonDestacada(resumen)
     val etiquetaArriba = if (novedad != null) "NOVEDAD EN TU GUÍA" else "EMPEZÁ POR ACÁ"
     val fraccion = novedad?.fraccion ?: ReglasGuia.fraccion(resumen)
@@ -179,6 +210,60 @@ fun TarjetaGuiaDestacada(
             elevation = null,
         ) {
             Text(boton, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+/** La novedad en fila: el mismo verde y las mismas acciones que la grande («Ver» abre lo nuevo, la cruz la oculta). */
+@Composable
+private fun FilaGuiaNovedad(texto: String, alAbrir: () -> Unit, alOcultar: () -> Unit, modifier: Modifier = Modifier) {
+    val forma = RoundedCornerShape(22.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(forma)
+            .background(VerdeGuia)
+            .semantics { contentDescription = "Novedad en tu guía. $texto" }
+            .clickable(onClickLabel = "Abrir tu guía", role = Role.Button, onClick = alAbrir)
+            .testTag("tarjeta-guia")
+            .padding(start = Espacio.s, end = 2.dp, top = Espacio.xs, bottom = Espacio.xs),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+    ) {
+        Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+            Icon(Iconos.Play, contentDescription = null, tint = VerdeGuia, modifier = Modifier.size(22.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                "NOVEDAD EN TU GUÍA",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.08.em,
+                color = Color.White,
+                modifier = Modifier.testTag("guia-novedad").clearAndSetSemantics {},
+            )
+            Text(texto, style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 2, modifier = Modifier.testTag("tarjeta-guia-texto"))
+        }
+        Button(
+            onClick = alAbrir,
+            modifier = Modifier.defaultMinSize(minWidth = 64.dp, minHeight = 48.dp).semantics { contentDescription = ReglasNovedad.BOTON }.testTag("tarjeta-guia-ver"),
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = VerdeGuia),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
+            elevation = null,
+        ) {
+            Text("Ver", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .clickable(role = Role.Button, onClick = alOcultar)
+                .semantics { contentDescription = "Ocultar tu guía de Entreno" }
+                .testTag("tarjeta-guia-ocultar"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Iconos.Cerrar, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
         }
     }
 }
