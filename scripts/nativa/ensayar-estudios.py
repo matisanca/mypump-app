@@ -110,9 +110,15 @@ def main():
         chequear("la práctica se descuenta una sola vez",
                  uno(cur, prohibido, (limpio + " por déficit de testosterona", json.dumps(["Testosterona total"]))) is True)
         chequear("sin la práctica en la lista no pasa", uno(cur, prohibido, (limpio, "[]")) is True)
+        chequear("la práctica repetida en la lista no descuenta dos veces",
+                 uno(cur, prohibido, (limpio + " por déficit de testosterona total", json.dumps(["Testosterona total", "Testosterona total"]))) is True)
+        chequear("una «práctica» con dosis no se blanquea sola",
+                 uno(cur, prohibido, (limpio + " Enantato 250 mg", json.dumps(["Testosterona total", "Enantato 250 mg"]))) is True)
         for malo in ["control en ciclo", "post ciclo", "Particular", "dosis semanal", "250 mg", "andrógenos", "Rp/ enantato", "TRT",
                      "uso de anabólicos", "tamoxifeno", "cada 7 días", "terapia de reemplazo hormonal", "T38.7", "hipogonadismo inducido",
-                     "ANABÓLICOS", "última aplicación"]:
+                     "ANABÓLICOS", "última aplicación", "hipoandrogenismo", "dihidrotestosterona", "enclomifeno", "testoste-\nrona",
+                     "testos\u00adterona", "andro\u0301genos", "inyeccio\u0301n", "cipionato", "1 cc", "c/7 días", "cada 3,5 dias", "x semana",
+                     "t e s t o s t e r o n a", "flebotomía", "constancia"]:
             chequear(f"«{malo}» frena", uno(cur, prohibido, ("Laboratorio. " + malo + ". Sin cobertura", "[]")) is True)
         for bueno in ["Hemograma completo. Sin cobertura. E78.5", "Ecocardiograma Doppler color. OSDE 210", "por tratamiento hormonal en curso",
                       "Ferritina, hierro sérico, transferrina y saturación", "Vitamina D (25-OH), vitamina B12 y ácido fólico"]:
@@ -166,6 +172,8 @@ def main():
         chequear("toma el envío con su archivo", t and t["id"] == envio and len(t["archivos"]) == 1 and t["cliente_id"] == CUENTA, t)
         chequear("no lo toma dos veces", uno(cur, "SELECT mypump_estudios_tomar()") is None)
         chequear("devolver lo deja en cola", uno(cur, "SELECT mypump_estudios_devolver(%s, FALSE, 'cuota')", (envio,)) is True)
+        chequear("devuelto espera antes del próximo intento", uno(cur, "SELECT mypump_estudios_tomar()") is None)
+        cur.execute("UPDATE mypump_estudios_envios SET no_antes_de = NOW() - INTERVAL '1 second' WHERE id = %s", (envio,))
         chequear("se vuelve a tomar", (uno(cur, "SELECT mypump_estudios_tomar()") or {}).get("id") == envio)
         cur.execute("UPDATE mypump_app_config SET valor = 'false' WHERE clave = 'estudios_app'")
         cur.execute("SAVEPOINT apagada")

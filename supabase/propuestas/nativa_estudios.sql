@@ -25,14 +25,14 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ── Listas cerradas ──
 CREATE OR REPLACE FUNCTION mypump_estudios_tipos()
-RETURNS TEXT[] LANGUAGE sql IMMUTABLE SET search_path = public AS $$
+RETURNS TEXT[] LANGUAGE sql IMMUTABLE SET search_path = public, pg_temp AS $$
   SELECT ARRAY['laboratorio','ecografia','ecocardiograma','ergometria','eco_estres','electrocardiograma','mapa',
                'densitometria','estudios','otro'];
 $$;
 
 -- El título que ve el alumno sale de acá: nadie escribe títulos a mano.
 CREATE OR REPLACE FUNCTION mypump_estudios_titulo(p_tipo TEXT)
-RETURNS TEXT LANGUAGE sql IMMUTABLE SET search_path = public AS $$
+RETURNS TEXT LANGUAGE sql IMMUTABLE SET search_path = public, pg_temp AS $$
   SELECT CASE p_tipo
     WHEN 'laboratorio' THEN 'Análisis de laboratorio'
     WHEN 'ecografia' THEN 'Ecografía'
@@ -48,7 +48,7 @@ $$;
 
 -- Lo que el bot llama de otra forma cae en un tipo de la lista; lo desconocido es 'otro'.
 CREATE OR REPLACE FUNCTION mypump_estudios_tipo_normal(p_tipo TEXT)
-RETURNS TEXT LANGUAGE sql IMMUTABLE SET search_path = public AS $$
+RETURNS TEXT LANGUAGE sql IMMUTABLE SET search_path = public, pg_temp AS $$
   SELECT CASE
     WHEN lower(btrim(COALESCE(p_tipo, ''))) = ANY (mypump_estudios_tipos()) THEN lower(btrim(p_tipo))
     WHEN lower(COALESCE(p_tipo, '')) LIKE 'densitometria%' THEN 'densitometria'
@@ -58,8 +58,9 @@ $$;
 
 -- Texto en minúsculas y sin acentos, para comparar.
 CREATE OR REPLACE FUNCTION mypump_estudios_plano(p TEXT)
-RETURNS TEXT LANGUAGE sql IMMUTABLE SET search_path = public AS $$
-  SELECT translate(lower(COALESCE(p, '')), 'áéíóúüñàèìòù', 'aeiouunaeiou');
+RETURNS TEXT LANGUAGE sql IMMUTABLE SET search_path = public, pg_temp AS $$
+  -- NFKD + sin marcas combinadas (pdftotext puede dar «o» + acento suelto) + sin guion blando ni caracteres de ancho cero.
+  SELECT regexp_replace(lower(normalize(COALESCE(p, ''), NFKD)), '[\u0300-\u036f\u00ad\u200b-\u200d\ufeff]', '', 'g');
 $$;
 
 -- CONTROL 2 de las órdenes y control único de todo texto corto que vaya a pantalla.
@@ -70,31 +71,51 @@ CREATE OR REPLACE FUNCTION mypump_ordenes_texto_prohibido(p_texto TEXT, p_practi
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 IMMUTABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v TEXT := regexp_replace(mypump_estudios_plano(p_texto), '\s+', ' ', 'g');
+  c TEXT;
   p TEXT;
   i INTEGER;
+  -- Nombres de sustancias: se buscan DENTRO de cualquier palabra («dihidrotestosterona», «hipoandrogenismo», «enclomifeno»).
+  k_sust CONSTANT TEXT := '(testosteron|androgen|anabol|esteroid|ergogenic|exogen|nandrolon|trembolon|boldenon|oxandrolon|estanozolol|'
+           || 'stanozolol|metenolon|primobolan|drostanolon|mesterolon|proviron|oximetolon|metandrostenolon|dianabol|'
+           || 'tamoxifen|clomifen|anastrozol|letrozol|exemestan|cabergolin|gonadotrof|gonadotrop|somatropin|somatotropin|'
+           || 'semaglutid|tirzepatid|retatrutid|clenbuterol|aromatasa|enantato|cipionato|propionato|undecanoato|decanoato)';
+  -- Las mismas, sin las raíces cortas que aparecen al pegar palabras («Ana Bolaños», «sexo género»): para la pasada compacta.
+  k_sust_c CONSTANT TEXT := '(testosteron|androgen|esteroid|nandrolon|trembolon|boldenon|oxandrolon|estanozolol|stanozolol|metenolon|'
+           || 'primobolan|drostanolon|mesterolon|oximetolon|metandrostenolon|dianabol|tamoxifen|clomifen|anastrozol|letrozol|'
+           || 'exemestan|cabergolin|gonadotrof|gonadotrop|somatropin|somatotropin|semaglutid|tirzepatid|retatrutid|clenbuterol)';
+  k_pal CONSTANT TEXT := '\m(aas|trt|trh|pct|serm|sarm|sarms|hcg|hgh|rp|receta|recetas|recetario|particular|ciclo|ciclos|posciclo|postciclo|dosis|'
+           || 'dopaje|doping|vial|viales|ampolla|ampollas|peptido|peptidos|intramuscular|subcutanea|inyeccion|inyecciones|inyectable|'
+           || 'inyectables|aplicacion|aplicaciones|comprimido|comprimidos|capsula|capsulas|posologia|semanal|semanales|quincenal|'
+           || 'flebotomia|sangria|derivacion|constancia|certificado|justificacion|culturismo|fisicoculturismo|gimnasio|suplemento|suplementos)\M';
+  k_dosis CONSTANT TEXT := '([0-9] ?(mg|mcg|ml|ui|cc|unidades)\M|(cada|c/) ?[0-9]+([.,][0-9]+)? ?(dias|horas|semanas|hs)|(x|por) semana)';
 BEGIN
   IF jsonb_typeof(p_practicas) = 'array' THEN
-    -- Las más largas primero: «testosterona total y libre» antes que «testosterona total».
-    FOR p IN SELECT regexp_replace(mypump_estudios_plano(x), '\s+', ' ', 'g')
-               FROM jsonb_array_elements_text(p_practicas) x
-              WHERE length(btrim(x)) >= 3 ORDER BY length(x) DESC LOOP
+    -- Una «práctica» no puede traer dosis ni palabras de la lista: no se blanquea sola.
+    IF EXISTS (SELECT 1 FROM jsonb_array_elements_text(p_practicas) x
+                WHERE regexp_replace(mypump_estudios_plano(x), '\s+', ' ', 'g') ~ k_pal
+                   OR regexp_replace(mypump_estudios_plano(x), '\s+', ' ', 'g') ~ k_dosis) THEN
+      RETURN TRUE;
+    END IF;
+    -- Cada práctica distinta se descuenta UNA vez. Las más largas primero: «testosterona total y libre» antes que «testosterona total».
+    FOR p IN SELECT y FROM (SELECT DISTINCT regexp_replace(mypump_estudios_plano(x), '\s+', ' ', 'g') AS y
+                              FROM jsonb_array_elements_text(p_practicas) x WHERE length(btrim(x)) >= 3) d
+              ORDER BY length(y) DESC, y LOOP
       i := position(p IN v);
-      IF i > 0 THEN v := overlay(v PLACING ' ' FROM i FOR length(p)); END IF;
+      IF i > 0 THEN v := overlay(v PLACING ' | ' FROM i FOR length(p)); END IF;
     END LOOP;
   END IF;
-  RETURN v ~ ('\m(testosteron|androgen|anabol|esteroid|ergogenic|exogen|nandrolon|trembolon|boldenon|oxandrolon|estanozolol|'
-           || 'stanozolol|metenolon|primobolan|drostanolon|mesterolon|proviron|oximetolon|metandrostenolon|dianabol|'
-           || 'tamoxifen|clomifen|anastrozol|letrozol|exemestan|cabergolin|gonadotrof|gonadotrop|somatropin|'
-           || 'semaglutid|tirzepatid|retatrutid|clenbuterol|aromatasa)')
-      OR v ~ '\m(aas|trt|trh|pct|serm|sarm|sarms|hcg|hgh|rp|receta|recetas|particular|ciclo|ciclos|posciclo|postciclo|dosis|dopaje|doping|vial|viales|ampolla|ampollas|peptido|peptidos|intramuscular|inyeccion|inyecciones|inyectable|inyectables|aplicacion|aplicaciones)\M'
+  -- Pasada compacta: una palabra partida por el renglón («testoste-» / «rona») o con espacios entre letras.
+  c := regexp_replace(v, '[^a-z0-9|]', '', 'g');
+  RETURN v ~ k_sust
+      OR c ~ k_sust_c
+      OR v ~ k_pal
       OR v ~ '\m(terapia|reemplazo) (de reemplazo )?hormonal'
       OR v ~ '(inducid[oa]|secundari[oa] a|supresion del eje|bloqueo del eje|reduccion de danos)'
-      OR v ~ '[0-9] ?(mg|mcg|ml|ui)\M'
-      OR v ~ 'cada [0-9]+ (dias|horas|semanas)'
+      OR v ~ k_dosis
       OR v ~ '\m(t38|y42|f55|f1[0-9]|z72)\.?[0-9]?\M';
 END;
 $$;
@@ -212,6 +233,7 @@ CREATE TABLE IF NOT EXISTS mypump_estudios_envios (
   procesado_en     TIMESTAMPTZ,
   lote             TEXT        CHECK (char_length(lote) <= 40),
   intentos         INTEGER     NOT NULL DEFAULT 0,
+  no_antes_de      TIMESTAMPTZ,                                            -- espera entre intentos de lectura
   resumen          JSONB,                                                  -- interno: guardados, frenados, lectura parcial
   error_detalle    TEXT        CHECK (char_length(error_detalle) <= 600),
   creado_en        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -260,20 +282,20 @@ INSERT INTO mypump_app_config (clave, valor, nota) VALUES
 ON CONFLICT (clave) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION mypump_estudios_habilitado(p_cliente_id TEXT)
-RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT COALESCE((SELECT valor = 'true'::JSONB FROM mypump_app_config WHERE clave = 'estudios_app'), FALSE)
      AND (COALESCE((SELECT valor = 'true'::JSONB FROM mypump_app_config WHERE clave = 'estudios_para_todos'), FALSE)
           OR EXISTS (SELECT 1 FROM mypump_estudios_habilitados WHERE cliente_id = p_cliente_id));
 $$;
 
 CREATE OR REPLACE FUNCTION mypump_estudios_hoy()
-RETURNS DATE LANGUAGE sql STABLE SET search_path = public AS $$
+RETURNS DATE LANGUAGE sql STABLE SET search_path = public, pg_temp AS $$
   SELECT (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::DATE;
 $$;
 
 -- ¿Se puede abrir este estudio? Todas sus hojas tienen que cumplir: propia, o (visto e identidad fuerte).
 CREATE OR REPLACE FUNCTION mypump_estudios_se_abre(p_estudio_id UUID)
-RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT EXISTS (SELECT 1 FROM mypump_estudios_hojas h WHERE h.estudio_id = p_estudio_id)
      AND NOT EXISTS (
        SELECT 1 FROM mypump_estudios_hojas h JOIN mypump_estudios e ON e.id = h.estudio_id
@@ -287,7 +309,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_cliente_id TEXT;
@@ -357,7 +379,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_envio_nuevo(p_token TEXT, p_id UUID, 
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_cliente_id TEXT;
@@ -395,7 +417,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_enviar(p_token TEXT, p_id UUID, p_arc
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_cliente_id TEXT;
@@ -408,7 +430,7 @@ BEGIN
   IF NOT FOUND THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_encontrado'); END IF;
   IF v_fila.estado <> 'borrador' THEN RETURN jsonb_build_object('ok', TRUE, 'ya', TRUE, 'estado', 'enviado'); END IF;
   IF NOT mypump_estudios_habilitado(v_cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_habilitado'); END IF;
-  SELECT count(*) INTO v_n FROM mypump_estudios_archivos WHERE envio_id = p_id;
+  SELECT count(*) INTO v_n FROM mypump_estudios_archivos WHERE envio_id = p_id AND borrado_en IS NULL;
   IF v_n = 0 THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'sin_archivos'); END IF;
   IF p_archivos IS NOT NULL AND v_n < p_archivos THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'faltan_archivos', 'hay', v_n); END IF;
   UPDATE mypump_estudios_envios SET estado = 'enviado', enviado_en = NOW(), actualizado_en = NOW() WHERE id = p_id;
@@ -421,7 +443,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_hecho(p_token TEXT, p_pedido_id UUID,
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_cliente_id TEXT;
@@ -458,7 +480,7 @@ RETURNS TEXT
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_estado TEXT;
@@ -483,7 +505,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_archivo_registrar(
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_puede TEXT;
@@ -506,7 +528,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF NOT mypump_estudios_habilitado(p_cliente_id) THEN RETURN jsonb_build_object('resultado', 'no_habilitado'); END IF;
@@ -533,7 +555,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_tomar()
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_fila mypump_estudios_envios%ROWTYPE;
@@ -543,7 +565,8 @@ BEGIN
   UPDATE mypump_estudios_envios SET estado = 'error', error_detalle = 'colgado 3 veces', actualizado_en = NOW()
    WHERE estado = 'procesando' AND procesando_desde < NOW() - INTERVAL '45 minutes' AND intentos >= 3;
   SELECT * INTO v_fila FROM mypump_estudios_envios
-   WHERE estado = 'enviado' OR (estado = 'procesando' AND procesando_desde < NOW() - INTERVAL '45 minutes')
+   WHERE (estado = 'enviado' AND (no_antes_de IS NULL OR no_antes_de <= NOW()))
+      OR (estado = 'procesando' AND procesando_desde < NOW() - INTERVAL '45 minutes')
    ORDER BY enviado_en, id LIMIT 1 FOR UPDATE SKIP LOCKED;
   IF NOT FOUND THEN RETURN NULL; END IF;
   UPDATE mypump_estudios_envios SET estado = 'procesando', procesando_desde = NOW(), intentos = intentos + 1, actualizado_en = NOW()
@@ -551,7 +574,7 @@ BEGIN
   RETURN jsonb_build_object('id', v_fila.id, 'cliente_id', v_fila.cliente_id, 'pedido_id', v_fila.pedido_id, 'intentos', v_fila.intentos,
     'archivos', COALESCE((SELECT jsonb_agg(jsonb_build_object('id', a.id, 'path', a.path, 'mime', a.mime, 'bytes', a.bytes, 'sha256', a.sha256)
                                            ORDER BY a.creado_en, a.id)
-                            FROM mypump_estudios_archivos a WHERE a.envio_id = v_fila.id), '[]'::JSONB));
+                            FROM mypump_estudios_archivos a WHERE a.envio_id = v_fila.id AND a.borrado_en IS NULL), '[]'::JSONB));
 END;
 $$;
 
@@ -559,7 +582,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_procesado(p_id UUID, p_lote TEXT, p_r
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   UPDATE mypump_estudios_envios SET estado = 'procesado', procesado_en = NOW(), lote = p_lote, resumen = p_resumen, error_detalle = NULL, actualizado_en = NOW()
@@ -573,12 +596,13 @@ CREATE OR REPLACE FUNCTION mypump_estudios_devolver(p_id UUID, p_contar BOOLEAN 
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   UPDATE mypump_estudios_envios
      SET estado = CASE WHEN p_contar AND intentos >= 3 THEN 'error' ELSE 'enviado' END,
          intentos = CASE WHEN p_contar THEN intentos ELSE GREATEST(intentos - 1, 0) END,
+         no_antes_de = NOW() + INTERVAL '10 minutes',          -- una caída corta de la lectura no quema los 3 intentos
          procesando_desde = NULL, error_detalle = left(p_detalle, 600), actualizado_en = NOW()
    WHERE id = p_id AND estado = 'procesando';
   RETURN FOUND;
@@ -594,7 +618,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_registrar(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_tipo     TEXT := mypump_estudios_tipo_normal(p_tipo);
@@ -658,7 +682,7 @@ $$;
 -- ── «Mati lo vio» (Mensajes, service_role) ──
 -- Lo que espera el feedback de un alumno. Sin paths.
 CREATE OR REPLACE FUNCTION mypump_estudios_sin_ver(p_cliente_id TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT COALESCE(jsonb_agg(jsonb_build_object('id', e.id, 'cliente_id', e.cliente_id, 'fecha', e.fecha, 'tipo', e.tipo,
            'origen', e.origen, 'recibido_en', e.recibido_en,
            'hojas', (SELECT count(*) FROM mypump_estudios_hojas h WHERE h.estudio_id = e.id)) ORDER BY e.recibido_en, e.id), '[]'::JSONB)
@@ -670,7 +694,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_marcar_visto(p_estudio_id UUID, p_por
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_fila mypump_estudios%ROWTYPE;
@@ -696,7 +720,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_pedir(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_fila mypump_estudios_pedidos%ROWTYPE;
@@ -728,7 +752,7 @@ CREATE OR REPLACE FUNCTION mypump_estudios_pedido_resolver(p_id UUID, p_accion T
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_fila mypump_estudios_pedidos%ROWTYPE;
@@ -737,6 +761,7 @@ BEGIN
   SELECT * INTO v_fila FROM mypump_estudios_pedidos WHERE id = p_id FOR UPDATE;
   IF NOT FOUND THEN RETURN 'no_encontrado'; END IF;
   IF p_estudio_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM mypump_estudios WHERE id = p_estudio_id AND cliente_id = v_fila.cliente_id) THEN RETURN 'estudio_ajeno'; END IF;
+  IF v_fila.estado = 'anulado' AND p_accion <> 'anular' THEN RETURN 'estado'; END IF;
   IF p_accion = 'cerrar' THEN
     UPDATE mypump_estudios_pedidos SET estado = 'recibido', completo = TRUE, estudio_id = COALESCE(p_estudio_id, estudio_id),
            nota_interna = left(concat_ws(' · ', nota_interna, 'cerrado por ' || p_por, p_nota), 600), actualizado_en = NOW() WHERE id = p_id;
@@ -758,7 +783,7 @@ $$;
 
 -- Tablero interno: pedidos abiertos (para Mensajes y Entregas), con lo vencido y lo que tiene la orden vencida. Sin datos clínicos de más.
 CREATE OR REPLACE FUNCTION mypump_estudios_pedidos_abiertos(p_cliente_id TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT COALESCE(jsonb_agg(jsonb_build_object('id', p.id, 'cliente_id', p.cliente_id, 'tipo', p.tipo, 'origen', p.origen, 'origen_ref', p.origen_ref,
            'estado', p.estado, 'desde', p.fecha_desde, 'hasta', p.fecha_limite, 'hecho_fecha', p.hecho_fecha,
            'vencido', p.fecha_limite < mypump_estudios_hoy(),
@@ -778,7 +803,7 @@ CREATE OR REPLACE FUNCTION mypump_ordenes_app_proponer(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_fila    mypump_ordenes_app%ROWTYPE;
@@ -798,7 +823,8 @@ BEGIN
           CASE WHEN v_estado = 'bloqueada' THEN CASE WHEN NOT COALESCE(p_control1_ok, FALSE) THEN 'control 1' ELSE 'control 2' END END,
           CASE WHEN v_estado = 'visible' THEN 'automático (dos controles)' END, CASE WHEN v_estado = 'visible' THEN NOW() END)
   RETURNING * INTO v_fila;
-  IF p_reemplaza IS NOT NULL AND v_estado <> 'bloqueada' THEN
+  -- Siempre: si la corregida no pasó el control, la vieja (la que se quiso corregir) tampoco puede seguir a la vista.
+  IF p_reemplaza IS NOT NULL THEN
     UPDATE mypump_ordenes_app SET estado = 'reemplazada', actualizado_en = NOW()
      WHERE documento_id = p_reemplaza AND cliente_id = p_cliente_id AND estado IN ('a_revisar','visible');
   END IF;
@@ -811,7 +837,7 @@ CREATE OR REPLACE FUNCTION mypump_ordenes_app_publicar(p_id UUID, p_por TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_fila mypump_ordenes_app%ROWTYPE;
@@ -835,7 +861,7 @@ CREATE OR REPLACE FUNCTION mypump_ordenes_app_bloquear(p_id UUID, p_por TEXT, p_
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF length(btrim(COALESCE(p_por, ''))) = 0 OR length(btrim(COALESCE(p_motivo, ''))) = 0 THEN RAISE EXCEPTION 'falta quién o por qué' USING ERRCODE = '22023'; END IF;
@@ -847,11 +873,14 @@ $$;
 
 -- ── Limpieza de lo que entró por la app: a los 30 días de procesado, el objeto de entrada sobra (la copia buena es la de la ficha) ──
 CREATE OR REPLACE FUNCTION mypump_estudios_para_limpiar(p_dias INTEGER DEFAULT 30, p_limite INTEGER DEFAULT 50)
-RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT COALESCE(jsonb_agg(jsonb_build_object('id', x.id, 'path', x.path)), '[]'::JSONB) FROM (
     SELECT a.id, a.path FROM mypump_estudios_archivos a JOIN mypump_estudios_envios s ON s.id = a.envio_id
      WHERE a.borrado_en IS NULL
-       AND ((s.estado = 'procesado' AND s.procesado_en < NOW() - make_interval(days => GREATEST(p_dias, 7)))
+       -- Solo envíos que entraron ENTEROS a la ficha: de uno parcial o frenado, la entrada es la única copia.
+       AND ((s.estado = 'procesado' AND s.procesado_en < NOW() - make_interval(days => GREATEST(p_dias, 7))
+             AND COALESCE((s.resumen->>'guardados')::INTEGER, 0) > 0
+             AND COALESCE((s.resumen->>'guardados')::INTEGER, 0) >= COALESCE((s.resumen->>'archivos')::INTEGER, 0))
             OR (s.estado = 'borrador' AND s.actualizado_en < NOW() - INTERVAL '7 days'))
      ORDER BY a.creado_en LIMIT LEAST(GREATEST(p_limite, 1), 200)) x;
 $$;
@@ -860,9 +889,13 @@ CREATE OR REPLACE FUNCTION mypump_estudios_limpieza_hecha(p_archivo_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 BEGIN
+  -- De un borrador abandonado se saca la fila: si el teléfono retoma, sube de nuevo con el mismo id y vuelve a entrar.
+  DELETE FROM mypump_estudios_archivos a USING mypump_estudios_envios s
+   WHERE a.id = p_archivo_id AND s.id = a.envio_id AND s.estado = 'borrador';
+  IF FOUND THEN RETURN TRUE; END IF;
   UPDATE mypump_estudios_archivos SET borrado_en = NOW() WHERE id = p_archivo_id AND borrado_en IS NULL;
   RETURN FOUND;
 END;
