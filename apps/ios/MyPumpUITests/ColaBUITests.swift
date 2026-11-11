@@ -47,8 +47,9 @@ final class ColaBUITests: XCTestCase {
         e(id).typeText(t)
     }
     private func cerrarTeclado() {
-        // Arrastrar el contenido baja el teclado (la hoja lo permite) sin depender de la tecla del idioma.
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75)))
+        // El «Listo» de arriba del teclado (arrastrar hacia abajo cerraría la hoja).
+        let listo = app.buttons["teclado-listo"].firstMatch
+        if listo.waitForExistence(timeout: 5) { listo.tap() }
         pausa(0.4)
     }
     /// El interruptor de verdad está a la derecha de su texto.

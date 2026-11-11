@@ -69,6 +69,7 @@ struct CasaPantalla: View {
     @State private var aviso: String?
     @State private var faltanDatos = false
     @State private var app = Proveedor.modelo
+    @FocusState private var foco: String?
 
     var body: some View {
         ScrollView {
@@ -87,6 +88,13 @@ struct CasaPantalla: View {
             .anchoLectura()
         }
         .scrollDismissesKeyboard(.interactively)
+        // El teclado de números no trae cómo cerrarse: un «Listo» siempre a mano.
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(TextosGimnasio.listoTeclado) { foco = nil }.fontWeight(.semibold).accessibilityIdentifier("teclado-listo")
+            }
+        }
         .safeAreaInset(edge: .bottom) { if casa.pantalla == .lista { pie } }
     }
 
@@ -113,8 +121,16 @@ struct CasaPantalla: View {
                                 .font(.title3.weight(.semibold).monospacedDigit())
                                 .padding(Espacio.s)
                                 .background(Color.campo, in: .rect(cornerRadius: Radio.control))
+                                .focused($foco, equals: "kg-\(t.tipo)")
                                 .accessibilityLabel(T.kilos)
                                 .accessibilityIdentifier("casa-kg-\(t.tipo)")
+                            // Lo que no es un peso posible no viaja: que lo sepa mientras escribe.
+                            if !casa.kilos(t.tipo).isEmpty, Casa.kilos(casa.kilos(t.tipo)) == nil {
+                                Label(TextosGimnasio.kilosInvalidos, systemImage: "exclamationmark.triangle.fill")
+                                    .font(.subheadline.weight(.semibold)).foregroundStyle(Color.alerta)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .accessibilityIdentifier("casa-kg-invalido-\(t.tipo)")
+                            }
                         }
                         .padding(.leading, Espacio.xl + Espacio.xs)
                     }
@@ -134,6 +150,7 @@ struct CasaPantalla: View {
                     .lineLimit(2...6)
                     .padding(Espacio.s)
                     .background(Color.campo, in: .rect(cornerRadius: Radio.control))
+                    .focused($foco, equals: "nota")
                     .accessibilityLabel(T.nota)
                     .accessibilityIdentifier("casa-nota")
             }

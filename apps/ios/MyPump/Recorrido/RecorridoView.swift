@@ -79,6 +79,7 @@ struct HojaRecorrido: View {
     let modelo: ModeloRecorrido
     let cerrar: () -> Void
     @Environment(\.dynamicTypeSize) private var letra
+    @FocusState private var foco: String?
 
     var body: some View {
         NavigationStack {
@@ -118,6 +119,10 @@ struct HojaRecorrido: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(T.cerrar, action: cerrar).accessibilityIdentifier("recorrido-cerrar")
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(TextosGimnasio.listoTeclado) { foco = nil }.fontWeight(.semibold).accessibilityIdentifier("teclado-listo")
+                }
             }
             .safeAreaInset(edge: .bottom) { if modelo.estado?.estado == .publicado { pie } }
         }
@@ -141,6 +146,7 @@ struct HojaRecorrido: View {
                         .padding(Espacio.s)
                         .background(Color.campo, in: .rect(cornerRadius: Radio.control))
                         .disabled(modelo.envio == .enviando)
+                        .focused($foco, equals: p.clave)
                         .accessibilityLabel(p.texto)
                         .accessibilityIdentifier("recorrido-\(p.clave)")
                 }
