@@ -60,8 +60,21 @@ public final class ModeloEstudios {
         let huella: String
     }
 
-    /// nil: apagado, sin el servidor nuevo, o todavía no se supo nada. No se muestra nada.
-    public private(set) var estado: EstadoEstudios?
+    /// nil: apagado, sin el servidor nuevo, o todavía no se supo nada. No se muestra nada. Con un control de salud, su
+    /// fecha alimenta el bloque «Próximo control» (`EstadoEstudios.conControl`).
+    public var estado: EstadoEstudios? {
+        crudo.map { e in e.conControl(controles.flatMap { Controles.proximoParaEstudios($0, hayOrdenes: !e.ordenes.isEmpty) }) }
+    }
+    /// Lo que devolvió `mypump_estudios_get`, tal cual.
+    private var crudo: EstadoEstudios?
+    /// Los controles de salud (`mypump_controles_get`). nil con `controles_app` apagada, sin la sección de Estudios, con la
+    /// función inexistente o `habilitado: false`. Como lo de estudios, no se guarda en el teléfono.
+    public private(set) var controles: EstadoControles?
+    /// La palanca `controles_app` leída en esta sesión. Sin leerla, apagada.
+    public private(set) var palancaControles = false
+    /// Sube con cada pedido y cada vez que lo de los controles deja de valer (palanca o sección apagadas): solo vale la
+    /// respuesta del último pedido, y una que viajaba cuando se apagó se descarta.
+    private var vueltaControles = 0
     /// El último `get` falló por red o servicio y lo que se ve puede estar viejo.
     public private(set) var errorDeCarga = false
     public private(set) var cola: [EnvioEstudioPendiente] = []
@@ -228,8 +241,9 @@ public final class ModeloEstudios {
             apagar()
         case .success(let j):
             guard let e = EstadoEstudios(j) else { apagar(); return }
-            estado = e
+            crudo = e
             errorDeCarga = false
+            await refrescarControles()
         case .failure(let e) where e.funcionInexistente || e.status == 404 || e.clase == .permanente:
             apagar()
         case .failure:
@@ -237,7 +251,49 @@ public final class ModeloEstudios {
         }
     }
 
-    public func apagar() { estado = nil; errorDeCarga = false; detenida = false }
+    /// `mypump_controles_get`, solo con las dos palancas y la sección de Estudios a la vista (la tarjeta lleva ahí). Token
+    /// caído, `habilitado: false`, una respuesta rara o la función inexistente: sin controles. Un corte deja lo de esta sesión.
+    private func refrescarControles() async {
+        guard palancaControles, palanca == true, crudo != nil else { soltarControles(); return }
+        vueltaControles += 1
+        let vuelta = vueltaControles
+        let r = await cliente.llamar("mypump_controles_get", ["p_token": .texto(token)])
+        // Se apagó la palanca o la sección mientras viajaba (o llegó otra más nueva): esta respuesta ya es vieja.
+        guard vuelta == vueltaControles, palancaControles, palanca == true, crudo != nil else { return }
+        switch r {
+        case .success(let j):
+            controles = EstadoControles(j)
+        case .failure(let e) where e.funcionInexistente || e.status == 404 || e.clase == .permanente:
+            controles = nil
+        case .failure:
+            break
+        }
+    }
+
+    /// Sin controles, sin tocar nada si ya no había: cada escritura le avisa a la vista (y la redibuja en medio de un desplazamiento).
+    private func soltarControles() { if controles != nil { controles = nil } }
+
+    public func apagar() { crudo = nil; soltarControles(); vueltaControles += 1; errorDeCarga = false; detenida = false }
+
+    /// Lo que dijo `get_app_config` de `controles_app`. Apagada, el control deja de verse en el momento.
+    /// Prendida con la app abierta, los trae en el momento (como la web).
+    public func usarPalancaControles(_ prendida: Bool) {
+        let antes = palancaControles
+        palancaControles = prendida
+        if !prendida { soltarControles(); vueltaControles += 1 }
+        else if !antes, crudo != nil { Task { await refrescarControles() } }
+    }
+
+    // MARK: Controles de salud
+
+    /// La tarjeta de arriba de la primera pestaña: desde `avisar_desde` y mientras siga programado. Con la fecha del
+    /// servidor; si no la manda, la de Estudios y, si tampoco, la del teléfono.
+    public var tarjetaControl: Controles.TarjetaInicio? {
+        guard let c = controles else { return nil }
+        return Controles.tarjetaInicio(c, hoyTelefono: crudo?.hoy ?? Controles.hoyDelTelefono())
+    }
+    /// «Tu recorrido»: el próximo control y los últimos, con su fecha.
+    public var hitosControl: [Controles.Hito] { controles.map(Controles.hitos) ?? [] }
 
     /// Lo que dijo `get_app_config` recién. Apagada, la sección deja de existir en el momento.
     public func usarPalanca(_ prendida: Bool) {

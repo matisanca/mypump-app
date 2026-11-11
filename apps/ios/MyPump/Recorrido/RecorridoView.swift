@@ -100,6 +100,8 @@ struct HojaRecorrido: View {
                                 Logro(logro: l).accessibilityIdentifier("recorrido-logro-\(n)")
                             }
                         }
+                        // Los controles de salud, como hitos con fecha (`controles_app`).
+                        HitosControlRecorrido()
                         switch e.estado {
                         case .publicado: preguntas
                         case .pedido: cartel(T.listo, e.agendaEnLaApp ? T.listoApp : T.listoMati)

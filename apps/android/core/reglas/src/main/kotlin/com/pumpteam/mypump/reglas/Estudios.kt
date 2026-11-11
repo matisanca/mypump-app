@@ -15,8 +15,21 @@ private fun ValorJson?.texto(): String? = this?.comoTexto?.takeIf { it.isNotEmpt
 private fun ValorJson?.entero(): Int? = this?.comoNumero?.takeIf { it.isFinite() && it >= 0 && it < 100_000 }?.toInt()
 private fun ValorJson?.dia(): LocalDate? = Estudios.dia(this?.comoTexto)
 
-/** El control que viene y todavía no se puede hacer. */
-data class ControlEstudios(val tipo: String?, val titulo: String, val desde: LocalDate?, val hasta: LocalDate?)
+/**
+ * El control que viene y todavía no se puede hacer. Con un control de salud (`controles_app`, [Controles.proximoParaEstudios])
+ * trae [cuandoFijo] («El lunes 16/11») y la [nota] de abajo; el del pedido, no.
+ */
+data class ControlEstudios(
+    val tipo: String?,
+    val titulo: String,
+    val desde: LocalDate?,
+    val hasta: LocalDate?,
+    val cuandoFijo: String? = null,
+    val nota: String? = null,
+) {
+    /** Lo que dice el bloque debajo del título. */
+    val cuando: String? get() = cuandoFijo ?: Estudios.cuandoControl(desde, hasta)
+}
 
 /** Algo que Mati pidió y todavía no llegó. `hecho`: el alumno avisó que ya se lo hizo y falta el resultado. */
 data class PendienteEstudios(
@@ -63,6 +76,12 @@ data class EstadoEstudios(
     val novedades: Int = 0,
 ) {
     fun orden(id: String?): OrdenEstudios? = id?.let { i -> ordenes.firstOrNull { it.id == i } }
+
+    /**
+     * El control de salud (`mypump_controles_get`) alimenta el mismo bloque «Próximo control» y gana sobre el del pedido: un
+     * solo lugar, con el mismo texto neutro. null deja lo que vino en `proximo_control`.
+     */
+    fun conControl(c: ControlEstudios?): EstadoEstudios = if (c == null) this else copy(proximo = c)
 
     companion object {
         /** null: token caído, apagado para esta cuenta (`habilitado: false`) o una respuesta que no es la esperada. */

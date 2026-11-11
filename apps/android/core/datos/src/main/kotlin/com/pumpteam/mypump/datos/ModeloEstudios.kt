@@ -1,6 +1,8 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.reglas.Controles
+import com.pumpteam.mypump.reglas.EstadoControles
 import com.pumpteam.mypump.reglas.EstadoEstudios
 import com.pumpteam.mypump.reglas.Estudios
 import java.io.File
@@ -204,8 +206,27 @@ class ModeloEstudios(
     }
 
     private val _estado = MutableStateFlow<EstadoEstudios?>(null)
-    /** null: apagado, sin el servidor nuevo, sin habilitar para esta cuenta, o todavía no se supo nada. No se muestra nada. */
+    /**
+     * null: apagado, sin el servidor nuevo, sin habilitar para esta cuenta, o todavía no se supo nada. No se muestra nada.
+     * Con un control de salud, su fecha alimenta el bloque «Próximo control» ([EstadoEstudios.conControl]).
+     */
     val estado: StateFlow<EstadoEstudios?> = _estado.asStateFlow()
+    /** Lo que devolvió `mypump_estudios_get`, tal cual. */
+    @Volatile private var crudo: EstadoEstudios? = null
+    private val _controles = MutableStateFlow<EstadoControles?>(null)
+    /**
+     * Los controles de salud (`mypump_controles_get`). null con `controles_app` apagada, sin la sección de Estudios, con la
+     * función inexistente o `habilitado: false`. Como lo de estudios, no se guarda en el teléfono.
+     */
+    val controles: StateFlow<EstadoControles?> = _controles.asStateFlow()
+    /** La palanca `controles_app` leída en esta sesión. Sin leerla, apagada. */
+    @Volatile var palancaControles = false
+        private set
+    /**
+     * Sube con cada pedido de controles y cada vez que dejan de valer (palanca o sección apagadas): solo vale la respuesta del
+     * último pedido, y una que viajaba cuando se apagó se descarta.
+     */
+    private val vueltaControles = java.util.concurrent.atomic.AtomicInteger()
     private val _palanca = MutableStateFlow<Boolean?>(null)
     /**
      * La palanca `estudios_app` leída en esta sesión; null hasta que se lee. No se recuerda de una vez para la otra: sin
@@ -335,8 +356,11 @@ class ModeloEstudios(
                     apagar()
                     return
                 }
-                _estado.value = e
+                crudo = e
                 _errorCarga.value = false
+                componer()              // Estudios no espera a los controles
+                refrescarControles()
+                componer()
             }
             is Resultado.Falla -> {
                 if (r.error.funcionInexistente || r.error.status == 404 || r.error.clase == ErrorRpc.Clase.PERMANENTE) {
@@ -348,8 +372,68 @@ class ModeloEstudios(
         }
     }
 
+    /**
+     * `mypump_controles_get`, solo con las dos palancas y la sección de Estudios a la vista (la tarjeta lleva ahí). Token caído,
+     * `habilitado: false`, una respuesta rara o la función inexistente: sin controles. Un corte deja lo de esta sesión.
+     */
+    private suspend fun refrescarControles() {
+        if (!palancaControles || _palanca.value != true || crudo == null) {
+            _controles.value = null
+            return
+        }
+        val vuelta = vueltaControles.incrementAndGet()
+        val r = cliente.llamar("mypump_controles_get", mapOf("p_token" to ValorJson.Texto(token)))
+        // Se apagó la palanca o la sección mientras viajaba (o salió otro pedido después): esta respuesta ya es vieja.
+        if (vuelta != vueltaControles.get() || !palancaControles || _palanca.value != true || crudo == null) return
+        when (r) {
+            is Resultado.Ok -> _controles.value = EstadoControles.desde(r.valor)
+            is Resultado.Falla -> if (r.error.funcionInexistente || r.error.status == 404 || r.error.clase == ErrorRpc.Clase.PERMANENTE) _controles.value = null
+        }
+        // Si se apagó justo entre el chequeo y la escritura (otro hilo), no queda nada viejo a la vista.
+        if (vuelta != vueltaControles.get() || !palancaControles || _palanca.value != true) _controles.value = null
+    }
+
+    private fun componer() {
+        val e = crudo
+        _estado.value = e?.conControl(_controles.value?.let { Controles.proximoParaEstudios(it, hayOrdenes = e.ordenes.isNotEmpty()) })
+    }
+
+    /**
+     * Lo que dijo `get_app_config` de `controles_app`. Apagada, el control deja de verse en el momento. Devuelve si se acaba
+     * de prender con Estudios ya cargado: entonces hay que llamar a [traerControles] (como la web, sin esperar otra carga).
+     */
+    fun usarPalancaControles(prendida: Boolean): Boolean {
+        val antes = palancaControles
+        palancaControles = prendida
+        if (!prendida) {
+            vueltaControles.incrementAndGet()
+            _controles.value = null
+            componer()
+        }
+        return prendida && !antes && crudo != null
+    }
+
+    /** Los controles solos, sin volver a pedir Estudios (al prender `controles_app` con la app abierta). */
+    suspend fun traerControles() {
+        refrescarControles()
+        componer()
+    }
+
+    /**
+     * La tarjeta de arriba de la primera pestaña: desde `avisar_desde` y mientras siga programado. Con la fecha del servidor;
+     * si no la manda, la de Estudios y, si tampoco, la del teléfono.
+     */
+    fun tarjetaControl(c: EstadoControles? = _controles.value): Controles.TarjetaInicio? =
+        c?.let { Controles.tarjetaInicio(it, crudo?.hoy ?: Controles.hoyDelTelefono()) }
+
+    /** «Tu recorrido»: el próximo control y los últimos, con su fecha. */
+    fun hitosControl(c: EstadoControles? = _controles.value): List<Controles.Hito> = c?.let(Controles::hitos) ?: emptyList()
+
     /** La sección deja de existir. La cola no se toca: si se vuelve a prender dentro del plazo, sale. */
     fun apagar() {
+        vueltaControles.incrementAndGet()
+        crudo = null
+        _controles.value = null
         _estado.value = null
         _errorCarga.value = false
         _progreso.value = null

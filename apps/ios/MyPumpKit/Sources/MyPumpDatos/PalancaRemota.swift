@@ -60,6 +60,9 @@ public struct PalancaRemota: Equatable, Sendable {
     public var contratoApp = false
     /// Presión arterial (`presion_app`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo.
     public var presionApp = false
+    /// «Tu próximo control de salud» (`controles_app`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. Vive
+    /// dentro de Estudios: además necesita `estudios_app`. Como Estudios, no se recuerda entre arranques.
+    public var controlesApp = false
 
     public init() {}
 
@@ -168,6 +171,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["check_guiado"] { checkGuiado = b }
         if case .bool(let b)? = j["contrato_app"] { contratoApp = b }
         if case .bool(let b)? = j["presion_app"] { presionApp = b }
+        if case .bool(let b)? = j["controles_app"] { controlesApp = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

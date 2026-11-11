@@ -387,7 +387,7 @@ private fun EstadoDeLaSubida(
 @Composable
 private fun ProximoControl(p: ControlEstudios) {
     val c = MyPump.colores
-    val cuando = Estudios.cuandoControl(p.desde, p.hasta)
+    val cuando = p.cuando
     Row(
         Modifier
             .fillMaxWidth()
@@ -403,7 +403,9 @@ private fun ProximoControl(p: ControlEstudios) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(T.proximoControl.uppercase(), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.8.sp, fontWeight = FontWeight.SemiBold), color = c.marcaTexto)
             Text(p.titulo, style = MaterialTheme.typography.titleMedium, color = c.texto)
-            if (cuando != null) Text(cuando, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
+            if (cuando != null) Text(cuando, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, modifier = Modifier.testTag("estudios-proximo-cuando"))
+            // Con un control de salud (`controles_app`): cuándo llegan las órdenes. Neutro, sin motivo.
+            p.nota?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, modifier = Modifier.padding(top = 2.dp)) }
         }
     }
 }
