@@ -11,6 +11,7 @@ struct AvisosTests {
         #expect(DestinoAviso(destino: "myday") == .recuperacion)
         #expect(DestinoAviso(destino: "revision") == .revision)
         #expect(DestinoAviso(destino: "salud") == .misDatos)
+        #expect(DestinoAviso(destino: "estudios") == .estudios)
         #expect(DestinoAviso(destino: "chat") == .chat)
         #expect(DestinoAviso(destino: "comentarios") == .chat)
         #expect(DestinoAviso(destino: nil) == .chat)
@@ -32,6 +33,7 @@ struct AvisosTests {
     @Test func escenaDelLink() {
         #expect(DestinoAviso(escena: "diet") == .dieta)
         #expect(DestinoAviso(escena: "salud") == .misDatos)
+        #expect(DestinoAviso(escena: "estudios") == .estudios)
         #expect(DestinoAviso(escena: "comentarios") == nil)
         #expect(DestinoAviso(escena: nil) == nil)
     }

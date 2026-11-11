@@ -669,4 +669,173 @@ struct EstudiosTests {
             #expect(Set(d.llamadasEstudios) == ["mypump_estudios_get"], "\(caso)")
         }
     }
+
+    // MARK: Novedades, aviso y destino
+
+    private func vectores() throws -> JSONValue {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("shared/vectores/estudios.json")
+        return try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: url))
+    }
+
+    /// El `destino` del aviso y la escena del link, como los vectores que comparte con Android: `estudios` es un destino
+    /// propio; uno parecido cae a Chat (aviso) o no hace nada (link), como cualquier desconocido.
+    @Test func destinoEstudiosComoLosVectores() throws {
+        let v = try vectores()
+        func va(_ d: DestinoAviso?) -> String? {
+            switch d {
+            case .estudios: "estudios"
+            case .misDatos: "misDatos"
+            case .chat: "chat"
+            case nil: nil
+            default: "otro"
+            }
+        }
+        guard case .lista(let avisos)? = v["destinos"]?["avisos"], case .lista(let escenas)? = v["destinos"]?["escenas"] else { Issue.record("sin destinos"); return }
+        #expect(avisos.count >= 4 && escenas.count >= 3)
+        for c in avisos { #expect(va(DestinoAviso(destino: c["destino"]?.comoTexto)) == c["va"]?.comoTexto, "\(c)") }
+        for c in escenas { #expect(va(DestinoAviso(escena: c["escena"]?.comoTexto)) == c["va"]?.comoTexto, "\(c)") }
+        #expect(DestinoAviso(destino: Estudios.destino) == .estudios)
+        #expect(DestinoAviso(destino: v["destino"]?.comoTexto) == .estudios)
+    }
+
+    @Test func laNovedadSeApagaAlVerlaYElPedidoSiguePendiente() async {
+        let d = DobleEstudios.escenario("novedad")
+        let (m, _) = armar(d)
+        m.usarPalanca(true)
+        #expect(!m.resuelto)
+        await m.sincronizar()
+        #expect(m.resuelto)
+        #expect(m.estado?.novedades == 2)
+        #expect(m.hayNovedad)
+        #expect(m.novedadDeEstudios?.titulo == "Tenés un estudio nuevo para hacer")
+        #expect(m.novedadDeEstudios?.destino == "estudios")
+        #expect(m.tarjetaInicio?.titulo == "Tenés un estudio nuevo para hacer")
+        #expect(m.tarjetaInicio?.boton == "Ver")
+        let pedido = DobleEstudios.id(2), orden = DobleEstudios.id(11)
+        #expect(m.estado.flatMap(Estudios.ancla) == .pendiente(pedido))
+        // Lo que no está como nuevo, o no existe, no se manda.
+        await m.marcarVistas([DobleEstudios.id(1), "no-es-de-nadie"])
+        await m.marcarVistas([])
+        #expect(d.vistasPedidas.isEmpty)
+        // Se vio el pedido: queda la orden, y el pedido sigue pendiente.
+        await m.marcarVistas([pedido, pedido])
+        #expect(d.vistasPedidas == [[pedido]])
+        #expect(m.pendientes == 3)
+        #expect(m.estado?.pendientes.contains(where: \.nuevo) == false)
+        #expect(m.hayNovedad)
+        #expect(m.novedadDeEstudios?.titulo == "Tenés una orden nueva")
+        #expect(m.estado.flatMap(Estudios.ancla) == .orden(orden))
+        // Se vio la orden: ya no hay novedad; queda el recordatorio de lo que falta, con el botón de subir.
+        await m.marcarVistas([pedido, orden])
+        #expect(d.vistasPedidas == [[pedido], [orden]])
+        #expect(!m.hayNovedad)
+        #expect(m.novedadDeEstudios == nil)
+        #expect(m.tarjetaInicio?.titulo == "Tenés un estudio para hacer")
+        #expect(m.tarjetaInicio?.boton == "Subir resultado")
+        #expect(m.tarjetaInicio?.nueva == false)
+        #expect(!d.llamadas.joined().contains("cliente_id"))
+    }
+
+    @Test func soloUnaOrdenNuevaYNadaPorHacer() async {
+        let d = DobleEstudios.escenario("soloOrdenNueva")
+        let (m, _) = armar(d)
+        m.usarPalanca(true)
+        await m.sincronizar()
+        #expect(m.tarjetaInicio?.titulo == "Tenés una orden nueva")
+        await m.marcarVistas([DobleEstudios.id(12)])
+        #expect(!m.hayNovedad)
+        #expect(m.tarjetaInicio == nil, "sin novedad y sin nada por hacer no hay tarjeta")
+    }
+
+    @Test func siMarcarFallaQuedaComoEstabaYSeReintenta() async {
+        let d = DobleEstudios.escenario("novedad")
+        let (m, _) = armar(d)
+        m.usarPalanca(true)
+        await m.sincronizar()
+        let pedido = DobleEstudios.id(2), orden = DobleEstudios.id(11)
+        d.sinRed = true
+        await m.marcarVistas([pedido])
+        #expect(d.vistasPedidas.isEmpty)
+        #expect(m.estado?.novedades == 2, "sin red no cambia nada")
+        d.sinRed = false
+        d.tokenCaido = true
+        await m.marcarVistas([pedido])
+        #expect(m.estado?.novedades == 2, "con el link caído tampoco")
+        #expect(m.cola.isEmpty, "no usa la cola de subida")
+        d.tokenCaido = false
+        await m.marcarVistas([pedido, orden])
+        #expect(d.vistasPedidas == [[pedido, orden]])
+        #expect(!m.hayNovedad)
+    }
+
+    @Test func conLaPalancaApagadaNoHayNovedadNiSeMarcaNada() async {
+        let d = DobleEstudios.escenario("novedad")
+        let (m, _) = armar(d)
+        // Sin leer la palanca en esta sesión: aunque hubiera estado, no se marca nada.
+        await m.refrescar()
+        await m.marcarVistas([DobleEstudios.id(2)])
+        #expect(!d.llamadasEstudios.contains("mypump_estudios_novedades_vistas"))
+        m.usarPalanca(false)
+        await m.sincronizar()
+        #expect(m.resuelto)
+        #expect(!m.hayNovedad)
+        #expect(m.tarjetaInicio == nil)
+        #expect(m.novedadDeEstudios == nil)
+        let antes = d.llamadasEstudios
+        await m.marcarVistas([DobleEstudios.id(2)])
+        #expect(d.llamadasEstudios == antes)
+    }
+
+    @Test func siLaDeshabilitanAlMarcarLaSeccionSeApaga() async {
+        let d = DobleEstudios.escenario("novedad")
+        let (m, _) = armar(d)
+        m.usarPalanca(true)
+        await m.sincronizar()
+        d.habilitado = false
+        await m.marcarVistas([DobleEstudios.id(2)])
+        #expect(!m.habilitado)
+        #expect(!m.hayNovedad)
+    }
+
+    /// El aviso tocado con la app cerrada: se espera a saber si hay sección antes de decidir, con tope.
+    @Test func elAvisoEsperaASaberSiLaSeccionExiste() async {
+        func app(_ d: DobleEstudios) -> ModeloApp {
+            ModeloApp(cliente: ClienteRPC(transporte: d), almacen: TokenEnMemoria(token),
+                      raizDisco: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        }
+        // La carga todavía no terminó: espera y abre Estudios.
+        let d = DobleEstudios.escenario("novedad")
+        let a = app(d)
+        async let llegada = a.estudiosParaAviso(tope: 20, paso: 0.01)
+        await a.cargar()
+        let e = await llegada
+        #expect(e != nil && e === a.estudios)
+        #expect(e?.hayNovedad == true)
+        // Ya resuelto: contesta en el momento.
+        let enElMomento = await a.estudiosParaAviso(tope: 0)
+        #expect(enElMomento === a.estudios)
+        // Sin la sección (palanca apagada, sin el servidor nuevo, cuenta sin la función): Mis datos.
+        for caso in ["apagado", "sinServidor", "noHabilitado"] {
+            let otra = app(DobleEstudios.escenario(caso))
+            await otra.cargar()
+            let sinSeccion = await otra.estudiosParaAviso(tope: 0)
+            #expect(sinSeccion == nil, "\(caso)")
+        }
+        // El `get` falla: Mis datos.
+        let caida = DobleEstudios.escenario("novedad")
+        let b = app(caida)
+        await b.cargar()
+        caida.sinRed = true
+        b.estudios?.apagar()
+        await b.estudios?.sincronizar()
+        let conElGetCaido = await b.estudiosParaAviso(tope: 0)
+        #expect(conElGetCaido == nil)
+        // Nunca se llega a saber: se corta en el tope, sin llamar a nada.
+        let muda = DobleEstudios.escenario("novedad")
+        let c = app(muda)
+        let sinSaber = await c.estudiosParaAviso(tope: 0.05, paso: 0.01)
+        #expect(sinSaber == nil)
+        #expect(muda.llamadas.isEmpty)
+    }
 }

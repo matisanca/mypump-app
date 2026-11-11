@@ -50,6 +50,13 @@ public enum TextosEstudios {
     public static let comoPrepararte = "Cómo prepararte"
     public static let dondeHacerlo = "Dónde hacerlo"
     public static let noSePudoAbrir = "No se pudo abrir. Probá de nuevo."
+    // Novedades: la tarjeta de arriba, el aviso y la etiqueta. Ninguno dice qué estudio ni por qué.
+    public static let estudioNuevo = "Tenés un estudio nuevo para hacer"
+    public static let ordenNueva = "Tenés una orden nueva"
+    public static let estudioParaHacer = "Tenés un estudio para hacer"
+    public static let nuevo = "Nuevo"
+    /// Solo para VoiceOver: lo que dice el punto de la pestaña y de la fila.
+    public static let novedad = "Novedad"
     // Fuera del contrato: rótulos mínimos que la pantalla necesita (botones de cierre y nombre de cada archivo para VoiceOver).
     public static let cerrar = "Cerrar"
     public static let cancelar = "Cancelar"

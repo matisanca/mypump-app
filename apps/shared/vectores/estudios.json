@@ -38,7 +38,12 @@
   "archivoRechazado": "No pudimos leer ese archivo. Probá con una foto o un PDF.",
   "comoPrepararte": "Cómo prepararte",
   "dondeHacerlo": "Dónde hacerlo",
-  "noSePudoAbrir": "No se pudo abrir. Probá de nuevo."
+  "noSePudoAbrir": "No se pudo abrir. Probá de nuevo.",
+  "estudioNuevo": "Tenés un estudio nuevo para hacer",
+  "ordenNueva": "Tenés una orden nueva",
+  "estudioParaHacer": "Tenés un estudio para hacer",
+  "nuevo": "Nuevo",
+  "novedad": "Novedad"
  },
  "subtituloEntrada": [
   {
@@ -457,6 +462,480 @@
    "status": 0,
    "ok": false,
    "accion": "reintentar"
+  }
+ ],
+ "destino": "estudios",
+ "destinos": {
+  "_": "A dónde lleva el `destino` de un aviso y la escena de un link. va: estudios | misDatos | chat; null = el link no hace nada.",
+  "avisos": [
+   {
+    "destino": "estudios",
+    "va": "estudios"
+   },
+   {
+    "destino": "salud",
+    "va": "misDatos"
+   },
+   {
+    "destino": "estudio",
+    "va": "chat"
+   },
+   {
+    "destino": "Estudios",
+    "va": "chat"
+   },
+   {
+    "destino": null,
+    "va": "chat"
+   }
+  ],
+  "escenas": [
+   {
+    "escena": "estudios",
+    "va": "estudios"
+   },
+   {
+    "escena": "salud",
+    "va": "misDatos"
+   },
+   {
+    "escena": "estudio",
+    "va": null
+   },
+   {
+    "escena": null,
+    "va": null
+   }
+  ]
+ },
+ "novedades": [
+  {
+   "nombre": "servidor viejo: sin `novedades` ni `nuevo`, con algo por hacer",
+   "respuesta": {
+    "habilitado": true,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido"
+     },
+     {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido"
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": {
+     "titulo": "Tenés un estudio para hacer",
+     "boton": "Subir resultado",
+     "nueva": false
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000001-0000-4000-8000-000000000000"
+    },
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "un pedido y una orden sin ver",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 2,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": false
+     },
+     {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": true
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": true
+     },
+     {
+      "id": "00000012-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": false
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés un estudio nuevo para hacer",
+    "tarjeta": {
+     "titulo": "Tenés un estudio nuevo para hacer",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000002-0000-4000-8000-000000000000"
+    },
+    "nuevas": [
+     "00000002-0000-4000-8000-000000000000",
+     "00000011-0000-4000-8000-000000000000"
+    ]
+   }
+  },
+  {
+   "nombre": "solo una orden sin ver, con pedidos ya vistos",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 1,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": false
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": false
+     },
+     {
+      "id": "00000012-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés una orden nueva",
+    "tarjeta": {
+     "titulo": "Tenés una orden nueva",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": {
+     "clase": "orden",
+     "id": "00000012-0000-4000-8000-000000000000"
+    },
+    "nuevas": [
+     "00000012-0000-4000-8000-000000000000"
+    ]
+   }
+  },
+  {
+   "nombre": "solo una orden sin ver y nada por hacer",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 1,
+    "pendientes": [],
+    "ordenes": [
+     {
+      "id": "00000012-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés una orden nueva",
+    "tarjeta": {
+     "titulo": "Tenés una orden nueva",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": {
+     "clase": "orden",
+     "id": "00000012-0000-4000-8000-000000000000"
+    },
+    "nuevas": [
+     "00000012-0000-4000-8000-000000000000"
+    ]
+   }
+  },
+  {
+   "nombre": "nada sin ver y nada por hacer",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 0,
+    "pendientes": [],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": false
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": null,
+    "ancla": null,
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "un pedido ya hecho sigue siendo algo por hacer: falta el resultado",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 0,
+    "pendientes": [
+     {
+      "id": "00000003-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "hecho",
+      "hecho_fecha": "2026-11-09",
+      "nuevo": false
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": {
+     "titulo": "Tenés un estudio para hacer",
+     "boton": "Subir resultado",
+     "nueva": false
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000003-0000-4000-8000-000000000000"
+    },
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "cuenta novedades sin marcar ninguna fila, con pedidos",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 1,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido"
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés un estudio nuevo para hacer",
+    "tarjeta": {
+     "titulo": "Tenés un estudio nuevo para hacer",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000001-0000-4000-8000-000000000000"
+    },
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "cuenta novedades sin marcar ninguna fila y sin pedidos",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 1,
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés una orden nueva",
+    "tarjeta": {
+     "titulo": "Tenés una orden nueva",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": null,
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "tipos inesperados no cuentan",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": "3",
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": "true"
+     },
+     {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": 1
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": null
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": {
+     "titulo": "Tenés un estudio para hacer",
+     "boton": "Subir resultado",
+     "nueva": false
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000001-0000-4000-8000-000000000000"
+    },
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "un número negativo es cero",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": -2,
+    "pendientes": [],
+    "ordenes": []
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": null,
+    "ancla": null,
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "una fila marcada sin que el servidor la cuente: no hay punto, pero al verla se marca",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 0,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido"
+     },
+     {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": {
+     "titulo": "Tenés un estudio para hacer",
+     "boton": "Subir resultado",
+     "nueva": false
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000002-0000-4000-8000-000000000000"
+    },
+    "nuevas": [
+     "00000002-0000-4000-8000-000000000000"
+    ]
+   }
   }
  ],
  "get": {

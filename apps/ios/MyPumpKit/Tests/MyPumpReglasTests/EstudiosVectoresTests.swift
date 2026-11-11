@@ -36,6 +36,7 @@ final class EstudiosVectoresTests: XCTestCase {
             "guiaSubida": T.guiaSubida, "sacarFotos": T.sacarFotos, "elegirFotos": T.elegirFotos, "elegirPDF": T.elegirPDF, "quitar": T.quitar,
             "sinSenal": T.sinSenal, "envioRecibido": T.envioRecibido, "topeDia": T.topeDia, "archivoRechazado": T.archivoRechazado,
             "comoPrepararte": T.comoPrepararte, "dondeHacerlo": T.dondeHacerlo, "noSePudoAbrir": T.noSePudoAbrir,
+            "estudioNuevo": T.estudioNuevo, "ordenNueva": T.ordenNueva, "estudioParaHacer": T.estudioParaHacer, "nuevo": T.nuevo, "novedad": T.novedad,
         ]
         XCTAssertEqual(Set(enCodigo.keys), Set(t.keys))
         for (k, s) in enCodigo { XCTAssertEqual(t[k]?.comoTexto, s, k) }
@@ -143,6 +144,40 @@ final class EstudiosVectoresTests: XCTestCase {
         XCTAssertEqual(Estudios.puedeAgregar(bytes: 20 * 1024 * 1024, formato: .jpeg, yaHay: 19), .ok)
         XCTAssertEqual(Estudios.puedeAgregar(bytes: 20 * 1024 * 1024 + 1, formato: .jpeg, yaHay: 0), .muyGrande)
         XCTAssertEqual(Estudios.puedeAgregar(bytes: 10, formato: nil, yaHay: 0), .ilegible)
+    }
+
+    /// `novedades` y `nuevo`: el punto, la tarjeta de arriba, la novedad para la lista del plan, a qué tarjeta se lleva y qué
+    /// ids se mandan a marcar. Los textos no nombran qué estudio ni por qué.
+    func testNovedades() throws {
+        let v = try vectores()
+        XCTAssertEqual(Estudios.destino, v["destino"]?.comoTexto)
+        let casos = lista(v["novedades"])
+        XCTAssertGreaterThanOrEqual(casos.count, 10)
+        for c in casos {
+            let nombre = c["nombre"]?.comoTexto ?? ""
+            let e = try XCTUnwrap(EstadoEstudios(try XCTUnwrap(c["respuesta"])), nombre)
+            let x = try XCTUnwrap(c["espera"])
+            XCTAssertEqual(Estudios.hayNovedad(e), x["indicador"] == .bool(true), nombre)
+            let n = Estudios.novedad(e)
+            XCTAssertEqual(n?.titulo, x["novedad"]?.comoTexto, nombre)
+            if let n { XCTAssertEqual(n.destino, "estudios", nombre) }
+            let t = Estudios.tarjetaInicio(e)
+            if case .objeto? = x["tarjeta"] {
+                XCTAssertEqual(t?.titulo, x["tarjeta"]?["titulo"]?.comoTexto, nombre)
+                XCTAssertEqual(t?.boton, x["tarjeta"]?["boton"]?.comoTexto, nombre)
+                XCTAssertEqual(t?.nueva, x["tarjeta"]?["nueva"] == .bool(true), nombre)
+            } else {
+                XCTAssertNil(t, nombre)
+            }
+            let a = Estudios.ancla(e)
+            if case .objeto? = x["ancla"] {
+                let clase = x["ancla"]?["clase"]?.comoTexto, id = x["ancla"]?["id"]?.comoTexto ?? ""
+                XCTAssertEqual(a, clase == "orden" ? .orden(id) : .pendiente(id), nombre)
+            } else {
+                XCTAssertNil(a, nombre)
+            }
+            XCTAssertEqual(Estudios.nuevas(e), textos(x["nuevas"]), nombre)
+        }
     }
 
     func testDecodificacionTolerante() throws {

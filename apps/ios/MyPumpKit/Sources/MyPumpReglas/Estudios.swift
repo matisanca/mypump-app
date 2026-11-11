@@ -146,6 +146,69 @@ public enum Estudios {
                 estudios: !e.estudios.isEmpty || !e.enviosVisibles.isEmpty)
     }
 
+    // MARK: Novedades
+
+    /// El `destino` del aviso al teléfono y la escena del link (`?scene=estudios`).
+    public static let destino = "estudios"
+
+    /// La tarjeta a la que hay que llevar al alumno dentro de Estudios.
+    public enum Ancla: Equatable, Hashable, Sendable {
+        case pendiente(String), orden(String)
+
+        public var id: String {
+            switch self {
+            case .pendiente(let i), .orden(let i): i
+            }
+        }
+    }
+
+    /// La novedad de Estudios para una lista de novedades del plan: el texto y a dónde lleva.
+    public struct Novedad: Equatable, Sendable {
+        public let titulo: String
+        public let destino: String
+    }
+
+    /// La tarjeta de arriba de la primera pestaña.
+    public struct TarjetaInicio: Equatable, Sendable {
+        public let titulo: String
+        public let boton: String
+        /// Hay algo sin ver (`novedades > 0`); si no, es el recordatorio de lo que falta hacer.
+        public let nueva: Bool
+    }
+
+    /// El punto de la pestaña y de la fila de Mis datos: mientras el servidor diga que hay algo sin ver.
+    public static func hayNovedad(_ e: EstadoEstudios) -> Bool { e.novedades > 0 }
+
+    /// Los ids (pedidos y órdenes, mezclados) que el alumno todavía no vio: lo único que se manda a marcar.
+    public static func nuevas(_ e: EstadoEstudios) -> [String] {
+        e.pendientes.filter(\.nuevo).map(\.id) + e.ordenes.filter(\.nuevo).map(\.id)
+    }
+
+    /// Con algo sin ver: «Tenés un estudio nuevo para hacer» si hay un pedido nuevo y «Tenés una orden nueva» si lo nuevo
+    /// son solo órdenes. Ninguno dice qué estudio ni por qué. Si el servidor cuenta novedades y no marca ninguna fila, se
+    /// decide por lo que hay: con pedidos, el estudio; sin pedidos, la orden.
+    public static func novedad(_ e: EstadoEstudios) -> Novedad? {
+        guard hayNovedad(e) else { return nil }
+        let pedido = e.pendientes.contains(where: \.nuevo) || (!e.ordenes.contains(where: \.nuevo) && !e.pendientes.isEmpty)
+        return Novedad(titulo: pedido ? TextosEstudios.estudioNuevo : TextosEstudios.ordenNueva, destino: destino)
+    }
+
+    /// Con novedad, su texto y «Ver». Sin novedad y con algo por hacer, «Tenés un estudio para hacer» y «Subir resultado».
+    /// Sin ninguna de las dos cosas no hay tarjeta.
+    public static func tarjetaInicio(_ e: EstadoEstudios) -> TarjetaInicio? {
+        if let n = novedad(e) { return TarjetaInicio(titulo: n.titulo, boton: TextosEstudios.ver, nueva: true) }
+        guard !e.pendientes.isEmpty else { return nil }
+        return TarjetaInicio(titulo: TextosEstudios.estudioParaHacer, boton: TextosEstudios.subirResultado, nueva: false)
+    }
+
+    /// A qué tarjeta se lleva al llegar desde un aviso o desde la tarjeta de arriba: la primera nueva en el orden de la
+    /// pantalla (los pedidos van antes que las órdenes); sin nada nuevo, el primer pedido. nil: no hay a dónde.
+    public static func ancla(_ e: EstadoEstudios) -> Ancla? {
+        if let p = e.pendientes.first(where: \.nuevo) { return .pendiente(p.id) }
+        if let o = e.ordenes.first(where: \.nuevo) { return .orden(o.id) }
+        return e.pendientes.first.map { .pendiente($0.id) }
+    }
+
     // MARK: Preparación y dónde
 
     static let cardio: Set<String> = ["ecocardiograma", "electrocardiograma", "ergometria", "eco_estres", "mapa"]
@@ -245,6 +308,8 @@ public struct EstadoEstudios: Equatable, Sendable {
     public let ordenes: [OrdenEstudio]
     public let estudios: [EstudioRecibido]
     public let envios: [EnvioRecibido]
+    /// Pedidos a la vista y órdenes vigentes que el alumno todavía no vio. Sin el campo (servidor viejo), 0.
+    public let novedades: Int
 
     /// nil: no es una respuesta con `habilitado: true`.
     public init?(_ j: JSONValue, zona: TimeZone = .current) {
@@ -257,6 +322,7 @@ public struct EstadoEstudios: Equatable, Sendable {
         ordenes = j["ordenes"].listaEstudios.compactMap(OrdenEstudio.init)
         estudios = j["estudios"].listaEstudios.enumerated().compactMap { EstudioRecibido($1, indice: $0) }
         envios = j["envios"].listaEstudios.enumerated().compactMap { EnvioRecibido($1, indice: $0, zona: zona) }
+        novedades = max(0, j["novedades"]?.enteroEstudios ?? 0)
     }
 
     /// Los `borrador` son restos de una subida a medias: no se muestran.
@@ -289,6 +355,8 @@ public struct PendienteEstudio: Equatable, Sendable, Identifiable {
     public let hecho: Bool
     public let hechoFecha: Estudios.Dia?
     public let ordenId: String?
+    /// El alumno todavía no lo vio. Solo con el `true` del servidor.
+    public let nuevo: Bool
 
     /// Sin `id` no se puede hacer nada con él: no se muestra.
     init?(_ j: JSONValue) {
@@ -302,6 +370,7 @@ public struct PendienteEstudio: Equatable, Sendable, Identifiable {
         hecho = j["estado"]?.comoTexto == "hecho"
         hechoFecha = Estudios.Dia(j["hecho_fecha"]?.comoTexto)
         ordenId = j["orden_id"]?.comoTexto.noVacio
+        nuevo = j["nuevo"] == .bool(true)
     }
 }
 
@@ -313,6 +382,8 @@ public struct OrdenEstudio: Equatable, Sendable, Identifiable, Hashable {
     public let vence: Estudios.Dia?
     /// false = vencida: se lista 30 días más, sin abrir. Solo un `false` explícito la cierra.
     public let vigente: Bool
+    /// El alumno todavía no la vio. Solo con el `true` del servidor.
+    public let nuevo: Bool
 
     init?(_ j: JSONValue) {
         guard let i = j["id"]?.comoTexto.noVacio else { return nil }
@@ -322,6 +393,7 @@ public struct OrdenEstudio: Equatable, Sendable, Identifiable, Hashable {
         emitida = Estudios.Dia(j["emitida"]?.comoTexto)
         vence = Estudios.Dia(j["vence"]?.comoTexto)
         vigente = j["vigente"] != .bool(false)
+        nuevo = j["nuevo"] == .bool(true)
     }
 }
 

@@ -37,6 +37,8 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
     public var ultimoEnviar: JSONValue?
     public var ultimoHecho: JSONValue?
     public var urlsPedidas: [JSONValue] = []
+    /// Los `p_ids` de cada `novedades_vistas`, en orden.
+    public var vistasPedidas: [[String]] = []
 
     public init() {}
 
@@ -106,6 +108,16 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
             guard let d = Estudios.Dia(f), let h = Estudios.Dia(hoy), d.numero <= h.numero + 1, d.numero >= h.numero - 120 else { return (200, t(#"{"ok":false,"error":"fecha"}"#)) }
             pendientes[i]["estado"] = .texto("hecho"); pendientes[i]["hecho_fecha"] = .texto(f)
             return (200, t(#"{"ok":true,"estado":"hecho"}"#))
+        case "mypump_estudios_novedades_vistas":
+            if !habilitado { return (200, t(#"{"ok":false,"error":"no_habilitado"}"#)) }
+            guard case .lista(let l)? = cuerpo(p)["p_ids"] else { return (400, t(#"{"code":"22023"}"#)) }
+            let ids = l.compactMap(\.comoTexto)
+            vistasPedidas.append(ids)
+            // Solo lo propio y lo que seguía sin ver; lo demás se ignora.
+            var marcadas = 0
+            for i in pendientes.indices where pendientes[i]["nuevo"] == .bool(true) && ids.contains(pendientes[i]["id"]?.comoTexto ?? "") { pendientes[i]["nuevo"] = .bool(false); marcadas += 1 }
+            for i in ordenes.indices where ordenes[i]["nuevo"] == .bool(true) && ids.contains(ordenes[i]["id"]?.comoTexto ?? "") { ordenes[i]["nuevo"] = .bool(false); marcadas += 1 }
+            return (200, json(.objeto(["ok": .bool(true), "marcadas": .numero(Double(marcadas))])))
         case "estudios/upload":
             return try subida(p)
         case "estudios/urls":
@@ -155,8 +167,11 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
                               "pedido_id": e.pedidoId.map(JSONValue.texto) ?? .null,
                               "enviado_en": e.estado == "borrador" ? .null : .texto("\(hoy)T15:00:00Z")])
         }
+        // Como el servidor: pedidos a la vista (no los ya hechos) y órdenes vigentes que todavía no se vieron.
+        let novedades = pendientes.filter { $0["nuevo"] == .bool(true) && $0["estado"] != .texto("hecho") }.count
+            + ordenes.filter { $0["nuevo"] == .bool(true) && $0["vigente"] != .bool(false) }.count
         return .objeto([
-            "habilitado": .bool(true), "hoy": .texto(hoy),
+            "habilitado": .bool(true), "hoy": .texto(hoy), "novedades": .numero(Double(novedades)),
             "topes": .objeto(["archivos_por_envio": .numero(20), "mb_por_archivo": .numero(20)]),
             "proximo_control": proximoControl,
             "pendientes": .lista(pendientes.map(JSONValue.objeto)), "ordenes": .lista(ordenes.map(JSONValue.objeto)),
@@ -234,6 +249,12 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
             if nombre == "topeDia" { d.topeDia = true }
             if nombre == "rechazo" { d.proximasSubidas = [400] }
             if nombre == "sinSenalAlSubir" { d.proximasSubidas = [0] }
+            // Un pedido y su orden sin ver: la tarjeta de arriba dice «estudio nuevo», y adentro las dos llevan «Nuevo».
+            if nombre == "novedad" { d.pendientes[1]["nuevo"] = .bool(true); d.ordenes[0]["nuevo"] = .bool(true) }
+            // Solo una orden sin ver.
+            if nombre == "ordenNueva" { d.ordenes[1]["nuevo"] = .bool(true) }
+            // Solo una orden sin ver y nada por hacer.
+            if nombre == "soloOrdenNueva" { d.pendientes = []; d.ordenes[1]["nuevo"] = .bool(true) }
         }
         return d
     }

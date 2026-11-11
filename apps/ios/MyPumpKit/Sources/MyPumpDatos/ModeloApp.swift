@@ -628,6 +628,21 @@ public final class ModeloApp {
         await estudios?.sincronizar()
     }
 
+    /// Tocaron un aviso de Estudios o un link con `?scene=estudios`: la sección, si existe; nil = no está disponible (la
+    /// palanca apagada, la cuenta sin la función, el `get` caído) y se queda en Mis datos. Con la app recién abierta la
+    /// carga puede no haber terminado: se espera a saberlo, con un tope corto. No llama a nada: solo mira.
+    public func estudiosParaAviso(tope: TimeInterval = 6, paso: TimeInterval = 0.2,
+                                  esperar: @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(for: .seconds($0)) }) async -> ModeloEstudios? {
+        var quedan = tope
+        while true {
+            if esDemo || (fase != .cargando && fase != .listo) { return nil }
+            if let e = estudios, e.resuelto { return e.habilitado ? e : nil }
+            guard quedan > 0, !Task.isCancelled else { return nil }
+            await esperar(paso)
+            quedan -= paso
+        }
+    }
+
     /// Con la palanca apagada no se llama a nada: la app es la de siempre.
     private func sincronizarTecnica() async {
         guard let tecnica else { return }

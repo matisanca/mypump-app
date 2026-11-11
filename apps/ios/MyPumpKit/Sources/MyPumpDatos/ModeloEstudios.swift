@@ -77,6 +77,9 @@ public final class ModeloEstudios {
     /// Cambia cada vez que se descarta lo elegido: una foto que se estaba convirtiendo para la hoja anterior no entra en la próxima.
     public private(set) var hoja = 0
     public private(set) var aviso: Aviso?
+    /// En esta sesión ya se supo si la sección existe: terminó un `sincronizar()` (con la palanca apagada, sin llamar a
+    /// nada). Quien llega desde un aviso espera esto antes de decidir a dónde va (`ModeloApp.estudiosParaAviso`).
+    public private(set) var resuelto = false
 
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
@@ -88,6 +91,8 @@ public final class ModeloEstudios {
     @ObservationIgnored private var reintentoProgramado = false
     @ObservationIgnored private var reintentosDeFondo = 0
     @ObservationIgnored private var vueltas: [String: Int] = [:]
+    /// Los ids que se están marcando como vistos ahora: no se mandan dos veces a la vez.
+    @ObservationIgnored private var marcando: Set<String> = []
 
     static let maxIntentosSeguidos = 3
     static let maxReintentosDeFondo = 5
@@ -160,6 +165,7 @@ public final class ModeloEstudios {
     public func borrarTodo() {
         apagar()
         palanca = false
+        marcando = []
         descartarBorrador()
         cerrarVisor()
         cola = []
@@ -183,6 +189,34 @@ public final class ModeloEstudios {
     }
 
     public func limpiarAviso() { aviso = nil }
+
+    // MARK: Novedades
+
+    /// Hay un pedido o una orden sin ver: el punto de la pestaña y de la fila de Mis datos.
+    public var hayNovedad: Bool { estado.map(Estudios.hayNovedad) ?? false }
+    /// La tarjeta de arriba de la primera pestaña; nil sin la sección, sin novedad y sin nada por hacer.
+    public var tarjetaInicio: Estudios.TarjetaInicio? { estado.flatMap(Estudios.tarjetaInicio) }
+    /// El único punto de entrada para una lista de «Novedades de tu plan»: el texto y el destino (`estudios`), los mismos
+    /// del aviso al teléfono. nil si no hay nada sin ver.
+    public var novedadDeEstudios: Estudios.Novedad? { estado.flatMap(Estudios.novedad) }
+
+    /// La tarjeta estuvo de verdad en pantalla dentro de Estudios: deja de ser novedad (sigue pendiente). Solo se mandan
+    /// los ids que hoy están como nuevos. Si falla no se guarda nada: se vuelve a intentar la próxima vez que se vea. Con
+    /// la palanca apagada o sin la sección no llama a nada.
+    public func marcarVistas(_ ids: [String]) async {
+        guard palanca == true, let e = estado else { return }
+        let nuevas = Set(Estudios.nuevas(e))
+        var faltan: [String] = []
+        for id in ids where nuevas.contains(id) && !marcando.contains(id) && !faltan.contains(id) { faltan.append(id) }
+        guard !faltan.isEmpty else { return }
+        marcando.formUnion(faltan)
+        defer { marcando.subtract(faltan) }
+        let r = await cliente.llamar("mypump_estudios_novedades_vistas", ["p_token": .texto(token), "p_ids": .lista(faltan.map(JSONValue.texto))])
+        // `null` (link caído), un corte o un error: queda como estaba.
+        guard case .success(let j) = r else { return }
+        if j["ok"] == .bool(true) { await refrescar() }
+        else if j["error"]?.comoTexto == "no_habilitado" { apagar() }
+    }
 
     // MARK: Servidor
 
@@ -214,8 +248,9 @@ public final class ModeloEstudios {
     /// Lo que hace la pantalla al abrirse y al deslizar, y la app en cada carga: con la palanca prendida, `get` y que
     /// salga lo pendiente (sin esperarlo: varios archivos de 20 MB no frenan a nadie). Si no, nada.
     public func sincronizar() async {
-        guard palanca == true else { apagar(); return }
+        guard palanca == true else { apagar(); resuelto = true; return }
         await refrescar()
+        resuelto = true
         if habilitado { drenarEnFondo() }
     }
 
