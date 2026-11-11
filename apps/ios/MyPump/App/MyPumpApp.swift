@@ -78,6 +78,10 @@ struct MyPumpApp: App {
               let rutina = try? Data(contentsOf: r), let dieta = try? Data(contentsOf: d) else { return }
         Proveedor.modelo.entrarEnDemo(rutina: DemoUI.cardioDePrueba ? DemoUI.conCintaDePrueba(rutina) : rutina, dieta: dieta, guia: DemoGuia.datos,
                                       suplementacion: DemoSuplementacion.datos, agenda: DemoGuia.agenda)
+        // `-novedadDeMuestra rutina|plan|bloque` (DEBUG): una novedad sin ver en la demo, para las capturas.
+        if let tipo = UserDefaults.standard.string(forKey: "novedadDeMuestra") {
+            Proveedor.modelo.usarNovedadesDeMuestra(ModeloNovedades(muestra: DemoNovedades.lista(tipo)))
+        }
         #endif
     }
 }
@@ -192,6 +196,8 @@ struct Raiz: View {
             }
         }
         .task(id: pedirBienvenida) { await presentarBienvenida() }
+        // «Novedades de tu plan» (palanca `novedades_plan`): la de esta publicación, una vez, y la que abra la tarjeta.
+        .hojaDeNovedades(otraHoja: navegacion.saludAbierta || bienvenidaGuia || pedirBienvenida, navegacion: navegacion)
         .accesorioDeDescanso()
         // La barra de pestañas queda siempre entera: achicarla al bajar, como Música, empeoraba mucho el uso (Mati,
         // 15-oct). No volver a ponerle `tabBarMinimizeBehavior`.

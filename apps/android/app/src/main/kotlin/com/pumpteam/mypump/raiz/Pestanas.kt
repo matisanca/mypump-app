@@ -155,6 +155,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     BackHandler(enabled = enGuiaDeMisDatos) { navegacion.guiaEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.gimnasioEnMisDatos) { navegacion.gimnasioEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.tecnicaEnMisDatos) { navegacion.tecnicaEnMisDatos = false }
+    BackHandler(enabled = enMisDatos && navegacion.novedadesEnMisDatos) { navegacion.novedadesEnMisDatos = false }
     BackHandler(enabled = navegacion.pestana == Pestana.ENTRENO && navegacion.gimnasio) { navegacion.gimnasio = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
@@ -207,6 +208,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                             GimnasioPantalla(gim, alVolver = { navegacion.gimnasioEnMisDatos = false })
                                         } else if (navegacion.tecnicaEnMisDatos && tec != null) {
                                             com.pumpteam.mypump.tecnica.TecnicaPantalla(tec, modelo, alVolver = { navegacion.tecnicaEnMisDatos = false })
+                                        } else if (navegacion.novedadesEnMisDatos && modelo.novedades.value != null) {
+                                            com.pumpteam.mypump.novedades.NovedadesListaPantalla(modelo.novedades.value!!, alVolver = { navegacion.novedadesEnMisDatos = false })
                                         } else {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }
@@ -254,6 +257,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
             }
             // La bienvenida de «Tu guía» la primera vez (después de la hoja de permisos).
             BienvenidaGuiaDe(modelo, navegacion)
+            // «Novedades de tu plan» (palanca `novedades_plan`): la de esta publicación, una vez, y la que abra la tarjeta.
+            com.pumpteam.mypump.novedades.HojaDeNovedadesDe(modelo, navegacion)
             // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
             DialogoPreguntas(vm.preguntasEntreno)
             // Salud: el diagnóstico que pidió un link con `?diag=health` (SAL-13), arriba de todo.

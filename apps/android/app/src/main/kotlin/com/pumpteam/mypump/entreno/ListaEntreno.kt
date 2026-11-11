@@ -201,6 +201,7 @@ fun ListaEntreno(
                     EntregaAhoraDe(modelo)
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
                     TarjetaGimnasioDe(modelo)
+                    com.pumpteam.mypump.novedades.TarjetaNovedadDe(modelo)
                     // Hasta dónde llega la cabecera (con la tarjeta arriba, no es solo su alto): el título pasa a la barra después.
                     Cabecera(motor, v, titulo, Modifier.onGloballyPositioned { altoCabecera = (it.positionInParent().y + it.size.height).toInt() })
                     if (deEjemplo) {

@@ -308,6 +308,8 @@ fun BienvenidaGuiaDe(modelo: ModeloApp, navegacion: Navegacion) {
         // Primero la hoja de permisos de la primera vez (GEN-06), si le falta: no se apilan dos hojas.
         delay(1_500)
         while (Onboarding.pendiente(modelo.preferencias)) delay(400)
+        // «Novedades de tu plan» abierta: esperar a que la cierre (no se apilan dos hojas).
+        while (com.pumpteam.mypump.novedades.NovedadesUI.abierta != null) delay(400)
         delay(500)
         val m = modelo.guia.value ?: return@LaunchedEffect
         val r = m.resumen.value
@@ -316,6 +318,7 @@ fun BienvenidaGuiaDe(modelo: ModeloApp, navegacion: Navegacion) {
         m.marcarBienvenidaVista()
         mostrando = true
     }
+    androidx.compose.runtime.SideEffect { com.pumpteam.mypump.novedades.NovedadesUI.bienvenidaGuia = mostrando }
     if (!mostrando) return
     val r = resumen
     val textos = fijo ?: r?.let { ReglasGuia.saludoBienvenida(g?.guia?.value?.nombrePila, info?.nombre) to ReglasGuia.textoBienvenida(it) }?.also { fijo = it }
