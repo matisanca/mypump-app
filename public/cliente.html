@@ -1174,7 +1174,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .peso-media{margin-left:auto;font-size:11px;color:var(--color-text-muted)}
 .peso-media strong{color:var(--color-text-primary)}
 .peso-input-row{display:flex;gap:var(--space-2)}
-.peso-input{flex:1;height:48px;padding:0 var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:18px;font-weight:600;color:var(--color-text-primary);text-align:center;font-variant-numeric:tabular-nums;outline:none;transition:border-color .15s,box-shadow .15s}
+.peso-input{flex:1;min-width:0;height:48px;padding:0 var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:18px;font-weight:600;color:var(--color-text-primary);text-align:center;font-variant-numeric:tabular-nums;outline:none;transition:border-color .15s,box-shadow .15s}
 .peso-input:focus{border-color:color-mix(in oklab,var(--color-brand) 65%,var(--color-text-primary));box-shadow:0 0 0 3px color-mix(in oklab,var(--color-brand) 28%,transparent);background:var(--color-bg-primary)}
 .peso-save{width:auto;flex:0 0 auto;height:48px;padding:0 var(--space-5);font-size:14px}
 .peso-hint{font-size:11px;color:var(--color-text-muted);margin-top:var(--space-2)}
@@ -1762,6 +1762,8 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 :where(html.w230) .btn-accion:hover,:where(html.w230) .btn-primary:hover,:where(html.w230) .error-paste-btn:hover,:where(html.w230) .session-start:hover{background:var(--marca);filter:brightness(.96)}
 :where(html.w230) .btn-accion:active,:where(html.w230) .btn-primary:active,:where(html.w230) .error-paste-btn:active,:where(html.w230) .session-start:active{transform:scale(.975)}
 :where(html.w230) .btn-accion svg,:where(html.w230) .btn-primary svg{flex:none}
+/* Peso: el botón grande de 2.3.0 va al lado del campo, no a lo ancho (con letra grande se salía de la tarjeta). */
+:where(html.w230) .peso-input-row .peso-save{width:auto;flex:0 0 auto;min-height:48px}
 /* Deshabilitado: gris pleno, nunca verde lavado. */
 :where(html.w230) .btn-accion:disabled,:where(html.w230) .btn-primary:disabled,:where(html.w230) .session-start:disabled{background:var(--campo);color:var(--color-text-secondary);border:0;box-shadow:none;opacity:1;transform:none;cursor:default}
 :where(html.w230) .session-start{margin:0}
