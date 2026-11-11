@@ -179,6 +179,9 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                         etiqueta = "mis-datos-estudios", subtitulo = com.pumpteam.mypump.reglas.Estudios.subtitulo(e),
                         novedad = com.pumpteam.mypump.reglas.Estudios.hayNovedad(e),
                     ) { navegacion?.irAEstudios(resuelto = true) }
+                    Separador(sangria = 58.dp)
+                }
+            }
             // Presión arterial: solo con la sección habilitada (palanca prendida y servidor nuevo).
             val presion by modelo.presion.collectAsStateWithLifecycle()
             presion?.let { x ->

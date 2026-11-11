@@ -581,7 +581,8 @@ class ColaBTest {
         m.asentar()
         kotlinx.coroutines.delay(50)
         assertEquals(2, registro.count { it == "mypump_fin_plan_get" })
-        assertEquals(2, registro.count { it == "mypump_compras_get" })
+        // Las compras van con la suplementación, que al volver no se relee antes de su intervalo (arreglos F11): sigue en 1.
+        assertEquals(1, registro.count { it == "mypump_compras_get" })
         assertEquals(2, registro.count { it == "mypump_casa_get" })
 
         // Se apagan: la carga siguiente no llama a nada nuevo y deja de verse todo, también lo guardado.
