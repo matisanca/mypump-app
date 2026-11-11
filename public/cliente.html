@@ -1872,6 +1872,25 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 :where(html.w230) .rv-card.fila-destino .rv-txt{font-size:15px;line-height:1.35;color:var(--apoyo)}
 :where(html.w230) .rv-card.fila-destino .rv-num{font-family:var(--font-display)}
 :where(html.w230) .rv-nota{font-size:14px;line-height:1.45;color:var(--apoyo);margin:0 0 var(--space-3);padding:0 4px}
+/* «Mi salud»: la tarjeta grande de Revisión (alto mínimo 88, corazón, título grande, número) y su pantalla */
+:where(html.w230) .ms-host-rv{margin:0 0 var(--space-4)}
+:where(html.w230) .ms-host-rv[hidden]{display:none}
+:where(html.w230) .ms-tarjeta-rv{border:2px solid var(--marca)}
+:where(html.w230) .ms-tarjeta{min-height:88px;padding:18px 16px;gap:14px}
+:where(html.w230) .ms-azulejo{width:48px;height:48px;border-radius:14px;background:var(--marca);color:var(--sobre-marca)}
+:where(html.w230) .fila-destino .ms-azulejo svg{width:26px;height:26px}
+:where(html.w230) .ms-tit{font-family:var(--font-display);font-size:22px;line-height:1.2;font-weight:700;color:var(--color-text-primary)}
+:where(html.w230) .ms-linea{font-size:16px;line-height:1.35;font-weight:600;color:var(--color-text-primary);overflow-wrap:anywhere}
+:where(html.w230) .ms-tit-fila{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
+@media (max-width:339px){:where(html.w230) .ms-tarjeta{gap:10px;padding:16px 12px}:where(html.w230) .ms-azulejo{width:40px;height:40px}}
+:where(html.w230) .ms-insignia{flex:none;min-width:30px;height:30px;padding:0 8px;box-sizing:border-box;border-radius:15px;display:inline-grid;place-items:center;background:var(--marca);color:var(--sobre-marca);font-family:var(--font-display);font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+:where(html.w230) #scene-misalud #scene-estudios{padding:0;margin:0}
+:where(html.w230) #scene-misalud.ms-sub > :not(#msEstudiosHost){display:none}
+:where(html.w230) .ms-bloque{display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-5)}
+:where(html.w230) .ms-bloque[hidden]{display:none}
+:where(html.w230) .ms-bloque .est-h2{margin:0 var(--space-1)}
+:where(html.w230) .ms-bloque .pre-tj{margin-bottom:0}
+:where(html.w230) .ms-seccion:focus{outline:none}
 :where(html.w230) .fp-seccion,:where(html.w230) .ck-seccion{border:0;border-radius:24px;box-shadow:none}
 :where(html.w230) .fp-seccion .myday-section-body,:where(html.w230) .ck-seccion .myday-section-body{padding:16px}
 /* Fotos: los tres marcos primero; la guía para sacarlas debajo y sin caja */
@@ -2061,6 +2080,8 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
     <section class="scene" id="scene-tecnica"></section>
     <section class="scene" id="scene-estudios"></section>
     <section class="scene" id="scene-presion"></section>
+    <!-- MI SALUD (2.3.0, web_230): control, estudios y órdenes, presión y recuperación. Se entra desde Revisión. -->
+    <section class="scene" id="scene-misalud"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -2199,6 +2220,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/presion-dibujos.js"></script>
 <script src="/js/presion-cola.js"></script>
 <script src="/js/presion-ui.js"></script>
+<script src="/js/mi-salud.js"></script>
 <script>
 /* Doble del servidor de presión, para ver las pantallas sin base (js/presion-prueba.js).
  * Mismas compuertas que el banco de pruebas de salud: parámetro explícito, nunca en la app nativa y SOLO en localhost. */
@@ -2524,7 +2546,10 @@ function _estPalanca(cfg) {
     rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
     irA: (escena) => setScene(escena),
     escena: () => STATE.scene,
-    alCambiarEntrada: () => { _estPuntos(); if (STATE.scene === 'misdatos') renderMisDatos(); },
+    alCambiarEntrada: () => { _estPuntos(); if (STATE.scene === 'misdatos') renderMisDatos(); _msRepintar(); },
+    // «Mi salud» (2.3.0): la lista de Estudios es su bloque; la orden, la subida y los archivos, a pantalla completa.
+    incrustada: () => _miSaludOn(),
+    alPintar: (sub) => _msSubpantalla(sub),
   });
   // `controles_app` («Tu próximo control de salud», js/controles.js) vive dentro de Estudios: sin `estudios_app` no hay nada.
   window.EstudiosUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.estudios_app === true : null,
@@ -2534,7 +2559,7 @@ function _estPalanca(cfg) {
    En la cuenta con el plan de ejemplo no hay Mis datos: ahí avisa la tarjeta de arriba. */
 function _estPuntos() {
   const hay = !!(window.EstudiosUI && window.EstudiosUI.novedad()) && !(DATA && DATA._isDemo);
-  for (const id of ['estPuntoTab', 'estPuntoMisDatos']) { const p = document.getElementById(id); if (p) p.hidden = !hay; }
+  for (const id of ['estPuntoTab', 'estPuntoMisDatos']) { const p = document.getElementById(id); if (p) p.hidden = !hay || (id === 'estPuntoMisDatos' && _miSaludOn()); }
 }
 /* El aviso de Estudios va primero en Entreno, arriba de todo. renderTrain rehace la pantalla: se vuelve a poner. */
 function _estArriba() {
@@ -2732,7 +2757,12 @@ let _presionPorUI = false;
 function _prePalanca(cfg) {
   if (!window.PresionUI) return;
   // `irA` es la única entrada a la escena: un aviso o un link con destino `presion` pasan por `abrirDirecto` (ver setScene).
-  const base = { irA: (escena) => { _presionPorUI = true; try { setScene(escena); } finally { _presionPorUI = false; } }, alCambiarEntrada: () => { if (STATE.scene === 'misdatos') renderMisDatos(); } };
+  const base = { irA: (escena) => { if (escena === 'misalud') { irAMiSalud('presion'); return; } _presionPorUI = true; try { setScene(escena); } finally { _presionPorUI = false; } },
+    alCambiarEntrada: () => { if (STATE.scene === 'misdatos') renderMisDatos(); _msRepintar(); },
+    // «Mi salud» (2.3.0): la tarjeta de Entreno sale solo cuando pide algo y, al cerrar Presión, queda «Mi salud».
+    soloConAlgo: () => _miSaludOn(),
+    origenTarjeta: () => (_miSaludOn() ? 'misalud' : 'train'),
+    alCambiarTarjeta: () => _msRepintar() };
   // Solo existe en localhost con ?presionprueba= (ver el cargador de arriba): un servidor en memoria, sin red.
   if (window.PresionPrueba) {
     window.PresionUI.configurar({ ...base, token: window.PresionPrueba.token, rpc: window.PresionPrueba.rpc });
@@ -13689,11 +13719,15 @@ function renderRevision() {
   // (se entra por la tarjeta Recuperación); el peso de la semana va en el check.
   // Con el check guiado, su tarjeta va primera, arriba de todo; «Tu salud, últimos 7 días» queda al final, donde estaba.
   const guiado = checkGuiadoPrendido();
+  // «Mi salud» (2.3.0): la tarjeta grande va arriba de todo, debajo de la explicación de la semana.
+  const ms = _miSaludOn();
+  const semanal = web230() ? '<p class="rv-nota" id="rv-semanal">La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días.</p>' : '';
   root.innerHTML = `
+    ${ms ? `${semanal}<div id="rv-dia" class="rv-nota" hidden></div><div id="rvMiSalud" class="ms-host-rv"></div>` : ''}
     <div id="rv-devolucion" hidden></div>
     ${guiado ? '<div id="myday-checkin"></div><div id="rv-tucambio"></div>' : ''}
-    ${web230() ? '<p class="rv-nota" id="rv-semanal">La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días.</p>' : '<div id="rv-tarjetas" class="rv-tarjetas"></div>'}
-    <div id="rv-dia" class="rv-nota" hidden></div>
+    ${ms ? '' : `${web230() ? semanal : '<div id="rv-tarjetas" class="rv-tarjetas"></div>'}
+    <div id="rv-dia" class="rv-nota" hidden></div>`}
     ${web230() ? '<div id="rv-tarjetas" class="rv-tarjetas"></div>' : ''}
     ${_avisoPlanHtml()}
     <div id="myday-fotos"></div>
@@ -13767,9 +13801,8 @@ const _TROFEO = '<svg class="rv-trofeo" width="15" height="15" viewBox="0 0 24 2
 /* Tarjetas «Recuperación» y «Tu progreso» de Revisión (RecuperacionTarjeta.swift). */
 const _ICO_BATERIA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10" rx="2.5"/><path d="M22 11v2"/><rect x="5" y="10" width="8" height="4" rx="1" fill="currentColor" stroke="none"/></svg>';
 const _ICO_PROGRESO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 15 4-5 3 3 5-6"/></svg>';
-function _renderRevTarjetas() {
-  const el = document.getElementById('rv-tarjetas');
-  if (!el) return;
+/* El cuerpo de la fila «Recuperación»: el número de hoy y su frase. Lo usan Revisión (palanca apagada) y «Mi salud». */
+function _recFilaCuerpo() {
   const txt = s => `<div class="rv-txt">${s}</div>`;
   let rec;
   if (DATA && DATA._isDemo) {
@@ -13805,17 +13838,28 @@ function _renderRevTarjetas() {
       rec = txt('Conectá tu reloj o Salud para ver tu recuperación de cada día.');
     }
   }
-  const linea = STATE.progresoLinea;
-  const prog = linea
-    ? `<div class="rv-linea">${linea.record ? _TROFEO : ''}<span>${escapeHtml(linea.texto)}</span></div>`
-    : txt('Tu fuerza y tus récords, ejercicio por ejercicio.');
-  // FilaDestino de la app: azulejo de verde suave, título, una línea y la flecha. «Ver…» queda para el lector de pantalla.
-  const tarjeta = (id, icono, titulo, cuerpo, pie) => `
+  return rec;
+}
+/* FilaDestino de la app: azulejo de verde suave, título, una línea y la flecha. «Ver…» queda para el lector de pantalla. */
+function _filaDestinoHtml(id, icono, titulo, cuerpo, pie) {
+  return `
     <button class="rv-card fila-destino" id="${id}">
       <span class="azulejo" aria-hidden="true">${icono}</span>
       <div class="fd-cuerpo"><div class="rv-tit fd-tit">${titulo}</div>${cuerpo}</div>
       <span class="solo-lector">${pie}</span><span class="fd-chev" aria-hidden="true">${_CHEV_DER}</span>
     </button>`;
+}
+function _renderRevTarjetas() {
+  try { if (STATE.scene === 'misalud') _msPintarRecup(); } catch (_) {}
+  const el = document.getElementById('rv-tarjetas');
+  if (!el) return;
+  const txt = s => `<div class="rv-txt">${s}</div>`;
+  const rec = _recFilaCuerpo();
+  const linea = STATE.progresoLinea;
+  const prog = linea
+    ? `<div class="rv-linea">${linea.record ? _TROFEO : ''}<span>${escapeHtml(linea.texto)}</span></div>`
+    : txt('Tu fuerza y tus récords, ejercicio por ejercicio.');
+  const tarjeta = _filaDestinoHtml;
   // Con la palanca 2.3.0 apagada, las dos tarjetas de antes.
   const tarjetaVieja = (id, titulo, cuerpo, pie) => `
     <button class="rv-card" id="${id}">
@@ -13823,12 +13867,15 @@ function _renderRevTarjetas() {
       ${cuerpo}
       <div class="rv-pie"><span>${pie}</span>${_CHEV_DER}</div>
     </button>`;
+  // Con «Mi salud» (2.3.0), la Recuperación vive allá: acá queda solo «Tu progreso» (la fuerza no es salud).
   el.innerHTML = !web230()
     ? tarjetaVieja('rvRecup', 'Recuperación', rec, 'Ver sueño, corazón y cuerpo') + tarjetaVieja('rvProg', 'Tu progreso', prog, 'Ver fuerza y récords')
-    : `<div class="tarjeta-filas">${tarjeta('rvRecup', _ICO_BATERIA, 'Recuperación', rec, 'Ver sueño, corazón y cuerpo')
+    : `<div class="tarjeta-filas">${_miSaludOn() ? '' : tarjeta('rvRecup', _ICO_BATERIA, 'Recuperación', rec, 'Ver sueño, corazón y cuerpo')
                }${tarjeta('rvProg', _ICO_PROGRESO, 'Tu progreso', prog, 'Ver fuerza y récords')}</div>`;
-  document.getElementById('rvRecup').onclick = () => setScene('salud');
+  const rr = document.getElementById('rvRecup');
+  if (rr) rr.onclick = () => setScene('salud');
   document.getElementById('rvProg').onclick = () => setScene('progress');
+  _msPintarTarjetaRevision();
 }
 
 /* «Tu progreso»: la línea de la semana (ProgresoSemana.swift). Últimos 7 días
@@ -14289,11 +14336,19 @@ function renderMisDatos() {
     : `Conectá tu reloj o ${_T('app')}`;
   const guia = !!(window.MyPumpGuia && TOKEN && window.MyPumpGuia.mostrarFila(TOKEN));
   const fila = (id, titulo, extra = '', cls = '') => `<button class="md-fila${cls}" id="${id}"><span>${titulo}</span>${extra}<span class="md-chev">${_CHEV_DER}</span></button>`;
+  // «Mi salud» (2.3.0): un solo lugar para lo de salud. La fila de Recuperación y las de Estudios y Presión se vuelven
+  // una sola fila «Mi salud», arriba, con el punto de novedad de estudios.
+  const ms = _miSaludOn();
+  const msT = ms ? _msTarjeta() : null;
+  const msPunto = ms && window.EstudiosUI && window.EstudiosUI.novedad() ? `<span class="est-punto" role="img" aria-label="${window.Estudios.T.novedad}"></span>` : '';
   root.innerHTML = `
-    <div class="md-grupo">
+    ${ms ? `<div class="md-grupo">
+      <button class="md-fila md-rec" id="mdMiSalud"><span><span class="md-rec-tit">${window.MiSalud.T.entradaMisDatos}</span><span class="md-rec-sub">${escapeHtml(msT ? msT.linea : '')}</span></span>${msPunto}<span class="md-chev">${_CHEV_DER}</span></button>
+    </div>
+    <div class="md-pie">${window.MiSalud.T.pieMisDatos}</div>` : `<div class="md-grupo">
       <button class="md-fila md-rec" id="mdRec"><span><span class="md-rec-tit">Recuperación</span><span class="md-rec-sub">${escapeHtml(recTxt)}</span></span><span class="md-chev">${_CHEV_DER}</span></button>
     </div>
-    <div class="md-pie">Sueño, pulso, variabilidad y actividad, si mostrar el score, y la conexión con tu reloj.</div>
+    <div class="md-pie">Sueño, pulso, variabilidad y actividad, si mostrar el score, y la conexión con tu reloj.</div>`}
 
     <div class="md-ceja">Apariencia</div>
     <div class="md-grupo">
@@ -14312,15 +14367,18 @@ function renderMisDatos() {
       ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
       ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? fila('mdTecnica', window.Tecnica.T.titulo) : ''}
       ${docs.length ? fila('mdDocumentos', D.T.entradaMisDatos, D.hayContratoPendiente(docs) ? `<span class="md-det">${D.T.pendiente}</span>` : '') : ''}
-      ${window.EstudiosUI && window.EstudiosUI.entradaVisible() ? `<button class="md-fila" id="mdEstudios"><span class="gim-zona-txt"><span>${window.Estudios.T.entradaMisDatos}</span><small>${window.EstudiosUI.subtitulo()}</small></span>${window.EstudiosUI.novedad() ? `<span class="est-punto" role="img" aria-label="${window.Estudios.T.novedad}"></span>` : ''}<span class="md-chev">${_CHEV_DER}</span></button>` : ''}
+      ${!ms && window.EstudiosUI && window.EstudiosUI.entradaVisible() ? `<button class="md-fila" id="mdEstudios"><span class="gim-zona-txt"><span>${window.Estudios.T.entradaMisDatos}</span><small>${window.EstudiosUI.subtitulo()}</small></span>${window.EstudiosUI.novedad() ? `<span class="est-punto" role="img" aria-label="${window.Estudios.T.novedad}"></span>` : ''}<span class="md-chev">${_CHEV_DER}</span></button>` : ''}
       ${window.FotosInicioUI && window.FotosInicioUI.entradaVisible() ? `<button class="md-fila" id="mdFotosInicio" data-test="mis-datos-fotos-inicio"><span>${escapeHtml(window.FotosInicio.T.entradaMisDatos)}</span><span class="md-chev">${_CHEV_DER}</span></button>` : ''}
-      ${window.PresionUI && window.PresionUI.entradaVisible() ? fila('mdPresion', window.PresionUI.entrada()) : ''}
+      ${!ms && window.PresionUI && window.PresionUI.entradaVisible() ? fila('mdPresion', window.PresionUI.entrada()) : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
     </div>
     <div class="md-pie md-legal">Pump Team no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.</div>`;
-  document.getElementById('mdRec').onclick = () => setScene('salud');
+  const mdr = document.getElementById('mdRec');
+  if (mdr) mdr.onclick = () => setScene('salud');
+  const mdms = document.getElementById('mdMiSalud');
+  if (mdms) mdms.onclick = () => abrirMiSalud();
   const rec = document.getElementById('mis-datos-recorrido');
   if (rec) rec.onclick = () => window.RecorridoUI.abrirHoja();
   const nov = document.getElementById('mdNovedades');
@@ -14395,11 +14453,12 @@ function _ponerSegSalud(scene) {
   root.querySelectorAll(':scope > .seg-salud-wrap').forEach(n => n.remove());
   const w = document.createElement('div');
   w.className = 'seg-salud-wrap';
-  w.innerHTML = `<button class="sd-volver" data-seg-volver>‹ Volver a Revisión</button>
+  const aMiSalud = STATE.saludDesde === 'misalud' && _miSaludOn();
+  w.innerHTML = `<button class="sd-volver" data-seg-volver>‹ ${aMiSalud ? window.MiSalud.T.titulo : 'Volver a Revisión'}</button>
     <div class="seg-salud" role="tablist" aria-label="Sección de Salud">${_SEG_SALUD.map(([s, l]) =>
       `<button role="tab" class="seg-btn${s === scene ? ' is-on' : ''}" aria-selected="${s === scene}" data-seg="${s}">${l}</button>`).join('')}</div>`;
   root.insertBefore(w, root.firstChild);
-  w.querySelector('[data-seg-volver]').onclick = () => setScene('revision');
+  w.querySelector('[data-seg-volver]').onclick = () => (aMiSalud ? irAMiSalud('recuperacion') : setScene('revision'));
   w.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => { if (b.dataset.seg !== STATE.scene) setScene(b.dataset.seg); });
 }
 
@@ -14623,7 +14682,191 @@ function renderMyday() {
   renderMydaySalud();
 }
 
+/* ══════════ «MI SALUD» (pedido de Mati, 11/11; va con `web_230`) ══════════
+   Una sola pantalla con todo lo de salud, que se abre desde la tarjeta grande de Revisión. Sin pestañas nuevas.
+   En este orden y cada bloque solo si su sección hoy lo muestra (la lógica pura, en js/mi-salud.js):
+     1 y 2. El próximo control y «Estudios y órdenes»: la lista de Estudios de siempre (EstudiosUI), puesta acá adentro.
+            Se mueve el nodo #scene-estudios entero, con sus eventos: no se duplica nada. La orden, la subida y los
+            archivos se ven a pantalla completa (los otros bloques se esconden mientras tanto).
+     3. Presión arterial: la tarjeta «Tu presión» de Entreno (si hay algo hoy) y la fila que abre Presión.
+     4. Recuperación: la fila que estaba en Revisión; abre Salud, que vuelve acá.
+   Los `destino` viejos (estudios, presion, salud, myday) abren esta pantalla en su bloque. Alineado con iPhone y
+   Android (nativa-evidencia/mi-salud/DECISIONES.md). */
+const _ICO_CORAZON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.1 4.4 2.4h2c.8-1.3 2.3-2.4 4.4-2.4 3.6 0 5.7 3.7 4.2 7.2C19.5 16.4 12 21 12 21Z"/></svg>';
+const _ICO_PRESION = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>';
+function _miSaludOn() { return !!(window.MiSalud && web230()); }
+
+/* Lo que dicen hoy las secciones, para js/mi-salud.js. En la demo solo hay Recuperación (como estaba en Revisión). */
+function _msEstado() {
+  const EU = window.EstudiosUI, PU = window.PresionUI;
+  const est = !!(EU && EU.entradaVisible());
+  const pre = !!(PU && PU.entradaVisible());
+  return {
+    estudios: est,
+    proximoControl: est && EU.hayProximoControl(),
+    tarjetaEstudios: est ? EU.tarjetaInicio() : null,
+    controlCerca: est && !!EU.tarjetaControl(),
+    presion: pre,
+    tarjetaPresion: pre ? PU.tarjeta() : null,
+    recuperacion: true,
+  };
+}
+function _msTarjeta() { return window.MiSalud ? window.MiSalud.tarjeta(_msEstado()) : null; }
+
+/* La tarjeta grande de Revisión: «Mi salud», la línea de lo que hay (o de lo primero pendiente) y el número. */
+function _msPintarTarjetaRevision() {
+  const el = document.getElementById('rvMiSalud');
+  if (!el) return;
+  const t = _miSaludOn() ? _msTarjeta() : null;
+  if (!t) { el.innerHTML = ''; el.hidden = true; return; }
+  el.hidden = false;
+  const T = window.MiSalud.T;
+  const html = `<div class="tarjeta-filas ms-tarjeta-rv"><button class="fila-destino ms-tarjeta" id="rvMiSaludBtn">
+      <span class="azulejo ms-azulejo" aria-hidden="true">${_ICO_CORAZON}</span>
+      <span class="fd-cuerpo"><span class="ms-tit-fila"><span class="ms-tit">${T.titulo}</span>${t.numero ? `<span class="ms-insignia" id="rvMiSaludNumero" aria-hidden="true">${t.numero}</span><span class="solo-lector">${T.pendientes(t.numero)}</span>` : ''}</span>
+        <span class="ms-linea" id="rvMiSaludLinea">${escapeHtml(t.linea)}</span></span>
+      <span class="fd-chev" aria-hidden="true">${_CHEV_DER}</span></button></div>`;
+  if (el.dataset.h === html) return;
+  el.innerHTML = html;
+  el.dataset.h = html;
+  document.getElementById('rvMiSaludBtn').onclick = () => abrirMiSalud();
+}
+
+/* Entrar a «Mi salud» desde su tarjeta o Mis datos: con Estudios, como abrir Estudios (trae lo último, deja a la vista la
+   tarjeta nueva); sin Estudios, la pantalla sola. */
+function abrirMiSalud() {
+  if (!_miSaludOn()) return;
+  STATE.msAncla = null;
+  if (window.EstudiosUI && window.EstudiosUI.entradaVisible()) { window.EstudiosUI.abrir({ desde: 'misalud' }); return; }
+  setScene('misalud');
+}
+/* «Mi salud» en un bloque ('control' | 'estudios' | 'presion' | 'recuperacion'). Si el bloque todavía no llegó (en frío,
+   desde un aviso), se espera un rato a que aparezca. Devuelve false con la palanca apagada. */
+function irAMiSalud(bloque) {
+  if (!_miSaludOn()) return false;
+  STATE.msAncla = bloque ? { b: bloque, hasta: Date.now() + 12000 } : null;
+  setScene('misalud');
+  return true;
+}
+const _MS_ANCLAS = { control: '#estControl', estudios: '#estSeccion', presion: '#msPresion', recuperacion: '#msRecup' };
+function _msCumplirAncla() {
+  const a = STATE.msAncla;
+  if (!a) return;
+  if (STATE.scene !== 'misalud' || Date.now() > a.hasta) { STATE.msAncla = null; return; }
+  const el = document.querySelector(`#scene-misalud ${_MS_ANCLAS[a.b] || ''}`);
+  if (!el || el.offsetParent === null) return;          // todavía no está: lo vuelve a probar el próximo repintado
+  // No se suelta enseguida: si después llega un bloque de arriba (Estudios, en frío) y lo empuja, se vuelve a acomodar.
+  // Lo suelta el primer toque o desplazamiento del alumno, o a los pocos segundos.
+  if (!a.visto) { a.visto = true; a.hasta = Math.min(a.hasta, Date.now() + 5000); }
+  setTimeout(() => {
+    if (STATE.msAncla !== a || STATE.scene !== 'misalud') return;
+    // Si Estudios ya dejó a la vista (y con el foco) la tarjeta nueva, no se la mueve.
+    const f = document.activeElement;
+    if (f && f.closest && f.closest('#scene-estudios [data-tarjeta]')) { STATE.msAncla = null; return; }
+    const cab = document.getElementById('appHeader');
+    const y = el.getBoundingClientRect().top + window.scrollY - ((cab && cab.offsetHeight) || 0) - 8;
+    window.scrollTo(0, Math.max(0, y));
+  }, 80);
+}
+
+/* El nodo de Estudios va adentro de «Mi salud» con la palanca prendida, y en su lugar de siempre con la apagada. */
+function _msUbicarEstudios() {
+  const est = document.getElementById('scene-estudios');
+  if (!est) return;
+  const host = document.getElementById('msEstudiosHost');
+  if (_miSaludOn() && host) { if (est.parentNode !== host) host.appendChild(est); }
+  else if (est.parentNode && est.parentNode.id !== 'scene-misalud' && est.parentNode.tagName !== 'MAIN') {
+    const main = document.querySelector('main');
+    if (main) main.appendChild(est);
+  }
+}
+function _msSubpantalla(sub) {
+  const r = document.getElementById('scene-misalud');
+  if (r) r.classList.toggle('ms-sub', !!sub && _miSaludOn());
+  if (STATE.scene === 'misalud' && !sub) _msCumplirAncla();   // Estudios se pintó: el bloque pedido puede haberse movido
+}
+
+function _msPintarPresion() {
+  const el = document.getElementById('msPresion');
+  if (!el) return;
+  const PU = window.PresionUI, T = window.MiSalud.T;
+  if (!PU || !PU.entradaVisible()) { el.innerHTML = ''; el.hidden = true; el.dataset.h = ''; return; }
+  el.hidden = false;
+  const tj = PU.tarjetaHtml('msPresionBoton');
+  const html = `<h2 class="est-h2 ms-seccion" id="msPresionTit">${T.presion}</h2>
+    ${tj ? `<section class="pre-tj ms-pre-tj" id="msPresionTarjeta" aria-labelledby="msPresionTit">${tj}</section>` : ''}
+    <div class="tarjeta-filas">${_filaDestinoHtml('msPresionVer', _ICO_PRESION, T.verPresion, '', T.presion)}</div>`;
+  if (el.dataset.h === html) return;
+  el.innerHTML = html;
+  el.dataset.h = html;
+}
+function _msPintarRecup() {
+  const el = document.getElementById('msRecup');
+  if (!el) return;
+  const html = `<div class="tarjeta-filas">${_filaDestinoHtml('msRecupBtn', _ICO_BATERIA, window.MiSalud.T.recuperacion, _recFilaCuerpo(), 'Ver sueño, corazón y cuerpo')}</div>`;
+  if (el.dataset.h === html) return;
+  el.innerHTML = html;
+  el.dataset.h = html;
+}
+
+function renderMiSalud() {
+  const root = document.getElementById('scene-misalud');
+  if (!root || !window.MiSalud) return;
+  if (!root.dataset.armada) {
+    root.dataset.armada = '1';
+    root.innerHTML = `<button type="button" class="sd-volver ms-volver" id="msVolver">‹ ${window.MiSalud.T.volver}</button>
+      <div id="msEstudiosHost"></div><div id="msPresion" class="ms-bloque" hidden></div><div id="msRecup" class="ms-bloque"></div>`;
+    root.addEventListener('click', (ev) => {
+      const t = ev.target;
+      if (!t || !t.closest) return;
+      if (t.closest('#msVolver')) { setScene('revision'); return; }
+      if (t.closest('#msRecupBtn')) { STATE.saludDesde = 'misalud'; setScene('salud'); return; }
+      if (t.closest('#msPresionVer')) { window.PresionUI.abrir('misalud'); return; }
+      if (t.closest('#msPresionTarjeta [data-tj="directo"]')) { window.PresionUI.abrirDirecto('misalud'); return; }
+    });
+    // El primer toque o desplazamiento del alumno: la pantalla ya no se acomoda sola al bloque pedido.
+    const soltar = () => { STATE.msAncla = null; };
+    for (const ev of ['pointerdown', 'touchstart', 'wheel', 'keydown']) root.addEventListener(ev, soltar, { passive: true });
+  }
+  _msUbicarEstudios();
+  const est = document.getElementById('scene-estudios');
+  if (est) est.classList.add('is-active');
+  if (window.EstudiosUI) window.EstudiosUI.renderEscena();
+  _msPintarPresion();
+  _msPintarRecup();
+  _msCumplirAncla();
+}
+/* Lo que cambia solo (llega un estudio, la tarjeta de presión, la recuperación): se repinta lo que está a la vista. */
+function _msRepintar() {
+  if (!_miSaludOn()) return;
+  if (STATE.scene === 'misalud') { _msPintarPresion(); _msPintarRecup(); _msCumplirAncla(); }
+  else if (STATE.scene === 'revision') _msPintarTarjetaRevision();
+  else if (STATE.scene === 'misdatos') renderMisDatos();
+}
+
+/* Un `destino` de afuera (aviso local, push, link `?scene=`): los de salud abren «Mi salud» en su bloque; el resto, como
+   siempre. Presión, además, se abre directo en lo que toca (al cerrarla queda «Mi salud»). */
+function irADestino(d) {
+  const r = _miSaludOn() && window.MiSalud.destino(d);
+  if (r) {
+    irAMiSalud(r.bloque);
+    if (d === 'estudios' && window.EstudiosUI && TOKEN && !DEMO) window.EstudiosUI.destino('misalud');
+    if (d === 'presion' && window.PresionUI) window.PresionUI.abrirDirecto('misalud');
+    return;
+  }
+  if (d === 'fotos_inicio') { setScene('revision'); if (window.FotosInicioUI) window.FotosInicioUI.abrirPorAviso(); return; }
+  setScene(d);
+}
+window.irADestino = irADestino;
+
 function setScene(scene) {
+  // «Mi salud» (2.3.0): Estudios vive adentro de esa pantalla; sin la palanca, «Mi salud» no existe y se cae a Revisión.
+  if (scene === 'estudios' && _miSaludOn()) scene = 'misalud';
+  if (scene === 'misalud' && !_miSaludOn()) scene = 'revision';
+  if (scene === 'presion' && !_presionPorUI && _miSaludOn()) { irAMiSalud('presion'); if (window.PresionUI) window.PresionUI.abrirDirecto('misalud'); return; }
+  _msUbicarEstudios();
+  if (scene !== 'salud' && scene !== 'progress' && scene !== 'cuerpo') STATE.saludDesde = null;
+  if (scene !== 'misalud') { STATE.msAncla = null; _msSubpantalla(false); }
   // Un aviso (local o push) con destino `presion`: Presión abierta directo en lo pendiente. Apagada o sin habilitar, no hace nada.
   if (scene === 'presion' && !_presionPorUI) { if (window.PresionUI) window.PresionUI.abrirDirecto('train'); return; }
   if (scene !== 'train') { _csVaciarDeshacer(); _csCorr = null; }
@@ -14639,9 +14882,9 @@ function setScene(scene) {
     // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
-    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision'
+    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos' || scene === 'misalud') ? 'revision'
       : scene === 'estudios' ? (window.EstudiosUI.origen === 'train' ? 'train' : 'revision')
-      : scene === 'presion' ? (window.PresionUI.origen === 'train' ? 'train' : 'revision')
+      : scene === 'presion' ? (window.PresionUI.origen === 'train' ? 'train' : 'revision')   // misdatos o misalud: Revisión
       : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train')
       : scene === 'tecnica' ? (window.TecnicaUI.origen === 'train' ? 'train' : 'revision')
       : scene === 'fotosinicio' ? 'revision' : scene;
@@ -14696,6 +14939,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = 'Suplementación';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'misalud') {
+    $('#hdrEyebrow').textContent = 'REVISIÓN';
+    $('#hdrTitle').textContent = window.MiSalud.T.titulo;
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   } else if (scene === 'misdatos') {
     $('#hdrEyebrow').textContent = 'REVISIÓN';
     $('#hdrTitle').textContent = 'Mis datos';
@@ -14733,6 +14981,7 @@ function setScene(scene) {
   if (scene === 'diet') renderDiet();
   if (scene === 'chat') { renderChat(); chatScrollAlFondo(); marcarChatLeido(); chatPollProgramar(); }
   if (scene === 'revision') renderRevision();
+  if (scene === 'misalud') renderMiSalud();
   if (scene === 'salud') renderSalud();
   if (scene === 'progress') renderProgress();
   if (scene === 'cuerpo') renderCuerpo();
@@ -14866,6 +15115,8 @@ function _aplicarSceneDeURL() {
   try {
     const s = new URLSearchParams(location.search).get('scene');
     if (!s) return;
+    // «Mi salud» (2.3.0): estudios, presion, salud y myday abren esa pantalla en su bloque (ver irADestino).
+    if (_miSaludOn() && window.MiSalud.destino(s)) { irADestino(s); return; }
     // El aviso «subí tus fotos de inicio»: Revisión con la pantalla abierta (si la sección está habilitada).
     if (s === 'fotos_inicio') { setScene('revision'); if (window.FotosInicioUI) window.FotosInicioUI.abrirPorAviso(); return; }
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));

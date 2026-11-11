@@ -205,7 +205,8 @@
     ln.addListener('localNotificationActionPerformed', (ev) => {
       const dest = ev && ev.notification && ev.notification.extra && ev.notification.extra.destino;
       if (dest && typeof window.setScene === 'function') {
-        try { window.setScene(dest); } catch (e) {}
+        // «Mi salud» (2.3.0): irADestino lleva los destinos de salud a esa pantalla; el resto, como siempre.
+        try { (typeof window.irADestino === 'function' ? window.irADestino : window.setScene)(dest); } catch (e) {}
       }
     });
   }
@@ -335,7 +336,7 @@
           try { window.setScene('revision'); if (window.FotosInicioUI) window.FotosInicioUI.abrirPorAviso(); } catch (e) {}
           return;
         }
-        try { window.setScene(destino); } catch (e) {}
+        try { (typeof window.irADestino === 'function' ? window.irADestino : window.setScene)(destino); } catch (e) {}
       }
     });
   }

@@ -236,14 +236,24 @@
 
   const envioHtml = (x) => `<div class="est-fila"><span class="est-fila-txt"><strong>${e(E.tituloEnvio(x))}</strong>${E.archivos(x.archivos) ? `<small>${e(E.archivos(x.archivos))}</small>` : ''}${chip(false)}</span></div>`;
 
+  function controlHtml(pc) {
+    if (!pc) return '';
+    const cuando = pc.cuando || E.fechaControl(pc.desde, pc.hasta);
+    return `<div class="est-tarjeta est-control" id="estControl"><span class="est-control-ic">${IC.calendario}</span>
+        <span class="est-fila-txt"><span class="est-ceja">${e(T.proximoControl)}</span><strong>${e(pc.titulo)}</strong>${cuando ? `<small id="estControlCuando">${e(cuando)}</small>` : ''}${pc.nota ? `<small class="est-control-nota" id="estControlNota">${e(pc.nota)}</small>` : ''}</span></div>`;
+  }
+
+  /* Dentro de «Mi salud» (2.3.0): la lista es un bloque de esa pantalla, no una pantalla propia. */
+  const incrustada = () => !!(ui.op && ui.op.incrustada && ui.op.incrustada());
+
   function pLista(m) {
     const s = m.estado, b = E.bloques(s), pc = s.proximoControl;
-    const cuando = pc ? (pc.cuando || E.fechaControl(pc.desde, pc.hasta)) : null;
-    return `${avisoHtml(m)}
+    // En «Mi salud» el próximo control va primero (es su bloque 1) y debajo el título de «Estudios y órdenes».
+    const cabeza = incrustada() ? `${controlHtml(pc)}<h2 class="est-h2 ms-seccion" id="estSeccion" tabindex="-1">${e(T.entradaMisDatos)}</h2>` : '';
+    return `${cabeza}${avisoHtml(m)}
       ${m.errorDeCarga ? `<div class="est-banda" id="estErrorCarga" role="alert"><span>${e(T.errorDeCarga)}</span>${pildora(T.probarDeNuevo, 'recargar')}</div>` : ''}
       ${errorHtml()}
-      ${pc ? `<div class="est-tarjeta est-control" id="estControl"><span class="est-control-ic">${IC.calendario}</span>
-        <span class="est-fila-txt"><span class="est-ceja">${e(T.proximoControl)}</span><strong>${e(pc.titulo)}</strong>${cuando ? `<small id="estControlCuando">${e(cuando)}</small>` : ''}${pc.nota ? `<small class="est-control-nota" id="estControlNota">${e(pc.nota)}</small>` : ''}</span></div>` : ''}
+      ${incrustada() ? '' : controlHtml(pc)}
       ${b.pendientes ? h2(T.teFaltaHacer, 'estFalta') + s.pendientes.map((p, i) => pendienteHtml(p, s.hoy, i)).join('') : ''}
       ${colaHtml(m)}
       <button type="button" class="btn-primary est-principal" data-est="subir" id="estSubir">${IC.subir}<span>${e(T.subirEstudio)}</span></button>
@@ -313,12 +323,13 @@
   function renderEscena() {
     const r = raizEscena(), m = ui.modelo;
     if (!r) return;
-    if (!m || !m.estado) { r.innerHTML = ''; ui.ultimoHtml = null; ui.pila = []; soltarVisor(); podarVistas(); if (escenaActiva()) cerrar(); return; }
+    if (!m || !m.estado) { r.innerHTML = ''; ui.ultimoHtml = null; ui.pila = []; soltarVisor(); podarVistas(); avisarPintado(); if (escenaActiva() && !incrustada()) cerrar(); return; }
     // No se le rehace la pantalla bajo el dedo: el toque se perdería.
     if (ui.presionando) { ui.pendiente = true; return; }
     ui.pendiente = false;
     const volver = ui.pila.length ? T.titulo : T.cerrar;
-    const h = `<div class="gim est"><button type="button" class="sd-volver" data-est="volver" id="estVolver">‹ ${e(volver)}</button>${cuerpo(m)}</div>`;
+    const boton = incrustada() && !ui.pila.length ? '' : `<button type="button" class="sd-volver" data-est="volver" id="estVolver">‹ ${e(volver)}</button>`;
+    const h = `<div class="gim est">${boton}${cuerpo(m)}</div>`;
     if (h !== ui.ultimoHtml) {
       const foco = document.activeElement && r.contains(document.activeElement) ? document.activeElement : null;
       const clave = foco ? [foco.getAttribute('data-est'), foco.getAttribute('data-id'), foco.getAttribute('data-cual')] : null;
@@ -332,9 +343,13 @@
     }
     podarVistas();
     const t = document.getElementById('hdrTitle');
-    if (t && escenaActiva()) t.textContent = T.titulo;      // al soltar el visor desde otra sección no se le pisa el título
+    if (t && escenaActiva() && !incrustada()) t.textContent = T.titulo;      // al soltar el visor desde otra sección no se le pisa el título
     vigilarNuevas();
+    avisarPintado();
   }
+
+  /* «Mi salud» esconde sus otros bloques mientras se ve una orden, la subida o un archivo (a pantalla completa, como antes). */
+  function avisarPintado() { if (ui.op && ui.op.alPintar) { try { ui.op.alPintar(ui.pila.length > 0); } catch (_) {} } }
 
   // ── Novedades: marcar vista la tarjeta que estuvo de verdad en pantalla ──
   const enLista = () => escenaActiva() && !ui.pila.length && document.visibilityState === 'visible';
@@ -492,7 +507,8 @@
     const a = m && m.estado ? m.tarjetaInicio : null;
     montarTarjeta(document.getElementById('scene-train'));
     montarControl(document.getElementById('scene-train'));
-    const firma = m && m.estado ? `1|${m.pendientes}|${m.novedad ? 1 : 0}|${a ? a.titulo : ''}` : '';
+    const tc = m && m.estado ? m.tarjetaControl : null;
+    const firma = m && m.estado ? `1|${m.pendientes}|${m.novedad ? 1 : 0}|${a ? a.titulo : ''}|${m.estado.proximoControl ? 1 : 0}|${tc ? tc.titulo : ''}` : '';
     if (firma !== ui.firmaEntrada) { ui.firmaEntrada = firma; ui.op.alCambiarEntrada(); }
     cumplirDestino();
     if (escenaActiva()) renderEscena();
@@ -778,7 +794,8 @@
     }, ESPERAS_ARRANQUE_S[n] * 1000);
   }
 
-  /* op: { token, rpc, visionUrl, irA(escena), escena() → la que está a la vista, alCambiarEntrada() } */
+  /* op: { token, rpc, visionUrl, irA(escena), escena() → la que está a la vista, alCambiarEntrada(),
+         incrustada() → la lista es un bloque de «Mi salud», alPintar(subpantalla) } */
   function configurar(op) { ui.op = op; }
 
   /* valor: true o false si el servidor contestó en esta carga de la página; null si no se pudo preguntar.
@@ -834,6 +851,10 @@
     novedadDeEstudios: () => (ui.modelo && ui.modelo.estado && ui.modelo.novedad) || null,
     titulo: () => T.titulo,
     entradaVisible: () => !!(ui.modelo && ui.modelo.estado),
+    /* Para «Mi salud»: si hay próximo control, la tarjeta de Entreno (lo pendiente) y la del control cerca. */
+    hayProximoControl: () => !!(ui.modelo && ui.modelo.estado && ui.modelo.estado.proximoControl),
+    tarjetaInicio: () => (ui.modelo && ui.modelo.estado ? ui.modelo.tarjetaInicio : null),
+    tarjetaControl: () => (ui.modelo && ui.modelo.estado ? ui.modelo.tarjetaControl : null),
     subtitulo: () => T.subtituloEntrada(ui.modelo ? ui.modelo.pendientes : 0),
     get _modelo() { return ui.modelo; },
   };

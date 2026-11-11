@@ -502,6 +502,7 @@
     const ve = !!(ui.modelo && ui.modelo.visibleEntrada);
     if (ve !== ui.entrada) { ui.entrada = ve; ui.op.alCambiarEntrada(); }
     montarTarjeta(document.getElementById('scene-train'));
+    if (ui.op.alCambiarTarjeta) { try { ui.op.alCambiarTarjeta(); } catch (_) {} }
     if (escenaActiva()) renderEscena();
   }
 
@@ -514,7 +515,7 @@
   function abrir(origen) {
     const m = ui.modelo;
     if (!m || !m.estado) return;
-    ui.origen = origen === 'train' ? 'train' : 'misdatos';
+    ui.origen = origen === 'train' || origen === 'misalud' ? origen : 'misdatos';   // «misalud»: la pantalla de la 2.3.0
     ui.pila = [];
     ui.error = null;
     ui.form = null;
@@ -524,13 +525,13 @@
     ui.op.irA('presion');
     m.refrescar().then(() => ui.modelo && ui.modelo.reanudar()).catch(() => {});
   }
-  function cerrar() { if (ui.op) ui.op.irA(ui.origen === 'train' ? 'train' : 'misdatos'); }
+  function cerrar() { if (ui.op) ui.op.irA(ui.origen === 'train' || ui.origen === 'misalud' ? ui.origen : 'misdatos'); }
 
   /* Desde la tarjeta o un aviso: Presión abierta directo en lo que toca (la repetición, preparar o la toma de hoy).
      Si el modelo todavía no llegó (arranque en frío desde un aviso), queda pedido y se abre apenas llega. */
   function abrirDirecto(origen) {
     const m = ui.modelo;
-    if (!m || !m.estado) { ui.directo = true; return; }
+    if (!m || !m.estado) { ui.directo = origen || 'train'; return; }
     ui.directo = false;
     const t = m.tarjeta;
     abrir(origen || 'train');
@@ -549,11 +550,11 @@
   function circulos(n, total) {
     return `<span class="pre-circs" role="img" aria-label="${e(T.avanceAlt(n, total))}">${Array.from({ length: total }, (_, i) => `<span class="pre-circ${i < n ? ' is-on' : ''}"></span>`).join('')}</span>`;
   }
-  function tarjetaHtml(m) {
+  function tarjetaHtml(m, idBoton = 'presion-tarjeta-boton') {
     const t = m && m.estado ? m.tarjeta : null;
     if (!t) return '';
     const h = `<strong class="pre-tj-h">${e(N.tarjeta)}</strong>`;
-    const b = (texto) => `<button type="button" class="btn-primary" id="presion-tarjeta-boton" data-tj="directo">${e(texto)}</button>`;
+    const b = (texto) => `<button type="button" class="btn-primary" id="${e(idBoton)}" data-tj="directo">${e(texto)}</button>`;
     if (t.estado === 'repetir') return `${h}<p class="pre-tj-t">${e(T.repetirPendiente)}</p>${b(N.repetir)}`;
     if (t.estado === 'preparar') return `${h}<p class="pre-tj-t">${e(N.tarjetaPreparar)}</p>${b(N.empezar)}`;
     if (t.estado === 'toma') {
@@ -562,9 +563,13 @@
     return `${h}${circulos(t.hechas, t.total)}<p class="pre-tj-t">${e(N.hoyListo)}</p>`;
   }
   /* renderTrain rehace todo: se vuelve a poner, siempre primera. No toca nada de la rutina: es una tarjeta más, arriba. */
+  /* Con «Mi salud» (2.3.0) la tarjeta de Entreno sale solo cuando pide algo y lleva a Presión con «Mi salud» debajo. */
+  const origenTarjeta = () => (ui.op && ui.op.origenTarjeta ? ui.op.origenTarjeta() : 'train');
   function montarTarjeta(root) {
     let host = document.getElementById('presion-tarjeta');
-    const html = tarjetaHtml(ui.modelo);
+    const soloConAlgo = !!(ui.op && ui.op.soloConAlgo && ui.op.soloConAlgo());
+    const t = ui.modelo && ui.modelo.estado ? ui.modelo.tarjeta : null;
+    const html = soloConAlgo && t && t.estado === 'hoyListo' ? '' : tarjetaHtml(ui.modelo);
     if (!root || !html) { if (host) host.remove(); return; }
     if (!host) {
       host = document.createElement('section');
@@ -572,14 +577,14 @@
       host.className = 'pre-tj';
       host.setAttribute('aria-label', N.tarjeta);
       host.addEventListener('click', (ev) => {
-        if (ev.target.closest('[data-tj="directo"]')) abrirDirecto('train');
-        else if (ui.modelo && ui.modelo.tarjeta && ui.modelo.tarjeta.estado === 'hoyListo') abrir('train');
+        if (ev.target.closest('[data-tj="directo"]')) abrirDirecto(origenTarjeta());
+        else if (ui.modelo && ui.modelo.tarjeta && ui.modelo.tarjeta.estado === 'hoyListo') abrir(origenTarjeta());
       });
     }
     const sinBoton = ui.modelo.tarjeta.estado === 'hoyListo';
     if (host.dataset.h !== html) { host.innerHTML = html; host.dataset.h = html; }
     // Sin botón, toda la tarjeta abre Presión: se puede llegar con el teclado.
-    if (sinBoton) { host.setAttribute('role', 'button'); host.tabIndex = 0; host.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrir('train'); } }; }
+    if (sinBoton) { host.setAttribute('role', 'button'); host.tabIndex = 0; host.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrir(origenTarjeta()); } }; }
     else { host.removeAttribute('role'); host.removeAttribute('tabindex'); host.onkeydown = null; }
     if (root.firstChild !== host) root.insertBefore(host, root.firstChild);
   }
@@ -879,7 +884,7 @@
       enganchar();
       pintar();
       m.reanudar();
-      if (ui.directo) abrirDirecto('train');
+      if (ui.directo) abrirDirecto(typeof ui.directo === 'string' ? ui.directo : 'train');
     } catch (_) {
       ui.modelo = null;
     } finally {
@@ -894,6 +899,9 @@
     titulo: () => N.titulo,
     entrada: () => N.entrada,
     entradaVisible: () => !!(ui.modelo && ui.modelo.visibleEntrada),
+    /* Para «Mi salud»: la tarjeta de hoy (null si no hay) y su HTML con otro id de botón. */
+    tarjeta: () => (ui.modelo && ui.modelo.estado ? ui.modelo.tarjeta || null : null),
+    tarjetaHtml: (idBoton) => tarjetaHtml(ui.modelo, idBoton),
     get _modelo() { return ui.modelo; },
     get _ui() { return ui; },
     _accion: (nombre, b) => ACCIONES[nombre] && ACCIONES[nombre](b || { dataset: {} }),
