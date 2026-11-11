@@ -186,6 +186,8 @@ struct CheckGuiadoFlujo: View {
     }
 
     private func seguir() {
+        // Un efecto marcado sin decir cuánto molesta: no avanza y lo dice.
+        if paso == .senales, CheckGuiado.faltaIntensidad(borrador) { aviso = CheckGuiado.avisoIntensidad; return }
         guard paso == .peso else { avanzar(); return }
         // El peso se guarda en el momento, por la misma cola que la tarjeta de peso.
         trabajando = true
@@ -264,13 +266,25 @@ struct CheckGuiadoFlujo: View {
         }
     }
 
+    /// Las del catálogo que le tocan, más cualquier digestiva que ya venía marcada (si dejó de usar un GLP-1 a mitad de
+    /// semana tiene que poder verla para sacarla o decir cuánto molesta).
+    private var opcionesVisibles: [CheckGuiado.Opcion] {
+        let visibles = CheckGuiado.opciones(catalogo, glp1: revision.glp1Guiado).map(\.clave)
+        return CheckGuiado.opciones(catalogo).filter { visibles.contains($0.clave) || borrador.senales.contains($0.clave) }
+    }
+
     private var pasoSenales: some View {
         VStack(spacing: Espacio.xs) {
-            ForEach(CheckGuiado.opciones(catalogo), id: \.clave) { o in
+            ForEach(opcionesVisibles, id: \.clave) { o in
                 let elegida = borrador.senales.contains(o.clave)
                 Button {
                     tocado = true
-                    withAnimation(.snappy(duration: 0.18)) { borrador.senales = CheckGuiado.alternar(borrador.senales, o.clave) }
+                    withAnimation(.snappy(duration: 0.18)) {
+                        borrador.senales = CheckGuiado.alternar(borrador.senales, o.clave)
+                        // Al desmarcar (o con «Nada de esto») su intensidad se va con él.
+                        borrador.intensidades = CheckGuiado.normalizarIntensidades(borrador.senales, borrador.intensidades, catalogo)
+                    }
+                    if !CheckGuiado.faltaIntensidad(borrador) { aviso = nil }
                 } label: {
                     HStack(spacing: Espacio.s) {
                         Text(o.etiqueta)
@@ -296,9 +310,53 @@ struct CheckGuiadoFlujo: View {
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(elegida ? .isSelected : [])
                 .accessibilityIdentifier("cg-senal-\(o.clave)")
+                if elegida, o.clave != CheckGuiado.ninguno, CheckGuiado.llevaIntensidad(catalogo) { intensidad(de: o) }
             }
         }
         .sensoryFeedback(.selection, trigger: borrador.senales)
+        .sensoryFeedback(.selection, trigger: borrador.intensidades)
+    }
+
+    /// «¿Cuánto te molesta?» debajo del efecto marcado: tres botones con texto, uno al lado del otro si entran y apilados
+    /// con letra grande.
+    private func intensidad(de o: CheckGuiado.Opcion) -> some View {
+        let botones = ForEach(CheckGuiado.intensidades, id: \.clave) { i in
+            let elegida = borrador.intensidades[o.clave] == i.clave
+            Button {
+                tocado = true
+                borrador.intensidades[o.clave] = i.clave
+                if !CheckGuiado.faltaIntensidad(borrador) { aviso = nil }
+            } label: {
+                Text(i.etiqueta)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(elegida ? Color.sobreMarca : Color.primary)
+                    .lineLimit(1)
+                    .padding(.horizontal, Espacio.xs)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(elegida ? Color.marca : Color.tarjeta, in: .rect(cornerRadius: Radio.control, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Radio.control, style: .continuous)
+                            .strokeBorder(elegida ? Color.marca : Color.borde, lineWidth: 1)
+                    }
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(o.etiqueta): \(i.etiqueta)")
+            .accessibilityAddTraits(elegida ? .isSelected : [])
+            .accessibilityIdentifier("cg-intensidad-\(o.clave)-\(i.clave)")
+        }
+        return VStack(alignment: .leading, spacing: Espacio.xs) {
+            Text(CheckGuiado.preguntaIntensidad)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.apoyoCheck)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Espacio.xs) { botones }
+                VStack(spacing: Espacio.xs) { botones }
+            }
+        }
+        .padding(.leading, Espacio.m)
+        .padding(.bottom, Espacio.xs)
+        .transition(.opacity)
     }
 
     private var pasoNota: some View {
@@ -317,7 +375,7 @@ struct CheckGuiadoFlujo: View {
 
     private var pasoResumen: some View {
         let peso = borrador.peso.trimmingCharacters(in: .whitespaces)
-        let marcado = CheckGuiado.textoSenales(borrador.senales, catalogo)
+        let marcado = CheckGuiado.textoSenales(borrador.senales, catalogo, intensidades: borrador.intensidades)
         let nota = borrador.nota.trimmingCharacters(in: .whitespacesAndNewlines)
         return VStack(alignment: .leading, spacing: Espacio.l) {
             VStack(spacing: 0) {

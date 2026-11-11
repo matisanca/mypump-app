@@ -85,9 +85,10 @@ final class CheckGuiadoUITests: XCTestCase {
         if fotos { foto("04-fotos") }
         tocar("cg-omitir")
 
-        titulo(escenario == "ciclo" ? "¿Notaste algo de esto?" : "¿Algo de esto esta semana?")
+        let efectos = escenario.hasPrefix("ciclo")
+        titulo(efectos ? "¿Notaste algo de esto?" : "¿Algo de esto esta semana?")
         XCTAssertFalse(e("cg-seguir").isEnabled)
-        let primera = escenario == "ciclo" ? "acne" : "dolor"
+        let primera = efectos ? "acne" : "dolor"
         tocar("cg-senal-\(primera)")
         tocar("cg-senal-animo")
         XCTAssertTrue(e("cg-senal-\(primera)").isSelected && e("cg-senal-animo").isSelected)
@@ -96,6 +97,23 @@ final class CheckGuiadoUITests: XCTestCase {
         XCTAssertFalse(e("cg-senal-\(primera)").isSelected, "«Nada de esto» no convive con otra")
         tocar("cg-senal-\(primera)")
         XCTAssertFalse(e("cg-senal-ninguno").isSelected)
+        if efectos {
+            // Cada efecto marcado pide cuánto molesta: sin eso «Seguir» no avanza y lo dice.
+            esperar("cg-intensidad-\(primera)-leve")
+            tocar("cg-seguir")
+            XCTAssertTrue(app.staticTexts["Elegí cuánto te molesta"].waitForExistence(timeout: 5))
+            titulo("¿Notaste algo de esto?")
+            if fotos { foto("05-senales-falta-intensidad") }
+            tocar("cg-intensidad-\(primera)-moderado")
+            XCTAssertTrue(e("cg-intensidad-\(primera)-moderado").isSelected)
+            XCTAssertFalse(app.staticTexts["Elegí cuánto te molesta"].exists)
+            if escenario == "cicloGlp1" {
+                tocar("cg-senal-nauseas")
+                tocar("cg-intensidad-nauseas-fuerte")
+            }
+        } else {
+            XCTAssertFalse(e("cg-intensidad-\(primera)-leve").exists, "La lista general no pide intensidad")
+        }
         if fotos { foto("05-senales") }
         tocar("cg-seguir")
 
@@ -110,6 +128,8 @@ final class CheckGuiadoUITests: XCTestCase {
         XCTAssertTrue(e("cg-fila-escalas-hambre").label.contains("2 de 5"))
         XCTAssertTrue(e("cg-fila-fotos").label.contains("0 de 3"))
         XCTAssertTrue(e("cg-fila-nota").label.contains("Semana tranquila"))
+        if efectos { XCTAssertTrue(e("cg-fila-senales").label.contains("Acné o piel grasa · Moderado"), e("cg-fila-senales").label) }
+        if escenario == "cicloGlp1" { XCTAssertTrue(e("cg-fila-senales").label.contains("Náuseas · Fuerte"), e("cg-fila-senales").label) }
         XCTAssertEqual(e("cg-enviar").label, "Enviar mi check")
         if fotos { foto("07-resumen") }
         tocar("cg-enviar")
@@ -135,7 +155,11 @@ final class CheckGuiadoUITests: XCTestCase {
         titulo("¿Notaste algo de esto?")
         esperar("cg-senal-acne")
         XCTAssertFalse(e("cg-senal-dolor").exists, "La lista general no va para quien está en ciclo")
+        XCTAssertFalse(e("cg-senal-nauseas").exists, "Los digestivos son solo para quien usa un GLP-1")
     }
+
+    /// Con GLP-1 la lista de efectos suma los digestivos, y cada efecto va con su intensidad hasta el resumen.
+    func testConGlp1SumaLosDigestivosConIntensidad() { recorrido("cicloGlp1", fotos: false) }
 
     func testFueraDeCicloVaLaListaGeneral() {
         lanzar("general")
@@ -247,7 +271,7 @@ final class CheckGuiadoUITests: XCTestCase {
         for v in ["claro", "oscuro", "grande"] {
             variante = v
             token = "tkcheck" + UUID().uuidString.prefix(10).lowercased()
-            recorrido("ciclo", fotos: true)
+            recorrido("cicloGlp1", fotos: true)
             app.terminate()
         }
         variante = "claro"

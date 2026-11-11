@@ -106,7 +106,8 @@ public final class ModeloRevision {
         guard let op = pendientes.values.max(by: { $0.ts < $1.ts }), let r = op.payload["respuestas"],
               case .lista(let a)? = r["senales"] else { return }
         guiado = GuiadoServidor(enCiclo: guiado?.enCiclo ?? false, semana: semana,
-                                catalogo: r["catalogo"]?.comoTexto.flatMap(CheckGuiado.Catalogo.init(rawValue:)), senales: a.compactMap(\.comoTexto))
+                                catalogo: r["catalogo"]?.comoTexto.flatMap(CheckGuiado.Catalogo.init(rawValue:)), senales: a.compactMap(\.comoTexto),
+                                glp1: guiado?.glp1, intensidades: Self.intensidades(r["intensidades"]))
     }
 
     /// Sin red o con un error pasajero queda el último que se supo (el aviso se arma también sin señal). Sin la función en
@@ -159,8 +160,14 @@ public final class ModeloRevision {
         public var semana: String?
         public var catalogo: CheckGuiado.Catalogo?
         public var senales: [String]?
-        public init(enCiclo: Bool, semana: String? = nil, catalogo: CheckGuiado.Catalogo? = nil, senales: [String]? = nil) {
+        /// ¿Usa un GLP-1? Solo entonces la lista de efectos muestra los digestivos. nil (lo guardado antes) = no.
+        public var glp1: Bool?
+        /// Cuánto molesta cada efecto enviado (clave → leve, moderado o fuerte).
+        public var intensidades: [String: String]?
+        public init(enCiclo: Bool, semana: String? = nil, catalogo: CheckGuiado.Catalogo? = nil, senales: [String]? = nil,
+                    glp1: Bool? = nil, intensidades: [String: String]? = nil) {
             self.enCiclo = enCiclo; self.semana = semana; self.catalogo = catalogo; self.senales = senales
+            self.glp1 = glp1; self.intensidades = intensidades
         }
     }
 
@@ -174,7 +181,8 @@ public final class ModeloRevision {
             var senales: [String]?
             if case .lista(let a)? = j["senales"] { senales = a.compactMap(\.comoTexto) }
             nuevo = GuiadoServidor(enCiclo: j["en_ciclo"] == .bool(true), semana: j["semana"]?.comoTexto,
-                                   catalogo: j["catalogo"]?.comoTexto.flatMap(CheckGuiado.Catalogo.init(rawValue:)), senales: senales)
+                                   catalogo: j["catalogo"]?.comoTexto.flatMap(CheckGuiado.Catalogo.init(rawValue:)), senales: senales,
+                                   glp1: j["glp1"] == .bool(true), intensidades: Self.intensidades(j["intensidades"]))
         case .failure(let e) where e.funcionInexistente: break
         case .failure: return
         }
@@ -182,6 +190,14 @@ public final class ModeloRevision {
         guiado = nuevo
         if let nuevo { _ = disco?.guardar(nuevo, Self.archivoGuiado) } else { disco?.borrar(Self.archivoGuiado) }
     }
+
+    private static func intensidades(_ j: JSONValue?) -> [String: String]? {
+        guard case .objeto(let o)? = j else { return nil }
+        return o.compactMapValues(\.comoTexto)
+    }
+
+    /// ¿Se muestran los efectos digestivos? Solo si el servidor dice que usa un GLP-1.
+    public var glp1Guiado: Bool { guiado?.glp1 == true }
 
     /// La lista de «¿Notaste algo?» que le toca.
     public var catalogoGuiado: CheckGuiado.Catalogo { CheckGuiado.Catalogo(enCiclo: guiado?.enCiclo ?? false) }
@@ -192,7 +208,8 @@ public final class ModeloRevision {
         var b = CheckGuiado.abrir(guardado: borradorGuiado, semana: semana, catalogo: catalogoGuiado,
                                   enviado: checkinEnviado ? checkin.map { ($0.valores, $0.nota) } : nil,
                                   senalesEnviadas: deEstaSemana ? guiado?.senales : nil,
-                                  catalogoEnviado: deEstaSemana ? guiado?.catalogo : nil)
+                                  catalogoEnviado: deEstaSemana ? guiado?.catalogo : nil,
+                                  intensidadesEnviadas: deEstaSemana ? guiado?.intensidades : nil)
         // El peso del borrador vale solo si es el de hoy: uno de otro día no se manda con la fecha de hoy.
         if !b.peso.isEmpty, PesoCorporal.leer(b.peso) != pesoDeHoy { b.peso = "" }
         return b
@@ -235,11 +252,14 @@ public final class ModeloRevision {
         if !kilos.isEmpty { _ = await guardarPesoGuiado(kilos) }
         let fecha = diaDeHoy()
         let senales = CheckGuiado.normalizar(b.senales, b.catalogo)
+        let intensidades = CheckGuiado.normalizarIntensidades(b.senales, b.intensidades, b.catalogo)
         _ = await outbox?.encolar(Self.kindGuiado, .objeto([
             "fecha": .texto(fecha),
-            "respuestas": .objeto(["catalogo": .texto(b.catalogo.rawValue), "senales": .lista(senales.map(JSONValue.texto))]),
+            "respuestas": .objeto(["catalogo": .texto(b.catalogo.rawValue), "senales": .lista(senales.map(JSONValue.texto)),
+                                    "intensidades": .objeto(intensidades.mapValues(JSONValue.texto))]),
         ]), dedupeKey: "\(Self.kindGuiado)_\(fecha)")
-        let nuevo = GuiadoServidor(enCiclo: guiado?.enCiclo ?? false, semana: FotosProgreso.lunes(fecha), catalogo: b.catalogo, senales: senales)
+        let nuevo = GuiadoServidor(enCiclo: guiado?.enCiclo ?? false, semana: FotosProgreso.lunes(fecha), catalogo: b.catalogo, senales: senales,
+                                   glp1: guiado?.glp1, intensidades: intensidades)
         guiado = nuevo
         _ = disco?.guardar(nuevo, Self.archivoGuiado)
         descartarBorrador()

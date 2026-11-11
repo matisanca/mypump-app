@@ -32,6 +32,17 @@ object CheckGuiado {
     /** «Nada de esto»: se guarda para distinguir «no pasó nada» de «no contestó». No convive con otra. */
     const val NINGUNO = "ninguno"
 
+    /** Los efectos digestivos de la lista de efectos: se muestran solo a quien usa un GLP-1 (lo dice el servidor). */
+    val DIGESTIVAS = listOf("nauseas", "vomitos", "estrenimiento", "diarrea", "acidez")
+
+    /**
+     * La lista que se muestra. [glp1] = false saca las digestivas de la lista de efectos; `normalizar` y `textoSenales`
+     * usan la lista entera (lo ya marcado vale aunque el perfil haya cambiado).
+     */
+    fun opciones(c: Catalogo, glp1: Boolean): List<Opcion> =
+        if (c == Catalogo.CICLO && !glp1) opciones(c).filter { it.clave !in DIGESTIVAS } else opciones(c)
+
+    /** La lista entera de cada catálogo. */
     fun opciones(c: Catalogo): List<Opcion> = when (c) {
         Catalogo.GENERAL -> listOf(
             Opcion("dolor", "Dolor o molestia al entrenar"),
@@ -49,6 +60,11 @@ object CheckGuiado {
             Opcion("libido", "Cambios en el deseo sexual"),
             Opcion("sueno", "Insomnio o sudor de noche"),
             Opcion("aplicacion", "Dolor en la zona de aplicación"),
+            Opcion("nauseas", "Náuseas"),
+            Opcion("vomitos", "Vómitos"),
+            Opcion("estrenimiento", "Estreñimiento"),
+            Opcion("diarrea", "Diarrea"),
+            Opcion("acidez", "Acidez o reflujo"),
             Opcion(NINGUNO, "Nada de esto"),
         )
     }
@@ -99,6 +115,40 @@ object CheckGuiado {
         return if (validas.size > 1) validas.filter { it != NINGUNO } else validas
     }
 
+    // ── Intensidad (solo en la lista de efectos) ──
+
+    /** Cuánto molesta cada efecto marcado. La lista general no lleva. */
+    val INTENSIDADES = listOf(Opcion("leve", "Leve"), Opcion("moderado", "Moderado"), Opcion("fuerte", "Fuerte"))
+
+    /** El rótulo de los tres botones. */
+    const val ROTULO_INTENSIDAD = "¿Cuánto te molesta?"
+
+    /** Lo que se dice si hay un efecto marcado sin intensidad. */
+    const val AVISO_INTENSIDAD = "Elegí cuánto te molesta"
+
+    /**
+     * Las intensidades que valen: solo en la lista de efectos, solo de lo marcado (sin «ninguno») y con un valor conocido,
+     * en el orden del catálogo. Desmarcar un efecto o tocar «Nada de esto» borra la suya.
+     */
+    fun normalizarIntensidades(senales: List<String>, intensidades: Map<String, String>, c: Catalogo): Map<String, String> {
+        if (c != Catalogo.CICLO) return emptyMap()
+        val validas = INTENSIDADES.map { it.clave }
+        val queda = LinkedHashMap<String, String>()
+        for (clave in normalizar(senales, c)) {
+            if (clave == NINGUNO) continue
+            intensidades[clave]?.takeIf { it in validas }?.let { queda[clave] = it }
+        }
+        return queda
+    }
+
+    /** ¿Hay algún efecto marcado sin su intensidad? (Solo en la lista de efectos.) */
+    fun faltaIntensidad(b: Borrador): Boolean {
+        if (b.catalogo != Catalogo.CICLO) return false
+        val marcadas = normalizar(b.senales, b.catalogo).filter { it != NINGUNO }
+        val puestas = normalizarIntensidades(b.senales, b.intensidades, b.catalogo)
+        return marcadas.any { it !in puestas }
+    }
+
     /** El borrador de la semana: lo que el alumno lleva contestado. Vive en el teléfono hasta que manda el check. */
     data class Borrador(
         /** El lunes de la semana del borrador: el de otra semana no sirve. */
@@ -109,6 +159,8 @@ object CheckGuiado {
         val catalogo: Catalogo = Catalogo.GENERAL,
         val senales: List<String> = emptyList(),
         val nota: String = "",
+        /** Cuánto molesta cada efecto marcado (clave del efecto → `leve`, `moderado` o `fuerte`). */
+        val intensidades: Map<String, String> = emptyMap(),
     ) {
         /** ¿Contestó algo? Un borrador sin nada no cuenta como «a medias». */
         val empezado: Boolean
@@ -123,6 +175,7 @@ object CheckGuiado {
             "catalogo" to ValorJson.Texto(catalogo.clave),
             "senales" to ValorJson.Lista(senales.map { ValorJson.Texto(it) }),
             "nota" to ValorJson.Texto(nota),
+            "intensidades" to ValorJson.Objeto(intensidades.mapValues { ValorJson.Texto(it.value) }),
         )
 
         companion object {
@@ -135,6 +188,13 @@ object CheckGuiado {
                     if (n != Math.rint(n)) return null
                     valores[k] = n.toInt()
                 }
+                // Un borrador de antes de las intensidades no trae el campo: se lee como vacío.
+                val intensidades = LinkedHashMap<String, String>()
+                when (val i = o["intensidades"]) {
+                    null, ValorJson.Nulo -> Unit
+                    is ValorJson.Objeto -> for ((k, v) in i.campos) intensidades[k] = v.comoTexto ?: return null
+                    else -> return null
+                }
                 return Borrador(
                     semana = o["semana"]?.comoTexto ?: return null,
                     paso = Paso.desde(o["paso"]?.comoTexto) ?: return null,
@@ -143,6 +203,7 @@ object CheckGuiado {
                     catalogo = Catalogo.desde(o["catalogo"]?.comoTexto) ?: return null,
                     senales = (o["senales"] as? ValorJson.Lista ?: return null).elementos.map { it.comoTexto ?: return null },
                     nota = o["nota"]?.comoTexto ?: return null,
+                    intensidades = intensidades,
                 )
             }
         }
@@ -153,7 +214,7 @@ object CheckGuiado {
 
     /**
      * El borrador con el que se abre: el guardado si es de esta semana; si no, uno nuevo con lo que ya está enviado. Si el
-     * perfil cambió (otro catálogo), lo marcado con la lista anterior no vale.
+     * perfil cambió (otro catálogo), lo marcado con la lista anterior no vale, ni sus intensidades.
      */
     fun abrir(
         guardado: Borrador?,
@@ -162,13 +223,17 @@ object CheckGuiado {
         enviado: Enviado?,
         senalesEnviadas: List<String>?,
         catalogoEnviado: Catalogo?,
+        intensidadesEnviadas: Map<String, String>? = null,
     ): Borrador {
         if (guardado != null && guardado.semana == semana) {
-            return if (guardado.catalogo != catalogo) guardado.copy(catalogo = catalogo, senales = emptyList()) else guardado
+            return if (guardado.catalogo != catalogo) guardado.copy(catalogo = catalogo, senales = emptyList(), intensidades = emptyMap()) else guardado
         }
         var b = Borrador(semana = semana, catalogo = catalogo)
         if (enviado != null) b = b.copy(valores = enviado.valores, nota = enviado.nota, paso = Paso.RESUMEN)
-        if (senalesEnviadas != null && catalogoEnviado == catalogo) b = b.copy(senales = normalizar(senalesEnviadas, catalogo))
+        if (senalesEnviadas != null && catalogoEnviado == catalogo) {
+            val senales = normalizar(senalesEnviadas, catalogo)
+            b = b.copy(senales = senales, intensidades = normalizarIntensidades(senales, intensidadesEnviadas ?: emptyMap(), catalogo))
+        }
         return b
     }
 
@@ -191,20 +256,25 @@ object CheckGuiado {
     fun faltaParaEnviar(b: Borrador): String? {
         CheckinSemanal.faltan(b.valores)?.let { return it }
         if (normalizar(b.senales, b.catalogo).isEmpty()) return "Falta: ${titulo(Paso.SENALES, b.catalogo)}"
+        if (faltaIntensidad(b)) return AVISO_INTENSIDAD
         return null
     }
 
     /** El primer paso al que hay que volver para completar lo que falta. */
     fun pasoQueFalta(b: Borrador): Paso? {
         if (CheckinSemanal.faltan(b.valores) != null) return Paso.ESCALAS
-        if (normalizar(b.senales, b.catalogo).isEmpty()) return Paso.SENALES
+        if (normalizar(b.senales, b.catalogo).isEmpty() || faltaIntensidad(b)) return Paso.SENALES
         return null
     }
 
-    /** «Acné o piel grasa, Retención de líquido o hinchazón» para la fila del resumen. */
-    fun textoSenales(senales: List<String>, c: Catalogo): String {
+    /** «Acné o piel grasa · Leve, Náuseas · Moderado» para la fila del resumen (sin intensidad, solo el efecto). */
+    fun textoSenales(senales: List<String>, c: Catalogo, intensidades: Map<String, String> = emptyMap()): String {
         val n = normalizar(senales, c)
-        return opciones(c).filter { it.clave in n }.joinToString(", ") { it.etiqueta }
+        val puestas = normalizarIntensidades(senales, intensidades, c)
+        return opciones(c).filter { it.clave in n }.joinToString(", ") { o ->
+            val cuanto = INTENSIDADES.firstOrNull { it.clave == puestas[o.clave] }
+            if (cuanto != null) "${o.etiqueta} · ${cuanto.etiqueta}" else o.etiqueta
+        }
     }
 
     // ── La tarjeta de Revisión ──

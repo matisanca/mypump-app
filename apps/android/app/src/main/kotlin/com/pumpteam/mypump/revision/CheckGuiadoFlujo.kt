@@ -176,7 +176,7 @@ internal fun CheckGuiadoFlujo(
     // Si mientras está abierto llega que el perfil cambió, lo marcado con la otra lista no vale (como al abrir).
     val catalogo = CheckGuiado.Catalogo.de(servidor?.enCiclo ?: false)
     LaunchedEffect(catalogo) {
-        if (!listo && b.catalogo != catalogo) b = b.copy(catalogo = catalogo, senales = emptyList())
+        if (!listo && b.catalogo != catalogo) b = b.copy(catalogo = catalogo, senales = emptyList(), intensidades = emptyMap())
     }
     // Cambió la semana con el check abierto (la medianoche del domingo): este borrador ya no es de esta semana.
     LaunchedEffect(hoy) {
@@ -247,6 +247,16 @@ internal fun CheckGuiadoFlujo(
                 avanzar()
             }
             Paso.RESUMEN -> enviar()
+            Paso.SENALES -> {
+                if (!CheckGuiado.puedeSeguir(paso, b)) return
+                // Un efecto marcado sin su intensidad: no avanza y lo dice (se va al elegir).
+                if (CheckGuiado.faltaIntensidad(b)) {
+                    aviso = CheckGuiado.AVISO_INTENSIDAD
+                    tactil.performHapticFeedback(HapticFeedbackType.Reject)
+                    return
+                }
+                avanzar()
+            }
             else -> if (CheckGuiado.puedeSeguir(paso, b, deLaSemana.hechas.size)) avanzar()
         }
     }
@@ -313,16 +323,36 @@ internal fun CheckGuiadoFlujo(
                                 }
                                 Paso.FOTOS -> PasoFotos(fotos, deLaSemana, mensajeFotos) { mensajeFotos = it }
                                 Paso.SENALES -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    // Los efectos digestivos, solo a quien usa un GLP-1 (lo dice el servidor). Lo que ya
+                                    // estaba marcado se sigue viendo aunque el perfil haya cambiado: si no, no se podría sacar.
+                                    val glp1 = servidor?.glp1 ?: false
+                                    val conIntensidad = b.catalogo == CheckGuiado.Catalogo.CICLO
                                     for (o in CheckGuiado.opciones(b.catalogo)) {
+                                        val elegida = o.clave in b.senales
+                                        if (o.clave in CheckGuiado.DIGESTIVAS && !glp1 && !elegida) continue
                                         FilaSeleccionCheck(
                                             o.etiqueta,
-                                            elegida = o.clave in b.senales,
+                                            elegida = elegida,
                                             alTocar = {
-                                                cambiar(b.copy(senales = CheckGuiado.alternar(b.senales, o.clave)))
+                                                // Desmarcar un efecto (o tocar «Nada de esto») borra su intensidad.
+                                                val senales = CheckGuiado.alternar(b.senales, o.clave)
+                                                cambiar(b.copy(senales = senales, intensidades = CheckGuiado.normalizarIntensidades(senales, b.intensidades, b.catalogo)))
                                                 tactil.performHapticFeedback(HapticFeedbackType.SegmentTick)
                                             },
                                             modifier = Modifier.testTag("cg-senal-${o.clave}"),
                                         )
+                                        // En la lista de efectos, debajo de cada uno marcado: cuánto molesta.
+                                        if (conIntensidad && elegida && o.clave != CheckGuiado.NINGUNO) {
+                                            IntensidadCheck(
+                                                efecto = o,
+                                                elegida = b.intensidades[o.clave],
+                                                falta = aviso == CheckGuiado.AVISO_INTENSIDAD,
+                                                alElegir = { cuanto ->
+                                                    cambiar(b.copy(intensidades = b.intensidades + (o.clave to cuanto)))
+                                                    tactil.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                                },
+                                            )
+                                        }
                                     }
                                 }
                                 Paso.NOTA -> PasoNota(b.nota) { cambiar(b.copy(nota = it)) }
@@ -592,7 +622,7 @@ private fun PasoResumen(
                 FilaResumen("Fotos", "${fotosHechas.coerceAtMost(3)} de 3", "cg-fila-fotos", alTocar = if (fotosTocables) ({ alIr(Paso.FOTOS) }) else null)
             }
             HorizontalDivider(Modifier.padding(start = Espacio.m), color = c.separador, thickness = 0.5.dp)
-            val marcado = CheckGuiado.textoSenales(b.senales, b.catalogo)
+            val marcado = CheckGuiado.textoSenales(b.senales, b.catalogo, b.intensidades)
             FilaResumen(
                 CheckGuiado.titulo(Paso.SENALES, b.catalogo),
                 marcado.ifEmpty { sinDato },

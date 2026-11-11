@@ -33,10 +33,12 @@ class CheckGuiadoUiTest : PruebaUi() {
     }
 
     /** La palanca prendida y lo que contesta `mypump_check_guiado_get`. */
-    private fun prender(enCiclo: Boolean = false, senales: String = "null", catalogo: String = "null") {
+    private fun prender(enCiclo: Boolean = false, senales: String = "null", catalogo: String = "null", glp1: Boolean? = null, intensidades: String? = null) {
         servidor.respuestas["mypump_get_app_config"] = """{"check_guiado":true}"""
+        // `glp1` e `intensidades` (v3) van solo si se piden: sin ellos es el servidor de antes.
+        val v3 = (glp1?.let { ""","glp1":$it""" } ?: "") + (intensidades?.let { ""","intensidades":$it""" } ?: "")
         servidor.respuestas["mypump_check_guiado_get"] =
-            """{"activo":true,"en_ciclo":$enCiclo,"semana":"$lunes","catalogo":$catalogo,"senales":$senales}"""
+            """{"activo":true,"en_ciclo":$enCiclo,"semana":"$lunes","catalogo":$catalogo,"senales":$senales$v3}"""
     }
 
     /** Pesos de la semana (para la media) y algo de salud (para «Tu salud, últimos 7 días» del resumen). */
@@ -204,7 +206,7 @@ class CheckGuiadoUiTest : PruebaUi() {
             assertTrue("falta $campo en $check", campo in check)
         }
         val marcado = p.esperar("lo marcado salió") { servidor.a("mypump_check_guiado_guardar").firstOrNull() }
-        assertTrue(marcado, "\"p_respuestas\":{\"catalogo\":\"general\",\"senales\":[\"dolor\",\"animo\"]}" in marcado && "\"p_fecha\":\"$hoy\"" in marcado)
+        assertTrue(marcado, "\"p_respuestas\":{\"catalogo\":\"general\",\"senales\":[\"dolor\",\"animo\"],\"intensidades\":{}}" in marcado && "\"p_fecha\":\"$hoy\"" in marcado)
         assertTrue("el peso ya estaba guardado: no se manda otra vez", servidor.a("mypump_ingest_salud").none { "peso_kg" in it })
         p.tocar(etiqueta("cg-cerrar-listo"))
 
@@ -353,10 +355,8 @@ class CheckGuiadoUiTest : PruebaUi() {
         assertTrue(servidor.llamadas.none { "check_guiado" in it.funcion })
     }
 
-    /** Si el servidor dice `en_ciclo`, la lista es la de ciclo (y su título); lo ya enviado abre en el resumen. */
-    @Test
-    fun enCicloMuestraElCatalogoDeCiclo() {
-        prender(enCiclo = true)
+    /** Hasta el paso de «¿Notaste algo de esto?» de una cuenta en ciclo (sin peso ni fotos). */
+    private fun hastaLosEfectos() {
         abrirRevision()
         p.esperar("pidió el check guiado con la fecha de hoy") { servidor.a("mypump_check_guiado_get").firstOrNull { "\"p_fecha\":\"$hoy\"" in it } }
         p.tocar(etiqueta("check-guiado-abrir"))
@@ -369,38 +369,186 @@ class CheckGuiadoUiTest : PruebaUi() {
         p.tocar(etiqueta("cg-omitir"))
         esperarPaso(CheckGuiado.Paso.SENALES, CheckGuiado.Catalogo.CICLO)
         assertEquals("¿Notaste algo de esto?", titulo())
-        for (o in CheckGuiado.opciones(CheckGuiado.Catalogo.CICLO)) {
-            assertEquals(listOf(o.etiqueta), p.textosBajo(etiqueta("cg-senal-${o.clave}")))
-        }
         assertFalse("la lista general no aparece", p.existe(etiqueta("cg-senal-dolor")))
+    }
+
+    private fun intensidad(efecto: String, cuanto: String) = etiqueta("cg-intensidad-$efecto-$cuanto")
+
+    /**
+     * La cuenta en ciclo de siempre (sin GLP-1): la lista de efectos sin los digestivos, y cada efecto marcado pide cuánto
+     * molesta. Sin elegirlo, «Seguir» no avanza y lo dice; elegido, avanza, el resumen lo muestra y sale en lo que se manda.
+     */
+    @Test
+    fun enCicloCadaEfectoPideCuantoMolesta() {
+        // `glp1` no viene (el servidor de antes) o viene en false: es lo mismo.
+        prender(enCiclo = true)
+        hastaLosEfectos()
+        val lista = CheckGuiado.opciones(CheckGuiado.Catalogo.CICLO, glp1 = false)
+        for (o in lista) assertEquals(listOf(o.etiqueta), p.textosBajo(etiqueta("cg-senal-${o.clave}")))
+        for (clave in CheckGuiado.DIGESTIVAS) assertFalse("sin GLP-1 no se ve $clave", p.existe(etiqueta("cg-senal-$clave")))
+        assertFalse("sin nada marcado no hay intensidades", p.existe(etiqueta("cg-intensidad-acne")))
+
         p.tocar(etiqueta("cg-senal-acne"))
+        p.esperar("acné marcado") { p.prendido(etiqueta("cg-senal-acne")) }
+        // Debajo del efecto: el rótulo y los tres botones con texto, ninguno elegido.
+        assertEquals(listOf(CheckGuiado.ROTULO_INTENSIDAD, "Leve", "Moderado", "Fuerte"), p.textosBajo(etiqueta("cg-intensidad-acne")))
+        for (i in CheckGuiado.INTENSIDADES) assertFalse(p.seleccionado(intensidad("acne", i.clave)))
+        val densidad = InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density
+        val cajas = p.esperar("los tres botones ubicados") { CheckGuiado.INTENSIDADES.map { p.nodo(intensidad("acne", it.clave), ms = 0).boundsInRoot } }
+        assertTrue("alto de 48 o más", cajas.all { it.height >= 48f * densidad - 1f })
+        assertTrue("uno al lado del otro", cajas[0].right <= cajas[1].left && cajas[1].right <= cajas[2].left && cajas[0].top == cajas[2].top)
+        assertTrue("debajo del efecto", cajas[0].top >= p.nodo(etiqueta("cg-senal-acne")).boundsInRoot.bottom)
+
+        // Marcado sin intensidad: «Seguir» está habilitado, pero no avanza y lo dice.
+        assertTrue(p.habilitado(etiqueta("cg-seguir")))
+        assertFalse(p.existe(etiqueta("cg-falta")))
+        p.tocar(etiqueta("cg-seguir"))
+        p.esperar("avisa que falta la intensidad") { p.existe(etiqueta("cg-falta")) && p.textosBajo(etiqueta("cg-falta")) == listOf(CheckGuiado.AVISO_INTENSIDAD) }
+        esperarPaso(CheckGuiado.Paso.SENALES, CheckGuiado.Catalogo.CICLO)
+        Telefono.captura("cg-4-intensidad-falta-claro")
+
+        // Al elegir, el aviso se va y el elegido queda marcado (uno solo).
+        p.tocar(intensidad("acne", "moderado"))
+        p.esperar("moderado elegido") { p.seleccionado(intensidad("acne", "moderado")) }
+        p.esperarQueNoEste(etiqueta("cg-falta"))
+        assertFalse(p.seleccionado(intensidad("acne", "leve")))
+        p.tocar(intensidad("acne", "leve"))
+        p.esperar("cambia a leve") { p.seleccionado(intensidad("acne", "leve")) && !p.seleccionado(intensidad("acne", "moderado")) }
+        p.tocar(intensidad("acne", "moderado"))
+        p.esperar("vuelve a moderado") { p.seleccionado(intensidad("acne", "moderado")) }
+
+        // Otro efecto: el suyo aparte. Desmarcarlo borra su intensidad (al volver a marcarlo, pide de nuevo).
         p.tocar(etiqueta("cg-senal-sueno"))
-        p.esperar("dos marcadas") { p.prendido(etiqueta("cg-senal-acne")) && p.prendido(etiqueta("cg-senal-sueno")) }
+        p.tocar(intensidad("sueno", "fuerte"))
+        p.esperar("fuerte elegido") { p.seleccionado(intensidad("sueno", "fuerte")) }
+        p.tocar(etiqueta("cg-senal-sueno"))
+        p.esperarQueNoEste(etiqueta("cg-intensidad-sueno"))
+        p.tocar(etiqueta("cg-senal-sueno"))
+        p.esperar("vuelve sin intensidad") { p.existe(intensidad("sueno", "fuerte")) && !p.seleccionado(intensidad("sueno", "fuerte")) }
+        p.tocar(intensidad("sueno", "fuerte"))
+        p.esperar("fuerte elegido de nuevo") { p.seleccionado(intensidad("sueno", "fuerte")) }
+
+        p.desplazar(etiqueta("cg-paso-senales"), -4000f)
         p.nodo(etiqueta("cg-senal-acne"))
-        Telefono.captura("cg-4-senales-ciclo-claro")
+        Telefono.captura("cg-4-intensidad-claro")
         Telefono.modoNoche(true)
         p.nodo(etiqueta("cg-senal-acne"))
-        Telefono.captura("cg-4-senales-ciclo-oscuro")
+        Telefono.captura("cg-4-intensidad-oscuro")
         Telefono.modoNoche(false)
         esperarPaso(CheckGuiado.Paso.SENALES, CheckGuiado.Catalogo.CICLO)
-        assertTrue("lo marcado sobrevive al cambio de tema", p.prendido(etiqueta("cg-senal-acne")) && p.prendido(etiqueta("cg-senal-sueno")))
+        assertTrue(
+            "lo marcado y su intensidad sobreviven al cambio de tema",
+            p.prendido(etiqueta("cg-senal-acne")) && p.seleccionado(intensidad("acne", "moderado")) && p.seleccionado(intensidad("sueno", "fuerte")),
+        )
+
+        // Con todo elegido, avanza; el resumen dice «Efecto · Intensidad» y sale en lo que se manda.
         p.tocar(etiqueta("cg-seguir"))
         esperarPaso(CheckGuiado.Paso.NOTA)
         p.tocar(etiqueta("cg-seguir"))
         esperarPaso(CheckGuiado.Paso.RESUMEN)
-        assertTrue("Acné o piel grasa, Insomnio o sudor de noche" in p.textosBajo(etiqueta("cg-fila-senales")))
+        assertTrue("Acné o piel grasa · Moderado, Insomnio o sudor de noche · Fuerte" in p.textosBajo(etiqueta("cg-fila-senales")))
+        Telefono.captura("cg-6-resumen-intensidad-claro")
         p.tocar(etiqueta("cg-enviar"))
         p.nodo(etiqueta("cg-listo"))
         val marcado = p.esperar("lo marcado salió") { servidor.a("mypump_check_guiado_guardar").firstOrNull() }
-        assertTrue(marcado, "\"p_respuestas\":{\"catalogo\":\"ciclo\",\"senales\":[\"acne\",\"sueno\"]}" in marcado)
+        assertTrue(
+            marcado,
+            "\"p_respuestas\":{\"catalogo\":\"ciclo\",\"senales\":[\"acne\",\"sueno\"],\"intensidades\":{\"acne\":\"moderado\",\"sueno\":\"fuerte\"}}" in marcado,
+        )
         p.tocar(etiqueta("cg-cerrar-listo"))
         p.esperarQueNoEste(etiqueta("check-guiado"))
+    }
+
+    /** La cuenta «ciclo con GLP-1»: ve además los cinco efectos digestivos, cada uno con su intensidad. «Nada de esto» borra todo. */
+    @Test
+    fun enCicloConGlp1VeLosEfectosDigestivos() {
+        prender(enCiclo = true, glp1 = true)
+        hastaLosEfectos()
+        val lista = CheckGuiado.opciones(CheckGuiado.Catalogo.CICLO, glp1 = true)
+        assertEquals(CheckGuiado.opciones(CheckGuiado.Catalogo.CICLO), lista)
+        for (o in lista) assertEquals(listOf(o.etiqueta), p.textosBajo(etiqueta("cg-senal-${o.clave}")))
+        assertEquals(listOf("Náuseas"), p.textosBajo(etiqueta("cg-senal-nauseas")))
+
+        p.tocar(etiqueta("cg-senal-nauseas"))
+        p.tocar(etiqueta("cg-senal-acidez"))
+        p.esperar("dos digestivas marcadas") { p.prendido(etiqueta("cg-senal-nauseas")) && p.prendido(etiqueta("cg-senal-acidez")) }
+        // Con una sola intensidad elegida todavía falta la otra.
+        p.tocar(intensidad("nauseas", "moderado"))
+        p.esperar("moderado elegido") { p.seleccionado(intensidad("nauseas", "moderado")) }
+        p.tocar(etiqueta("cg-seguir"))
+        p.esperar("avisa que falta una") { p.existe(etiqueta("cg-falta")) && p.textosBajo(etiqueta("cg-falta")) == listOf(CheckGuiado.AVISO_INTENSIDAD) }
+        esperarPaso(CheckGuiado.Paso.SENALES, CheckGuiado.Catalogo.CICLO)
+
+        // «Nada de esto» desmarca todo y se lleva las intensidades; al volver a marcar, piden de nuevo.
+        p.tocar(etiqueta("cg-senal-ninguno"))
+        p.esperar("solo «Nada de esto»") { p.prendido(etiqueta("cg-senal-ninguno")) && !p.prendido(etiqueta("cg-senal-nauseas")) }
+        assertFalse(p.existe(etiqueta("cg-intensidad-nauseas")))
+        assertFalse("«Nada de esto» no pide intensidad", p.existe(etiqueta("cg-intensidad-ninguno")))
+        p.tocar(etiqueta("cg-senal-nauseas"))
+        p.esperar("náuseas, sin intensidad") { p.existe(intensidad("nauseas", "moderado")) && !p.seleccionado(intensidad("nauseas", "moderado")) }
+        p.tocar(intensidad("nauseas", "moderado"))
+        p.tocar(etiqueta("cg-senal-acidez"))
+        p.tocar(intensidad("acidez", "leve"))
+        p.esperar("las dos elegidas") { p.seleccionado(intensidad("nauseas", "moderado")) && p.seleccionado(intensidad("acidez", "leve")) }
+        p.desplazar(etiqueta("cg-paso-senales"), 4000f)
+        p.quieto(400)
+        Telefono.captura("cg-4-intensidad-glp1-claro")
+        Telefono.modoNoche(true)
+        p.nodo(etiqueta("cg-senal-nauseas"))
+        p.desplazar(etiqueta("cg-paso-senales"), 4000f)
+        p.quieto(400)
+        Telefono.captura("cg-4-intensidad-glp1-oscuro")
+        Telefono.modoNoche(false)
+        esperarPaso(CheckGuiado.Paso.SENALES, CheckGuiado.Catalogo.CICLO)
+
+        p.tocar(etiqueta("cg-seguir"))
+        esperarPaso(CheckGuiado.Paso.NOTA)
+        p.tocar(etiqueta("cg-seguir"))
+        esperarPaso(CheckGuiado.Paso.RESUMEN)
+        assertTrue("Náuseas · Moderado, Acidez o reflujo · Leve" in p.textosBajo(etiqueta("cg-fila-senales")))
+        Telefono.captura("cg-6-resumen-intensidad-glp1-claro")
+        p.tocar(etiqueta("cg-enviar"))
+        p.nodo(etiqueta("cg-listo"))
+        val marcado = p.esperar("lo marcado salió") { servidor.a("mypump_check_guiado_guardar").firstOrNull() }
+        assertTrue(
+            marcado,
+            "\"p_respuestas\":{\"catalogo\":\"ciclo\",\"senales\":[\"nauseas\",\"acidez\"],\"intensidades\":{\"nauseas\":\"moderado\",\"acidez\":\"leve\"}}" in marcado,
+        )
+    }
+
+    /** Con la letra al 200 % los tres botones van apilados, enteros y con texto; elegir funciona igual. */
+    @Test
+    fun laIntensidadConLetraGrandeVaApilada() {
+        Telefono.shell("settings put system font_scale 2.0")
+        prender(enCiclo = true, glp1 = true)
+        hastaLosEfectos()
+        p.tocar(etiqueta("cg-senal-acne"))
+        p.esperar("acné marcado") { p.prendido(etiqueta("cg-senal-acne")) }
+        val cajas = p.esperar("los tres botones ubicados") { CheckGuiado.INTENSIDADES.map { p.nodo(intensidad("acne", it.clave), ms = 0).boundsInRoot } }
+        assertTrue("apilados", cajas[0].bottom <= cajas[1].top && cajas[1].bottom <= cajas[2].top && cajas[0].left == cajas[2].left)
+        p.tocar(etiqueta("cg-seguir"))
+        p.esperar("avisa que falta la intensidad") { p.existe(etiqueta("cg-falta")) }
+        Telefono.captura("cg-4-intensidad-falta-grande")
+        p.tocar(intensidad("acne", "fuerte"))
+        p.esperar("fuerte elegido") { p.seleccionado(intensidad("acne", "fuerte")) }
+        p.esperarQueNoEste(etiqueta("cg-falta"))
+        // El botón principal sigue a la vista, entero, debajo de lo que desliza.
+        val seguir = p.nodo(etiqueta("cg-seguir")).boundsInRoot
+        val pantalla = p.nodo(etiqueta("check-guiado")).boundsInRoot
+        assertTrue("«Seguir» entero en pantalla", seguir.bottom <= pantalla.bottom && seguir.height > 0f)
+        Telefono.captura("cg-4-intensidad-grande")
+        p.tocar(etiqueta("cg-seguir"))
+        esperarPaso(CheckGuiado.Paso.NOTA)
+        p.tocar(etiqueta("cg-seguir"))
+        esperarPaso(CheckGuiado.Paso.RESUMEN)
+        assertTrue("Acné o piel grasa · Fuerte" in p.textosBajo(etiqueta("cg-fila-senales")))
+        Telefono.captura("cg-6-resumen-intensidad-grande")
     }
 
     /** Con las tres fotos de la semana ya subidas no hay paso de fotos; y lo ya enviado abre en el resumen («Cambiar algo»). */
     @Test
     fun conLasFotosSubidasNoHayPasoDeFotosYLoEnviadoAbreEnElResumen() {
-        prender(enCiclo = true, senales = """["retencion"]""", catalogo = "\"ciclo\"")
+        prender(enCiclo = true, senales = """["retencion"]""", catalogo = "\"ciclo\"", intensidades = """{"retencion":"fuerte"}""")
         servidor.ponerFotos(mapOf(lunes to listOf("frente", "perfil", "espalda")))
         servidor.respuestas["mypump_get_checkin_semana"] =
             """[{"semana_lunes":"$lunes","energia":4,"descanso":3,"hambre":2,"adherencia":5,"nota":"todo bien"}]"""
@@ -413,7 +561,9 @@ class CheckGuiadoUiTest : PruebaUi() {
         esperarPaso(CheckGuiado.Paso.RESUMEN)
         assertEquals("Paso 5 de 5", avance())
         assertTrue("3 de 3" in p.textosBajo(etiqueta("cg-fila-fotos")))
-        assertTrue("Retención de líquido o hinchazón" in p.textosBajo(etiqueta("cg-fila-senales")))
+        // v3: lo enviado vuelve con su intensidad.
+        assertTrue("Retención de líquido o hinchazón · Fuerte" in p.textosBajo(etiqueta("cg-fila-senales")))
+        assertFalse(p.existe(etiqueta("cg-falta")))
         assertTrue("todo bien" in p.textosBajo(etiqueta("cg-fila-nota")))
         assertEquals(listOf("Actualizar mi check"), p.textosBajo(etiqueta("cg-enviar")))
         // Abrir y cerrar sin tocar nada no deja un borrador: sigue «Enviado».

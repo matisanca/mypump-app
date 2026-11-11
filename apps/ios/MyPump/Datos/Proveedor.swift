@@ -227,7 +227,7 @@ private struct GimnasioDePrueba: Transporte {
 #endif
 
 #if DEBUG
-/// `-checkGuiadoDePrueba general|ciclo|apagado|enviado|sinServidor`: la palanca `check_guiado`, el check de la semana y lo
+/// `-checkGuiadoDePrueba general|ciclo|cicloGlp1|apagado|enviado|sinServidor` (`cicloGlp1`: además usa un GLP-1): la palanca `check_guiado`, el check de la semana y lo
 /// marcado los contesta este doble en memoria (sin red); la cuenta y el plan salen de las muestras. `enviado` arranca con
 /// el check y las tres fotos de la semana ya subidos; `sinServidor`, con la palanca prendida y la propuesta sin aplicar.
 private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
@@ -236,6 +236,7 @@ private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
     private var check: String?
     private var senales: String = "null"
     private var catalogo: String = "null"
+    private var intensidades: String = "null"
     private var pesos: [String: Double] = [:]
 
     init(caso: String) {
@@ -255,11 +256,12 @@ private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
             switch f {
             case "mypump_get_app_config": return #"{"check_guiado":\#(caso != "apagado")}"#
             case "mypump_check_guiado_get":
-                return #"{"activo":true,"en_ciclo":\#(caso == "ciclo"),"semana":"\#(lunes)","catalogo":\#(catalogo),"senales":\#(senales)}"#
+                return #"{"activo":true,"en_ciclo":\#(caso.hasPrefix("ciclo")),"glp1":\#(caso == "cicloGlp1"),"semana":"\#(lunes)","catalogo":\#(catalogo),"senales":\#(senales),"intensidades":\#(intensidades)}"#
             case "mypump_check_guiado_guardar":
                 if let r = cuerpo["p_respuestas"] as? [String: Any], let d = try? JSONSerialization.data(withJSONObject: r["senales"] ?? []) {
                     senales = String(decoding: d, as: UTF8.self)
                     catalogo = "\"\(r["catalogo"] as? String ?? "general")\""
+                    intensidades = (try? JSONSerialization.data(withJSONObject: r["intensidades"] ?? [:])).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
                 }
                 return "true"
             case "mypump_get_checkin_semana": return check.map { "[\($0)]" } ?? "[]"

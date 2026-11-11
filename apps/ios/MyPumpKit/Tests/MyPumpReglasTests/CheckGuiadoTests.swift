@@ -45,6 +45,7 @@ struct CheckGuiadoTests {
         var textos: [String] = []
         for c in [CheckGuiado.Catalogo.general, .ciclo] {
             textos += CheckGuiado.opciones(c).map(\.etiqueta)
+            textos += CheckGuiado.intensidades.map(\.etiqueta) + [CheckGuiado.preguntaIntensidad, CheckGuiado.avisoIntensidad]
             for p in CheckGuiado.Paso.allCases { textos += [CheckGuiado.titulo(p, catalogo: c), CheckGuiado.apoyo(p, catalogo: c), CheckGuiado.omitir(p) ?? ""] }
         }
         for e in [CheckGuiado.Estado.sinEmpezar, .aMedias, .enviado, .enviadoSinFotos] { textos += [CheckGuiado.textoTarjeta(e), CheckGuiado.botonTarjeta(e)] }
@@ -70,8 +71,32 @@ struct CheckGuiadoTests {
             #expect(CheckGuiado.normalizar(c["senales"] as! [String], Self.cat(c["catalogo"])!) == c["queda"] as! [String])
         }
         for c in Self.casos("textoSenales") {
-            #expect(CheckGuiado.textoSenales(c["senales"] as! [String], Self.cat(c["catalogo"])!) == c["texto"] as! String)
+            #expect(CheckGuiado.textoSenales(c["senales"] as! [String], Self.cat(c["catalogo"])!,
+                                             intensidades: c["intensidades"] as! [String: String]) == c["texto"] as! String)
         }
+    }
+
+    /// Los digestivos se muestran solo con GLP-1; cada efecto marcado lleva cuánto molesta (la lista general, no).
+    @Test func digestivasEIntensidades() {
+        #expect(CheckGuiado.digestivas == Self.v["digestivas"] as! [String])
+        for c in Self.casos("opcionesCiclo") {
+            #expect(CheckGuiado.opciones(.ciclo, glp1: c["glp1"] as! Bool).map(\.clave) == c["claves"] as! [String])
+        }
+        #expect(CheckGuiado.opciones(.general, glp1: false) == CheckGuiado.opciones(.general))
+        let i = Self.v["intensidades"] as! [String: Any]
+        #expect(CheckGuiado.intensidades.map { [$0.clave, $0.etiqueta] } == i["opciones"] as! [[String]])
+        #expect(CheckGuiado.avisoIntensidad == i["aviso"] as! String)
+        #expect(CheckGuiado.preguntaIntensidad == i["pregunta"] as! String)
+        for (n, c) in Self.casos("normalizarIntensidades").enumerated() {
+            #expect(CheckGuiado.normalizarIntensidades(c["senales"] as! [String], c["intensidades"] as! [String: String], Self.cat(c["catalogo"])!)
+                    == c["queda"] as! [String: String], "caso \(n)")
+        }
+        for (n, c) in Self.casos("faltaIntensidad").enumerated() {
+            #expect(CheckGuiado.faltaIntensidad(Self.borrador(c["borrador"])!) == c["falta"] as! Bool, "caso \(n)")
+        }
+        // Un borrador guardado antes de las intensidades se lee igual.
+        let viejo = #"{"semana":"2026-11-09","paso":"nota","peso":"","valores":{},"catalogo":"ciclo","senales":["acne"],"nota":""}"#
+        #expect(try! JSONDecoder().decode(B.self, from: Data(viejo.utf8)).intensidades == [:])
     }
 
     @Test func puedeSeguirYQueFalta() {
@@ -91,7 +116,8 @@ struct CheckGuiadoTests {
             let e = c["enviado"] as? [String: Any]
             let r = CheckGuiado.abrir(guardado: Self.borrador(c["guardado"]), semana: c["semana"] as! String, catalogo: Self.cat(c["catalogo"])!,
                                       enviado: e.map { ($0["valores"] as! [String: Int], $0["nota"] as! String) },
-                                      senalesEnviadas: c["senalesEnviadas"] as? [String], catalogoEnviado: Self.cat(c["catalogoEnviado"]))
+                                      senalesEnviadas: c["senalesEnviadas"] as? [String], catalogoEnviado: Self.cat(c["catalogoEnviado"]),
+                                      intensidadesEnviadas: c["intensidadesEnviadas"] as? [String: String])
             #expect(r == Self.borrador(c["queda"]), "\(c["caso"] as! String)")
         }
         for c in Self.casos("retomar") {

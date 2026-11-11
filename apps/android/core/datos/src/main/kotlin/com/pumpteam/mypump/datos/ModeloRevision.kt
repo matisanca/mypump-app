@@ -24,21 +24,32 @@ import kotlinx.serialization.json.intOrNull
 /** Un check de la semana como lo ve el cliente: el guardado (o el optimista recién mandado). */
 data class Checkin(val valores: Map<String, Int> = emptyMap(), val nota: String = "")
 
-/** Lo que la app sabe del check guiado por el servidor: si está en ciclo y lo que ya marcó esta semana. */
+/**
+ * Lo que la app sabe del check guiado por el servidor: si está en ciclo, si usa un GLP-1 (ve los efectos digestivos) y lo
+ * que ya marcó esta semana, con cuánto le molesta cada cosa.
+ */
 data class GuiadoServidor(
     val enCiclo: Boolean,
     val semana: String? = null,
     val catalogo: CheckGuiado.Catalogo? = null,
     val senales: List<String>? = null,
+    val glp1: Boolean = false,
+    val intensidades: Map<String, String>? = null,
 ) {
     fun aValor(): ValorJson = ValorJson.objeto(
         "enCiclo" to ValorJson.Booleano(enCiclo),
         "semana" to (semana?.let { texto(it) } ?: ValorJson.Nulo),
         "catalogo" to (catalogo?.let { texto(it.clave) } ?: ValorJson.Nulo),
         "senales" to (senales?.let { l -> ValorJson.Lista(l.map { texto(it) }) } ?: ValorJson.Nulo),
+        "glp1" to ValorJson.Booleano(glp1),
+        "intensidades" to (intensidades?.let { m -> ValorJson.Objeto(m.mapValues { texto(it.value) }) } ?: ValorJson.Nulo),
     )
 
     companion object {
+        /** Tolerante: si no es un objeto de textos (o falta, como en lo guardado por la versión anterior), no hay. */
+        fun intensidadesDe(j: ValorJson?): Map<String, String>? =
+            (j as? ValorJson.Objeto)?.campos?.mapNotNull { (k, v) -> v.comoTexto?.let { k to it } }?.toMap()
+
         fun desde(j: ValorJson?): GuiadoServidor? {
             val o = j as? ValorJson.Objeto ?: return null
             return GuiadoServidor(
@@ -46,6 +57,8 @@ data class GuiadoServidor(
                 semana = o["semana"]?.comoTexto,
                 catalogo = CheckGuiado.Catalogo.desde(o["catalogo"]?.comoTexto),
                 senales = (o["senales"] as? ValorJson.Lista)?.elementos?.mapNotNull { it.comoTexto },
+                glp1 = o["glp1"] == ValorJson.Booleano(true),
+                intensidades = intensidadesDe(o["intensidades"]),
             )
         }
     }
@@ -210,7 +223,11 @@ class ModeloRevision(
         val op = pendientes.values.maxByOrNull { it.ts } ?: return
         val r = op.payload["respuestas"] ?: return
         val senales = (r["senales"] as? ValorJson.Lista)?.elementos?.mapNotNull { it.comoTexto } ?: return
-        _guiado.value = GuiadoServidor(_guiado.value?.enCiclo ?: false, semana, CheckGuiado.Catalogo.desde(r["catalogo"]?.comoTexto), senales)
+        val g = _guiado.value
+        _guiado.value = GuiadoServidor(
+            g?.enCiclo ?: false, semana, CheckGuiado.Catalogo.desde(r["catalogo"]?.comoTexto), senales,
+            glp1 = g?.glp1 ?: false, intensidades = GuiadoServidor.intensidadesDe(r["intensidades"]),
+        )
     }
 
     private suspend fun aplicarCheckPendiente() {
@@ -259,6 +276,9 @@ class ModeloRevision(
                     semana = j["semana"]?.comoTexto,
                     catalogo = CheckGuiado.Catalogo.desde(j["catalogo"]?.comoTexto),
                     senales = (j["senales"] as? ValorJson.Lista)?.elementos?.mapNotNull { it.comoTexto },
+                    // Sin el campo (el servidor de antes) o en false, los efectos digestivos no se muestran.
+                    glp1 = j["glp1"] == ValorJson.Booleano(true),
+                    intensidades = GuiadoServidor.intensidadesDe(j["intensidades"]),
                 )
             }
             is Resultado.Falla -> if (r.error.funcionInexistente) null else return
@@ -271,6 +291,9 @@ class ModeloRevision(
     /** La lista de «¿Notaste algo?» que le toca. */
     val catalogoGuiado: CheckGuiado.Catalogo get() = CheckGuiado.Catalogo.de(_guiado.value?.enCiclo ?: false)
 
+    /** Si usa un GLP-1: la lista de efectos le muestra también los digestivos. */
+    val glp1Guiado: Boolean get() = _guiado.value?.glp1 ?: false
+
     /** El borrador con el que se abre el check guiado: el guardado de esta semana o uno nuevo con lo ya enviado. */
     fun abrirGuiado(): CheckGuiado.Borrador {
         val g = _guiado.value
@@ -282,6 +305,7 @@ class ModeloRevision(
             enviado = if (checkinEnviado) _checkin.value?.let { CheckGuiado.Enviado(it.valores, it.nota) } else null,
             senalesEnviadas = if (deEstaSemana) g?.senales else null,
             catalogoEnviado = if (deEstaSemana) g?.catalogo else null,
+            intensidadesEnviadas = if (deEstaSemana) g?.intensidades else null,
         )
         // El peso del borrador vale solo si es el de hoy: uno de otro día no se manda con la fecha de hoy.
         return if (b.peso.isNotBlank() && PesoCorporal.leer(b.peso) != pesoDeHoy) b.copy(peso = "") else b
@@ -325,15 +349,22 @@ class ModeloRevision(
         if (kilos.isNotEmpty()) guardarPesoGuiado(kilos)
         val dia = diaDeHoy()
         val senales = CheckGuiado.normalizar(b.senales, b.catalogo)
+        // Va siempre, ya normalizado: vacío en la lista general o con «Nada de esto».
+        val intensidades = CheckGuiado.normalizarIntensidades(b.senales, b.intensidades, b.catalogo)
         outbox?.encolar(
             KIND_GUIADO,
             ValorJson.objeto(
                 "fecha" to texto(dia),
-                "respuestas" to ValorJson.objeto("catalogo" to texto(b.catalogo.clave), "senales" to ValorJson.Lista(senales.map { texto(it) })),
+                "respuestas" to ValorJson.objeto(
+                    "catalogo" to texto(b.catalogo.clave),
+                    "senales" to ValorJson.Lista(senales.map { texto(it) }),
+                    "intensidades" to ValorJson.Objeto(intensidades.mapValues { texto(it.value) }),
+                ),
             ),
             "${KIND_GUIADO}_$dia",
         )
-        val nuevo = GuiadoServidor(_guiado.value?.enCiclo ?: false, FotosProgreso.lunes(dia), b.catalogo, senales)
+        val g = _guiado.value
+        val nuevo = GuiadoServidor(g?.enCiclo ?: false, FotosProgreso.lunes(dia), b.catalogo, senales, glp1 = g?.glp1 ?: false, intensidades = intensidades)
         _guiado.value = nuevo
         disco?.guardar(ARCHIVO_GUIADO, nuevo.aValor())
         descartarBorrador()

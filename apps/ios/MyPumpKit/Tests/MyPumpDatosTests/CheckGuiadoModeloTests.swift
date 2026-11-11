@@ -62,14 +62,20 @@ struct CheckGuiadoModeloTests {
 
     @Test func prendidoLeeSiEstaEnCicloYLoYaMarcado() async {
         let s = Servidor()
-        s.guiado = #"{"activo":true,"en_ciclo":true,"semana":"2026-11-09","catalogo":"ciclo","senales":["acne"]}"#
+        s.guiado = #"{"activo":true,"en_ciclo":true,"semana":"2026-11-09","catalogo":"ciclo","senales":["acne"],"glp1":true,"intensidades":{"acne":"moderado"}}"#
         s.check = #"[{"semana_lunes":"2026-11-09","energia":4,"descanso":3,"hambre":2,"adherencia":5,"nota":"bien"}]"#
         let (m, _, _) = armar(s)
         await m.cargarRevision()
         #expect(s.cuerpos["mypump_check_guiado_get"]?["p_fecha"] == .texto(hoy))
         #expect(m.catalogoGuiado == .ciclo)
         let b = m.abrirGuiado()
-        #expect(b == CheckGuiado.Borrador(semana: "2026-11-09", paso: .resumen, valores: llenas, catalogo: .ciclo, senales: ["acne"], nota: "bien"))
+        #expect(b == CheckGuiado.Borrador(semana: "2026-11-09", paso: .resumen, valores: llenas, catalogo: .ciclo, senales: ["acne"],
+                                          intensidades: ["acne": "moderado"], nota: "bien"))
+        // Los digestivos, solo si el servidor dice que usa un GLP-1; sin el campo (o en false), no.
+        #expect(m.glp1Guiado)
+        s.guiado = #"{"activo":true,"en_ciclo":true,"semana":"2026-11-09","catalogo":null,"senales":null}"#
+        await m.cargarRevision()
+        #expect(!m.glp1Guiado)
     }
 
     @Test func sinLaFuncionOConLaPalancaApagadaEnElServidorEsLaListaGeneral() async {
@@ -127,6 +133,15 @@ struct CheckGuiadoModeloTests {
         #expect(m.checkinEnviado)
         #expect(m.borradorGuiado == nil)
         #expect(m.guiado?.senales == ["acne", "sueno"])
+        #expect(m.guiado?.intensidades == ["acne": "leve", "sueno": "moderado"])
+    }
+
+    /// Un efecto marcado sin su intensidad no sale: ni el check de siempre ni lo marcado.
+    @Test func sinIntensidadNoSaleNada() async {
+        let (m, cola, _) = armar(Servidor())
+        let b = CheckGuiado.Borrador(semana: "2026-11-09", valores: llenas, catalogo: .ciclo, senales: ["acne", "nauseas"], intensidades: ["acne": "leve"])
+        #expect(await m.enviarGuiado(b) == CheckGuiado.avisoIntensidad)
+        #expect(await cola.operaciones.isEmpty)
     }
 
     @Test func laColaLlamaALaFuncionConLosParametrosDelContrato() async {
@@ -137,7 +152,7 @@ struct CheckGuiadoModeloTests {
         #expect(t.llamadas.contains("mypump_guardar_checkin"))
         let c = s.cuerpos["mypump_check_guiado_guardar"]
         #expect(c?["p_fecha"] == .texto(hoy))
-        #expect(c?["p_respuestas"] == .objeto(["catalogo": .texto("general"), "senales": .lista([.texto("ninguno")])]))
+        #expect(c?["p_respuestas"] == .objeto(["catalogo": .texto("general"), "senales": .lista([.texto("ninguno")]), "intensidades": .objeto([:])]))
         #expect(c?["p_token"] == .texto("AAAAAAAAAAAAAAAAAAAA"))
         #expect(await cola.operaciones.isEmpty)
         // El check de siempre no lleva ni un parámetro más.
