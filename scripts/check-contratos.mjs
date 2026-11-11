@@ -54,6 +54,15 @@ firmas.set('mypump_gimnasio_get', new Set(['p_token']));
 firmas.set('mypump_gimnasio_nuevo', new Set(['p_token', 'p_modo']));
 firmas.set('mypump_gimnasio_enviar', new Set(['p_token', 'p_id', 'p_no_hay', 'p_nota', 'p_quitar']));
 firmas.set('mypump_gimnasio_responder', new Set(['p_token', 'p_id', 'p_respuestas']));
+// Cola B de la 2.3.0: propuestas sin aplicar (supabase/propuestas/nativa_fin_plan.sql, nativa_compras_pais.sql y nativa_casa.sql, rama
+// nativa-cola-b). Con la palanca apagada no se llaman; si no existen, la web no muestra nada.
+firmas.set('mypump_fin_plan_get', new Set(['p_token']));
+firmas.set('mypump_fin_plan_visto', new Set(['p_token']));
+firmas.set('mypump_fin_plan_pedir', new Set(['p_token', 'p_id', 'p_respuestas']));
+firmas.set('mypump_compras_get', new Set(['p_token']));
+firmas.set('mypump_casa_get', new Set(['p_token']));
+firmas.set('mypump_casa_elegir', new Set(['p_token', 'p_casa']));
+firmas.set('mypump_casa_enviar', new Set(['p_token', 'p_id', 'p_equipos', 'p_sin_equipo', 'p_nota']));
 // Técnica por video: propuesta sin aplicar (supabase/propuestas/nativa_tecnica.sql, rama nativa-tecnica).
 firmas.set('mypump_tecnica_get', new Set(['p_token']));
 firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ejercicio_nombre', 'p_nota']));
