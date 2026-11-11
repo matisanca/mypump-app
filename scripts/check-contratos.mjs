@@ -69,6 +69,11 @@ firmas.set('mypump_contrato_get', new Set(['p_token']));
 firmas.set('mypump_tecnica_get', new Set(['p_token']));
 // Devolución de Mati: propuesta sin aplicar (supabase/propuestas/nativa_devolucion_semanal.sql, rama nativa-devolucion).
 firmas.set('mypump_devolucion_get', new Set(['p_token']));
+// Récords y logros, y la lista previa a la videollamada: propuesta sin aplicar (supabase/propuestas/nativa_wins_lista_previa.sql, rama nativa-cola-a).
+firmas.set('mypump_wins_estado', new Set(['p_token']));
+firmas.set('mypump_wins_permiso', new Set(['p_token', 'p_otorga', 'p_version', 'p_plataforma']));
+firmas.set('mypump_wins_registrar', new Set(['p_token', 'p_id', 'p_tipo', 'p_clave', 'p_dia', 'p_datos']));
+firmas.set('mypump_lista_previa', new Set(['p_token']));
 firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ejercicio_nombre', 'p_nota']));
 firmas.set('mypump_tecnica_cancelar', new Set(['p_token', 'p_id']));
 // Fotos y audios en el chat: propuesta sin aplicar (supabase/propuestas/nativa_chat_adjuntos.sql, rama nativa-chat-adjuntos).

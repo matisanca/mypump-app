@@ -1737,7 +1737,7 @@
   // «¿Cómo entro?» abierto o cerrado, por cliente (los repintados no lo cierran).
   const ayudaAbierta = new Map();
 
-  function htmlVideollamada(m, r, ahora) {
+  function htmlVideollamada(m, r, ahora, enEntreno) {
     const ag = m.agenda, desdeMin = ag.entrarDesdeMin;
     const e = RA.estadoEntrar(r, ahora, desdeMin);
     const activa = e.tipo === 'habilitado';
@@ -1778,7 +1778,15 @@
         cambiar ? `<button type="button" class="vl-sec" data-vl="cambiar">${VI.cambiar}<span>Cambiar horario</span></button>` : ''}</div>`;
       if (!cambiar) h += `<p class="vl-nota">${esc(ag.textos.cambiar)}</p>`;
     }
-    return h + '</section>';
+    return h + (enEntreno ? extraDeVideollamada(r) : '') + '</section>';
+  }
+
+  // Lo que la página cuelga DENTRO de la tarjeta de la videollamada de Entreno, debajo de lo que ya tiene (cola A de la
+  // 2.3.0: la lista «Antes de la videollamada», solo en la de comienzo; la copia del final de la guía no la lleva). La función devuelve HTML ya escapado, o ''.
+  let _extraVideollamada = null;
+  function extraDeVideollamada(r) {
+    if (typeof _extraVideollamada !== 'function') return '';
+    try { const x = _extraVideollamada({ tipo: r.tipo === 'revision' ? 'revision' : 'comienzo' }); return typeof x === 'string' ? x : ''; } catch (_) { return ''; }
   }
 
   // «Agendá tu videollamada» (palanca): arriba de Entreno y al final de la guía.
@@ -1796,7 +1804,7 @@
   // con la palanca y horarios libres, «Agendá tu videollamada».
   function htmlVideollamadaEntreno(m) {
     const r = m.reservaTarjeta();
-    if (r) return htmlVideollamada(m, r, new Date());
+    if (r) return htmlVideollamada(m, r, new Date(), true);
     if (palancaElegirHorario() && m.resumen && m.resumen.ok !== false && m.estado !== 'oculta' && m.vistaAgenda.tipo === 'franjas') return htmlAgendar(m);
     return '';
   }
@@ -3250,6 +3258,19 @@
     },
     cerrar() { cerrarGuia(); },
     abierta() { return !!vistaAbierta; },
+
+    // La videollamada que hoy muestra la tarjeta fija de Entreno: {tipo: 'comienzo' | 'revision'}, o null si no hay.
+    videollamadaEnTarjeta(token) {
+      if (!tokenValido(token) || esDemo()) return null;
+      const r = modelo(token).reservaTarjeta();
+      return r ? { tipo: r.tipo === 'revision' ? 'revision' : 'comienzo' } : null;
+    },
+    // Cuelga contenido dentro de esa tarjeta (ver extraDeVideollamada) y la repinta. Con null, lo saca.
+    ponerExtraVideollamada(fn) {
+      _extraVideollamada = typeof fn === 'function' ? fn : null;
+      repintarTarjetas();
+    },
+    repintarTarjetas() { repintarTarjetas(); },
 
     // La bienvenida de la primera vez: con la tarjeta en Entreno, sin ningún
     // video visto y una sola vez por cliente. `opciones.nombre`: el nombre de

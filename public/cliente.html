@@ -23,6 +23,8 @@
 <link rel="stylesheet" href="/css/devolucion.css">
 <link rel="stylesheet" href="/css/feedback.css">
 <link rel="stylesheet" href="/css/estudios.css">
+<link rel="stylesheet" href="/css/wins.css">
+<link rel="stylesheet" href="/css/lista-previa.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--font-size-base);line-height:var(--line-height-normal);-webkit-font-smoothing:antialiased}
@@ -2048,6 +2050,9 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/recorrido-ui.js"></script>
 <script src="/js/compras.js"></script>
 <script src="/js/compras-ui.js"></script>
+<script src="/js/wins.js"></script>
+<script src="/js/lista-previa.js"></script>
+<script src="/js/demo-historial.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -2291,7 +2296,10 @@ function _devPalanca(cfg) {
 function _pintarDevolucion() {
   const el = document.getElementById('rv-devolucion');
   if (!el) return;
-  const h = window.Devolucion && !(DATA && DATA._isDemo) ? window.Devolucion.html(window.Devolucion.estado) : '';
+  // En la demo sin cuenta, las devoluciones de ejemplo (public/demo/historial.json).
+  const h = !window.Devolucion ? ''
+    : _demoHist ? window.Devolucion.html(window.Devolucion.decodificar(_demoHist.devoluciones))
+    : !(DATA && DATA._isDemo) ? window.Devolucion.html(window.Devolucion.estado) : '';
   if (el.innerHTML !== h) el.innerHTML = h;
   el.hidden = !h;
 }
@@ -2400,6 +2408,158 @@ async function _comprasRefrescar() {
   await window.ComprasUI.refrescar(!!STATE.supl);
   if (STATE.scene === 'supl') renderSupl();
 }
+/* La demo sin cuenta («Ver demo») con historia: ocho semanas inventadas de public/demo/historial.json (js/demo-historial.js),
+   con los días relativos a hoy. Solo con ?demo=1 (que nunca carga los datos de una cuenta): no se mezcla con datos reales.
+   Sin red y sin escribir nada. */
+let _demoHist = null;
+async function _demoCargarHistoria() {
+  if (!DEMO || !window.DemoHistorial) return;
+  try { _demoHist = await window.DemoHistorial.cargar(hoyLocal(), claveEjercicio); } catch (_) { _demoHist = null; }
+  if (!_demoHist) return;
+  STATE.salud = _demoHist.salud.slice();
+  STATE.chat.msgs = _demoHist.chat.slice();
+  STATE.chat.hayMas = false;
+}
+/* «Récords y logros» (js/wins.js), detrás de `wins_app`. Apagada, o sin el servidor nuevo, no se festeja ni se llama a nada.
+   Lo único que se sigue viendo con la palanca apagada es el interruptor de Mis datos de quien ya dio el permiso, para sacarlo. */
+function _winsPalanca(cfg) {
+  if (!window.Wins || !TOKEN || DEMO) return;
+  window.Wins.configurar({
+    token: TOKEN,
+    rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
+    alCambiar: () => { if (STATE.scene === 'misdatos') renderMisDatos(); },
+  });
+  // La cola local se vacía al abrir (después de leer el estado) y al volver al frente.
+  if (!_winsEnganchado) {
+    _winsEnganchado = true;
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') window.Wins.vaciar().catch(() => {}); });
+  }
+  window.Wins.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.wins_app === true : null).catch(() => {});
+}
+let _winsEnganchado = false;
+/* Las series raras que se confirmaron igual, por día: para que una recarga no las vuelva un récord. Solo en este navegador. */
+const _winsDudosasClave = () => 'mypump-wins-dudosas-' + (window.Wins ? window.Wins.cuenta(TOKEN) : '');
+function _winsDudosas() {
+  try { const j = JSON.parse(localStorage.getItem(_winsDudosasClave()) || 'null'); return j && j.dia === hoyLocal() && Array.isArray(j.series) ? j.series : []; } catch (_) { return []; }
+}
+function _winsDudosa(exId, idx, dudosa) {
+  if (DEMO) return;
+  try {
+    const k = exId + ':' + idx, antes = _winsDudosas();
+    if (!dudosa && !antes.includes(k)) return;
+    const series = antes.filter(x => x !== k); if (dudosa) series.push(k);
+    localStorage.setItem(_winsDudosasClave(), JSON.stringify({ dia: hoyLocal(), series }));
+  } catch (_) {}
+}
+/* Los récords del día, al cerrar la sesión: por ejercicio (misma clave en todo el día), las marcas de días anteriores
+   contra las series de hoy confirmadas y verosímiles. La regla es Wins.records (vectores comunes con las apps). */
+function _winsDelDia() {
+  if (!window.Wins || !DATA || !DATA.dia) return [];
+  const hoy = hoyLocal();
+  const porClave = new Map();
+  for (const ex of (DATA.dia.bloques || []).flatMap(b => b.ejercicios || [])) {
+    // La preparación no cuenta (ni anula al mismo ejercicio hecho después como trabajo).
+    if (ex.tipo === 'calentamiento') continue;
+    const ef = getEffectiveEx(ex);
+    const clave = claveEjercicio(ef.nombre);
+    if (!clave) continue;
+    let e = porClave.get(clave);
+    if (!e) {
+      const filas = Array.isArray(DATA.historico_por_ejercicio[ex.id]) ? DATA.historico_por_ejercicio[ex.id] : [];
+      e = {
+        clave, nombre: ef.nombre, hoy: [], sin_kg: false,
+        suficiente: ReglasEntreno.historiaSuficiente(filas.map(r => fechaLocalDe(r.registrado_en)).filter(Boolean), hoy),
+        anteriores: filas.filter(r => fechaLocalDe(r.registrado_en) !== hoy)
+          .map(r => ({ kg: Number(r.peso_kg), reps: Number(r.reps_realizadas != null ? r.reps_realizadas : r.reps) })),
+      };
+      porClave.set(clave, e);
+    }
+    if (exNoKg(ef) || _csCardioPorTiempo(ef)) e.sin_kg = true;
+    for (const st of ((STATE.session[ex.id] && STATE.session[ex.id].sets) || [])) {
+      // Solo las confirmadas, verosímiles y hechas con este ejercicio (no una registrada con otro nombre).
+      const hechaCon = st.nombreRegistrado || st.hechaCon;
+      if (!st.confirmed || st.dudosa || (hechaCon && hechaCon !== ef.nombre)) continue;
+      e.hoy.push({ kg: parseFloat(String(st.kg).replace(',', '.')), reps: parseInt(st.reps, 10) });
+    }
+  }
+  return window.Wins.records([...porClave.values()]);
+}
+/* El festejo, después del cierre exitoso. En la demo se festeja igual y no se llama a nada. */
+function _winsFestejar() {
+  try {
+    const demo = !!_demoHist;
+    if (!window.Wins || (!demo && ((DATA && DATA._isDemo) || !window.Wins.puedeFestejar()))) return;
+    const lista = _winsDelDia();
+    if (lista.length) window.Wins.abrirFestejo(lista, { demo, dia: hoyLocal() });
+  } catch (e) { console.warn('[wins]', e); }
+}
+/* «Antes de la videollamada» (js/lista-previa.js), detrás de `lista_previa`: arriba de Entreno, siempre desplegada.
+   Con la tarjeta de la videollamada de comienzo, va DENTRO de esa tarjeta (la pinta js/guia.js con este HTML); sin tarjeta,
+   es una tarjeta propia en ese lugar; con una videollamada de revisión, no va. En la demo, la de ejemplo, sola. */
+const _listaHost = document.createElement('div');
+_listaHost.id = 'listaPreviaHost';
+_listaHost.hidden = true;
+function _listaSalida() {
+  if (!window.ListaPrevia) return null;
+  if (_demoHist) {
+    // La demo no tiene guía: esas filas se ven, pero no son un botón que no lleva a nada.
+    const s = window.ListaPrevia.lista(_demoHist.listaPrevia);
+    return s && { ...s, items: s.items.map(i => (i.destino === 'guia' ? { ...i, destino: null } : i)) };
+  }
+  // Una cuenta real sin rutina publicada también la ve (es quien espera su videollamada); solo la demo sin cuenta no pide nada.
+  if (!TOKEN || DEMO) return null;
+  return window.ListaPrevia.salida;
+}
+function _listaPintar() {
+  let h = '';
+  try {
+    const salida = _listaSalida();
+    const tarjeta = !_demoHist && window.MyPumpGuia && window.MyPumpGuia.videollamadaEnTarjeta ? window.MyPumpGuia.videollamadaEnTarjeta(TOKEN) : null;
+    if (salida && !tarjeta) h = window.ListaPrevia.html(salida);
+  } catch (_) { h = ''; }
+  if (_listaHost.dataset.previo !== h) { _listaHost.innerHTML = h; _listaHost.dataset.previo = h; }
+  _listaHost.hidden = !h;
+  const r = document.getElementById('scene-train');
+  if (r && r.firstChild !== _listaHost) r.insertBefore(_listaHost, r.firstChild);
+  try { if (window.MyPumpGuia && window.MyPumpGuia.repintarTarjetas) window.MyPumpGuia.repintarTarjetas(); } catch (_) {}
+}
+function _listaRefrescar() {
+  if (!window.ListaPrevia || !TOKEN || DEMO || !window.ListaPrevia.prendida) return;
+  if (STATE.scene !== 'train' || document.visibilityState !== 'visible') return;
+  window.ListaPrevia.refrescar().catch(() => {});
+}
+let _listaEnganchada = false;
+function _listaPalanca(cfg) {
+  if (!window.ListaPrevia || !TOKEN || DEMO) return;
+  window.ListaPrevia.configurar({
+    token: TOKEN,
+    rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
+    alCambiar: () => _listaPintar(),
+  });
+  if (!_listaEnganchada && window.MyPumpGuia && window.MyPumpGuia.ponerExtraVideollamada) {
+    _listaEnganchada = true;
+    // Dentro de la tarjeta de la videollamada de comienzo. En la de revisión, nada.
+    window.MyPumpGuia.ponerExtraVideollamada(({ tipo }) => {
+      const s = tipo === 'comienzo' ? _listaSalida() : null;
+      return s ? window.ListaPrevia.html(s, { enTarjeta: true }) : '';
+    });
+    // Cuando cambia la guía o la agenda (un video visto, una duda, la videollamada agendada).
+    window.MyPumpGuia.alCambiar(() => { _listaPintar(); _listaRefrescar(); });
+    document.addEventListener('visibilitychange', _listaRefrescar);
+  }
+  window.ListaPrevia.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.lista_previa === true : null).then(_listaPintar).catch(() => {});
+}
+// Una fila con destino lleva directo: la guía de videos o las fotos de Revisión.
+document.addEventListener('click', (ev) => {
+  const b = ev.target && ev.target.closest ? ev.target.closest('[data-lp-destino]') : null;
+  if (!b) return;
+  const d = b.getAttribute('data-lp-destino');
+  if (d === 'guia') { try { if (TOKEN && window.MyPumpGuia) window.MyPumpGuia.abrir(TOKEN); } catch (_) {} }
+  else if (d === 'fotos') {
+    setScene('revision');
+    setTimeout(() => { const f = document.getElementById('myday-fotos'); if (f) f.scrollIntoView({ block: 'start' }); }, 60);
+  }
+});
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
@@ -2414,6 +2574,8 @@ async function leerPalancaWeb230() {
   _elegirHorarioPalanca(cfg);
   _estPalanca(cfg);
   _fiPalanca(cfg);
+  _winsPalanca(cfg);
+  _listaPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -4565,7 +4727,8 @@ function _notasCierreGuardadas() { try { return localStorage.getItem(_notasCierr
 function _notasCierreAnotar(n) { try { if (n) localStorage.setItem(_notasCierreKey(), n); else localStorage.removeItem(_notasCierreKey()); } catch (_) {} }
 
 async function writeFinish(notas) {
-  if (!RUTINA_ID) return;
+  // La demo no guarda nada, pero festeja igual si hubo récords (cola A de la 2.3.0).
+  if (!RUTINA_ID) { if (_demoHist) _winsFestejar(); return; }
   _notasCierreAnotar(notas || '');
   _csVaciarDeshacer();
   // Garantizar que exista la sesión antes de finalizar (defensivo: el cliente
@@ -4606,6 +4769,7 @@ async function writeFinish(notas) {
   // hoy se conservan por si se reabre el día para corregir una serie.
   pruneExerciseSwaps({ conservarDiaActual: true });
   renderTrain();
+  _winsFestejar();   // después del cierre exitoso: los récords del día (detrás de `wins_app`)
 }
 
 // F1 — Días con sesión finalizada esta semana → pinta el day picker.
@@ -4782,6 +4946,7 @@ async function loadRegistrosCarga() {
     // serie, writeSet la re-manda con ESTE nombre y no con el del original:
     // la RPC es upsert y pisa ejercicio_nombre.
     setObj.nombreRegistrado = reg.ejercicio_nombre || null;
+    if (_winsDudosas().includes(reg.ejercicio_id + ':' + setIdx)) setObj.dudosa = true;
     // Restaurar el nivel/variante elegido (guardado en notas).
     if (reg.notas && getVariantesEj(DATA.dia.bloques.flatMap(b=>b.ejercicios).find(x=>x.id===reg.ejercicio_id))) {
       exSession.variante = reg.notas;
@@ -4860,6 +5025,8 @@ async function loadHistorico(exId) {
   // renderiza vacío por un fetch que corre tarde (bug del auto-avance).
   if (_histPromises[exId]) { await _histPromises[exId]; return; }
   if (Array.isArray(DATA.historico_por_ejercicio[exId])) return; // ya cargado
+  // La demo sin cuenta no llama a nada: su historia de ejemplo, o vacío.
+  if (DEMO) { DATA.historico_por_ejercicio[exId] = (_demoHist && _demoHist.historico[claveDeSlot(exId)]) || []; return; }
   // Por CLAVE del ejercicio efectivo (ver claveEjercicio). Si la migración 072
   // no está aplicada, getHistoricoPorClave devuelve null y se cae a la RPC
   // vieja por id de slot: la app sigue andando con la base anterior.
@@ -4907,6 +5074,11 @@ function prefetchHistoricoDia() {
     .filter(e => e.tipo !== 'calentamiento' && !Array.isArray(DATA.historico_por_ejercicio[e.id]) && !_histPromises[e.id])
     .map(e => e.id);
   if (!ids.length) return;
+  if (DEMO) {
+    for (const id of ids) DATA.historico_por_ejercicio[id] = (_demoHist && _demoHist.historico[claveDeSlot(id)]) || [];
+    if (_demoHist) Promise.resolve().then(() => { if (STATE.scene === 'train' && typeof renderTrain === 'function') renderTrain(); });
+    return;
+  }
   // UNA llamada para el día entero (la 072 es batch), repartida a todos los
   // slots que comparten clave. Si la RPC nueva no está, cae a loadHistorico
   // de a uno, que a su vez cae a la RPC vieja.
@@ -6131,6 +6303,8 @@ async function csGuardarCorreccion() {
   }
   setObj.reps = repsTexto;
   setObj.kg = kgTexto;
+  if (prueba._preguntada) setObj.dudosa = true; else delete setObj.dudosa;
+  _winsDudosa(c.exId, c.idx, !!prueba._preguntada);
   writeSet(c.exId, c.idx);
   csCerrarCorreccion();
 }
@@ -6712,6 +6886,10 @@ async function confirmarSerie(exId, idx, foto) {   // foto: viene del OK de la c
   delete setObj._preguntada;
 
   setObj.confirmed = true;
+  // Para el festejo del cierre: una serie rara confirmada igual no cuenta, ni una hecha con otro ejercicio (si sustituye).
+  if (verosimil) delete setObj.dudosa; else setObj.dudosa = true;
+  _winsDudosa(exId, idx, !verosimil);
+  try { setObj.hechaCon = getEffectiveEx(DATA.dia.bloques.flatMap(b => b.ejercicios || []).find(x => x.id === exId)).nombre; } catch (_) {}
   setObj.varianteRegistrada = (STATE.session[exId] && STATE.session[exId].variante) || null;
   // La serie entra al Outbox YA, sin esperar a que mypump_iniciar_sesion
   // conteste: con un fetch colgado (señal muerta) el await de antes dejaba la
@@ -9723,7 +9901,7 @@ async function loadProgressAndRender(refresco = false) {
    * todavía no está aplicada, así que esto anda igual con la base vieja. */
   let results;
   if (DEMO) {
-    results = allEx.map(ex => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: [] }));
+    results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: (_demoHist && _demoHist.historico[ex.clave]) || [] }));
   } else {
     // Por clave. Si la 072 no está, cae al camino viejo por id de slot.
     const porClave = await window.mypumpDB.getHistoricoPorClave(TOKEN, allEx.map(e => e.clave), 48)
@@ -9878,7 +10056,7 @@ function formatFechaLocal(isoDate) {
 }
 
 async function loadMyday() {
-  if (!TOKEN) return;
+  if (!TOKEN || DEMO) return;   // la demo nunca mezcla datos de una cuenta guardada en este navegador
   try {
     const [habitos, streak] = await Promise.all([
       window.mypumpDB.getHabitosDia(TOKEN, hoyLocal()),
@@ -9916,7 +10094,7 @@ async function loadMyday() {
    la RPC getHabitosDia fallaba (red mala en el gym) el cliente se quedaba sin
    check, sin fotos y sin peso — justo lo que el bot le pidio el domingo. */
 async function loadRevision() {
-  if (!TOKEN) return;
+  if (!TOKEN || DEMO) return;
   loadCheckin();
   loadFotos().then(() => { if (STATE.scene === 'revision') renderMydayFotos(); if (STATE.scene === 'cuerpo') renderCuerpo(); flushFotos(); });
 }
@@ -11081,7 +11259,7 @@ function renderMydayPeso() {
     // Update optimista de STATE.salud (el Outbox garantiza la persistencia).
     STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === hoyLocal() && r.fuente === 'manual'));
     STATE.salud.push({ fecha: hoyLocal(), tipo: 'peso_kg', valor, fuente: 'manual' });
-    Outbox.enqueue('peso', { fecha: hoyLocal(), valor }, 'peso_' + hoyLocal());
+    if (!(DATA && DATA._isDemo)) Outbox.enqueue('peso', { fecha: hoyLocal(), valor }, 'peso_' + hoyLocal());
     renderMydayPeso();
   };
   if (btn) btn.addEventListener('click', guardar);
@@ -11227,6 +11405,7 @@ function _fpPintarMsg() {
 }
 
 async function _subirFoto(pose, dataUrl, fecha) {
+  if (typeof DEMO !== 'undefined' && DEMO) return { ok: false, fatal: true, error: 'demo' };   // la demo no manda nada, aunque haya una cuenta guardada en este navegador
   const base = FOTOS_URL();
   if (!base) return { ok: false, error: 'servicio no configurado' };
   try {
@@ -11375,6 +11554,8 @@ function _metasPalanca(cfg) {
 }
 function _metasPlan() {
   if (_metasMuestra) return { metaPasos: 10000, ritmo: -0.5, vacio: false };
+  // La demo sin cuenta trae sus metas de ejemplo (sin palanca: no hay servidor).
+  if (_demoHist && window.Metas) { const d = window.Metas.metasDe(_demoHist.metas); return d.vacio ? null : d; }
   if (!_metasOn || !DIET || !window.Metas) return null;
   const m = window.Metas.metasDe(DIET);
   return m.vacio ? null : m;
@@ -11499,7 +11680,8 @@ function _pumpPintar() {
   const t = document.createElement('div');
   t.innerHTML = _pumpTarjeta(e, false);
   const card = t.firstElementChild;
-  const guia = host.querySelector(':scope > #guiaHost');
+  // Debajo de la guía (o de la lista previa, si la guía no está): la videollamada y su lista van primero.
+  const guia = host.querySelector(':scope > #guiaHost') || host.querySelector(':scope > #listaPreviaHost');
   host.insertBefore(card, guia ? guia.nextSibling : host.firstChild);
   _pumpEnganchar(card);
   _pumpQuizasCelebrar(e);
@@ -11537,6 +11719,12 @@ function _pumpCelebrar(v) {
   const T = window.Metas.T;
   const reducir = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const racha = T.celebracionRacha(v.racha);
+  // Una racha que es un hito, con el permiso dado: queda en la cola para Mati (js/wins.js). Sin permiso no se agrega
+  // nada, y acá no se pide.
+  let rachaWins = '';
+  try {
+    if (!_metasMuestra && !(DATA && DATA._isDemo) && window.Wins && window.Wins.encolarRacha(v.racha, v.meta, hoyLocal())) rachaWins = window.Wins.FIJOS.racha_con_permiso;
+  } catch (_) {}
   // 44 chispas fijas (sin azar: se ve igual cada vez).
   const chispas = reducir ? '' : Array.from({ length: 44 }, (_, i) => {
     const a = i * 137.5 * Math.PI / 180, r = 90 + (i * 37 % 70);
@@ -11556,6 +11744,7 @@ function _pumpCelebrar(v) {
       <div class="pc-tit" id="pumpCelTit">${T.lleno}</div>
       <div class="pc-sub" id="pumpCelSub">${T.celebracion(v.meta)}</div>
       ${racha ? `<div class="pc-racha">${_PUMP_LLAMA}${racha}</div>` : ''}
+      ${rachaWins ? `<div class="pc-wins" data-test="pump-racha-wins">${escapeHtml(rachaWins)}</div>` : ''}
       <button class="btn-primary pc-seguir" data-test="pump-seguir">${T.seguir}</button>
     </div>`;
   const cerrar = () => { el.classList.add('is-saliendo'); setTimeout(() => el.remove(), reducir ? 0 : 220); document.removeEventListener('keydown', tecla); };
@@ -11783,6 +11972,7 @@ async function _tomarFoto(pose, origen) {
     if (!file) return;
     // Al #fpMsg que está en pantalla, no al de antes del render (ver _fpMsg).
     const setMsg = _fpMsg;
+    if (typeof DEMO !== 'undefined' && DEMO) return setMsg((window.Wins && window.Wins.FIJOS.demo) || '', 'is-err');
     setMsg('Preparando la foto…');
     let dataUrl;
     try { dataUrl = await _fotoAJpeg(file); }
@@ -12009,13 +12199,13 @@ function renderMydayCheckin() {
     if (kilos != null) {
       STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === hoyLocal() && r.fuente === 'manual'));
       STATE.salud.push({ fecha: hoyLocal(), tipo: 'peso_kg', valor: kilos, fuente: 'manual' });
-      Outbox.enqueue('peso', { fecha: hoyLocal(), valor: kilos }, 'peso_' + hoyLocal());
+      if (!DEMO) Outbox.enqueue('peso', { fecha: hoyLocal(), valor: kilos }, 'peso_' + hoyLocal());
     }
     STATE.checkinPeso = '';
     const datos = { energia: d.energia, descanso: d.descanso, hambre: d.hambre, adherencia: d.adherencia, nota: (d.nota || '').trim() };
     STATE.checkin = { ...datos };          // update optimista
     STATE.checkinDraft = null;
-    Outbox.enqueue('checkin', { fecha: hoyLocal(), datos }, 'checkin_' + hoyLocal());
+    if (!DEMO) Outbox.enqueue('checkin', { fecha: hoyLocal(), datos }, 'checkin_' + hoyLocal());   // la demo no escribe ni manda nada
     renderMydayCheckin();
     try { renderRecordatorio(); } catch (_) {}
   });
@@ -12063,7 +12253,7 @@ function renderRevision() {
   // La línea de «Tu progreso» sale del historial de cargas: si todavía no se
   // trajo, se trae (la misma carga que usa Fuerza).
   const enCola = (() => { try { return Outbox.pending() > 0; } catch (_) { return false; } })();
-  if (!STATE.progressLoaded && !STATE._cargandoProgreso && !enCola && DATA && !DATA._isDemo) {
+  if (!STATE.progressLoaded && !STATE._cargandoProgreso && !enCola && DATA && (!DATA._isDemo || _demoHist)) {
     STATE._cargandoProgreso = true;
     Promise.resolve(loadProgressAndRender()).catch(() => {}).finally(() => { STATE._cargandoProgreso = false; });
   }
@@ -12627,6 +12817,8 @@ function renderMisDatos() {
     </div>
     <div class="md-pie" id="mdOscuroPie">${oscuro ? 'La app queda oscura.' : 'La app queda clara.'}</div>
 
+    ${_winsAjusteHtml()}
+
     <div class="md-ceja">Tu información</div>
     <div class="md-grupo">
       ${window.RecorridoUI && window.RecorridoUI.entradaVisible() ? fila('mis-datos-recorrido', escapeHtml(window.Recorrido.T.entradaMisDatos)) : ''}
@@ -12659,6 +12851,7 @@ function renderMisDatos() {
   if (fi) fi.onclick = () => window.FotosInicioUI.abrir('misdatos');
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
+  _winsAjusteEnganchar();
   const sw = document.getElementById('mdOscuro');
   if (sw) sw.onchange = () => {
     const next = sw.checked ? 'dark' : 'light';
@@ -12667,6 +12860,42 @@ function renderMisDatos() {
     try { localStorage.setItem('mypump-theme', next); } catch (_) {}
     const pie = document.getElementById('mdOscuroPie');
     if (pie) pie.textContent = sw.checked ? 'La app queda oscura.' : 'La app queda clara.';
+  };
+}
+
+/* Mis datos → Logros: el interruptor «Compartir mis logros con Mati» (js/wins.js). Prenderlo abre la hoja de permiso;
+   apagarlo saca el permiso. Sin red no cambia nada y se avisa. */
+let _winsAjusteMsg = null;   // {texto, error}: lo que pasó con el último toque, mientras se esté en Mis datos
+function _winsAjusteHtml() {
+  const W = window.Wins;
+  if (!W || !TOKEN || DEMO || !(W.ajusteVisible() || _winsAjusteMsg)) return '';
+  const F = W.FIJOS;
+  return `
+    <div class="md-ceja" data-test="wins-ajuste">${escapeHtml(F.ajuste_seccion)}</div>
+    <div class="md-grupo">
+      <label class="md-fila md-toggle md-wins-fila"><span>${escapeHtml(F.ajuste_interruptor)}</span>
+        <input type="checkbox" id="mdWins" data-test="wins-interruptor" ${W.permiso === true ? 'checked' : ''} ${W.permiso !== true && !W.puedeFestejar() ? 'disabled' : ''}><span class="md-switch" aria-hidden="true"></span></label>
+    </div>
+    <div class="md-pie">${escapeHtml(F.ajuste_pie)}</div>
+    ${_winsAjusteMsg ? `<div class="md-wins-msg${_winsAjusteMsg.error ? ' is-error' : ''}" role="status" data-test="wins-ajuste-msg">${escapeHtml(_winsAjusteMsg.texto)}</div>` : ''}`;
+}
+function _winsAjusteEnganchar() {
+  const sw = document.getElementById('mdWins');
+  if (!sw) return;
+  const W = window.Wins, F = W.FIJOS;
+  sw.onchange = async () => {
+    if (sw.checked) {
+      // Queda apagado hasta que el servidor confirme el permiso.
+      sw.checked = false;
+      _winsAjusteMsg = null;
+      W.abrirPermiso({ alDar: () => { _winsAjusteMsg = null; if (STATE.scene === 'misdatos') renderMisDatos(); } });
+      return;
+    }
+    sw.disabled = true;
+    let ok = false;
+    try { ok = await W.revocar(); } catch (_) { ok = false; }
+    _winsAjusteMsg = ok ? { texto: F.desactivado, error: false } : { texto: F.sin_red, error: true };
+    if (STATE.scene === 'misdatos') renderMisDatos();
   };
 }
 
@@ -12912,6 +13141,7 @@ function setScene(scene) {
   if (scene !== 'diet') _dietaVolverAHoy(true);
   // El aviso de las fotos es de esta visita a Revisión: al irse, se va (como en la app).
   if (scene !== 'revision') STATE.fpMsg = null;
+  if (scene !== 'misdatos') _winsAjusteMsg = null;
   STATE.scene = scene;
   csPintarPanel();   // el panel de carga es de Entreno
   $$('.tab').forEach(t => {
@@ -13071,6 +13301,7 @@ function _bienvenidaGuia() {
     const r = document.getElementById('scene-train');
     if (r && window.MyPumpGuia && _guiaHost.dataset.montado) { r.insertBefore(_guiaHost, r.firstChild); _bienvenidaGuia(); }
     if (r && window.GimnasioUI) window.GimnasioUI.montarTarjeta(r, _guiaHost);
+    try { _listaPintar(); _listaRefrescar(); } catch (_) {}
     if (r && window.NovedadesUI) window.NovedadesUI.montarTarjeta(r, document.getElementById('gimHost') || _guiaHost);
     if (r && window.RecorridoUI) window.RecorridoUI.montarTarjeta(r);   // «Tu recorrido»: lo primero de la pantalla
     try { renderAvisoContrato(); } catch (_) {}
@@ -13097,6 +13328,8 @@ function _bienvenidaGuia() {
           <span class="vm-n">${f.semana}</span><span class="vm-ant">${f.anterior} la pasada</span></div>
           <div class="vm-barra"><span class="vm-ant-b" style="width:${v.tope ? f.anterior / v.tope * 100 : 0}%"></span><span class="vm-sem-b" style="width:${v.tope ? f.semana / v.tope * 100 : 0}%"></span></div></div>`).join('')
         : `<div class="rv-txt">${ReglasEntreno.VOL_VACIO}</div>`;
+      // Una sola: en la demo la historia se arma sin esperar y este pintado entra dos veces seguidas.
+      root.querySelectorAll(':scope > .vm-card').forEach(c => c.remove());
       const card = document.createElement('div');
       card.className = 'myday-section vm-card';
       card.innerHTML = `<div class="myday-section-hdr"><span class="myday-section-title">Series por músculo</span><span class="ck-saved">esta semana</span></div>
@@ -13433,6 +13666,8 @@ async function init() {
     chatPollProgramar();
   }
 
+  await _demoCargarHistoria();   // solo la demo sin cuenta; sin red
+
   STATE.session = buildSession();
   _csLeer();
   prefetchHistoricoDia();
@@ -13445,7 +13680,7 @@ async function init() {
   aplicarPendientesEntreno();
   if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {}).finally(() => _novResolver(null));
   // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio y los estudios también van, como en la app.
-  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _metasPalanca(c); _elegirHorarioPalanca(c); _estPalanca(c); _fiPalanca(c); }).catch(() => {});
+  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _metasPalanca(c); _elegirHorarioPalanca(c); _estPalanca(c); _fiPalanca(c); _winsPalanca(c); _listaPalanca(c); }).catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;
