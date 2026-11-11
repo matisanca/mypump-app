@@ -100,6 +100,21 @@ extension ModeloApp {
     /// Sin modelo de la cuenta: en la demo ("Ver demo", sin cuenta, nada se escribe) y en los bocetos de diseño. Con una
     /// cuenta, todo sale de este modelo.
     var conMuestras: Bool { esDemo || DemoUI.bocetos }
+    /// La demo con su historial de ejemplo (2.3.0). En los bocetos de DEBUG no: ahí mandan las muestras de siempre.
+    var demoConHistorial: Bool { esDemo && demoHistorial != nil && !DemoUI.bocetos }
+}
+
+/// El historial de la demo (`Demo.bundle/historial.json`, también en Release): series, peso, pasos, chat, devolución,
+/// metas y la lista previa de ejemplo. No sale de ninguna cuenta ni se escribe en ningún lado.
+enum DemoHistorialApp {
+    static var datos: Data? {
+        #if DEBUG
+        // Los bocetos, `-historial muestra` y `-demoHistorial NO` quedan como siempre (capturas y pruebas viejas).
+        let d = UserDefaults.standard
+        if d.bool(forKey: "bocetos") || d.string(forKey: "historial") != nil || d.string(forKey: "demoHistorial") == "NO" { return nil }
+        #endif
+        return Bundle.main.url(forResource: "historial", withExtension: "json", subdirectory: "Demo.bundle").flatMap { try? Data(contentsOf: $0) }
+    }
 }
 
 extension Muestras {
@@ -113,9 +128,16 @@ extension Muestras {
         #endif
     }
 
-    /// Lo que ve una pantalla sin cuenta: las muestras solo en los bocetos; la demo, como la web, sin datos de nadie
-    /// (Revisión vacía, el chat para escribirle a Mati, Salud sin historial).
-    func paraPantalla() -> Muestras { DemoUI.bocetos ? self : .vacias }
+    /// Lo que ve una pantalla sin cuenta: las muestras solo en los bocetos. La demo (2.3.0) muestra su historial de
+    /// ejemplo (`Demo.bundle/historial.json`, que no es de nadie): las series de cada ejercicio, el peso y los pasos, y
+    /// una charla con Mati. Sin ese historial queda como antes: vacía.
+    @MainActor func paraPantalla() -> Muestras {
+        if DemoUI.bocetos { return self }
+        let m = Proveedor.modelo
+        guard m.esDemo, let h = m.demoHistorial else { return .vacias }
+        return Muestras(info: nil, rutina: m.rutina, dieta: nil, historial: h.historial, sesionesSemana: [], salud: h.salud,
+                        recuperacion: [], chat: h.chat, checkin: nil, fotos: [], comidasMarcadas: [])
+    }
 
     static let vacias = Muestras(info: nil, rutina: nil, dieta: nil, historial: [], sesionesSemana: [], salud: [],
                                  recuperacion: [], chat: [], checkin: nil,

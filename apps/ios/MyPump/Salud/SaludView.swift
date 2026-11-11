@@ -78,8 +78,17 @@ struct SaludView: View {
                 // Oura y WHOOP según lo que ofrezca el servidor (sin relojes para ofrecer, no ocupa lugar).
                 MiRelojView(modelo: salud)
             }
-        } else if MetasUI.shared.muestra {
-            PumpDelDiaSiCorresponde(enSalud: true)
+        } else if MetasUI.shared.muestra || modelo.demoConHistorial {
+            // La demo: los pasos de ejemplo. La recuperación sale de un reloj, y la demo no tiene.
+            VStack(alignment: .leading, spacing: Espacio.l) {
+                PumpDelDiaSiCorresponde(enSalud: true)
+                if !MetasUI.shared.muestra {
+                    Text("La recuperación sale de tu reloj o del teléfono. Con tu cuenta la vas a ver acá.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         } else {
             ContentUnavailableView {
                 Label("Sin datos de salud en la demo", systemImage: "heart.text.square")

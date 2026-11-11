@@ -18,13 +18,19 @@ final class MetasUI {
     private var avisadoEl: String?
 
     var muestra: Bool { DemoUI.metas != nil }
+    /// ¿Se muestra lo de metas? Con cuenta; sin cuenta, con la muestra o en la demo con historial (sus metas de ejemplo).
+    func visible(_ m: ModeloApp) -> Bool { !m.conMuestras || muestra || m.demoConHistorial }
+    /// Lo celebrado queda en memoria con la muestra y en la demo (que no escribe nada).
+    private func enMemoria(_ m: ModeloApp) -> Bool { muestra || m.esDemo }
 
     func estado(_ m: ModeloApp, hoy: String = FechaLocal.hoy()) -> (vista: PumpDelDia.Vista, conectado: Bool)? {
         guard let modo = DemoUI.metas else { return m.pumpDelDia(hoy: hoy) }
         guard let n = DiaCalendario.numero(hoy) else { return nil }
         // Tres días seguidos con la meta, uno abajo y uno más atrás con la meta.
         var p: [String: Double] = [:]
-        for (i, v) in [11_200, 8_600, 10_400, 12_100, 10_050].enumerated() { p[DiaCalendario.texto(n - 5 + i)] = Double(v) }
+        // `-metas racha7`: seis días seguidos antes de hoy (con la meta de hoy, una racha de 7: un hito de logros).
+        let dias = modo == "racha7" ? [10_300, 11_200, 10_600, 10_400, 12_100, 10_050] : [11_200, 8_600, 10_400, 12_100, 10_050]
+        for (i, v) in dias.enumerated() { p[DiaCalendario.texto(n - dias.count + i)] = Double(v) }
         if modo != "sinsalud" { p[hoy] = pasosMuestra }
         guard let v = PumpDelDia.vista(pasosPorDia: modo == "sinsalud" ? [:] : p, meta: 10_000, hoy: hoy) else { return nil }
         return (v, modo != "sinsalud")
@@ -34,11 +40,11 @@ final class MetasUI {
     func ritmo(_ m: ModeloApp) -> Double? { muestra ? -0.5 : m.metas?.ritmoKgSemana }
 
     func debeCelebrar(_ v: PumpDelDia.Vista, _ m: ModeloApp, hoy: String) -> Bool {
-        PumpDelDia.debeCelebrar(muestra ? registroMuestra : m.registroMetas, hoy: hoy, pasosHoy: v.pasosHoy, meta: v.meta)
+        PumpDelDia.debeCelebrar(enMemoria(m) ? registroMuestra : m.registroMetas, hoy: hoy, pasosHoy: v.pasosHoy, meta: v.meta)
     }
 
     func marcar(_ m: ModeloApp, hoy: String) {
-        if muestra { registroMuestra = PumpDelDia.marcar(registroMuestra, hoy: hoy) } else { m.marcarPumpCelebrado(hoy: hoy) }
+        if enMemoria(m) { registroMuestra = PumpDelDia.marcar(registroMuestra, hoy: hoy) } else { m.marcarPumpCelebrado(hoy: hoy) }
     }
 
     func yaAvisado(_ hoy: String) -> Bool { avisadoEl == hoy }
@@ -195,7 +201,7 @@ struct PumpDelDiaSiCorresponde: View {
     @State private var metas = MetasUI.shared
 
     var body: some View {
-        if let e = metas.estado(app), (!app.conMuestras || metas.muestra) {
+        if let e = metas.estado(app), metas.visible(app) {
             PumpDelDiaTarjeta(vista: e.vista, conectado: e.conectado, enSalud: enSalud)
         }
     }
@@ -210,7 +216,7 @@ struct RitmoPesoLinea: View {
     @State private var metas = MetasUI.shared
 
     var body: some View {
-        if let ritmo = metas.ritmo(app), !app.conMuestras || metas.muestra {
+        if let ritmo = metas.ritmo(app), metas.visible(app) {
             let r = RitmoPeso.resumen(ritmo: ritmo, serie: serie, hoy: FechaLocal.hoy())
             VStack(alignment: .leading, spacing: 4) {
                 Label(r.meta, systemImage: "scope")
@@ -240,6 +246,8 @@ struct RitmoPesoLinea: View {
 /// aparece el número del día con la racha. Con «Reducir movimiento», todo quieto y un solo háptico.
 struct CelebracionPump: View {
     let vista: PumpDelDia.Vista
+    /// Logros (2.3.0): la racha es un hito y hay permiso, así que quedó para que Mati la vea.
+    var rachaCompartida = false
     let cerrar: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reducir
     @State private var nivel = 0.8
@@ -291,6 +299,14 @@ struct CelebracionPump: View {
                                 .font(.headline)
                                 .foregroundStyle(Color.alerta)
                                 .padding(.top, 2)
+                        }
+                        if rachaCompartida {
+                            Label(ReglasWins.rachaConPermiso, systemImage: "checkmark.circle.fill")
+                                .labelStyle(EtiquetaCompacta())
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.marcaTexto)
+                                .padding(.top, 2)
+                                .accessibilityIdentifier("pump-racha-compartida")
                         }
                     }
                     .multilineTextAlignment(.center)
@@ -406,6 +422,7 @@ struct CelebracionPumpRaiz: ViewModifier {
     @State private var app = Proveedor.modelo
     @State private var metas = MetasUI.shared
     @State private var mostrando: PumpDelDia.Vista?
+    @State private var rachaCompartida = false
     @State private var esperando = false
     @Environment(\.scenePhase) private var fase
     @Environment(Navegacion.self) private var navegacion: Navegacion?
@@ -419,7 +436,7 @@ struct CelebracionPumpRaiz: ViewModifier {
         content
             .overlay {
                 if let v = mostrando {
-                    CelebracionPump(vista: v) { withAnimation(.easeOut(duration: 0.25)) { mostrando = nil } }
+                    CelebracionPump(vista: v, rachaCompartida: rachaCompartida) { withAnimation(.easeOut(duration: 0.25)) { mostrando = nil } }
                         .transition(.opacity)
                 }
             }
@@ -435,7 +452,7 @@ struct CelebracionPumpRaiz: ViewModifier {
     }
 
     private func revisar() {
-        guard mostrando == nil, let e = metas.estado(app), e.conectado, !app.conMuestras || metas.muestra else { return }
+        guard mostrando == nil, let e = metas.estado(app), e.conectado, metas.visible(app) else { return }
         let hoy = FechaLocal.hoy()
         guard metas.debeCelebrar(e.vista, app, hoy: hoy) else { return }
         switch fase {
@@ -452,10 +469,13 @@ struct CelebracionPumpRaiz: ViewModifier {
                       let e = metas.estado(app),
                       FechaLocal.hoy() == hoy, metas.debeCelebrar(e.vista, app, hoy: hoy) else { return }
                 metas.marcar(app, hoy: hoy)
+                // Logros: una racha que es un hito, con la palanca y el permiso, queda en la cola (y la celebración lo dice).
+                rachaCompartida = !app.conMuestras && app.palanca.winsApp
+                    && app.wins?.encolarRacha(dias: e.vista.racha, meta: e.vista.meta, dia: hoy) == true
                 withAnimation(.easeOut(duration: 0.2)) { mostrando = e.vista }
             }
         case .background:
-            guard !metas.yaAvisado(hoy), !metas.muestra else { return }
+            guard !metas.yaAvisado(hoy), !metas.muestra, !app.esDemo else { return }
             metas.anotarAviso(hoy)
             Task { await CentroAvisos.shared.avisarPumpLleno(meta: e.vista.meta) }
         default:

@@ -124,7 +124,7 @@ struct AccesoView: View {
               let d = Bundle.main.url(forResource: "dieta", withExtension: "json", subdirectory: "Demo.bundle"),
               let rutina = try? Data(contentsOf: r), let dieta = try? Data(contentsOf: d) else { return }
         withAnimation(.snappy) { modelo.entrarEnDemo(rutina: rutina, dieta: dieta, guia: DemoGuia.datos, suplementacion: DemoSuplementacion.datos,
-                                                          agenda: DemoGuia.agenda) }
+                                                          agenda: DemoGuia.agenda, historial: DemoHistorialApp.datos) }
     }
 }
 

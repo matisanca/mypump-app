@@ -72,6 +72,11 @@ struct MisDatosView: View {
                 }
             }
 
+            // Logros (2.3.0): con la palanca prendida, o con el permiso dado (para poder sacarlo siempre).
+            if !modelo.conMuestras, let wins = modelo.wins, wins.visibleEnMisDatos {
+                SeccionLogros(wins: wins)
+            }
+
             Section {
                 Toggle(isOn: Binding(get: { tema == "dark" }, set: { tema = $0 ? "dark" : "" })) {
                     Label { Text("Siempre en modo oscuro") } icon: { IconoAzulejo("moon.fill", color: .sueno) }
