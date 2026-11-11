@@ -248,9 +248,16 @@ struct CheckGuiadoFlujo: View {
         }
     }
 
+    /// Las del catálogo que le tocan, más cualquier digestiva que ya venía marcada (si dejó de usar un GLP-1 a mitad de
+    /// semana tiene que poder verla para sacarla o decir cuánto molesta).
+    private var opcionesVisibles: [CheckGuiado.Opcion] {
+        let visibles = CheckGuiado.opciones(catalogo, glp1: revision.glp1Guiado).map(\.clave)
+        return CheckGuiado.opciones(catalogo).filter { visibles.contains($0.clave) || borrador.senales.contains($0.clave) }
+    }
+
     private var pasoSenales: some View {
         VStack(spacing: Espacio.xs) {
-            ForEach(CheckGuiado.opciones(catalogo, glp1: revision.glp1Guiado), id: \.clave) { o in
+            ForEach(opcionesVisibles, id: \.clave) { o in
                 let elegida = borrador.senales.contains(o.clave)
                 Button {
                     tocado = true
