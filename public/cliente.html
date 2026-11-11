@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="/css/estudios.css">
 <link rel="stylesheet" href="/css/wins.css">
 <link rel="stylesheet" href="/css/lista-previa.css">
+<link rel="stylesheet" href="/css/presion.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--font-size-base);line-height:var(--line-height-normal);-webkit-font-smoothing:antialiased}
@@ -2036,6 +2037,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
     <section class="scene" id="scene-fotosinicio"></section>
     <section class="scene" id="scene-tecnica"></section>
     <section class="scene" id="scene-estudios"></section>
+    <section class="scene" id="scene-presion"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -2169,6 +2171,20 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/wins.js"></script>
 <script src="/js/lista-previa.js"></script>
 <script src="/js/demo-historial.js"></script>
+<script src="/js/presion.js"></script>
+<script src="/js/presion-dibujos.js"></script>
+<script src="/js/presion-cola.js"></script>
+<script src="/js/presion-ui.js"></script>
+<script>
+/* Doble del servidor de presión, para ver las pantallas sin base (js/presion-prueba.js).
+ * Mismas compuertas que el banco de pruebas de salud: parámetro explícito, nunca en la app nativa y SOLO en localhost. */
+(function () {
+  var q = new URLSearchParams(location.search);
+  var capReal = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  if (q.get('presionprueba') && !capReal && local) document.write('<script src="/js/presion-prueba.js"><\/script>');
+})();
+</script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -2684,6 +2700,23 @@ document.addEventListener('click', (ev) => {
     setTimeout(() => { const f = document.getElementById('myday-fotos'); if (f) f.scrollIntoView({ block: 'start' }); }, 60);
   }
 });
+/* «Presión arterial» (js/presion*.js), detrás de `presion_app`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada.
+   No toca Entreno ni la rutina: la presión nunca frena el entrenamiento. */
+let _presionPorUI = false;
+function _prePalanca(cfg) {
+  if (!window.PresionUI) return;
+  // `irA` es la única entrada a la escena: un aviso o un link con destino `presion` pasan por `abrirDirecto` (ver setScene).
+  const base = { irA: (escena) => { _presionPorUI = true; try { setScene(escena); } finally { _presionPorUI = false; } }, alCambiarEntrada: () => { if (STATE.scene === 'misdatos') renderMisDatos(); } };
+  // Solo existe en localhost con ?presionprueba= (ver el cargador de arriba): un servidor en memoria, sin red.
+  if (window.PresionPrueba) {
+    window.PresionUI.configurar({ ...base, token: window.PresionPrueba.token, rpc: window.PresionPrueba.rpc });
+    window.PresionUI.aplicarPalanca(true).then(() => window.PresionPrueba.guion(window.PresionUI)).catch(() => {});
+    return;
+  }
+  if (!TOKEN || DEMO) return;
+  window.PresionUI.configurar({ ...base, token: TOKEN, rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params) });
+  window.PresionUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.presion_app === true : null);
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
@@ -2701,6 +2734,7 @@ async function leerPalancaWeb230() {
   _winsPalanca(cfg);
   _listaPalanca(cfg);
   _docPalanca(cfg);
+  _prePalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   _cgAplicarPalanca(cfg.check_guiado === true);
@@ -12283,7 +12317,7 @@ function renderRecordatorio() {
   }
 
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
-  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica' || STATE.scene === 'estudios' || STATE.scene === 'fotosinicio') return;
+  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio' || STATE.scene === 'tecnica' || STATE.scene === 'estudios' || STATE.scene === 'fotosinicio' || STATE.scene === 'presion') return;
 
   const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan tu check y tus fotos de la semana'
               : p.faltaCheck ? 'Te falta tu check de la semana'
@@ -13955,6 +13989,7 @@ function renderMisDatos() {
       ${docs.length ? fila('mdDocumentos', D.T.entradaMisDatos, D.hayContratoPendiente(docs) ? `<span class="md-det">${D.T.pendiente}</span>` : '') : ''}
       ${window.EstudiosUI && window.EstudiosUI.entradaVisible() ? `<button class="md-fila" id="mdEstudios"><span class="gim-zona-txt"><span>${window.Estudios.T.entradaMisDatos}</span><small>${window.EstudiosUI.subtitulo()}</small></span>${window.EstudiosUI.novedad() ? `<span class="est-punto" role="img" aria-label="${window.Estudios.T.novedad}"></span>` : ''}<span class="md-chev">${_CHEV_DER}</span></button>` : ''}
       ${window.FotosInicioUI && window.FotosInicioUI.entradaVisible() ? `<button class="md-fila" id="mdFotosInicio" data-test="mis-datos-fotos-inicio"><span>${escapeHtml(window.FotosInicio.T.entradaMisDatos)}</span><span class="md-chev">${_CHEV_DER}</span></button>` : ''}
+      ${window.PresionUI && window.PresionUI.entradaVisible() ? fila('mdPresion', window.PresionUI.entrada()) : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
@@ -13975,6 +14010,8 @@ function renderMisDatos() {
   if (est) est.onclick = () => window.EstudiosUI.abrir({ desde: 'misdatos' });
   const fi = document.getElementById('mdFotosInicio');
   if (fi) fi.onclick = () => window.FotosInicioUI.abrir('misdatos');
+  const pre = document.getElementById('mdPresion');
+  if (pre) pre.onclick = () => window.PresionUI.abrir('misdatos');
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
   _winsAjusteEnganchar();
@@ -14262,6 +14299,8 @@ function renderMyday() {
 }
 
 function setScene(scene) {
+  // Un aviso (local o push) con destino `presion`: Presión abierta directo en lo pendiente. Apagada o sin habilitar, no hace nada.
+  if (scene === 'presion' && !_presionPorUI) { if (window.PresionUI) window.PresionUI.abrirDirecto('train'); return; }
   if (scene !== 'train') { _csVaciarDeshacer(); _csCorr = null; }
   // Dieta se abre siempre en hoy, y las otras pantallas leen lo de hoy.
   if (scene !== 'diet') _dietaVolverAHoy(true);
@@ -14277,6 +14316,7 @@ function setScene(scene) {
     // que su tab marcado es el de Revision.
     const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision'
       : scene === 'estudios' ? (window.EstudiosUI.origen === 'train' ? 'train' : 'revision')
+      : scene === 'presion' ? (window.PresionUI.origen === 'train' ? 'train' : 'revision')
       : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train')
       : scene === 'tecnica' ? (window.TecnicaUI.origen === 'train' ? 'train' : 'revision')
       : scene === 'fotosinicio' ? 'revision' : scene;
@@ -14357,6 +14397,9 @@ function setScene(scene) {
   } else if (scene === 'fotosinicio') {
     $('#hdrEyebrow').textContent = 'REVISIÓN';
     $('#hdrTitle').textContent = window.FotosInicioUI.titulo();
+  } else if (scene === 'presion') {
+    $('#hdrEyebrow').textContent = window.PresionUI.origen === 'train' ? 'ENTRENAMIENTO' : 'REVISIÓN';
+    $('#hdrTitle').textContent = window.PresionUI.titulo();
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
   }
@@ -14374,6 +14417,7 @@ function setScene(scene) {
   if (scene === 'tecnica') window.TecnicaUI.renderEscena();
   if (scene === 'estudios') window.EstudiosUI.renderEscena();
   if (scene === 'fotosinicio') window.FotosInicioUI.renderEscena();
+  if (scene === 'presion') window.PresionUI.renderEscena();
   if (scene === 'supl') { STATE.suplAbierto = null; renderSupl(); }
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
@@ -14396,6 +14440,7 @@ function arrancarGuia() {
   const r = document.getElementById('scene-train');
   if (r) r.insertBefore(_guiaHost, r.firstChild);
   _estArriba();
+  if (r && window.PresionUI) window.PresionUI.montarTarjeta(r);
   window.MyPumpGuia.montarTarjeta(_guiaHost, TOKEN).catch(() => {});
   window.MyPumpGuia.alCambiar(() => { if (STATE.scene === 'misdatos') renderMisDatos(); });
   document.addEventListener('visibilitychange', _bienvenidaGuia);
@@ -14434,6 +14479,8 @@ function _bienvenidaGuia() {
     _estArriba();
     // «Fotos de inicio»: arriba de todo también acá, mientras falte alguna (lo primero que se ve al abrir).
     if (r && window.FotosInicioUI) window.FotosInicioUI.montarTarjeta(r, true);
+    // «Tu presión», primera de todas. Solo es una tarjeta: no toca ni condiciona la rutina.
+    if (r && window.PresionUI) window.PresionUI.montarTarjeta(r);
   };
   // «Fotos de inicio»: la tarjeta va arriba de todo en Revisión (solo con la sección habilitada).
   const _rr = renderRevision;
@@ -14497,6 +14544,7 @@ function _aplicarSceneDeURL() {
     // El aviso «subí tus fotos de inicio»: Revisión con la pantalla abierta (si la sección está habilitada).
     if (s === 'fotos_inicio') { setScene('revision'); if (window.FotosInicioUI) window.FotosInicioUI.abrirPorAviso(); return; }
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
+    if (s === 'presion') { if (window.PresionUI) window.PresionUI.abrirDirecto('train'); return; }   // el aviso de presión: directo a lo pendiente (queda pedido hasta que llegue la palanca)
     if (validas.indexOf(s) === -1) return;
     // Destino `estudios` (el clic del aviso al teléfono llega así, también al abrir en frío): la escena no se prende
     // acá, porque todavía no se sabe si la cuenta tiene la sección y quedaría en blanco. Se abre Mis datos, que es la
@@ -14804,7 +14852,8 @@ async function init() {
   // dispositivo, incógnito, cache limpio, retroceso de semana).
   await restoreSesionDelDia();
   aplicarPendientesEntreno();
-  if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {}).finally(() => _novResolver(null));
+  if (window.PresionPrueba) _prePalanca(null);
+  else if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {}).finally(() => _novResolver(null));
   // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio y los estudios también van, como en la app.
   else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _metasPalanca(c); _elegirHorarioPalanca(c); _estPalanca(c); _fiPalanca(c); _winsPalanca(c); _listaPalanca(c); }).catch(() => {});
 

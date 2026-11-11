@@ -92,6 +92,12 @@ firmas.set('mypump_estudios_novedades_vistas', new Set(['p_token', 'p_ids']));
 // Fotos de inicio: propuesta sin aplicar (supabase/propuestas/nativa_fotos_inicio*, rama de fotos de inicio). Hasta aplicarla contesta PGRST202 y la web no muestra nada.
 firmas.set('mypump_fotos_inicio_get', new Set(['p_token']));
 firmas.set('mypump_fotos_inicio_nota', new Set(['p_token', 'p_nota']));
+// Presión arterial: propuesta sin aplicar (presion/CONTRATO_APP.md, rama nativa-presion). Si no existe, la web no muestra nada.
+firmas.set('mypump_presion_get', new Set(['p_token', 'p_zona']));
+firmas.set('mypump_presion_aparato', new Set(['p_token', 'p_aparato']));
+firmas.set('mypump_presion_medida', new Set(['p_token', 'p_cm', 'p_zona']));
+firmas.set('mypump_presion_sesion', new Set(['p_token', 'p_sesion']));
+firmas.set('mypump_presion_sintoma', new Set(['p_token', 'p_sintoma']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.
