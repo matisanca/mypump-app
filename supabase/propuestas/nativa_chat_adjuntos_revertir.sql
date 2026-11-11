@@ -63,6 +63,7 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.mypump_get_chat(text, timestamp with time zone, integer), public.mypump_chat_nuevos(text, timestamp with time zone) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.mypump_get_chat(text, timestamp with time zone, integer) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.mypump_chat_nuevos(text, timestamp with time zone) TO anon, authenticated, service_role;
 
