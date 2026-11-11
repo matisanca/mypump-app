@@ -89,7 +89,8 @@ class EntrenoUiTest : PruebaUi() {
         val movilidad = etiqueta("ejercicio-ex_001")
         assertTrue("Calent." in p.textosBajo(movilidad))
         assertEquals("Pendiente, calentamiento, 2 series de 10, descanso 0:30, primera vez con este ejercicio", p.estado(movilidad))
-        assertTrue(p.textosBajo(etiqueta("ejercicio-ex_010")).contains("Primera vez con este ejercicio"))
+        // Desde la cola A la demo trae historial (`apps/shared/demo/historial.json`): el jalón ya tiene «la vez pasada».
+        assertFalse(p.textosBajo(etiqueta("ejercicio-ex_010")).contains("Primera vez con este ejercicio"))
         // La demo no llama a nadie (ni para las fotos: las pruebas no van a la red).
         assertTrue("la demo tocó la red: ${servidor.llamadas.map { it.funcion }}", servidor.llamadas.isEmpty())
     }

@@ -29,7 +29,7 @@ import org.json.JSONObject
  * cliente si el servidor no lo rechazó, y `mypump_marcar_leidos_cliente` deja leído lo de Mati.
  *
  * Se pone ENCIMA del servidor (`Entorno.transporte`): todo pasa primero por él, así que se anota igual, sin red tira y un
- * rechazo propio (`respuestas["mypump_agregar_comentario"] = "null"`) sigue siendo un rechazo. Lo demás contesta él.
+ * rechazo propio (`rechazos += "mypump_agregar_comentario"`) sigue siendo un rechazo. Lo demás contesta él.
  */
 class ChatDePrueba(private val servidor: ServidorDePrueba) : Transporte {
     private class Fila(val id: String, val autor: String, val contenido: String, @Volatile var leido: Boolean, val creado: Instant)

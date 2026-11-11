@@ -121,10 +121,10 @@ class SaludPestanaUiTest : PruebaUi() {
         p.nodo(texto("1 sesión entrenada esta semana"), ms = 20_000)
         assertFalse(p.existe(etiqueta("trofeo-progreso")))
         p.nodo(texto("Tu progreso"))
-        // Pegada a Recuperación: debajo, antes que las fotos.
+        // Pegada a Recuperación, debajo (las dos en la tarjeta «Cómo vengo»). Con la semana pendiente las fotos y el check
+        // van antes que esa tarjeta (upgrade 2.3.0), así que no se compara con las fotos.
         val y = { t: String -> p.nodo(etiqueta(t)).let { n -> p.enPrincipal { n.positionInRoot.y } } }
-        assertTrue(y("tarjeta-recuperacion-revision") < y("tarjeta-progreso-revision"))
-        assertTrue(y("tarjeta-progreso-revision") < y("seccion-fotos"))
+        assertTrue("Tu progreso, debajo de Recuperación", y("tarjeta-recuperacion-revision") < y("tarjeta-progreso-revision"))
         p.tocar(etiqueta("tarjeta-progreso-revision"))
         p.nodo(etiqueta("salud-pantalla"))
         p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }

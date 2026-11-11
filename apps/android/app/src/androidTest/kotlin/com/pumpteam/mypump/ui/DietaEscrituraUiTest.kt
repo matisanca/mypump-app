@@ -648,7 +648,10 @@ class DietaEscrituraUiTest : PruebaUi() {
         irADieta()
         // En pantalla chica no entran juntas la cabecera y la comida: se va de una a la otra.
         irA("0-c1")
-        p.esperar("«Comí» sigue") { p.seleccionado(etiqueta("comi-c1")) }
+        // U4: al reabrir, la marcada se ve plegada («La comiste»); tocando el título se abre con «Comí» marcado.
+        p.esperar("«Comí» sigue") { p.estado(etiqueta("encabezado-c1")) == "La comiste" }
+        p.tocar(etiqueta("encabezado-c1"))
+        p.esperar("abierta con «Comí»") { p.existe(etiqueta("comi-c1")) && p.seleccionado(etiqueta("comi-c1")) }
         irA("cabecera")
         assertEquals("544 de 2.373 kcal", consumido())
         Telefono.captura("dieta-consumido-oscuro")
@@ -722,6 +725,10 @@ class DietaEscrituraUiTest : PruebaUi() {
         assertEquals("436 de 2.373 kcal", consumido())
         // Las tarjetas, de a una (la lista es perezosa: lo de abajo no existe hasta llegar).
         irA("1-c2")
+        // U4: las marcadas se ven plegadas; tocando el título se abren.
+        assertEquals("La comiste", p.estado(etiqueta("encabezado-c2")))
+        p.tocar(etiqueta("encabezado-c2"))
+        p.nodo(etiqueta("comi-c2"))
         assertTrue(p.seleccionado(etiqueta("comi-c2")))
         assertTrue("la B del almuerzo", p.seleccionado(etiqueta("opcion-c2-1")))
         assertFalse(p.prendido(etiqueta("comido-c2-0")))
@@ -731,6 +738,8 @@ class DietaEscrituraUiTest : PruebaUi() {
         p.esperar("desmarcada") { !p.seleccionado(etiqueta("comi-c2")) }
         assertTrue("sigue la B", p.seleccionado(etiqueta("opcion-c2-1")))
         irA("2-c3")
+        p.tocar(etiqueta("encabezado-c3"))
+        p.nodo(etiqueta("salte-c3"))
         assertTrue(p.seleccionado(etiqueta("salte-c3")))
         assertFalse(p.seleccionado(etiqueta("comi-c3")))
         irA("3-c4")

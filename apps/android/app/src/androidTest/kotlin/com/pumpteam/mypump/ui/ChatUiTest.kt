@@ -138,8 +138,9 @@ class ChatUiTest : PruebaUi() {
      */
     @Test
     fun siLaColaSeRindeDiceNoSalioYSePuedeReintentar() {
-        // La base lo rechaza (devuelve vacío): cada pasada de la cola gasta un intento.
-        servidor.respuestas["mypump_agregar_comentario"] = "null"
+        // La base lo rechaza con un error de datos: cada pasada de la cola gasta un intento (lo vacío, desde F5, espera la
+        // ventana de abandono).
+        servidor.rechazos += "mypump_agregar_comentario"
         guardarCuenta()
         val e = abrirElChat()
         val (_, m) = p.modeloCargado(e)
@@ -158,7 +159,7 @@ class ChatUiTest : PruebaUi() {
         assertTrue(chat.delCliente().isEmpty())
 
         // Ya no lo rechaza: Reintentar lo vuelve a mandar.
-        servidor.respuestas.remove("mypump_agregar_comentario")
+        servidor.rechazos -= "mypump_agregar_comentario"
         p.tocar(etiqueta("chat-reintentar"))
         p.esperar("salió") { chat.delCliente() == listOf(MENSAJE) }
         p.esperarQueNoEste(texto("no salió"))
@@ -234,13 +235,16 @@ class ChatUiTest : PruebaUi() {
         assertEquals(1, p.cuantos(texto(TextosChat.separador(hace10.toString(), hoy))))
     }
 
-    /** ACC-07: en la demo el hilo está vacío, Enviar no se prende y nada toca la red. */
+    /**
+     * ACC-07: en la demo Enviar no se prende y nada toca la red. Desde la cola A la demo trae una charla de ejemplo
+     * (`HistorialDemo`), así que el hilo ya no está vacío.
+     */
     @Test
     fun enLaDemoNoSeManda() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("pestana-chat"))
-        p.nodo(etiqueta("chat-vacio"))
+        p.nodo(etiqueta("chat-campo"))
         p.nodo(texto("En la demo los mensajes no se envían."))
         p.escribir(etiqueta("chat-campo"), "Hola Mati")
         p.quieto(300)

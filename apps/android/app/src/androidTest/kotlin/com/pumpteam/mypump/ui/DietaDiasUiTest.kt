@@ -161,6 +161,8 @@ class DietaDiasUiTest : PruebaUi() {
         p.tocar(etiqueta("dia-$hace5"))
         p.nodo(etiqueta("dia-sin-marcas"))
         irA("0-c1")
+        // U4: la comida marcada se ve plegada; tocando el título se abre.
+        p.tocar(etiqueta("encabezado-c1"))
         p.nodo(etiqueta("ajustar-c1"))
         assertFalse(p.existe(etiqueta("agregar-c1")))
     }

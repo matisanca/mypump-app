@@ -38,6 +38,12 @@ class ServidorDePrueba : Transporte {
     /** Respuestas propias por función (`mypump_get_chat` → `[…]`); ganan sobre las grabadas. */
     val respuestas = ConcurrentHashMap<String, String>()
 
+    /**
+     * Funciones que la base rechaza con un error de datos (400, `P0001`): la cola deja de intentar a los 8 intentos y queda
+     * «No salió». Lo vacío (`null`) ya no sirve para eso: desde F5 espera la ventana de abandono.
+     */
+    val rechazos: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     init {
         // Sin la tabla de la palanca remota: vale la de fábrica.
         respuestas["mypump_get_app_config"] = SIN_FUNCION
@@ -59,6 +65,7 @@ class ServidorDePrueba : Transporte {
         val token = Regex("\"p_token\":\"([^\"]*)\"").find(cuerpo)?.groupValues?.get(1)
         val propia = respuestas[funcion]
         val (status, texto) = when {
+            funcion in rechazos -> 400 to """{"code":"P0001","details":null,"hint":null,"message":"rechazado (prueba)"}"""
             propia == SIN_FUNCION -> 404 to """{"code":"PGRST202","details":null,"hint":null,"message":"Could not find the function public.$funcion"}"""
             funcion == "mypump_get_cliente_info" && token != TOKEN -> 200 to "[]"
             propia != null -> 200 to propia

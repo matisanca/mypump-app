@@ -212,19 +212,19 @@ class ProgresoUiTest : PruebaUi() {
         assertEquals(listOf(ClaveEjercicio.de("Press inclinado con mancuernas"), ClaveEjercicio.de("Sentadilla")), claves)
     }
 
-    /** En la demo, como la web, no hay historial: el vacío (debajo del volumen, también vacío), sin pedir nada. */
+    /**
+     * En la demo, desde la cola A, el historial de ejemplo (`apps/shared/demo/historial.json`, como la web): los totales y
+     * las filas por ejercicio, sin pedir nada al servidor.
+     */
     @Test
-    fun enLaDemoNoHayHistorial() {
+    fun enLaDemoElHistorialDeEjemploSinPedirNada() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
         // Salud se abre desde la tarjeta Recuperación de Revisión.
         p.abrirSalud()
         p.tocar(etiqueta("segmento-fuerza"))
-        p.nodo(etiqueta("progreso-vacio"))
-        p.nodo(texto("Aún no hay historial"))
-        p.nodo(texto("Aún no hay historial registrado. Empezá tu primera sesión para ver el progreso acá."))
-        p.nodo(etiqueta("volumen-musculo"))
-        p.nodo(texto("Todavía no registraste series esta semana."))
+        p.nodo(etiqueta("progreso-totales"))
+        assertFalse(p.existe(etiqueta("progreso-vacio")))
         assertTrue(servidor.llamadas.none { "historico" in it.funcion })
     }
 

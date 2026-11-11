@@ -371,7 +371,8 @@ class EstudiosUiTest : PruebaUi() {
         p.nodo(texto("Mati lo vio"))
         p.nodo(texto("Sin fecha · 1 hoja"))
         // El que todavía no se puede abrir no es un botón.
-        p.tocar(etiqueta("estudios-estudio-${DobleEstudios.ESTUDIO_RECIBIDO}"))
+        // `tocar` espera una acción de toque: acá se comprueba que no la tiene.
+        assertFalse("la fila que no se abre no es un botón", p.tocable(etiqueta("estudios-estudio-${DobleEstudios.ESTUDIO_RECIBIDO}")))
         p.quieto(800)
         assertFalse(p.existe(etiqueta("estudios-visor-cargando")) || p.existe(etiqueta("estudios-visor")))
         assertNull(d.ultimoUrls)
@@ -390,7 +391,7 @@ class EstudiosUiTest : PruebaUi() {
         lanzar("completo")
         abrirEstudios()
         p.nodo(texto("Vencida. Si la necesitás, pedísela a Mati por el chat."))
-        p.tocar(etiqueta("estudios-orden-${DobleEstudios.ORDEN_VENCIDA}"))
+        assertFalse("la orden vencida no es un botón", p.tocable(etiqueta("estudios-orden-${DobleEstudios.ORDEN_VENCIDA}")))
         p.quieto(800)
         assertFalse(p.existe(etiqueta("estudios-detalle-orden")))
     }

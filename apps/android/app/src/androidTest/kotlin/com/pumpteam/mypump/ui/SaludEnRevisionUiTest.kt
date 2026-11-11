@@ -44,9 +44,11 @@ class SaludEnRevisionUiTest : PruebaUi() {
         // En la demo: lo que se va a ver con la cuenta. 2.3.0: una fila con flecha (el renglón «Ver sueño…» ya no va).
         p.nodo(texto("Con tu cuenta, acá vas a ver tu recuperación de cada día."))
         assertFalse(p.existe(texto("Ver sueño, corazón y cuerpo")))
-        // «Tu progreso», debajo: en la demo, lo genérico; abre Salud en Fuerza (se prueba con cuenta en SaludPestanaUiTest).
+        // «Tu progreso», debajo; abre Salud en Fuerza (se prueba con cuenta en SaludPestanaUiTest). Desde la cola A la demo
+        // trae historial: ya no dice lo genérico.
         p.nodo(etiqueta("tarjeta-progreso-revision"))
-        p.nodo(texto("Tu fuerza y tus récords, ejercicio por ejercicio."))
+        p.nodo(texto("Tu progreso"))
+        assertFalse(p.existe(texto("Tu fuerza y tus récords, ejercicio por ejercicio.")))
         Telefono.captura("salud-rev-01-tarjeta-demo")
 
         p.tocar(etiqueta("tarjeta-recuperacion-revision"))

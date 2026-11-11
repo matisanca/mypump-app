@@ -7,6 +7,7 @@ import java.time.ZoneId
 import java.util.TimeZone
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -70,14 +71,14 @@ class CapturasChatProgresoUiTest : PruebaUi() {
             foto("chat-01-conversacion")
 
             // Uno que la cola abandonó ("no salió") y otro sin señal ("enviando…").
-            servidor.respuestas["mypump_agregar_comentario"] = "null"
+            servidor.rechazos += "mypump_agregar_comentario"   // un error de datos: lo vacío espera la ventana (F5)
             p.escribir(etiqueta("chat-campo"), "Te mando las fotos a la noche")
             p.tocar(etiqueta("chat-enviar"))
             val cola = m.outbox!!
             p.esperar("no salió", ms = 60_000, enElPrincipal = false) {
                 if (p.existe(texto("no salió"))) true else null.also { runBlocking { cola.drenar() } }
             }
-            servidor.respuestas.remove("mypump_agregar_comentario")
+            servidor.rechazos -= "mypump_agregar_comentario"
             servidor.sinRed = true
             p.escribir(etiqueta("chat-campo"), "¿Mañana entreno igual?")
             p.tocar(etiqueta("chat-enviar"))
@@ -185,8 +186,10 @@ class CapturasChatProgresoUiTest : PruebaUi() {
             // Salud se abre desde la tarjeta Recuperación de Revisión.
             p.abrirSalud()
             p.tocar(etiqueta("segmento-fuerza"))
-            p.nodo(etiqueta("progreso-vacio"))
-            foto("progreso-09-vacio")
+            // Desde la cola A la demo trae historial (`HistorialDemo`): Fuerza muestra los totales, no el vacío.
+            p.nodo(etiqueta("progreso-totales"))
+            assertFalse(p.existe(etiqueta("progreso-vacio")))
+            foto("progreso-09-demo")
         }.close()
     }
 }
