@@ -20,7 +20,10 @@ import kotlinx.serialization.json.Json
  * datos ([ModeloApp.estudiosParaAviso]).
  */
 enum class DestinoAviso {
-    ENTRENO, DIETA, CHAT, REVISION, FUERZA, RECUPERACION, MIS_DATOS, ESTUDIOS;
+    ENTRENO, DIETA, CHAT, REVISION, FUERZA, RECUPERACION, MIS_DATOS, ESTUDIOS,
+
+    /** `fotos_inicio`: el aviso de «subí tus fotos de inicio» (lo encola `mypump_fotos_inicio_pedir`); abre esa pantalla. */
+    FOTOS_INICIO;
 
     companion object {
         fun deDestino(destino: String?): DestinoAviso = when (destino) {
@@ -31,6 +34,7 @@ enum class DestinoAviso {
             "revision" -> REVISION
             "salud" -> MIS_DATOS
             Estudios.DESTINO -> ESTUDIOS
+            "fotos_inicio" -> FOTOS_INICIO
             else -> CHAT
         }
 
@@ -39,7 +43,7 @@ enum class DestinoAviso {
          * escena inexistente dejaba la app en blanco).
          */
         fun deEscena(escena: String?): DestinoAviso? =
-            if (escena in listOf("train", "diet", "chat", "revision", "progress", "salud", "myday", Estudios.DESTINO)) deDestino(escena) else null
+            if (escena in listOf("train", "diet", "chat", "revision", "progress", "salud", "myday", Estudios.DESTINO, "fotos_inicio")) deDestino(escena) else null
 
         /** Los extras con que tocar un aviso abre la app: el `destino` (el de push.py y el de los locales)… */
         const val EXTRA_DESTINO = "destino"

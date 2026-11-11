@@ -38,6 +38,7 @@ struct EntrenoView: View {
                     }
                 case .sinRutina:
                     ScrollView {
+                        TarjetaFotosInicio(soloSiFaltan: true).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         TarjetaGimnasio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
@@ -216,6 +217,7 @@ private struct ListaEntreno: View {
                 // de la entrega (tiene hora), Estudios (lo pidió Mati y tiene fecha) y la guía destacada.
                 TarjetaEstudiosInicio()
                 if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
+                TarjetaFotosInicio(soloSiFaltan: true)
                 TarjetaGimnasio()
                 TarjetaNovedadPlan()
                 cabecera

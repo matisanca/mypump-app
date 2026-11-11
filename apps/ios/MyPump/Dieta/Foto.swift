@@ -92,7 +92,7 @@ enum FotoReducida {
 }
 
 /// La cámara del sistema (PhotosPicker no saca fotos).
-private struct Camara: UIViewControllerRepresentable {
+struct Camara: UIViewControllerRepresentable {
     let alTerminar: (UIImage?) -> Void
 
     func makeUIViewController(context: Context) -> UIImagePickerController {

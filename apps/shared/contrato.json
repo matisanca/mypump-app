@@ -1694,6 +1694,42 @@
    "la_usa_el_cliente": true,
    "outbox_kind": null,
    "estado": "propuesta 2.3.0, sin aplicar: supabase/propuestas/nativa_estudios.sql"
+  },
+  {
+   "nombre": "mypump_fotos_inicio_get",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "jsonb",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null,
+   "estado": "propuesta, sin aplicar: supabase/propuestas/nativa_fotos_inicio.sql"
+  },
+  {
+   "nombre": "mypump_fotos_inicio_nota",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_nota",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "jsonb",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null,
+   "estado": "propuesta, sin aplicar: supabase/propuestas/nativa_fotos_inicio.sql"
   }
  ]
 }

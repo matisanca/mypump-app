@@ -108,6 +108,7 @@ import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.modelos.Dia
 import com.pumpteam.mypump.modelos.Ejercicio
 import com.pumpteam.mypump.raiz.BannerRevision
+import com.pumpteam.mypump.fotosinicio.TarjetaFotosInicioDe
 import com.pumpteam.mypump.gimnasio.TarjetaGimnasioDe
 import com.pumpteam.mypump.guia.TarjetaVideollamadaEntreno
 import com.pumpteam.mypump.guia.TarjetaGuiaDe
@@ -206,6 +207,7 @@ fun ListaEntreno(
                     // la guía. El mismo orden en iOS.
                     com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo)
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
+                    TarjetaFotosInicioDe(modelo, soloSiFaltan = true)
                     TarjetaGimnasioDe(modelo)
                     com.pumpteam.mypump.novedades.TarjetaNovedadDe(modelo)
                     // Hasta dónde llega la cabecera (con la tarjeta arriba, no es solo su alto): el título pasa a la barra después.

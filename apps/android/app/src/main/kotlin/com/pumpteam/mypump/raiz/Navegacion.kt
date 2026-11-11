@@ -85,6 +85,8 @@ class Navegacion(
     tecnicaEnMisDatos: Boolean = false,
     documentosEnMisDatos: Boolean = false,
     estudiosEnMisDatos: Boolean = false,
+    fotosInicio: Boolean = false,
+    fotosInicioEnMisDatos: Boolean = false,
 ) {
     var pestana by mutableStateOf(pestana)
     var misDatos by mutableStateOf(misDatos)
@@ -120,6 +122,11 @@ class Navegacion(
 
     /** Al abrirse, Estudios se desplaza hasta la primera tarjeta nueva y lo consume. */
     var enfocarEstudios by mutableStateOf(false)
+    /** «Tus fotos de inicio» abierto desde la tarjeta de Revisión. */
+    var fotosInicio by mutableStateOf(fotosInicio)
+
+    /** «Mis fotos de inicio» abierto desde Mis datos. */
+    var fotosInicioEnMisDatos by mutableStateOf(fotosInicioEnMisDatos)
 
     /**
      * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check), como `anclaRevision` de
@@ -147,6 +154,8 @@ class Navegacion(
             novedadesEnMisDatos = false
             documentosEnMisDatos = false
             estudiosEnMisDatos = false
+            fotosInicio = false
+            fotosInicioEnMisDatos = false
         }
         if (p == pestana && p == Pestana.ENTRENO) {
             guia = false
@@ -167,6 +176,12 @@ class Navegacion(
             // `?scene=myday` y el aviso de Mi Día (ya no existe): Revisión + Salud → Recuperación.
             DestinoAviso.RECUPERACION -> irASalud(SegmentoSalud.RECUPERACION)
             DestinoAviso.MIS_DATOS -> irAMisDatos()
+            // El aviso de «subí tus fotos de inicio»: Revisión con la pantalla abierta en la pose que falta. Si la sección
+            // no está habilitada (o todavía no cargó), se ve Revisión y la pantalla aparece sola cuando llega.
+            DestinoAviso.FOTOS_INICIO -> {
+                irARevision(null)
+                fotosInicio = true
+            }
             // El aviso de un estudio pedido o una orden nueva y `?scene=estudios`: Mis datos → Estudios.
             DestinoAviso.ESTUDIOS -> irAEstudios()
         }
@@ -182,6 +197,7 @@ class Navegacion(
         documentosEnMisDatos = false
         estudiosEnMisDatos = false
         enfocarEstudios = false
+        fotosInicioEnMisDatos = false
     }
 
     /** Documentos: Revisión → Mis datos → Documentos (el aviso «Tenés el contrato pendiente de firma»). */
@@ -222,6 +238,8 @@ class Navegacion(
         novedadesEnMisDatos = false
         documentosEnMisDatos = false
         estudiosEnMisDatos = false
+        fotosInicio = false
+        fotosInicioEnMisDatos = false
         anclaRevision = ancla
     }
 
@@ -239,7 +257,7 @@ class Navegacion(
 
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos, it.documentosEnMisDatos, it.estudiosEnMisDatos) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos, it.documentosEnMisDatos, it.estudiosEnMisDatos, it.fotosInicio, it.fotosInicioEnMisDatos) },
             restore = {
                 Navegacion(
                     Pestana.entries.firstOrNull { p -> p.name == it[0] } ?: Pestana.ENTRENO,
@@ -253,6 +271,8 @@ class Navegacion(
                     it.getOrNull(8) as? Boolean ?: false,
                     it.getOrNull(9) as? Boolean ?: false,
                     it.getOrNull(10) as? Boolean ?: false,
+                    it.getOrNull(11) as? Boolean ?: false,
+                    it.getOrNull(12) as? Boolean ?: false,
                 )
             },
         )

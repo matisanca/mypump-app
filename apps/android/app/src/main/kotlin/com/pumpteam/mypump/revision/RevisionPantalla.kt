@@ -56,6 +56,7 @@ import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.rellenoInferior
 import com.pumpteam.mypump.diseno.sinAbajo
 import com.pumpteam.mypump.diseno.vidrio
+import com.pumpteam.mypump.fotosinicio.TarjetaFotosInicioDe
 import com.pumpteam.mypump.raiz.AnclaRevision
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.raiz.LocalNavegacion
@@ -187,6 +188,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     val ultima = devolucion?.ultima
                     if (!esDemo && ultima != null) TarjetaDevolucion(ultima, devolucion.anteriores)
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                        // Fotos de inicio: arriba de todo, solo con la sección habilitada para esta cuenta.
+                        TarjetaFotosInicioDe(modelo)
                         // Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo).
                         SemanaRevision.textoDia(diaDeRevision(modelo))?.let {
                             Text(

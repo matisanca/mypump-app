@@ -23,6 +23,7 @@ struct MisDatosView: View {
     @AppStorage("mypump-theme") private var tema = ""
     @State private var fuentes = false
     @State private var verGimnasio = false
+    @State private var verFotosInicio = false
     @State private var verTecnica = false
     /// `-abrir novedades` (capturas): la lista de novedades directo.
     @State private var verNovedades = DemoUI.abrir == "novedades"
@@ -141,6 +142,15 @@ struct MisDatosView: View {
                     }
                     .badge(docs.contratoPendiente ? Text("Pendiente").foregroundStyle(Color.alerta) : nil)
                     .accessibilityIdentifier("mis-datos-documentos")
+                }
+                if let f = modelo.fotosInicio, f.visible || verFotosInicio {
+                    Button { verFotosInicio = true } label: {
+                        fila(TextosFotosInicio.entradaMisDatos, icono: "camera.fill", color: .marcaTexto)
+                    }
+                    .accessibilityIdentifier("mis-datos-fotos-inicio")
+                    .sheet(isPresented: $verFotosInicio) {
+                        FotosInicioRaiz(modelo: f, alCerrar: { verFotosInicio = false }).presentationDragIndicator(.visible)
+                    }
                 }
                 Button { fuentes = true } label: {
                     fila("Respaldo científico del plan", icono: "book.closed.fill", color: .marcaTexto)

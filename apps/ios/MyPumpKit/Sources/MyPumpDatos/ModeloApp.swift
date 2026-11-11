@@ -109,6 +109,8 @@ public final class ModeloApp {
     public private(set) var fotos: ModeloFotos?
     /// Gimnasio por fotos: existe con cuenta, pero solo llama al servidor con la palanca `gimnasio_fotos` prendida.
     public private(set) var gimnasio: ModeloGimnasio?
+    /// Fotos de inicio: existe con cuenta, pero solo llama al servidor con la palanca `fotos_inicio` prendida.
+    public private(set) var fotosInicio: ModeloFotosInicio?
     /// Técnica por video: existe con cuenta, pero solo llama al servidor con la palanca `tecnica_video` prendida.
     public private(set) var tecnica: ModeloTecnica?
     /// Devolución de Mati: existe con cuenta, pero solo llama al servidor con la palanca `devolucion_semanal` prendida.
@@ -272,7 +274,7 @@ public final class ModeloApp {
         registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; fotosInicio = nil; tecnica = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         novedades = nil
         documentos = nil
@@ -352,7 +354,7 @@ public final class ModeloApp {
         registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; fotosInicio = nil; tecnica = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         novedades = nil
         documentos = nil
@@ -415,6 +417,7 @@ public final class ModeloApp {
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola, disco: disco)
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
+        fotosInicio = ModeloFotosInicio(cliente: cliente, token: t, disco: disco)
         tecnica = ModeloTecnica(cliente: cliente, token: t, disco: disco)
         devolucion = ModeloDevolucion(cliente: cliente, token: t, disco: disco)
         feedback = ModeloFeedback(cliente: cliente, token: t, disco: disco)
@@ -552,6 +555,7 @@ public final class ModeloApp {
             let g = gimnasio
             let tec = tecnica
             let est = estudios
+            let fi = fotosInicio
             CuentasDelTelefono.anotar(clienteId: id, en: d)
             await CuentasDelTelefono.adoptar(clienteId: id, en: d, cola: cola)
             // Los reemplazos de comida que esa carpeta tenía sin decidir vienen con ellas: hasta decidir, la cola los retiene
@@ -562,6 +566,7 @@ public final class ModeloApp {
             if let g { CuentasDelTelefono.adoptarGimnasio(clienteId: id, en: d, gimnasio: g) }
             if let tec { CuentasDelTelefono.adoptarTecnica(clienteId: id, en: d, tecnica: tec) }
             if let est { CuentasDelTelefono.adoptarEstudios(clienteId: id, en: d, estudios: est) }
+            if let fi { CuentasDelTelefono.adoptarFotosInicio(clienteId: id, en: d, fotosInicio: fi) }
             guard vigente() else { return }
         }
 
@@ -657,6 +662,7 @@ public final class ModeloApp {
         async let cargaFotos: Void = fotos?.cargar() ?? ()
         _ = await (cargaChat, cargaRevision, cargaFotos)
         await sincronizarGimnasio()
+        await sincronizarFotosInicio()
         await sincronizarTecnica()
         await sincronizarDevolucion()
         await chat?.consultarAdjuntos(palanca: palanca.chatAdjuntos)
@@ -761,6 +767,7 @@ public final class ModeloApp {
         await fotos?.drenar()
         if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
         if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
+        if palanca.fotosInicio { fotosInicio?.drenarEnFondo() }
         if let estudios, estudios.palanca == true, estudios.habilitado { estudios.drenarEnFondo() }
     }
 
@@ -804,6 +811,15 @@ public final class ModeloApp {
     private func sincronizarFeedback() async {
         guard let feedback else { return }
         if palanca.meDuele || palanca.supleEstado { await feedback.refrescar() } else { feedback.apagar() }
+    }
+    private func sincronizarFotosInicio() async {
+        guard let fotosInicio else { return }
+        if palanca.fotosInicio {
+            await fotosInicio.refrescar()
+            fotosInicio.drenarEnFondo()
+        } else {
+            fotosInicio.apagar()
+        }
     }
 
     private func sincronizarGimnasio() async {
@@ -880,6 +896,7 @@ public final class ModeloApp {
         // cada uno, y solo con su palanca prendida), sin esperar el intervalo.
         await sincronizarDevolucion()
         await sincronizarEstudios()
+        await sincronizarFotosInicio()
         if toca(.salud) { await salud?.alVolver() }   // con Apple Health conectada: 7 días y retomar el historial
         _ = await entreno?.alVolverAPrimerPlano()
     }

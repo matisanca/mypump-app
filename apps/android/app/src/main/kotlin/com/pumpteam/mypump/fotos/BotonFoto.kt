@@ -40,6 +40,7 @@ import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import java.io.File
+import java.time.OffsetDateTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -68,11 +69,17 @@ fun BotonFoto(
     habilitado: Boolean = true,
     /** Abre la cámara (o la galería, sin cámara) apenas aparece: «Escanear la etiqueta» de un código que no se encontró. */
     abrirAlAparecer: Boolean = false,
+    /**
+     * Si está, se llama en lugar de [alElegir] con la fecha de captura del EXIF de la original cuando se eligió de la galería
+     * (null si se sacó recién con la cámara o la original no la trae): las fotos de inicio avisan si la foto es vieja.
+     */
+    alElegirConFecha: ((jpeg: ByteArray, tomada: OffsetDateTime?) -> Unit)? = null,
     contenido: @Composable () -> Unit,
 ) {
     val contexto = LocalContext.current
     val alcance = LocalAlcanceApp.current
     val alElegirAhora by rememberUpdatedState(alElegir)
+    val alElegirConFechaAhora by rememberUpdatedState(alElegirConFecha)
     var menu by remember { mutableStateOf(false) }
     var ilegible by rememberSaveable { mutableStateOf(false) }
     val hayCamara = remember { contexto.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) }
@@ -80,10 +87,17 @@ fun BotonFoto(
     // En el alcance de la app: si el cliente cambia de pestaña mientras se reduce, la foto no se pierde.
     fun procesar(uri: Uri, temporal: File?) {
         val resolver = contexto.contentResolver
+        val conFecha = alElegirConFechaAhora
         alcance.launch {
-            val jpeg = withContext(Dispatchers.Default) { ReduccionFoto.jpeg(resolver, uri, maxPx, calidad) }
+            val (jpeg, tomada) = withContext(Dispatchers.Default) {
+                ReduccionFoto.jpeg(resolver, uri, maxPx, calidad) to (if (conFecha != null && temporal == null) ReduccionFoto.fechaDeCaptura(resolver, uri) else null)
+            }
             temporal?.delete()
-            if (jpeg != null) alElegirAhora(jpeg) else ilegible = true
+            when {
+                jpeg == null -> ilegible = true
+                conFecha != null -> conFecha(jpeg, tomada)
+                else -> alElegirAhora(jpeg)
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 package com.pumpteam.mypump
 
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -17,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.avisos.CentroAvisos
 import com.pumpteam.mypump.diseno.TemaMyPump
 import com.pumpteam.mypump.diseno.temaOscuro
+import com.pumpteam.mypump.fotosinicio.FotoSinteticaFotosInicio
 import com.pumpteam.mypump.raiz.RaizMyPump
 import com.pumpteam.mypump.salud.PermisosHealthConnect
 
@@ -45,6 +47,10 @@ class MainActivity : ComponentActivity() {
         }
         // Avisos: tocar uno con la app cerrada la abre en su pestaña (NOT-03, arranque en frío).
         if (savedInstanceState == null) abrirAviso(intent)
+        // Fotos de inicio en modo de prueba: solo en un build de depuración (`adb shell am start … --es fotosInicioDePrueba buena`).
+        if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            intent?.getStringExtra("fotosInicioDePrueba")?.takeIf { it in FotoSinteticaFotosInicio.escenarios }?.let { Entorno.fotosInicioDePrueba = it }
+        }
         lifecycle.addObserver(
             LifecycleEventObserver { _, evento ->
                 when (evento) {

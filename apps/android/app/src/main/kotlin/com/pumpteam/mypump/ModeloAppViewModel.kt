@@ -57,6 +57,13 @@ object Entorno {
      * avisos de la videollamada, no se agenda.
      */
     val enPruebas: Boolean get() = transporte != null || instrumentada
+    /**
+     * Fotos de inicio en modo de prueba (`buena`, `oscura`, `chica` o `movida`): el botón de foto arma un JPEG de mentira con
+     * ese aspecto en vez de abrir la cámara (FotoSinteticaFotosInicio). Lo prenden las pruebas de interfaz, o en un build de
+     * depuración el extra `fotosInicioDePrueba` al abrir la app. En la app siempre es null.
+     */
+    @Volatile
+    var fotosInicioDePrueba: String? = null
 }
 
 /**

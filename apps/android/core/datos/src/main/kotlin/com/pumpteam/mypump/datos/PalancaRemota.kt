@@ -41,6 +41,8 @@ data class PalancaRemota(
     val elegirHorario: Boolean = false,
     /** Estudios y órdenes (`estudios_app`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. */
     val estudiosApp: Boolean = false,
+    /** Fotos de inicio (`fotos_inicio`). Sin la clave, apagadas: ni se muestran ni se llama a nada nuevo. */
+    val fotosInicio: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -63,6 +65,7 @@ data class PalancaRemota(
             supleEstado = (j["suple_estado"] as? ValorJson.Booleano)?.valor ?: false,
             elegirHorario = (j["elegir_horario"] as? ValorJson.Booleano)?.valor ?: false,
             estudiosApp = (j["estudios_app"] as? ValorJson.Booleano)?.valor ?: false,
+            fotosInicio = (j["fotos_inicio"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

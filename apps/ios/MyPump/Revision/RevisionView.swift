@@ -26,6 +26,7 @@ struct RevisionView: View {
                     Group {
                         if claseAncho == .regular {
                             VStack(alignment: .leading, spacing: Espacio.l) {
+                                TarjetaFotosInicio()
                                 devolucion
                                 HStack(alignment: .top, spacing: Espacio.l) {
                                     recuperacion.frame(maxWidth: .infinity, alignment: .top)
@@ -50,6 +51,7 @@ struct RevisionView: View {
                             .anchoLectura(Ancho.doble)
                         } else {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
+                                TarjetaFotosInicio()
                                 devolucion   // lo que Mati le dejó va primero, con la semana a medias o no
                                 if semanaPendiente {
                                     // U1 (auditoría del 10/11): con la semana a medias, lo que vino a hacer va arriba. Antes las

@@ -298,6 +298,10 @@ class ModeloApp(
     private val _gimnasio = MutableStateFlow<ModeloGimnasio?>(null)
     val gimnasio: StateFlow<ModeloGimnasio?> = _gimnasio.asStateFlow()
 
+    /** Fotos de inicio: existe con cuenta, pero solo llama al servidor con la palanca `fotos_inicio` prendida. */
+    private val _fotosInicio = MutableStateFlow<ModeloFotosInicio?>(null)
+    val fotosInicio: StateFlow<ModeloFotosInicio?> = _fotosInicio.asStateFlow()
+
     /** Técnica por video: existe con cuenta, pero solo llama al servidor con la palanca `tecnica_video` prendida. */
     private val _tecnica = MutableStateFlow<ModeloTecnica?>(null)
     val tecnica: StateFlow<ModeloTecnica?> = _tecnica.asStateFlow()
@@ -594,6 +598,7 @@ class ModeloApp(
         _revision.value = null
         _fotos.value = null
         _gimnasio.value = null
+        _fotosInicio.value = null
         _tecnica.value = null
         _devolucion.value = null
         _feedback.value = null
@@ -647,6 +652,7 @@ class ModeloApp(
         _revision.value = ModeloRevision(cliente, t, cola, alcance, d)
         _fotos.value = ModeloFotos(cliente, t, d)
         _gimnasio.value = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        _fotosInicio.value = ModeloFotosInicio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _tecnica.value = ModeloTecnica(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _devolucion.value = ModeloDevolucion(cliente, t, d)
         _feedback.value = ModeloFeedback(cliente, t, d)
@@ -872,6 +878,7 @@ class ModeloApp(
         val colaCuenta = outbox
         val fotosCuenta = _fotos.value
         val gimnasioCuenta = _gimnasio.value
+        val fotosInicioCuenta = _fotosInicio.value
         val tecnicaCuenta = _tecnica.value
         val estudiosCuenta = _estudios.value
         val clienteId = _info.value?.clienteId
@@ -883,6 +890,7 @@ class ModeloApp(
             if (CuentasDelTelefono.adoptarSwaps(clienteId, discoCuenta)) colaCuenta.retenerSwapsHastaDecidir()
             fotosCuenta?.let { f -> CuentasDelTelefono.adoptarFotos(clienteId, discoCuenta, f) }
             gimnasioCuenta?.let { g -> CuentasDelTelefono.adoptarGimnasio(clienteId, discoCuenta, g) }
+            fotosInicioCuenta?.let { f -> CuentasDelTelefono.adoptarFotosInicio(clienteId, discoCuenta, f) }
             tecnicaCuenta?.let { x -> CuentasDelTelefono.adoptarTecnica(clienteId, discoCuenta, x) }
             estudiosCuenta?.let { x -> CuentasDelTelefono.adoptarEstudios(clienteId, discoCuenta, x) }
             if (!vigente()) return
@@ -904,6 +912,7 @@ class ModeloApp(
             _palanca.value = it
             palancaLeidaEnSesion = true
             _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
+            _fotosInicio.value?.recordarPalanca(it.fotosInicio)
             _tecnica.value?.recordarPalanca(it.tecnicaVideo)
             _devolucion.value?.recordarPalanca(it.devolucionSemanal)
             disco?.let { d -> if (elegirHorarioRecordado(d) != it.elegirHorario) d.guardar(ARCHIVO_PALANCA_ELEGIR, ValorJson.Booleano(it.elegirHorario)) }
@@ -991,6 +1000,7 @@ class ModeloApp(
         // Documentos: aparte, así no demora la carga (un error es «sin documentos»).
         _documentos.value?.let { m -> alcance.launch { m.refrescar() } }
         sincronizarGimnasio()
+        sincronizarFotosInicio()
         sincronizarTecnica()
         sincronizarDevolucion()
         _chat.value?.consultarAdjuntos(if (palancaLeidaEnSesion) _palanca.value.chatAdjuntos else null)
@@ -1013,6 +1023,7 @@ class ModeloApp(
         outbox?.drenar()
         _fotos.value?.drenar()
         _gimnasio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+        _fotosInicio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
         _tecnica.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
         _estudios.value?.takeIf { it.palanca.value == true }?.drenarEnFondo()
     }
@@ -1061,6 +1072,17 @@ class ModeloApp(
     private suspend fun sincronizarDevolucion() {
         val x = _devolucion.value ?: return
         if (x.palancaRecordada) x.refrescar() else x.apagar()
+    }
+
+    /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
+    private suspend fun sincronizarFotosInicio() {
+        val f = _fotosInicio.value ?: return
+        if (f.palancaRecordada) {
+            f.refrescar()
+            f.drenarEnFondo()
+        } else {
+            f.apagar()
+        }
     }
 
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
@@ -1131,6 +1153,7 @@ class ModeloApp(
         // cada uno, y solo con su palanca prendida), sin esperar el intervalo.
         sincronizarDevolucion()
         sincronizarEstudios()
+        sincronizarFotosInicio()
         if (toca(Relectura.GUIA)) _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }

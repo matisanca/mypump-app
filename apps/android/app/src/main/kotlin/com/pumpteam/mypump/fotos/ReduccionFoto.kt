@@ -13,6 +13,11 @@ import android.net.Uri
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -43,6 +48,34 @@ object ReduccionFoto {
     /** La foto que devolvió la cámara o la galería (un `content://`). Se lee tres veces sin guardarla entera en memoria. */
     fun jpeg(resolver: ContentResolver, uri: Uri, maxPx: Int, calidad: Double): ByteArray? =
         jpeg({ resolver.openInputStream(uri) }, maxPx, calidad)
+
+    /**
+     * Cuándo se sacó la original, del EXIF (`DateTimeOriginal`, y si no `DateTime`), con su zona si la trae
+     * (`OffsetTimeOriginal`) o la del teléfono. null si no la trae o no se entiende.
+     */
+    fun fechaDeCaptura(resolver: ContentResolver, uri: Uri, zona: ZoneId = ZoneId.systemDefault()): OffsetDateTime? = try {
+        resolver.openInputStream(uri)?.use { entrada ->
+            val exif = ExifInterface(entrada)
+            fechaExif(
+                exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL) ?: exif.getAttribute(ExifInterface.TAG_DATETIME),
+                // TAG_OFFSET_TIME_ORIGINAL es de la API 28: el nombre del campo se lee igual en todas.
+                exif.getAttribute("OffsetTimeOriginal"),
+                zona,
+            )
+        }
+    } catch (_: Exception) {
+        null
+    }
+
+    /** "2026:11:09 18:30:05" con "-03:00" (o sin zona: la del teléfono). */
+    internal fun fechaExif(fecha: String?, desfase: String?, zona: ZoneId): OffsetDateTime? = try {
+        val local = LocalDateTime.parse(fecha?.trim() ?: return null, FORMATO_EXIF)
+        desfase?.trim()?.takeIf { it.isNotEmpty() }?.let { local.atOffset(ZoneOffset.of(it)) } ?: local.atZone(zona).toOffsetDateTime()
+    } catch (_: Exception) {
+        null
+    }
+
+    private val FORMATO_EXIF = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss")
 
     private fun jpeg(abrir: () -> InputStream?, maxPx: Int, calidad: Double): ByteArray? = try {
         reducir(abrir, maxPx, calidad)
