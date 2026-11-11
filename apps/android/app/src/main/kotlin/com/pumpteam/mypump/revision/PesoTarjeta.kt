@@ -94,7 +94,7 @@ import kotlinx.coroutines.launch
  * Canvas: no hay librería de gráficos.
  */
 @Composable
-fun PesoTarjeta(revision: ModeloRevision?, modifier: Modifier = Modifier) {
+fun PesoTarjeta(revision: ModeloRevision?, modifier: Modifier = Modifier, modelo: com.pumpteam.mypump.datos.ModeloApp? = null) {
     val alcance = LocalAlcanceApp.current
     val tactil = LocalHapticFeedback.current
     val foco = LocalFocusManager.current
@@ -201,6 +201,9 @@ fun PesoTarjeta(revision: ModeloRevision?, modifier: Modifier = Modifier) {
                     Text("Cargá tu peso unos días más para ver la tendencia semanal.", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
                 }
             }
+
+            // El ritmo que buscamos (2.3.0, palanca `metas_pasos`): solo si el plan lo trae.
+            com.pumpteam.mypump.metas.RitmoPesoLinea(modelo, serie)
 
             if (serie.size >= 2) GraficoPeso(serie)
 

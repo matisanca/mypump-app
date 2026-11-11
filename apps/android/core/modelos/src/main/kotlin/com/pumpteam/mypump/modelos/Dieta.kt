@@ -24,6 +24,12 @@ data class EstructuraDieta(
     val macrosTarget: Macros? = null,
     val comidas: List<Comida> = emptyList(),
     val tiposDia: List<TipoDia> = emptyList(),
+    /**
+     * Las metas del plan (2.3.0): `meta_pasos_dia` y `ritmo_peso_kg_semana`, tal como vinieron (número o nada). El tipo
+     * entero y el rango los mira `MetasPlan`: acá un texto u otra cosa ya cuenta como que no vino. Gemelo de Dieta.swift.
+     */
+    val metaPasosDia: Double? = null,
+    val ritmoPesoKgSemana: Double? = null,
 ) {
     companion object {
         fun desde(e: JsonElement): EstructuraDieta {
@@ -32,6 +38,8 @@ data class EstructuraDieta(
                 macrosTarget = o.objeto("macros_target")?.let(Macros::desde),
                 comidas = o.lista("comidas", Comida::desde),
                 tiposDia = o.lista("tipos_dia", TipoDia::desde),
+                metaPasosDia = o["meta_pasos_dia"]?.let(Lector::numero),
+                ritmoPesoKgSemana = o["ritmo_peso_kg_semana"]?.let(Lector::numero),
             )
         }
     }

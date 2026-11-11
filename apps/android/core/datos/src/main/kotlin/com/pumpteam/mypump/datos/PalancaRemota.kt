@@ -27,6 +27,8 @@ data class PalancaRemota(
      * la agenda de la guía queda como en la 2.2.0 y no se llama a `entregas_app_cambiar`.
      */
     val elegirHorario: Boolean = false,
+    /** Metas de pasos y ritmo de peso, con el «Pump del día» (`metas_pasos`). Sin la clave, apagadas: no se ve nada nuevo. */
+    val metasPasos: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -42,6 +44,7 @@ data class PalancaRemota(
             gimnasioFotos = (j["gimnasio_fotos"] as? ValorJson.Booleano)?.valor ?: false,
             tecnicaVideo = (j["tecnica_video"] as? ValorJson.Booleano)?.valor ?: false,
             elegirHorario = (j["elegir_horario"] as? ValorJson.Booleano)?.valor ?: false,
+            metasPasos = (j["metas_pasos"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

@@ -216,6 +216,8 @@ fun ListaEntreno(
                     // Con todo visto, la compacta en su lugar de siempre.
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.COMPACTA)
                     BannerRevision(modelo)
+                    // «Pump del día» (2.3.0): solo con la palanca `metas_pasos` y una meta de pasos en el plan.
+                    com.pumpteam.mypump.metas.PumpDelDiaDe(modelo)
                     // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
                     if (motor.dias.size > 1) SelectorDias(motor, v)
                     if (motor.vacio) {

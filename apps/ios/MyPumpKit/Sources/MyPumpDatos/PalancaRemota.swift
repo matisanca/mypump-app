@@ -25,6 +25,8 @@ public struct PalancaRemota: Equatable, Sendable {
     /// Elegir y cambiar el horario de la videollamada en la pantalla nueva (`elegir_horario`, 2.3.0). Sin la clave,
     /// apagada: la agenda de la guía queda como en la 2.2.0 y no se llama a `entregas_app_cambiar`.
     public var elegirHorario = false
+    /// Metas de pasos y ritmo de peso, con el «Pump del día» (`metas_pasos`). Sin la clave, apagadas: no se ve nada nuevo.
+    public var metasPasos = false
 
     public init() {}
 
@@ -38,6 +40,8 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveTecnicaVideo = "mypump-palanca-tecnica-video"
     /// El último valor leído de `elegir_horario`: apagada, un cambio que quedó en la cola no sale.
     static let claveElegirHorario = "mypump-palanca-elegir-horario"
+    /// El último valor leído de `metas_pasos`: sin red al arrancar, el «Pump del día» no aparece y desaparece.
+    static let claveMetasPasos = "mypump-palanca-metas-pasos"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
@@ -48,6 +52,7 @@ public struct PalancaRemota: Equatable, Sendable {
         // Pruebas de interfaz y capturas: `-elegirHorario YES` (lo mismo que mira la pantalla).
         if let v = defaults.string(forKey: "elegirHorario") { p.elegirHorario = v == "YES" }
         #endif
+        if defaults.bool(forKey: claveMetasPasos) { p.metasPasos = true }
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
@@ -55,6 +60,7 @@ public struct PalancaRemota: Equatable, Sendable {
         defaults.set(gimnasioFotos, forKey: Self.claveGimnasioFotos)
         defaults.set(tecnicaVideo, forKey: Self.claveTecnicaVideo)
         defaults.set(elegirHorario, forKey: Self.claveElegirHorario)
+        defaults.set(metasPasos, forKey: Self.claveMetasPasos)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
@@ -66,6 +72,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["gimnasio_fotos"] { gimnasioFotos = b }
         if case .bool(let b)? = j["tecnica_video"] { tecnicaVideo = b }
         if case .bool(let b)? = j["elegir_horario"] { elegirHorario = b }
+        if case .bool(let b)? = j["metas_pasos"] { metasPasos = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

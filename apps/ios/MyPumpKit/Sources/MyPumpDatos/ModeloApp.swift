@@ -112,6 +112,8 @@ public final class ModeloApp {
     public private(set) var guia: ModeloGuia?
     /// La pestaña Suplementación (2.1.0): aparece solo si `mypump_suplementacion` devolvió una fila con ítems.
     public private(set) var suplementacion: ModeloSuplementacion?
+    /// «Pump del día» (2.3.0): las fechas ya celebradas de esta cuenta (`metas.json` en su disco; en la demo, en memoria).
+    public internal(set) var registroMetas = PumpDelDia.Registro()
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet {
@@ -227,6 +229,7 @@ public final class ModeloApp {
         borrarCodigosDelDisco()
         token = nil
         disco = nil
+        registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
@@ -296,6 +299,7 @@ public final class ModeloApp {
         token = nil
         disco = nil
         cacheCodigos = nil
+        registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
@@ -318,6 +322,7 @@ public final class ModeloApp {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
         cacheCodigos = nil
+        registroMetas = disco.leer(PumpDelDia.Registro.self, "metas.json") ?? PumpDelDia.Registro()
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones, carpetaAudios: disco.url("audios"))

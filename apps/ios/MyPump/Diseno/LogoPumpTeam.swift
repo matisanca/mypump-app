@@ -5,6 +5,9 @@ import SwiftUI
 struct TorsoPumpTeam: Shape {
     /// Cuánto del lado ocupa el torso (en el ícono, el 57 %).
     var ocupa: CGFloat = 0.57
+    /// Solo el contorno cerrado (hombros, brazos y cintura), sin pectorales ni abdominales: la silueta que se rellena
+    /// en el «Pump del día».
+    var soloContorno = false
 
     func path(in r: CGRect) -> Path {
         let s = min(r.width, r.height) * ocupa / 292           // el torso mide 292 de ancho y de alto
@@ -24,6 +27,7 @@ struct TorsoPumpTeam: Shape {
         }
         t.addCurve(to: p(110, 250), control1: p(132, 280), control2: p(117, 270))
         t.closeSubpath()
+        if soloContorno { return t }
         t.move(to: p(210, 195)); t.addCurve(to: p(220, 265), control1: p(195, 215), control2: p(195, 245)); t.addLine(to: p(250, 275))
         t.move(to: p(302, 195)); t.addCurve(to: p(292, 265), control1: p(317, 215), control2: p(317, 245)); t.addLine(to: p(262, 275))
         t.move(to: p(256, 282)); t.addLine(to: p(256, 405))

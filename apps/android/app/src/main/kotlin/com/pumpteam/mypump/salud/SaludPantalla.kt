@@ -207,6 +207,7 @@ private fun RecuperacionSegmento(modelo: ModeloApp) {
     }
     Desplazable("recuperacion-lista", alRecargar = { s.cargar() }) {
         Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+            com.pumpteam.mypump.metas.PumpDelDiaDe(modelo, enSalud = true)
             CardRecuperacion(s, alVerTodo = { detalle = true })
             CardSalud(s)
         }
@@ -239,7 +240,7 @@ private fun CuerpoSegmento(modelo: ModeloApp) {
             Unit
         },
     ) {
-        PesoTarjeta(r, Modifier.testTag("seccion-peso"))
+        PesoTarjeta(r, Modifier.testTag("seccion-peso"), modelo = modelo)
         FotosPorSemana(f, r)
         CheckDeLaSemana(r)
     }
