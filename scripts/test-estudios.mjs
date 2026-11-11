@@ -102,10 +102,12 @@ function doble(ini = {}) {
   const d = {
     habilitado: true, sinRed: false, sinFuncion: false, tokenCaido: false, transitorio: false, llamadas: [], envios: new Map(), subidas: [], urls: [],
     proximasSubida: [], proximasNuevo: [], proximasEnviar: [], hechos: [], pendientes: [{ id: PEDIDO, tipo: 'laboratorio', titulo: 'Análisis de laboratorio', hasta: '2026-11-19', estado: 'pedido' }],
-    estudios: [], urlsRespuesta: null, bajadas: [], bajadaRespuesta: null, ...ini,
+    estudios: [], urlsRespuesta: null, bajadas: [], bajadaRespuesta: null, ordenes: [], novedades: null, vistas: [], proximasVistas: [], ...ini,
   };
+  const sinVer = () => d.pendientes.concat(d.ordenes.filter((o) => o.vigente !== false)).filter((x) => x.nuevo === true).length;
   const vista = () => ({
-    habilitado: true, hoy: '2026-11-10', topes: { archivos_por_envio: 20, mb_por_archivo: 20 }, pendientes: d.pendientes, ordenes: [], estudios: d.estudios,
+    habilitado: true, hoy: '2026-11-10', topes: { archivos_por_envio: 20, mb_por_archivo: 20 }, pendientes: d.pendientes, ordenes: d.ordenes, estudios: d.estudios,
+    ...(d.sinNovedades ? {} : { novedades: d.novedades === null ? sinVer() : d.novedades }),
     envios: [...d.envios.values()].map((e) => ({ id: e.id, estado: e.estado, archivos: e.archivos.size, pedido_id: e.pedido, enviado_en: e.estado === 'enviado' ? '2026-11-10T12:00:00Z' : null })),
   });
   d.rpc = async (fn, p) => {
@@ -141,6 +143,13 @@ function doble(ini = {}) {
         if (p.p_fecha && p.p_fecha > '2026-11-10') return { ok: true, data: { ok: false, error: 'fecha' } };
         q.estado = p.p_fecha ? 'hecho' : 'pedido'; q.hecho_fecha = p.p_fecha;
         return { ok: true, data: { ok: true, estado: q.estado } };
+      }
+      case 'mypump_estudios_novedades_vistas': {
+        d.vistas.push(p.p_ids.slice());
+        if (d.proximasVistas.length) return d.proximasVistas.shift();
+        let n = 0;
+        for (const x of d.pendientes.concat(d.ordenes)) if (x.nuevo === true && p.p_ids.includes(x.id)) { x.nuevo = false; n++; }   // los que no son suyos, ni se enteran
+        return { ok: true, data: { ok: true, marcadas: n } };
       }
       default: throw new Error('RPC inesperada: ' + fn);
     }
@@ -493,8 +502,15 @@ await caso('bajar: a memoria, sin caché ni credenciales, y con el tipo fijado p
 function pantalla(ini = {}) {
   const d = doble({ estudios: [{ id: 'e-1', tipo: 'ecografia', titulo: 'Ecografía', fecha: '2026-10-12', hojas: 2, estado: 'visto', se_puede_abrir: true }], ...ini });
   const x = { d, reloj: { t: 1800000000000 }, activa: false, oyentes: {}, deVentana: {}, guardado: new Map(), creadas: [], soltadas: [], relojes: [], ventanas: [], selectores: [], hojas: [], observadores: [], pedidos: [], sinVentana: false };
+  Object.assign(x, { lugar: {}, llevadas: [], escena: 'misdatos', idas: [], entrada: 0, arriba: { firstChild: null, insertBefore(h) { this.firstChild = h; } } });
+  const FUERA = { top: 2000, bottom: 2200, left: 0, right: 390, height: 200 }, DENTRO = { top: 200, bottom: 400, left: 0, right: 390, height: 200 };
+  x.DENTRO = DENTRO; x.FUERA = FUERA;
+  // Las tarjetas salen de lo pintado: `data-tarjeta` y, si es nueva, `data-nueva`. Por defecto están a la vista.
+  const tarjetas = (sel) => [...root.innerHTML.matchAll(/data-tarjeta="([^"]+)"( data-nueva="1")?/g)].filter((m) => sel === '[data-tarjeta]' || m[2]).map((m) => ({
+    getAttribute: (k) => (k === 'data-tarjeta' ? m[1] : null), getBoundingClientRect: () => x.lugar[m[1]] || DENTRO, scrollIntoView() { x.llevadas.push(m[1]); x.lugar[m[1]] = DENTRO; }, focus() {} }));
   const root = {
-    innerHTML: '', classList: { contains: (c) => c === 'is-active' && x.activa }, contains: () => false, querySelectorAll: () => [],
+    innerHTML: '', classList: { contains: (c) => c === 'is-active' && x.activa }, contains: () => false,
+    querySelectorAll: (sel) => (sel === '[data-nueva]' || sel === '[data-tarjeta]' ? tarjetas(sel) : []),
     addEventListener: (t, f) => { x.oyentes[t] = f; },
   };
   x.root = root;
@@ -503,16 +519,17 @@ function pantalla(ini = {}) {
     document: {
       getElementById: (id) => (id === 'scene-estudios' ? root : null), activeElement: null, visibilityState: 'visible', contains: () => false,
       addEventListener() {}, removeEventListener() {}, querySelector: (sel) => { x.selectores.push(sel); return null; }, body: { appendChild() {} },
-      createElement: () => { const h = { hijos: {}, on: {}, quitada: false, addEventListener(t, f) { this.on[t] = f; }, remove() { this.quitada = true; }, querySelector(s) { return (this.hijos[s] = this.hijos[s] || hijo()); } }; x.hojas.push(h); return h; },
+      createElement: () => { const h = { hijos: {}, on: {}, dataset: {}, innerHTML: '', quitada: false, addEventListener(t, f) { this.on[t] = f; }, remove() { this.quitada = true; }, querySelector(s) { return (this.hijos[s] = this.hijos[s] || hijo()); } }; x.hojas.push(h); return h; },
     },
     localStorage: { getItem: (k) => (x.guardado.has(k) ? x.guardado.get(k) : null), setItem: (k, v) => x.guardado.set(k, String(v)), removeItem: (k) => x.guardado.delete(k) },
-    addEventListener: (t, f) => { x.deVentana[t] = f; }, scrollTo() {}, scrollY: 0,
+    addEventListener: (t, f) => { x.deVentana[t] = f; }, scrollTo() {}, scrollY: 0, innerHeight: 800, innerWidth: 390,
     open: () => { if (x.sinVentana) return null; const w = { closed: false, opener: {}, fue: [], close() { this.closed = true; } }; w.location = { replace: (u) => w.fue.push(u) }; x.ventanas.push(w); return w; },
     MutationObserver: class { constructor(f) { x.observadores.push(f); } observe() {} },
     URL: class extends URL { static createObjectURL(b) { const u = `blob:https://app.ejemplo.test/${x.creadas.length + 1}`; x.creadas.push({ u, tipo: b.type }); return u; } static revokeObjectURL(u) { x.soltadas.push(u); } },
     CSS: { escape: (t) => `«${t}»` },
     Date: class extends Date { static now() { return x.reloj.t; } },
-    setTimeout: (f, ms) => { if (ms >= 60000) { x.relojes.push({ f, ms }); return 0; } return setTimeout(f, ms); }, clearTimeout: (t) => { if (t) clearTimeout(t); },
+    // El segundo de «la miró» (1000 ms) pasa rápido.
+    setTimeout: (f, ms) => { if (ms >= 60000) { x.relojes.push({ f, ms }); return 0; } return setTimeout(f, ms === 1000 ? 8 : ms); }, clearTimeout: (t) => { if (t) clearTimeout(t); },
     fetch: async (url, op) => {
       x.pedidos.push(String(url));
       if (!String(url).endsWith('/estudios/upload')) return d.fetch(url, op);
@@ -525,7 +542,8 @@ function pantalla(ini = {}) {
   ctx.window = ctx; vm.createContext(ctx);
   for (const f of ['estudios.js', 'estudios-cola.js', 'estudios-ui.js']) vm.runInContext(fs.readFileSync(new URL(`../public/js/${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
   x.ui = ctx.EstudiosUI;
-  x.ui.configurar({ token: TOK, visionUrl: 'https://vision.ejemplo.test', rpc: d.rpc, alCambiarEntrada() {}, irA: (e) => { x.activa = e === 'estudios'; if (x.activa) x.ui.renderEscena(); } });
+  x.ui.configurar({ token: TOK, visionUrl: 'https://vision.ejemplo.test', rpc: d.rpc, alCambiarEntrada() { x.entrada++; }, escena: () => x.escena, irA: (e) => { x.escena = e; x.idas.push(e); x.activa = e === 'estudios'; if (x.activa) x.ui.renderEscena(); } });
+  x.respiro = (ms = 40) => new Promise((r) => setTimeout(r, ms));
   x.pausa = (ms = 400) => { x.reloj.t += ms; };
   x.tocar = async (est, id) => { x.oyentes.click({ target: { closest: () => ({ dataset: { est, id }, disabled: false }) } }); for (let i = 0; i < 12; i++) await new Promise((r) => setTimeout(r, 0)); };
   x.entrar = async () => { await x.ui.aplicarPalanca(true); x.ui.abrir(); await hasta(() => cuenta(d, 'mypump_estudios_get') >= 2); x.pausa(); };
@@ -660,12 +678,252 @@ await caso('el service worker no guarda nada de esta sección', () => {
   assert.ok(!responde('https://app.ejemplo.test/estudios/a.pdf'));
   assert.ok(responde('https://app.ejemplo.test/js/estudios.js'));
 });
-await caso('cliente.html: la escena existe y solo se entra por Mis datos', () => {
+await caso('cliente.html: la escena existe, ?scene=estudios nunca la prende a ciegas y los puntos dicen «Novedad»', () => {
   const html = fs.readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8');
   assert.ok(html.includes('id="scene-estudios"'));
   assert.ok(/cfg\.estudios_app === true : null/.test(html));
-  assert.ok(html.includes("s !== 'estudios') setScene(s)"));
+  // El destino en frío: cae a Mis datos y le deja a EstudiosUI el paso a Estudios. La escena no se prende desde la URL.
+  const fn = /function _aplicarSceneDeURL\(\)[\s\S]*?\n\}/.exec(html)[0];
+  assert.ok(/if \(s === 'estudios'\) \{[\s\S]*?window\.EstudiosUI\.destino\(caida\);\s*return;/.test(fn));
+  assert.ok(fn.includes("'misdatos'")); assert.ok(!/setScene\('estudios'\)/.test(html));
+  assert.ok(fn.indexOf("s === 'estudios'") < fn.indexOf('setScene(s)'));
+  for (const id of ['estPuntoTab', 'estPuntoMisDatos']) assert.ok(new RegExp(`id="${id}" role="img" aria-label="Novedad" hidden`).test(html), id);
+  assert.ok(html.includes("escena: () => STATE.scene"));
+  // El clic del aviso: el service worker traduce `destino` a `?scene=` sin lista propia, así que `estudios` llega tal cual.
+  const sw = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
+  assert.ok(sw.includes('`/cliente?scene=${encodeURIComponent(destino)}`'));
   for (const a of ['/js/estudios.js', '/js/estudios-cola.js', '/js/estudios-ui.js', '/css/estudios.css']) assert.ok(html.includes(`"${a}"`), a);
+});
+
+// ── Novedades, aviso y camino evidente ──
+const ORDEN = '00000002-0000-4000-8000-000000000000', ORDEN2 = '00000003-0000-4000-8000-000000000000', PEDIDO2 = '00000004-0000-4000-8000-000000000000';
+const pedido = (id, nuevo) => ({ id, tipo: 'laboratorio', titulo: 'Análisis de laboratorio', hasta: '2026-11-19', estado: 'pedido', ...(nuevo === undefined ? {} : { nuevo }) });
+const orden = (id, nuevo, vigente = true) => ({ id, tipo: 'laboratorio', titulo: 'Orden de laboratorio', emitida: '2026-11-03', vence: '2027-01-02', vigente, ...(nuevo === undefined ? {} : { nuevo }) });
+const est = (o) => E.decodificarEstado({ habilitado: true, ...o });
+
+await caso('novedades: `novedades` y `nuevo` se leen campo por campo; un servidor que no los manda es «nada nuevo»', () => {
+  const e = est({ novedades: 2, pendientes: [pedido('p1', true), pedido('p2', false), pedido('p3')], ordenes: [orden('o1', true), orden('o2', 'true'), orden('o3', 1)] });
+  assert.equal(e.novedades, 2);
+  assert.deepEqual(e.pendientes.map((p) => p.nuevo), [true, false, false]);
+  assert.deepEqual(e.ordenes.map((o) => o.nuevo), [true, false, false]);      // solo un `true` de verdad
+  for (const n of [undefined, null, 0, -1, '3', 2.5, NaN, {}]) assert.equal(est({ novedades: n, pendientes: [pedido('p1')] }).novedades, 0, String(n));
+  const viejo = est({ pendientes: [pedido('p1')], ordenes: [orden('o1')] });
+  assert.equal(viejo.novedades, 0); assert.equal(E.novedadDeEstudios(viejo), null); assert.equal(E.primeraNueva(viejo), null);
+});
+await caso('novedadDeEstudios: un único punto de entrada con título y destino, y los textos del contrato tal cual', () => {
+  assert.equal(T.estudioNuevo, 'Tenés un estudio nuevo para hacer'); assert.equal(T.ordenNueva, 'Tenés una orden nueva');
+  assert.equal(T.estudioParaHacer, 'Tenés un estudio para hacer'); assert.equal(T.nuevo, 'Nuevo'); assert.equal(T.novedad, 'Novedad');
+  assert.equal(T.ver, 'Ver'); assert.equal(T.subirResultado, 'Subir resultado'); assert.equal(E.DESTINO, 'estudios');
+  // Hay pedido nuevo → el estudio, aunque también haya una orden nueva.
+  assert.deepEqual(E.novedadDeEstudios(est({ novedades: 2, pendientes: [pedido('p1', true)], ordenes: [orden('o1', true)] })), { titulo: T.estudioNuevo, destino: 'estudios' });
+  // Solo órdenes nuevas → la orden.
+  assert.deepEqual(E.novedadDeEstudios(est({ novedades: 1, pendientes: [pedido('p1', false)], ordenes: [orden('o1', true)] })), { titulo: T.ordenNueva, destino: 'estudios' });
+  // Sin novedades no hay nada, aunque quede una marca suelta; una orden vencida no es novedad.
+  assert.equal(E.novedadDeEstudios(est({ novedades: 0, pendientes: [pedido('p1', true)] })), null);
+  assert.equal(E.novedadDeEstudios(est({ novedades: 1, ordenes: [orden('o1', true, false)] })), null);
+  assert.equal(E.novedadDeEstudios(null), null); assert.equal(E.tarjetaInicio(null), null);
+  // El servidor cuenta y no marca cuál: se mira qué hay.
+  assert.equal(E.novedadDeEstudios(est({ novedades: 1, pendientes: [pedido('p1')] })).titulo, T.estudioNuevo);
+  assert.equal(E.novedadDeEstudios(est({ novedades: 1, ordenes: [orden('o1')] })).titulo, T.ordenNueva);
+  assert.equal(E.novedadDeEstudios(est({ novedades: 3 })), null);
+});
+await caso('tarjeta de arriba: novedad con «Ver»; sin novedad y con pendientes, «Subir resultado»; sin nada, no va', () => {
+  assert.deepEqual(E.tarjetaInicio(est({ novedades: 1, pendientes: [pedido('p1', true)] })), { titulo: T.estudioNuevo, boton: 'Ver', destino: 'estudios', novedad: true });
+  assert.deepEqual(E.tarjetaInicio(est({ novedades: 1, ordenes: [orden('o1', true)] })), { titulo: T.ordenNueva, boton: 'Ver', destino: 'estudios', novedad: true });
+  assert.deepEqual(E.tarjetaInicio(est({ novedades: 0, pendientes: [pedido('p1', false)], ordenes: [orden('o1', false)] })), { titulo: T.estudioParaHacer, boton: 'Subir resultado', destino: 'estudios', novedad: false });
+  assert.equal(E.tarjetaInicio(est({ ordenes: [orden('o1', false)], estudios: [{ id: 'e', estado: 'visto' }] })), null);
+  assert.equal(E.tarjetaInicio(est({})), null);
+  // La que queda a la vista al llegar: la primera nueva en el orden de la pantalla (pedido antes que orden); si no, el primer pendiente.
+  assert.deepEqual(E.primeraNueva(est({ novedades: 2, pendientes: [pedido('p1', false), pedido('p2', true)], ordenes: [orden('o1', true)] })), { clase: 'pedido', id: 'p2' });
+  assert.deepEqual(E.primeraNueva(est({ novedades: 1, pendientes: [pedido('p1', false)], ordenes: [orden('o0', true, false), orden('o1', true)] })), { clase: 'orden', id: 'o1' });
+  assert.deepEqual(E.tarjetaDeLlegada(est({ pendientes: [pedido('p1', false), pedido('p2', false)] })), { clase: 'pedido', id: 'p1' });
+  assert.equal(E.tarjetaDeLlegada(est({ ordenes: [orden('o1', false)] })), null);
+});
+await caso('marcar vistas: ids de pedidos y órdenes mezclados, solo los nuevos; apaga el «Nuevo» y el pendiente sigue', async () => {
+  const d = doble({ pendientes: [pedido(PEDIDO, true), pedido(PEDIDO2, false)], ordenes: [orden(ORDEN, true), orden(ORDEN2, true)] });
+  const m = await modelo(d);
+  let cambios = 0; m.alCambiar = () => { cambios++; };
+  assert.equal(m.estado.novedades, 3); assert.equal(m.novedad.titulo, T.estudioNuevo); assert.equal(cuenta(d, 'mypump_estudios_novedades_vistas'), 0);      // cargar la lista no marca nada
+  assert.equal(await m.marcarVistas([PEDIDO, ORDEN, PEDIDO2, 'no-es-de-nadie', PEDIDO]), 2);
+  assert.deepEqual(d.vistas, [[PEDIDO, ORDEN]]);                 // sin repetidos, sin los que no son nuevos
+  assert.equal(m.pendientes, 2);                                 // sigue en pendientes
+  assert.deepEqual(m.estado.pendientes.map((p) => p.nuevo), [false, false]); assert.deepEqual(m.estado.ordenes.map((o) => o.nuevo), [false, true]);
+  assert.equal(m.estado.novedades, 1); assert.equal(m.novedad.titulo, T.ordenNueva); assert.ok(cambios >= 1);
+  assert.equal(m.tarjetaInicio.boton, 'Ver');
+  // Lo ya marcado no se vuelve a mandar; la última apaga el punto y la tarjeta pasa a «Subir resultado».
+  assert.equal(await m.marcarVistas([PEDIDO, ORDEN]), 0); assert.equal(d.vistas.length, 1);
+  assert.equal(await m.marcarVistas([ORDEN2]), 1);
+  assert.equal(m.novedad, null); assert.equal(m.estado.novedades, 0); assert.deepEqual(m.tarjetaInicio, { titulo: T.estudioParaHacer, boton: 'Subir resultado', destino: 'estudios', novedad: false });
+  await m.refrescar(); assert.equal(m.novedad, null);            // y el servidor dice lo mismo
+  // No pasa por la cola de subida ni guarda nada.
+  assert.equal(m.cola.length, 0); assert.equal(d.subidas.length, 0);
+});
+await caso('marcar vistas: si falla no se apaga nada y sale de nuevo la próxima vez; dos a la vez no duplican', async () => {
+  const d = doble({ pendientes: [pedido(PEDIDO, true)] });
+  const m = await modelo(d);
+  d.sinRed = true;
+  assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.equal(m.estado.pendientes[0].nuevo, true); assert.ok(m.novedad);
+  d.sinRed = false; d.transitorio = true;
+  assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.ok(m.novedad);
+  d.transitorio = false;
+  d.proximasVistas.push({ ok: true, data: { ok: false, error: 'algo_raro' } }, { ok: true, data: 'texto' });
+  assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.ok(m.novedad);
+  const antes = d.vistas.length;
+  const [a, b] = await Promise.all([m.marcarVistas([PEDIDO]), m.marcarVistas([PEDIDO])]);
+  assert.equal(a + b, 1); assert.equal(d.vistas.length, antes + 1); assert.equal(m.novedad, null);
+  assert.equal(m.cola.length, 0);
+});
+await caso('marcar vistas: token caído, no_habilitado y servidor sin la función', async () => {
+  let d = doble({ pendientes: [pedido(PEDIDO, true)] }), m = await modelo(d);
+  d.tokenCaido = true;
+  assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.equal(m.estado, null);                 // null = link caído: la sección deja de verse
+  d = doble({ pendientes: [pedido(PEDIDO, true)] }); m = await modelo(d);
+  d.proximasVistas.push({ ok: true, data: { ok: false, error: 'no_habilitado' } });
+  assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.equal(m.estado, null);
+  assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.equal(d.vistas.length, 1);              // apagada: no se llama más
+  d = doble({ pendientes: [pedido(PEDIDO, true)] }); m = await modelo(d);
+  d.proximasVistas.push({ ok: false, status: 404, codigo: 'PGRST202', clase: 'permanente' });
+  assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.ok(m.estado); assert.ok(m.novedad);      // la sección sigue; solo no se insiste
+  assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.equal(d.vistas.length, 1);
+});
+await caso('marcar vistas: nunca con la palanca apagada', async () => {
+  const d = doble({ pendientes: [pedido(PEDIDO, true)] });
+  const m = await modelo(d);
+  m.cerrar();
+  assert.equal(await m.marcarVistas([PEDIDO]), 0); assert.equal(d.vistas.length, 0);
+  // Y la respuesta que llega después de apagarla no toca nada.
+  const d2 = doble({ pendientes: [pedido(PEDIDO, true)] }), m2 = await modelo(d2);
+  const p = m2.marcarVistas([PEDIDO]); m2.cerrar();
+  assert.equal(await p, 0); assert.equal(m2.estado, null);
+  // En la pantalla: apagada o sin lectura no existe ni el modelo, así que no hay quien marque, ni aviso, ni punto.
+  for (const v of [false, null]) {
+    const x = pantalla({ pendientes: [pedido(PEDIDO, true)] });
+    await x.ui.aplicarPalanca(v); x.ui.abrir(); x.ui.montarTarjeta(x.arriba); await x.respiro();
+    assert.equal(x.d.llamadas.length, 0); assert.equal(x.ui.novedad(), false); assert.equal(x.arriba.firstChild, null); assert.deepEqual(x.idas, []);
+  }
+});
+await caso('pantalla: la tarjeta nueva dice «Nuevo» y se marca vista recién cuando estuvo en pantalla, no al cargar', async () => {
+  const x = pantalla({ pendientes: [pedido(PEDIDO, true), pedido(PEDIDO2, false)], ordenes: [orden(ORDEN, true)] });
+  await x.ui.aplicarPalanca(true); await x.respiro();
+  assert.equal(x.d.vistas.length, 0); assert.equal(x.ui.novedad(), true);        // cargó la lista, con Estudios cerrado: nada
+  x.lugar[PEDIDO] = x.FUERA; x.lugar[ORDEN] = x.FUERA;                           // entra, pero las nuevas quedaron fuera de la pantalla
+  x.ui.abrir(); await hasta(() => cuenta(x.d, 'mypump_estudios_get') >= 2); await x.respiro();
+  assert.equal(x.d.vistas.length, 0);
+  const html = x.root.innerHTML;
+  assert.equal((html.match(/is-nuevo/g) || []).length, 2); assert.ok(html.includes('<span>Nuevo</span>'));
+  assert.ok(html.includes(`data-tarjeta="${PEDIDO}" data-nueva="1"`)); assert.ok(html.includes(`data-tarjeta="${PEDIDO2}">`));      // la que no es nueva no se mira
+  // El pendiente nuevo queda a la vista: pasa el rato y se avisa solo de ese.
+  x.lugar[PEDIDO] = x.DENTRO; x.deVentana.scroll(); await new Promise((r) => setTimeout(r, 260));
+  await hasta(() => x.d.vistas.length === 1); assert.deepEqual([...x.d.vistas[0]], [PEDIDO]);
+  await x.respiro(150);
+  assert.equal(x.d.vistas.length, 1); assert.equal(x.ui.novedad(), true);        // queda la orden sin ver
+  assert.equal((x.root.innerHTML.match(/is-nuevo/g) || []).length, 2);           // la etiqueta no se le va mientras mira
+  assert.ok(x.root.innerHTML.includes(`data-tarjeta="${PEDIDO}">`));             // pero ya no se la vigila
+  // Media tarjeta a la vista alcanza; un borde, no.
+  x.lugar[ORDEN] = { top: 760, bottom: 960, left: 0, right: 390, height: 200 }; x.deVentana.scroll(); await new Promise((r) => setTimeout(r, 260)); await x.respiro(150);
+  assert.equal(x.d.vistas.length, 1);
+  x.lugar[ORDEN] = { top: 690, bottom: 890, left: 0, right: 390, height: 200 }; x.deVentana.scroll(); await new Promise((r) => setTimeout(r, 260));
+  await hasta(() => x.d.vistas.length === 2); assert.deepEqual([...x.d.vistas[1]], [ORDEN]);
+  await hasta(() => x.ui.novedad() === false);
+  // Al volver a entrar, la etiqueta ya no está.
+  x.pausa(); x.ui.abrir(); await x.respiro();
+  assert.ok(!x.root.innerHTML.includes('is-nuevo')); assert.equal(x.ui._modelo.pendientes, 2);
+});
+await caso('pantalla: dentro de una orden, con la página oculta o si se va antes de tiempo, no se marca', async () => {
+  const x = pantalla({ pendientes: [pedido(PEDIDO, true)], ordenes: [orden(ORDEN, false)] });
+  await x.ui.aplicarPalanca(true);
+  x.lugar[PEDIDO] = x.FUERA; x.ui.abrir(); await hasta(() => cuenta(x.d, 'mypump_estudios_get') >= 2); x.pausa();
+  await x.tocar('orden', ORDEN);                               // otra pantalla encima de la lista
+  x.lugar[PEDIDO] = x.DENTRO; x.deVentana.scroll(); await new Promise((r) => setTimeout(r, 260)); await x.respiro(150);
+  assert.equal(x.d.vistas.length, 0);
+  x.lugar[PEDIDO] = x.FUERA; x.pausa(); await x.tocar('volver');
+  // De vuelta en la lista la tarjeta queda a la vista, pero ya se fue de la sección: no cuenta.
+  x.lugar[PEDIDO] = x.DENTRO; x.activa = false; x.deVentana.scroll(); await new Promise((r) => setTimeout(r, 260)); await x.respiro(150);
+  assert.equal(x.d.vistas.length, 0);
+  x.activa = true; x.ui.renderEscena(); await hasta(() => x.d.vistas.length === 1);
+});
+await caso('destino `estudios` en frío: de Mis datos pasa a Estudios con la tarjeta nueva a la vista, con un solo get', async () => {
+  const x = pantalla({ pendientes: [pedido(PEDIDO2, false), pedido(PEDIDO, true)], ordenes: [orden(ORDEN, true)] });
+  x.lugar[PEDIDO] = x.FUERA;                                   // la nueva está más abajo de lo que entra en la pantalla
+  x.ui.destino('misdatos');                                    // llega antes que la palanca: todavía no hay nada
+  assert.deepEqual(x.idas, []); assert.equal(x.root.innerHTML, '');
+  await x.ui.aplicarPalanca(true);
+  assert.deepEqual(x.idas, ['estudios']); assert.equal(x.ui.origen, 'misdatos');
+  assert.equal(x.llevadas[0], PEDIDO);                         // la primera NUEVA, no la primera de la lista
+  assert.ok(x.root.innerHTML.includes('Te falta hacer'));
+  await x.respiro();
+  assert.equal(cuenta(x.d, 'mypump_estudios_get'), 1);         // el get recién llegado no se repite
+  await hasta(() => x.d.vistas.length === 1);                  // y al quedar a la vista, se marcan juntas, en una sola llamada
+  assert.deepEqual([...x.d.vistas[0]].sort(), [PEDIDO, ORDEN].sort());
+  // «Cerrar» vuelve a Mis datos.
+  x.pausa(); await x.tocar('volver'); assert.equal(x.idas[x.idas.length - 1], 'misdatos');
+  // Con la app ya abierta: mismo destino, abre en el acto. Sin nada nuevo, queda a la vista el primer pendiente.
+  const y = pantalla({ pendientes: [pedido(PEDIDO2, false), pedido(PEDIDO, false)] });
+  await y.ui.aplicarPalanca(true); y.ui.destino('misdatos');
+  assert.deepEqual(y.idas, ['estudios']); assert.deepEqual(y.llevadas, []);      // ya se ve entera: no se le mueve la pantalla
+  y.pausa(); await y.tocar('volver'); y.lugar[PEDIDO2] = y.FUERA; y.pausa(); y.ui.destino('misdatos');
+  assert.deepEqual(y.llevadas, [PEDIDO2]);
+  // Desde la fila de Mis datos, sin nada nuevo, no se le mueve la pantalla.
+  const z = pantalla({ pendientes: [pedido(PEDIDO2, false)] });
+  await z.ui.aplicarPalanca(true); z.ui.abrir({ desde: 'misdatos' }); await z.respiro();
+  assert.deepEqual(z.llevadas, []);
+});
+await caso('destino `estudios`, caída segura: palanca apagada, cuenta sin la sección o get que falla → se queda en Mis datos', async () => {
+  const casos = [
+    ['palanca apagada', {}, false], ['sin lectura de la palanca', {}, null], ['cuenta sin la sección', { habilitado: false }, true],
+    ['sin la función', { sinFuncion: true }, true], ['link caído', { tokenCaido: true }, true], ['sin red', { sinRed: true }, true], ['servicio caído', { transitorio: true }, true],
+  ];
+  for (const [nombre, ini, palanca] of casos) {
+    const x = pantalla({ pendientes: [pedido(PEDIDO, true)], ...ini });
+    x.ui.destino('misdatos');
+    await x.ui.aplicarPalanca(palanca); await x.respiro();
+    assert.deepEqual(x.idas, [], nombre); assert.equal(x.escena, 'misdatos', nombre);      // nadie lo sacó de Mis datos
+    assert.equal(x.root.innerHTML, '', nombre); assert.equal(x.ui.entradaVisible(), false, nombre);
+    assert.equal(x.d.vistas.length, 0, nombre);
+  }
+  // Si mientras tanto se fue a otra pantalla, no se lo trae de vuelta.
+  const x = pantalla({ pendientes: [pedido(PEDIDO, true)] });
+  x.ui.destino('misdatos'); x.escena = 'chat';
+  await x.ui.aplicarPalanca(true); await x.respiro();
+  assert.deepEqual(x.idas, []); assert.equal(x.ui.entradaVisible(), true);
+  x.escena = 'misdatos'; x.ui._modelo.refrescar(); await x.respiro();
+  assert.deepEqual(x.idas, []);                                // el destino ya se soltó: volver a Mis datos no lo dispara
+  // Si el servidor tarda más de la cuenta, tampoco: se queda donde está.
+  const y = pantalla({ pendientes: [pedido(PEDIDO, true)] });
+  y.ui.destino('misdatos'); y.pausa(13000);
+  await y.ui.aplicarPalanca(true); await y.respiro();
+  assert.deepEqual(y.idas, []);
+});
+await caso('aviso de arriba: título y botón del contrato, un toque lleva a Estudios en esa tarjeta y vuelve a Entreno', async () => {
+  const x = pantalla({ pendientes: [pedido(PEDIDO2, false), pedido(PEDIDO, true)] });
+  await x.ui.aplicarPalanca(true);
+  x.ui.montarTarjeta(x.arriba);
+  const h = x.arriba.firstChild;
+  assert.ok(h.innerHTML.includes('Tenés un estudio nuevo para hacer')); assert.ok(/<button type="button" class="est-aviso-btn" id="estAvisoBtn">Ver<\/button>/.test(h.innerHTML));
+  assert.ok(h.innerHTML.includes('aria-label="Novedad"'));
+  assert.ok(x.entrada >= 1);                                   // avisó para que se pinten los puntos
+  x.lugar[PEDIDO] = x.FUERA; h.on.click();
+  assert.deepEqual(x.idas, ['estudios']); assert.equal(x.ui.origen, 'train'); assert.equal(x.llevadas[0], PEDIDO);
+  await hasta(() => x.d.vistas.length === 1);
+  x.pausa(); await x.tocar('volver'); assert.equal(x.idas[x.idas.length - 1], 'train');
+  // Vista la novedad, el aviso queda como recordatorio con «Subir resultado»; a un toque de Estudios y dos de la hoja de subida.
+  await hasta(() => x.ui.novedad() === false);
+  x.ui.montarTarjeta(x.arriba);
+  const h2 = x.arriba.firstChild;
+  assert.ok(h2.innerHTML.includes('Tenés un estudio para hacer')); assert.ok(h2.innerHTML.includes('>Subir resultado</button>')); assert.ok(!h2.innerHTML.includes('aria-label="Novedad"'));
+  x.lugar[PEDIDO2] = x.FUERA; x.pausa(); h2.on.click(); assert.equal(x.idas[x.idas.length - 1], 'estudios'); assert.equal(x.llevadas[x.llevadas.length - 1], PEDIDO2);
+  x.pausa(); await x.tocar('subirResultado', PEDIDO2);
+  for (const t of ['Sacar fotos', 'Elegir fotos', 'Elegir PDF']) assert.ok(x.root.innerHTML.includes(`<span>${t}</span></button>`), t);
+  // Sin pendientes ni novedades, o con la sección apagada, el aviso se va.
+  const y = pantalla({ pendientes: [] }); await y.ui.aplicarPalanca(true); y.ui.montarTarjeta(y.arriba); assert.equal(y.arriba.firstChild, null);
+});
+await caso('subir es lo principal: «Subir resultado» primero y con texto en cada pendiente, y «Enviar N archivos» en la hoja', async () => {
+  const x = pantalla({ pendientes: [pedido(PEDIDO, true)] }); await x.entrar();
+  const h = x.root.innerHTML;
+  assert.ok(/class="btn-primary" data-est="subirResultado"[^>]*>.*?<span>Subir resultado<\/span><\/button>\s*<div class="est-botones">.*?Ya me lo hice/s.test(h));
+  await x.tocar('subirResultado', PEDIDO);
+  await conArchivos(x.ui._modelo, 2); x.ui.renderEscena();
+  assert.ok(/class="btn-primary est-principal" data-est="enviar" id="estEnviar">Enviar 2 archivos<\/button>/.test(x.root.innerHTML));
 });
 
 await hasta(() => true);

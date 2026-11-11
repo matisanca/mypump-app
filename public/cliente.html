@@ -1462,6 +1462,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
         <div class="hdr-title" id="hdrTitle">Cargando…</div>
       </div>
       <button class="icon-btn" id="misDatosBtn" aria-label="Mis datos" hidden>
+        <span class="est-punto est-punto-flota" id="estPuntoMisDatos" role="img" aria-label="Novedad" hidden></span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
       </button>
       <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema" hidden>
@@ -1553,6 +1554,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
       <span>Revisión</span>
       <span class="tab-badge" id="tabBadgeRevision" hidden></span>
+      <span class="est-punto est-punto-flota" id="estPuntoTab" role="img" aria-label="Novedad" hidden></span>
       <span class="tab-dot"></span>
     </button>
   </nav>
@@ -1797,9 +1799,21 @@ function _estPalanca(cfg) {
     visionUrl: (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '',
     rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
     irA: (escena) => setScene(escena),
-    alCambiarEntrada: () => { if (STATE.scene === 'misdatos') renderMisDatos(); },
+    escena: () => STATE.scene,
+    alCambiarEntrada: () => { _estPuntos(); if (STATE.scene === 'misdatos') renderMisDatos(); },
   });
   window.EstudiosUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.estudios_app === true : null);
+}
+/* El punto «Novedad» en la pestaña que lleva a Mis datos y en el botón de Mis datos, mientras haya un estudio o una orden sin ver.
+   En la cuenta con el plan de ejemplo no hay Mis datos: ahí avisa la tarjeta de arriba. */
+function _estPuntos() {
+  const hay = !!(window.EstudiosUI && window.EstudiosUI.novedad()) && !(DATA && DATA._isDemo);
+  for (const id of ['estPuntoTab', 'estPuntoMisDatos']) { const p = document.getElementById(id); if (p) p.hidden = !hay; }
+}
+/* El aviso de Estudios va primero en Entreno, arriba de todo. renderTrain rehace la pantalla: se vuelve a poner. */
+function _estArriba() {
+  const r = document.getElementById('scene-train');
+  if (r && window.EstudiosUI) window.EstudiosUI.montarTarjeta(r);
 }
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
@@ -10142,7 +10156,7 @@ function renderRecordatorio() {
     const destino = (p.faltaCheck && !p.faltanFotos) ? 'myday-checkin' : 'myday-fotos';
     setTimeout(() => { const el = document.getElementById(destino); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
   });
-  const guia = host.querySelector(':scope > #guiaHost');
+  const guia = host.querySelector(':scope > #guiaHost') || host.querySelector(':scope > #estHost');
   host.insertBefore(div, guia ? guia.nextSibling : host.firstChild);
 }
 
@@ -11004,7 +11018,7 @@ function renderMisDatos() {
       ${guia ? fila('mdGuia', 'Ver mi guía') : ''}
       ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
       ${window.TecnicaUI && window.TecnicaUI.entradaVisible() ? fila('mdTecnica', window.Tecnica.T.titulo) : ''}
-      ${window.EstudiosUI && window.EstudiosUI.entradaVisible() ? `<button class="md-fila" id="mdEstudios"><span class="gim-zona-txt"><span>${window.Estudios.T.entradaMisDatos}</span><small>${window.EstudiosUI.subtitulo()}</small></span><span class="md-chev">${_CHEV_DER}</span></button>` : ''}
+      ${window.EstudiosUI && window.EstudiosUI.entradaVisible() ? `<button class="md-fila" id="mdEstudios"><span class="gim-zona-txt"><span>${window.Estudios.T.entradaMisDatos}</span><small>${window.EstudiosUI.subtitulo()}</small></span>${window.EstudiosUI.novedad() ? `<span class="est-punto" role="img" aria-label="${window.Estudios.T.novedad}"></span>` : ''}<span class="md-chev">${_CHEV_DER}</span></button>` : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
@@ -11016,7 +11030,7 @@ function renderMisDatos() {
   const tec = document.getElementById('mdTecnica');
   if (tec) tec.onclick = () => window.TecnicaUI.abrir('misdatos');
   const est = document.getElementById('mdEstudios');
-  if (est) est.onclick = () => window.EstudiosUI.abrir();
+  if (est) est.onclick = () => window.EstudiosUI.abrir({ desde: 'misdatos' });
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
   const sw = document.getElementById('mdOscuro');
@@ -11279,7 +11293,8 @@ function setScene(scene) {
     // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
-    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos' || scene === 'estudios') ? 'revision'
+    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision'
+      : scene === 'estudios' ? (window.EstudiosUI.origen === 'train' ? 'train' : 'revision')
       : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train')
       : scene === 'tecnica' ? (window.TecnicaUI.origen === 'train' ? 'train' : 'revision') : scene;
     const active = t.getAttribute('data-scene') === tabDe;
@@ -11354,7 +11369,7 @@ function setScene(scene) {
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
   } else if (scene === 'estudios') {
-    $('#hdrEyebrow').textContent = 'REVISIÓN';
+    $('#hdrEyebrow').textContent = window.EstudiosUI.origen === 'train' ? 'ENTRENAMIENTO' : 'REVISIÓN';
     $('#hdrTitle').textContent = window.EstudiosUI.titulo();
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
@@ -11376,6 +11391,7 @@ function setScene(scene) {
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
   // render lo borraba y solo reaparecia cuando terminaba alguna carga async.
   try { renderRecordatorio(); } catch (_) {}
+  if (scene === 'train') _estArriba();
   window.scrollTo(0, 0);
 }
 
@@ -11391,6 +11407,7 @@ function arrancarGuia() {
   _guiaHost.dataset.montado = '1';
   const r = document.getElementById('scene-train');
   if (r) r.insertBefore(_guiaHost, r.firstChild);
+  _estArriba();
   window.MyPumpGuia.montarTarjeta(_guiaHost, TOKEN).catch(() => {});
   window.MyPumpGuia.alCambiar(() => { if (STATE.scene === 'misdatos') renderMisDatos(); });
   document.addEventListener('visibilitychange', _bienvenidaGuia);
@@ -11422,6 +11439,7 @@ function _bienvenidaGuia() {
     const r = document.getElementById('scene-train');
     if (r && window.MyPumpGuia && _guiaHost.dataset.montado) { r.insertBefore(_guiaHost, r.firstChild); _bienvenidaGuia(); }
     if (r && window.GimnasioUI) window.GimnasioUI.montarTarjeta(r, _guiaHost);
+    _estArriba();
   };
   renderProgress = function () {
     _rp.apply(this, arguments);
@@ -11474,7 +11492,19 @@ function _aplicarSceneDeURL() {
     const s = new URLSearchParams(location.search).get('scene');
     if (!s) return;
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
-    if (validas.indexOf(s) !== -1 && s !== 'gimnasio' && s !== 'tecnica' && s !== 'estudios') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
+    if (validas.indexOf(s) === -1) return;
+    // Destino `estudios` (el clic del aviso al teléfono llega así, también al abrir en frío): la escena no se prende
+    // acá, porque todavía no se sabe si la cuenta tiene la sección y quedaría en blanco. Se abre Mis datos, que es la
+    // caída segura, y EstudiosUI pasa a Estudios en cuanto el servidor contesta que sí. En la cuenta con el plan de
+    // ejemplo no hay Mis datos: espera en Entreno.
+    if (s === 'estudios') {
+      if (!window.EstudiosUI || !TOKEN || DEMO) return;
+      const caida = (DATA && DATA._isDemo) ? STATE.scene : 'misdatos';
+      if (caida !== STATE.scene) setScene(caida);
+      window.EstudiosUI.destino(caida);
+      return;
+    }
+    if (s !== 'gimnasio' && s !== 'tecnica') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
   } catch (e) {}
 }
 

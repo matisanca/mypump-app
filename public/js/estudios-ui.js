@@ -17,11 +17,19 @@
   const TIRON_PX = 90;
   const ESPERAS_ARRANQUE_S = [4, 20];
   const QUIETO_MS = 350;                    // tras cambiar de pantalla: el segundo toque de un doble toque no cae en otro botón
+  const MIRADA_MS = 1000;                   // una tarjeta nueva cuenta como vista si estuvo este rato en pantalla
+  const JUNTAR_MS = 80;
+  const ESPERA_DESTINO_MS = 12000;          // al llegar por el aviso: lo que se espera a saber si la cuenta tiene la sección
 
   const ui = {
     op: null, modelo: null, arrancando: false, enganchado: false, ultimoRefresco: 0,
     pila: [], error: null, ocupado: false, abriendo: false, preparando: 0,
     ultimoHtml: null, quietoHasta: 0, presionando: false, pendiente: false, firmaEntrada: '', vistas: new Map(), relojVisor: null, sueltas: [], tiron: null,
+    origen: 'misdatos',                     // adónde vuelve «Cerrar»: de donde se entró
+    destino: null,                          // { caida, hasta }: se llegó por el aviso y todavía no se sabe si hay sección
+    apuntar: false,                         // al entrar, la tarjeta nueva tiene que quedar a la vista (hasta que toque algo)
+    nuevasDeLaVisita: new Set(),            // la etiqueta «Nuevo» no se le va de la vista mientras está mirando
+    mirando: new Map(), ojo: null, ojoDe: null, porAvisar: new Set(), relojAviso: null,
   };
 
   /* Un id del servidor dentro de un selector: escapado, para que no pueda cambiarlo. */
@@ -39,6 +47,8 @@
     fotos: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 3 3-2 4 4"/>', 24),
     pdf: svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>', 24),
     equis: svg('<path d="M6 6l12 12M18 6 6 18"/>', 14),
+    estrella: svg('<path d="M12 4v16M4 12h16M6.5 6.5l11 11M17.5 6.5l-11 11"/>', 14),
+    hoja: svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>', 26),
   };
 
   // ── Los archivos: la foto se recodifica (2400 px, 0,8, sin EXIF ni ubicación); el PDF va tal cual ──
@@ -170,6 +180,11 @@
   const errorHtml = () => (ui.error ? nota(ui.error, true, 'estError') : '');
   const h2 = (t, id) => `<h2 class="est-h2" id="${id}">${e(t)}</h2>`;
   const chip = (visto) => `<span class="est-chip${visto ? ' is-visto' : ''}">${visto ? IC.tilde : IC.bandeja}<span>${e(visto ? T.matiLoVio : T.recibido)}</span></span>`;
+  /* «Nuevo», con ícono y texto. Se queda puesta durante la visita aunque ya se haya avisado al servidor. */
+  const esNueva = (x) => x.nuevo || ui.nuevasDeLaVisita.has(x.id);
+  const etiquetaNuevo = () => `<span class="est-chip is-nuevo">${IC.estrella}<span>${e(T.nuevo)}</span></span>`;
+  /* `data-tarjeta`: adónde se lleva la pantalla al llegar por el aviso. `data-nueva`: lo que se mira para marcarla vista. */
+  const marcas = (x) => ` data-tarjeta="${e(x.id)}"${x.nuevo ? ' data-nueva="1"' : ''}`;
   const pildora = (texto, accion, id, extra = '') => `<button type="button" class="est-pildora${extra}" data-est="${accion}"${id ? ` data-id="${e(id)}"` : ''}${ui.ocupado ? ' disabled' : ''}>${e(texto)}</button>`;
 
   const TEXTO_AVISO = {
@@ -200,8 +215,8 @@
     const f = E.fechaPendiente(p.desde, p.hasta, hoy);
     const linea = p.hecho ? `<p class="est-linea">${IC.tilde}<span>${e(E.hecho(p.hechoFecha))}</span></p>`
       : f ? `<p class="est-linea${f.pasada ? ' is-pasada' : ''}">${f.pasada ? IC.reloj : IC.calendario}<span>${e(f.texto)}</span></p>` : '';
-    return `<article class="est-tarjeta" aria-labelledby="estPend${i}">
-      <h3 class="est-h3" id="estPend${i}">${e(p.titulo)}</h3>
+    return `<article class="est-tarjeta${esNueva(p) ? ' is-nueva' : ''}" aria-labelledby="estPend${i}" tabindex="-1"${marcas(p)}>
+      ${esNueva(p) ? etiquetaNuevo() : ''}<h3 class="est-h3" id="estPend${i}">${e(p.titulo)}</h3>
       ${p.detalle ? `<p class="gim-sub">${e(p.detalle)}</p>` : ''}${linea}
       <button type="button" class="btn-primary" data-est="subirResultado" data-id="${e(p.id)}">${IC.subir}<span>${e(T.subirResultado)}</span></button>
       <div class="est-botones">${p.hecho ? pildora(T.deshacer, 'deshacer', p.id) : pildora(T.yaMeLoHice, 'hecho', p.id)}${p.ordenId ? pildora(T.verOrden, 'verOrden', p.ordenId, ' is-verde') : ''}</div>
@@ -210,7 +225,7 @@
 
   function ordenHtml(o) {
     if (!o.vigente) return `<div class="est-fila is-vencida"><span class="est-fila-txt"><strong>${e(o.titulo)}</strong><small>${e(T.ordenVencida)}</small></span></div>`;
-    return `<button type="button" class="est-fila" data-est="orden" data-id="${e(o.id)}"><span class="est-fila-txt"><strong>${e(o.titulo)}</strong><small>${e(E.detalleOrden(o))}</small></span><span class="md-chev">${IC.chev}</span></button>`;
+    return `<button type="button" class="est-fila" data-est="orden" data-id="${e(o.id)}"${marcas(o)}><span class="est-fila-txt">${esNueva(o) ? etiquetaNuevo() : ''}<strong>${e(o.titulo)}</strong><small>${e(E.detalleOrden(o))}</small></span><span class="md-chev">${IC.chev}</span></button>`;
   }
 
   function estudioHtml(x) {
@@ -318,13 +333,141 @@
     podarVistas();
     const t = document.getElementById('hdrTitle');
     if (t && escenaActiva()) t.textContent = T.titulo;      // al soltar el visor desde otra sección no se le pisa el título
+    vigilarNuevas();
+  }
+
+  // ── Novedades: marcar vista la tarjeta que estuvo de verdad en pantalla ──
+  const enLista = () => escenaActiva() && !ui.pila.length && document.visibilityState === 'visible';
+
+  /* ¿Se ve? Al menos la mitad de la tarjeta (o media pantalla, si es más alta que la pantalla). Con `entera`, toda. */
+  function aLaVista(el, entera) {
+    if (!el.getBoundingClientRect) return false;
+    const c = el.getBoundingClientRect();
+    const alto = raiz.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 0;
+    const ancho = raiz.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 0;
+    if (!alto || !(c.height > 0) || c.right <= 0 || c.left >= ancho) return false;
+    // Lo que queda debajo del encabezado fijo o de la barra de pestañas no se ve.
+    const cab = document.getElementById('appHeader'), barra = document.querySelector('.tabbar');
+    const techo = cab && cab.getBoundingClientRect ? Math.max(0, cab.getBoundingClientRect().bottom) : 0;
+    const piso = barra && barra.getBoundingClientRect ? Math.min(alto, barra.getBoundingClientRect().top) : alto;
+    const visto = Math.min(c.bottom, piso) - Math.max(c.top, techo);
+    return visto >= Math.min(c.height, piso - techo) / (entera ? 1 : 2) - (entera ? 1 : 0);
+  }
+
+  function dejarDeMirar() {
+    for (const r of ui.mirando.values()) clearTimeout(r);
+    ui.mirando.clear();
+  }
+
+  /* Las que se están viendo empiezan a contar; las que dejaron de verse, no cuentan. */
+  function mirar() {
+    const r = raizEscena(), m = ui.modelo;
+    const vivas = new Set();
+    if (r && m && m.estado && enLista()) {
+      for (const el of Array.from(r.querySelectorAll('[data-nueva]'))) {
+        const id = el.getAttribute('data-tarjeta');
+        if (!id || !aLaVista(el)) continue;
+        vivas.add(id);
+        if (!ui.mirando.has(id)) ui.mirando.set(id, setTimeout(() => { ui.mirando.delete(id); vista1(id); }, MIRADA_MS));
+      }
+    }
+    for (const [id, reloj] of ui.mirando) if (!vivas.has(id)) { clearTimeout(reloj); ui.mirando.delete(id); }
+  }
+
+  /* Pasó el rato: si sigue a la vista, se avisa. Si la llamada falla, vuelve a contar la próxima vez que se pinte o se mueva. */
+  function vista1(id) {
+    const r = raizEscena(), m = ui.modelo;
+    if (!r || !m || !m.estado || !enLista()) return;
+    const el = Array.from(r.querySelectorAll('[data-nueva]')).find((x) => x.getAttribute('data-tarjeta') === id);
+    if (!el || !aLaVista(el)) return;
+    ui.nuevasDeLaVisita.add(id);
+    // Las que se vieron juntas salen en una sola llamada.
+    ui.porAvisar.add(id);
+    if (!ui.relojAviso) ui.relojAviso = setTimeout(() => {
+      ui.relojAviso = null;
+      const ids = Array.from(ui.porAvisar);
+      ui.porAvisar.clear();
+      if (ui.modelo === m && ids.length) m.marcarVistas(ids).catch(() => {});
+    }, JUNTAR_MS);
+  }
+
+  /* Tras cada pintada: se vuelve a mirar, y el observador sigue a las tarjetas nuevas de ahora. Sin IntersectionObserver
+     se mira al desplazar (ver `enganchar`). */
+  function vigilarNuevas() {
+    const r = raizEscena();
+    if (!r) return;
+    if (ui.ojo && ui.ojoDe !== ui.ultimoHtml) { ui.ojo.disconnect(); ui.ojo = null; }
+    const l = enLista() ? Array.from(r.querySelectorAll('[data-nueva]')) : [];
+    if (!l.length) { if (ui.ojo) { ui.ojo.disconnect(); ui.ojo = null; } dejarDeMirar(); return; }
+    if (!ui.ojo && raiz.IntersectionObserver) {
+      ui.ojo = new raiz.IntersectionObserver(() => mirar(), { threshold: [0, 0.25, 0.5, 0.75, 1] });
+      ui.ojoDe = ui.ultimoHtml;
+      l.forEach((el) => ui.ojo.observe(el));
+    }
+    mirar();
+  }
+
+  /* Al llegar por el aviso: la tarjeta queda a la vista y con el foco (el lector de pantalla la anuncia). Si ya se ve
+     entera no se mueve nada (arriba quedan «Cerrar» y el título); si no, se la lleva arriba de todo. */
+  function mostrarTarjeta() {
+    const r = raizEscena(), m = ui.modelo;
+    if (!ui.apuntar || !r || !m || !m.estado || ui.pila.length || !escenaActiva()) return;
+    const d = ui.apuntar === 'llegada' ? E.tarjetaDeLlegada(m.estado) : E.primeraNueva(m.estado);
+    const el = d && Array.from(r.querySelectorAll('[data-tarjeta]')).find((x) => x.getAttribute('data-tarjeta') === d.id);
+    if (!el) return;
+    // El encabezado es fijo y cambia de alto con la letra: se mide para que no tape la tarjeta.
+    const cab = document.getElementById('appHeader');
+    if (cab && r.style) r.style.setProperty('--est-encabezado', `${cab.offsetHeight || 0}px`);
+    if (el.scrollIntoView && !aLaVista(el, true)) el.scrollIntoView({ block: 'start' });
+    if (el.focus) el.focus({ preventScroll: true });
+    mirar();
+  }
+
+  // ── El aviso de arriba en la pantalla principal ──
+  /* Mismo lugar y patrón que la novedad destacada de la guía: tarjeta verde con un botón blanco grande. Toda la tarjeta
+     lleva a Estudios, a la tarjeta en cuestión. Quien la pinta de nuevo (renderTrain rehace todo) la vuelve a poner. */
+  function montarTarjeta(root) {
+    let host = document.getElementById('estHost');
+    const a = ui.modelo && ui.modelo.estado ? ui.modelo.tarjetaInicio : null;
+    if (!root || !a) { if (host) host.remove(); return; }
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'estHost';
+      host.addEventListener('click', () => abrir({ desde: 'train', llegada: true }));
+    }
+    const html = `<div class="est-aviso${a.novedad ? ' is-novedad' : ''}" role="group" aria-label="${e(T.entradaMisDatos)}">
+      <div class="est-aviso-fila"><span class="est-aviso-ic" aria-hidden="true">${IC.hoja}</span>
+        <div class="est-aviso-txt"><span class="est-aviso-ceja">${a.novedad ? `<span class="est-punto" role="img" aria-label="${e(T.novedad)}"></span>` : ''}${e(T.entradaMisDatos)}</span><strong class="est-aviso-tit">${e(a.titulo)}</strong></div></div>
+      <button type="button" class="est-aviso-btn" id="estAvisoBtn">${e(a.boton)}</button></div>`;
+    if (host.dataset.h !== html) { host.innerHTML = html; host.dataset.h = html; }
+    if (root.firstChild !== host) root.insertBefore(host, root.firstChild);
+  }
+
+  /* Destino `estudios` (el clic del aviso o `?scene=estudios`), también al abrir en frío: quien llama ya dejó a la vista
+     la pantalla de caída (Mis datos). En cuanto se sabe que la cuenta tiene la sección, se abre en la tarjeta nueva. Si
+     la palanca está apagada, la cuenta no la tiene, el `get` no contesta a tiempo o el alumno ya se fue a otra pantalla,
+     se queda donde está. */
+  function destino(caida) {
+    ui.destino = { caida: caida || 'misdatos', hasta: Date.now() + ESPERA_DESTINO_MS };
+    cumplirDestino();
+  }
+  function cumplirDestino() {
+    const d = ui.destino;
+    if (!d) return;
+    if (Date.now() > d.hasta || (ui.op && ui.op.escena && ui.op.escena() !== d.caida)) { ui.destino = null; return; }
+    if (!ui.op || !ui.modelo || !ui.modelo.estado) return;
+    ui.destino = null;
+    abrir({ desde: d.caida, llegada: true, fresco: true });
   }
 
   function pintar() {
     if (!ui.op) return;
     const m = ui.modelo;
-    const firma = m && m.estado ? `1|${m.pendientes}` : '';
+    const a = m && m.estado ? m.tarjetaInicio : null;
+    montarTarjeta(document.getElementById('scene-train'));
+    const firma = m && m.estado ? `1|${m.pendientes}|${m.novedad ? 1 : 0}|${a ? a.titulo : ''}` : '';
     if (firma !== ui.firmaEntrada) { ui.firmaEntrada = firma; ui.op.alCambiarEntrada(); }
+    cumplirDestino();
     if (escenaActiva()) renderEscena();
   }
 
@@ -363,21 +506,31 @@
     window.scrollTo(0, 0);
   }
 
-  function abrir() {
+  /* op: { desde: 'misdatos' | 'train', llegada: se entra por el aviso, fresco: el `get` acaba de llegar }.
+     Siempre que haya una tarjeta nueva, la pantalla se abre con esa a la vista; por el aviso, si no hay nueva, con el
+     primer pendiente. */
+  function abrir(op = {}) {
     const m = ui.modelo;
     if (!m || !m.estado) return;
     aquietar();                                   // el segundo toque de un doble toque en Mis datos no cae en un botón de acá
+    ui.origen = op.desde === 'train' ? 'train' : 'misdatos';
+    ui.destino = null;
     ui.pila = [];
     ui.error = null;
+    ui.nuevasDeLaVisita.clear();
+    ui.apuntar = op.llegada ? 'llegada' : 'nueva';
     soltarVisor();
     m.limpiarAviso();
     m.descartarBorrador();
     ui.op.irA('estudios');
+    mostrarTarjeta();
+    const despues = () => { if (ui.modelo !== m) return null; mostrarTarjeta(); return m.drenar(); };
+    if (op.fresco && Date.now() - ui.ultimoRefresco < 5000) { Promise.resolve().then(despues).catch(() => {}); return; }
     ui.ultimoRefresco = Date.now();
-    m.refrescar().then(() => ui.modelo === m && m.drenar()).catch(() => {});
+    m.refrescar().then(despues).catch(() => {});
   }
 
-  function cerrar() { if (ui.op) ui.op.irA('misdatos'); }
+  function cerrar() { if (ui.op) ui.op.irA(ui.origen); }
 
   /* La URL firmada se pide recién al tocar y no sale de la memoria: cada archivo se baja sin caché a un Blob y lo que
      se muestra o se abre es ese Blob. Así no queda ni en el historial (que se sincroniza) ni en el caché de disco.
@@ -546,7 +699,16 @@
         if (f) { const p = f(b); if (p && p.catch) p.catch(() => {}); }
       });
       const repintarPendiente = () => setTimeout(() => { if (ui.pendiente && ui.modelo && escenaActiva()) renderEscena(); }, 60);
-      r.addEventListener('pointerdown', () => { ui.presionando = true; }, true);
+      // En cuanto toca o desplaza, la pantalla no se le mueve más sola.
+      const soltarMira = () => { ui.apuntar = false; };
+      r.addEventListener('pointerdown', () => { ui.presionando = true; soltarMira(); }, true);
+      r.addEventListener('touchstart', soltarMira, { passive: true });
+      window.addEventListener('wheel', soltarMira, { passive: true });
+      // Sin IntersectionObserver, y también al girar o agrandar la pantalla: se mira qué tarjeta nueva quedó a la vista.
+      let frenoMira = 0;
+      const alMover = () => { if (frenoMira || !ui.modelo || !escenaActiva()) return; frenoMira = setTimeout(() => { frenoMira = 0; mirar(); }, 200); };
+      window.addEventListener('scroll', alMover, { passive: true });
+      window.addEventListener('resize', alMover, { passive: true });
       const soltar = () => { if (!ui.presionando) return; ui.presionando = false; repintarPendiente(); };
       window.addEventListener('pointerup', soltar, true);
       window.addEventListener('pointercancel', soltar, true);
@@ -560,12 +722,14 @@
       }, { passive: true });
     }
     // Al salir de la sección (o irse la página) se suelta lo abierto.
-    if (r && raiz.MutationObserver) new raiz.MutationObserver(() => { if (!escenaActiva()) cerrarVisor(); }).observe(r, { attributes: true, attributeFilter: ['class'] });
+    if (r && raiz.MutationObserver) new raiz.MutationObserver(() => { if (!escenaActiva()) { cerrarVisor(); dejarDeMirar(); ui.apuntar = false; } }).observe(r, { attributes: true, attributeFilter: ['class'] });
     window.addEventListener('pagehide', cerrarVisor);
     window.addEventListener('online', () => { if (ui.modelo) ui.modelo.reanudar().catch(() => {}); });
     document.addEventListener('visibilitychange', () => {
       const m = ui.modelo;
-      if (document.visibilityState !== 'visible' || !m) return;
+      if (document.visibilityState !== 'visible') { dejarDeMirar(); return; }
+      if (!m) return;
+      mirar();
       if (Date.now() - ui.ultimoRefresco > SEG_ENTRE_REFRESCOS * 1000) { ui.ultimoRefresco = Date.now(); m.refrescar().then(() => m.drenar()).catch(() => {}); }
       else m.drenar().catch(() => {});
     });
@@ -587,7 +751,7 @@
     }, ESPERAS_ARRANQUE_S[n] * 1000);
   }
 
-  /* op: { token, rpc, visionUrl, irA(escena), alCambiarEntrada() } */
+  /* op: { token, rpc, visionUrl, irA(escena), escena() → la que está a la vista, alCambiarEntrada() } */
   function configurar(op) { ui.op = op; }
 
   /* valor: true o false si el servidor contestó en esta carga de la página; null si no se pudo preguntar.
@@ -598,6 +762,8 @@
     try { localStorage.removeItem(FLAG); } catch (_) {}      // lo que recordaban las versiones anteriores
     if (valor === null) return;
     if (valor !== true) {
+      ui.destino = null;
+      dejarDeMirar();
       if (ui.modelo) { ui.modelo.cerrar(); ui.modelo = null; pintar(); }
       return;
     }
@@ -620,7 +786,10 @@
   }
 
   raiz.EstudiosUI = {
-    configurar, aplicarPalanca, abrir, renderEscena,
+    configurar, aplicarPalanca, abrir, renderEscena, montarTarjeta, destino,
+    get origen() { return ui.origen; },
+    /* Hay algo sin ver: el punto de la pestaña y de la fila de Mis datos. */
+    novedad: () => !!(ui.modelo && ui.modelo.estado && ui.modelo.novedad),
     titulo: () => T.titulo,
     entradaVisible: () => !!(ui.modelo && ui.modelo.estado),
     subtitulo: () => T.subtituloEntrada(ui.modelo ? ui.modelo.pendientes : 0),

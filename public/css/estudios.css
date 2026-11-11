@@ -44,9 +44,11 @@ button.est-fila{cursor:pointer}
 .est-x{all:unset;box-sizing:border-box;flex:none;width:44px;height:44px;margin:-8px -10px -8px 0;display:grid;place-items:center;border-radius:50%;color:var(--color-text-secondary);cursor:pointer}
 .est-spinner{flex:none;width:20px;height:20px;border-width:2px}
 .est-guia{margin:0;font-size:1.0625rem;line-height:1.4;color:var(--color-text-primary)}
-.est-opciones{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:var(--space-2)}
-.est-opcion{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-2);min-height:88px;padding:var(--space-3) var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:.875rem;font-weight:600;line-height:1.25;text-align:center;cursor:pointer}
-.est-opcion svg{color:var(--color-brand-text)}
+/* Tres botones grandes, uno debajo del otro, con ícono y texto: se leen enteros a 320 px con la letra más grande. */
+.est-opciones{display:flex;flex-direction:column;gap:var(--space-2)}
+.est-opcion{box-sizing:border-box;display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:64px;padding:var(--space-3) var(--space-4);border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:1.0625rem;font-weight:600;line-height:1.25;text-align:left;cursor:pointer}
+.est-opcion > span{flex:1;min-width:0;overflow-wrap:anywhere}
+.est-opcion svg{flex:none;width:28px;height:28px;color:var(--color-brand-text)}
 .est-mini{flex:none;width:48px;height:48px;border-radius:var(--radius-md);overflow:hidden;display:grid;place-items:center;background:var(--color-brand-subtle);color:var(--color-brand-text)}
 .est-mini img{width:100%;height:100%;object-fit:cover}
 .est-preparando{display:flex;justify-content:center;padding:var(--space-2)}
@@ -57,6 +59,35 @@ button.est-fila{cursor:pointer}
 .est-hoja-fecha .btn-primary{border-radius:var(--radius-full)}
 .est-hoja-fecha .gim-nota:empty{display:none}
 .est-fecha{box-sizing:border-box;width:100%;min-height:52px;padding:0 var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-secondary);color:var(--color-text-primary);font:inherit;font-size:1rem}
+/* ── Novedades: el punto, la etiqueta «Nuevo» y el aviso de arriba en la pantalla principal ── */
+.est .sd-volver{min-height:44px;min-width:44px;font-size:1rem;text-align:left}
+.est .btn-primary{font-size:1.0625rem}
+.est .btn-primary > span{min-width:0;overflow-wrap:anywhere}
+.est-h3,.est-h1{overflow-wrap:anywhere}
+.est-punto{flex:none;display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--color-brand);box-shadow:0 0 0 2px var(--color-bg-primary)}
+.est-punto[hidden]{display:none}
+.est-punto-flota{position:absolute;top:3px;right:3px}
+.tab .est-punto-flota{top:4px;right:calc(50% - 20px)}
+/* Con el número de la revisión semanal en la misma pestaña, el punto va del otro lado. */
+.tab .tab-badge:not([hidden]) ~ .est-punto-flota{right:auto;left:calc(50% - 20px)}
+#misDatosBtn{position:relative}
+#mdEstudios .est-punto{margin-right:2px}
+.est-chip.is-nuevo{align-self:flex-start;margin-top:0;background:var(--color-brand);color:var(--color-on-brand)}
+.est-tarjeta.is-nueva{border-color:var(--color-brand);box-shadow:0 0 0 1px var(--color-brand)}
+.est-tarjeta:focus{outline:none}
+/* Al llegar por el aviso la tarjeta queda arriba, sin taparse con el encabezado fijo. */
+.est [data-tarjeta]{scroll-margin-top:calc(var(--est-encabezado,96px) + var(--space-3))}
+#estHost{margin-bottom:var(--space-3);cursor:pointer}
+.est-aviso{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-4);border-radius:var(--radius-lg);background:#17852b;color:#fff;box-shadow:0 8px 16px rgba(23,133,43,.28)}
+[data-theme="dark"] .est-aviso{background:#157a28;box-shadow:0 8px 16px rgba(21,122,40,.28)}
+.est-aviso-fila{display:flex;align-items:center;gap:var(--space-3)}
+.est-aviso-ic{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.2)}
+.est-aviso-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.est-aviso-ceja{display:flex;align-items:center;gap:8px;font-size:.75rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.est-aviso-ceja .est-punto{background:#fff;box-shadow:none}
+.est-aviso-tit{font-size:1.25rem;line-height:1.2;font-weight:700;overflow-wrap:anywhere}
+.est-aviso-btn{box-sizing:border-box;width:100%;min-height:52px;padding:10px var(--space-4);border:0;border-radius:var(--radius-full);background:#fff;color:#157a28;font:inherit;font-size:1.0625rem;font-weight:700;cursor:pointer}
+.est-aviso-btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .est-pildora:focus-visible,.est-opcion:focus-visible,.est-x:focus-visible,button.est-fila:focus-visible,.est .btn-primary:focus-visible,.est-fecha:focus-visible,.est .sd-volver:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
 button.est-fila:focus-visible{outline-offset:-2px}
 @media (prefers-reduced-motion:reduce){.est .spinner{animation-duration:2s}}
