@@ -46,6 +46,7 @@ import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.FormaHoja
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
+import com.pumpteam.mypump.diseno.apoyo
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.abrirEnNavegador
 import com.pumpteam.mypump.diseno.superficieTarjeta
@@ -208,14 +209,14 @@ fun RenglonFuentes(
             .testTag("ver-fuentes"),
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Icon(Iconos.Libro, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.padding(top = 1.dp).size(14.dp))
+        Icon(Iconos.Libro, contentDescription = null, tint = c.apoyo, modifier = Modifier.padding(top = 1.dp).size(14.dp))
         Text(
             buildAnnotatedString {
                 append("$texto · ")
                 withStyle(SpanStyle(color = c.marcaTexto, fontWeight = FontWeight.SemiBold)) { append("Ver fuentes") }
             },
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
-            color = c.textoSecundario,
+            color = c.apoyo,
         )
     }
     if (abierta) HojaFuentes(alCerrar = { abierta = false })

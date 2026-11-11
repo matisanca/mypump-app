@@ -61,6 +61,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -103,7 +105,12 @@ import com.pumpteam.mypump.diseno.FormaMenu
 import com.pumpteam.mypump.diseno.Formato
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MarcoPantalla
+import com.pumpteam.mypump.diseno.Heroe
+import com.pumpteam.mypump.diseno.Letra
 import com.pumpteam.mypump.diseno.MyPump
+import com.pumpteam.mypump.diseno.apoyo
+import com.pumpteam.mypump.diseno.avance
+import com.pumpteam.mypump.diseno.riel
 import com.pumpteam.mypump.diseno.Numeros
 import com.pumpteam.mypump.diseno.Punto
 import com.pumpteam.mypump.diseno.Segmentado
@@ -311,6 +318,8 @@ fun DietaPantalla(modelo: ModeloApp) {
                                     if (!esDemo && modelo.token != null) {
                                         item(key = "comidas-libres") { ComidasLibresSeccion(modelo, libres, Modifier.widthIn(max = AnchoLectura)) }
                                     }
+                                    // Un solo verde lleno a la vista: «Comí» manda en la próxima comida sin marcar; en las demás es neutro.
+                                    val proxima = comidas.firstOrNull { marcas[it.id] == null && dia[it.id]?.omitida != true }?.id
                                     itemsIndexed(comidas, key = { i, c -> "$i-${c.id}" }) { n, c ->
                                         val o = vigentes[c.id] ?: 0
                                         TarjetaComida(
@@ -349,6 +358,7 @@ fun DietaPantalla(modelo: ModeloApp) {
                                             editable = editable,
                                             puedeMarcar = puedeMarcar,
                                             esHoy = esHoy,
+                                            proxima = c.id == proxima,
                                         )
                                     }
                                     item(key = "pie") { PieRespaldo(OrigenRespaldo.DIETA, Modifier.widthIn(max = AnchoLectura).padding(top = Espacio.xxs)) }
@@ -538,93 +548,90 @@ private fun Cabecera(objetivo: Macros, consumo: ConsumoDelDia.Consumo, elegidas:
         Triple("Carbos", consumo.carb, objetivo.carb) to c.carbohidrato,
         Triple("Grasas", consumo.fat, objetivo.fat) to c.grasa,
     )
-    Tarjeta(modifier.testTag("dieta-cabecera"), espaciado = Espacio.m) {
-        // En el teléfono, el anillo arriba y los macros en tres cajas de color debajo, como en el iPhone: lado a lado salía
-        // en los teléfonos anchos y la cabecera no se parecía a la de iOS (15-oct). En la tablet, lado a lado si entra (el
-        // ancho que hace falta crece con la escala de la letra).
-        val escala = LocalDensity.current.fontScale
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            if (maxWidth >= 520.dp * max(1f, escala)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    AnilloConsumido(consumo.kcal, meta, esHoy = esHoy)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        for ((m, color) in macros) FilaMacro(m.first, m.second, m.third, color)
-                    }
-                }
-            } else if (escala >= ESCALA_APILADA) {
-                // Letra muy grande: ni las tres columnas entran (quedaban en "Proteí", "Carbo"). Van una debajo de la otra,
-                // como en iOS con la letra de accesibilidad.
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    AnilloConsumido(consumo.kcal, meta, lado = 200.dp, esHoy = esHoy)
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        for ((m, color) in macros) ColumnaMacro(m.first, m.second, m.third, color, Modifier.fillMaxWidth())
-                    }
+    // Lo que comí hoy en la tarjeta oscura (la firma de Dieta, igual en claro y en oscuro): el número, la barra gruesa y los
+    // tres macros sin cajas. Las notas salen de la tarjeta y quedan debajo, chicas. Los textos son los mismos.
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Heroe(Modifier.testTag("dieta-cabecera")) {
+            ConsumidoHeroe(consumo.kcal, meta, esHoy)
+            // Con letra muy grande las tres columnas no entran (quedaban en "Proteí", "Carbo"): van una debajo de la otra.
+            if (LocalDensity.current.fontScale >= ESCALA_FILAS_MACROS) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    for ((m, color) in macros) FilaMacro(m.first, m.second, m.third, color)
                 }
             } else {
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    AnilloConsumido(consumo.kcal, meta, esHoy = esHoy)
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        for ((m, color) in macros) ColumnaMacro(m.first, m.second, m.third, color, Modifier.weight(1f))
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                    for ((m, color) in macros) ColumnaMacro(m.first, m.second, m.third, color, Modifier.weight(1f))
                 }
             }
         }
-        RenglonComidas(consumo, esHoy)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("opciones-elegidas")) {
-            val dentro = abs(delta) <= 5
-            Icon(
-                if (dentro) Iconos.Verificado else Iconos.Alerta,
-                contentDescription = null,
-                tint = if (dentro) c.exito else c.alerta,
-                modifier = Modifier.size(18.dp),
-            )
-            Text(
-                buildAnnotatedString {
-                    append(if (!conAjustes) "Con las opciones elegidas: " else if (esHoy) "Con tus ajustes de hoy: " else "Con tus ajustes de ese día: ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("${Formato.miles(elegidas.kcal)} kcal") }
-                    // Con espacio duro: el "%)" no queda solo en el renglón de abajo.
-                    if (abs(delta) >= 0.5) append(" (${if (delta > 0) "+" else ""}${Formato.entero(delta)} %)")
-                },
-                style = MaterialTheme.typography.bodySmall,
-            )
+        Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            RenglonComidas(consumo, esHoy)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("opciones-elegidas")) {
+                val dentro = abs(delta) <= 5
+                Icon(
+                    if (dentro) Iconos.Verificado else Iconos.Alerta,
+                    contentDescription = null,
+                    tint = if (dentro) c.marcaTexto else c.alerta,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    buildAnnotatedString {
+                        append(if (!conAjustes) "Con las opciones elegidas: " else if (esHoy) "Con tus ajustes de hoy: " else "Con tus ajustes de ese día: ")
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("${Formato.miles(elegidas.kcal)} kcal") }
+                        // Con espacio duro: el "%)" no queda solo en el renglón de abajo.
+                        if (abs(delta) >= 0.5) append(" (${if (delta > 0) "+" else ""}${Formato.entero(delta)} %)")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.texto,
+                )
+            }
+            RenglonFuentes()
         }
-        RenglonFuentes()
     }
 }
 
 /** Desde esta escala de letra la cabecera, el total de Dieta y «Comí / Salté» van apilados (lado a lado se cortaban). */
 private const val ESCALA_APILADA = 1.5f
 
-/** Las kcal consumidas hoy en un anillo que se llena hasta el objetivo (pasado, queda lleno). */
+/** Con esta escala de letra los macros de la tarjeta principal pasan de tres columnas a filas. */
+private const val ESCALA_FILAS_MACROS = 1.3f
+
+/** Las kcal consumidas hoy, el número de la pantalla (Archivo 64), contra el objetivo, y la barra gruesa que se llena. */
 @Composable
-private fun AnilloConsumido(kcal: Double, meta: Double, lado: Dp = 132.dp, esHoy: Boolean = true) {
+private fun ConsumidoHeroe(kcal: Double, meta: Double, esHoy: Boolean) {
     val c = MyPump.colores
-    AnilloProgreso(
-        fraccion = if (meta > 0) kcal / meta else 0.0,
-        modifier = Modifier
-            .size(lado)
+    val fraccion by animateFloatAsState(if (meta > 0) (kcal / meta).toFloat().coerceIn(0f, 1f) else 0f, label = "barra-kcal")
+    Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+        @OptIn(ExperimentalLayoutApi::class)
+        FlowRow(
             // TalkBack: «Consumido hoy, 544 de 2.373 kcal» (el `accessibilityValue` de iOS, que leen también las pruebas).
-            .semantics(mergeDescendants = true) {
-                contentDescription = if (esHoy) "Consumido hoy" else "Consumido ese día"
-                stateDescription = if (meta > 0) "${Formato.miles(kcal)} de ${Formato.miles(meta)} kcal" else "${Formato.miles(kcal)} kcal"
-            }
-            .testTag("consumido-kcal"),
-        grosor = 14.dp,
-        color = c.marca,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 18.dp)) {
+            modifier = Modifier
+                .fillMaxWidth()
+                .clearAndSetSemantics {
+                    contentDescription = if (esHoy) "Consumido hoy" else "Consumido ese día"
+                    stateDescription = if (meta > 0) "${Formato.miles(kcal)} de ${Formato.miles(meta)} kcal" else "${Formato.miles(kcal)} kcal"
+                }
+                .testTag("consumido-kcal"),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            itemVerticalAlignment = Alignment.Bottom,
+        ) {
             BasicText(
                 Formato.miles(kcal),
-                style = Numeros.grande.copy(color = c.texto),
+                style = Letra.heroe.copy(fontSize = 64.sp, lineHeight = 64.sp, color = c.texto),
                 maxLines = 1,
-                autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp),
+                autoSize = TextAutoSize.StepBased(minFontSize = 34.sp, maxFontSize = 64.sp),
             )
             Text(
                 if (meta > 0) "de ${Formato.miles(meta)} kcal" else if (esHoy) "kcal hoy" else "kcal",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
                 color = c.textoSecundario,
                 maxLines = 1,
+                modifier = Modifier.padding(bottom = 10.dp),
             )
+        }
+        Box(Modifier.fillMaxWidth().height(12.dp).clip(CircleShape).background(c.riel)) {
+            if (fraccion > 0f) Box(Modifier.fillMaxHeight().fillMaxWidth(fraccion).widthIn(min = 12.dp).clip(CircleShape).background(c.avance))
         }
     }
 }
@@ -639,7 +646,7 @@ private fun RenglonComidas(consumo: ConsumoDelDia.Consumo, esHoy: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.semantics(mergeDescendants = true) {}.testTag("consumido-comidas"),
     ) {
-        Icon(if (ninguna) Iconos.Toque else Iconos.Cubiertos, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(18.dp))
+        Icon(if (ninguna) Iconos.Toque else Iconos.Cubiertos, contentDescription = null, tint = c.apoyo, modifier = Modifier.size(18.dp))
         Text(
             if (ninguna) {
                 AnnotatedString(if (esHoy) "Tocá «Comí» en cada comida y acá se va sumando lo que comés." else "Tocá «Comí» en lo que comiste ese día y acá se va sumando.")
@@ -652,7 +659,7 @@ private fun RenglonComidas(consumo: ConsumoDelDia.Consumo, esHoy: Boolean) {
                 }
             },
             style = MaterialTheme.typography.bodySmall,
-            color = c.textoSecundario,
+            color = c.apoyo,
         )
     }
 }
@@ -662,7 +669,7 @@ private fun RenglonComidas(consumo: ConsumoDelDia.Consumo, esHoy: Boolean) {
 private fun BarraMacro(consumido: Double, objetivo: Double?, color: Color, modifier: Modifier = Modifier) {
     val o = objetivo ?: 0.0
     val fraccion by animateFloatAsState(if (o > 0) (consumido / o).toFloat().coerceIn(0f, 1f) else 0f, label = "barra-macro")
-    Box(modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(color.copy(alpha = 0.18f))) {
+    Box(modifier.fillMaxWidth().height(5.dp).clip(CircleShape).background(MyPump.colores.riel)) {
         if (fraccion > 0f) Box(Modifier.fillMaxHeight().fillMaxWidth(fraccion).clip(CircleShape).background(color))
     }
 }
@@ -680,10 +687,10 @@ private fun FilaMacro(nombre: String, consumido: Double, objetivo: Double?, colo
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Punto(color)
-            Text(nombre, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(nombre, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = c.texto, maxLines = 1, modifier = Modifier.weight(1f))
             Text(
                 buildAnnotatedString {
-                    withStyle(Numeros.mediano.toSpanStyle()) { append("${Formato.entero(consumido)}") }
+                    withStyle(Letra.dato.toSpanStyle().copy(color = c.texto)) { append("${Formato.entero(consumido)}") }
                     withStyle(MaterialTheme.typography.bodySmall.toSpanStyle().copy(color = c.textoSecundario)) { append(" / ${Formato.entero(objetivo)} g") }
                 },
                 maxLines = 1,
@@ -693,26 +700,29 @@ private fun FilaMacro(nombre: String, consumido: Double, objetivo: Double?, colo
     }
 }
 
-/** Un macro en columna (cabecera angosta): nombre, lo consumido grande, el objetivo y la barra. */
+/** Un macro en columna, sin caja: el punto y el nombre, lo consumido en Archivo con el objetivo al lado, y la barra fina. */
 @Composable
 private fun ColumnaMacro(nombre: String, consumido: Double, objetivo: Double?, color: Color, modifier: Modifier = Modifier) {
+    val c = MyPump.colores
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.08f))
-            .padding(10.dp)
-            .semantics(mergeDescendants = true) {
-                contentDescription = nombre
-                stateDescription = "${Formato.entero(consumido)} de ${Formato.entero(objetivo)} g"
-            },
+        modifier = modifier.semantics(mergeDescendants = true) {
+            contentDescription = nombre
+            stateDescription = "${Formato.entero(consumido)} de ${Formato.entero(objetivo)} g"
+        },
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Punto(color, 8.dp)
-            Text(nombre, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MyPump.colores.textoSecundario, maxLines = 1)
+            Text(nombre, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = c.textoSecundario, maxLines = 1)
         }
-        Text("${Formato.entero(consumido)} g", style = Numeros.mediano, maxLines = 1)
-        Text("de ${Formato.entero(objetivo)} g", style = MaterialTheme.typography.labelSmall, color = MyPump.colores.textoSecundario, maxLines = 1)
+        BasicText(
+            buildAnnotatedString {
+                withStyle(Letra.dato.toSpanStyle().copy(color = c.texto)) { append(Formato.entero(consumido).toString()) }
+                withStyle(MaterialTheme.typography.labelSmall.toSpanStyle().copy(color = c.textoSecundario)) { append(" / ${Formato.entero(objetivo)} g") }
+            },
+            maxLines = 1,
+            softWrap = false,
+        )
         BarraMacro(consumido, objetivo, color, Modifier.padding(top = 2.dp))
     }
 }
@@ -760,6 +770,8 @@ private fun TarjetaComida(
     /** U4 (auditoría del 10/11): la comida marcada se ve plegada; tocando el título se abre o se cierra. */
     plegada: Boolean = false,
     alAlternar: () -> Unit = {},
+    /** La próxima comida sin marcar del día: solo en ella «Comí» va en verde lleno (decisión de Mati, 10/11). */
+    proxima: Boolean = false,
 ) {
     val c = MyPump.colores
     // Con los reemplazos como clave: un parámetro que no se usa no cuenta para recomponer, y la tarjeta seguía mostrando
@@ -848,7 +860,7 @@ private fun TarjetaComida(
                     )
                 }
             }
-            if (!omitida) BotonesMarca(estado, comida.id, puedeMarcar, alMarcar)
+            if (!omitida) BotonesMarca(estado, comida.id, puedeMarcar, alMarcar, principal = proxima && puedeMarcar)
             if (oMarcada != null) {
                 if (excluidos != null) {
                     val contado = (hoy + agregados.map { it.alimento }).filterIndexed { i, _ -> i !in excluidos }.sumOf { it.kcal ?: 0.0 }
@@ -931,10 +943,11 @@ private fun BotonDeTarjeta(icono: ImageVector, texto: String, modifier: Modifier
 
 /**
  * «✓ Comí» / «✗ Salté» de una comida (DIE-05, el `BotonesMarca` de iOS). Tocar el que está marcado lo desmarca, como en la
- * web. Con letra muy grande van uno debajo del otro.
+ * web. «Comí» es el botón (verde lleno solo con [principal], la próxima comida sin marcar) y «Salté» la salida discreta.
+ * Con letra muy grande van uno debajo del otro.
  */
 @Composable
-private fun BotonesMarca(estado: MarcaComida.Estado?, comidaId: String, habilitado: Boolean, alElegir: (MarcaComida.Estado?) -> Unit) {
+private fun BotonesMarca(estado: MarcaComida.Estado?, comidaId: String, habilitado: Boolean, alElegir: (MarcaComida.Estado?) -> Unit, principal: Boolean = false) {
     val tactil = LocalHapticFeedback.current
     val tocar = { e: MarcaComida.Estado ->
         val nuevo = if (estado == e) null else e
@@ -943,46 +956,61 @@ private fun BotonesMarca(estado: MarcaComida.Estado?, comidaId: String, habilita
     }
     if (LocalDensity.current.fontScale >= ESCALA_APILADA) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            BotonMarca(MarcaComida.Estado.COMIDO, estado, comidaId, habilitado, Modifier.fillMaxWidth(), tocar)
-            BotonMarca(MarcaComida.Estado.SALTADO, estado, comidaId, habilitado, Modifier.fillMaxWidth(), tocar)
+            BotonMarca(MarcaComida.Estado.COMIDO, estado, comidaId, habilitado, Modifier.fillMaxWidth(), principal, tocar)
+            BotonMarca(MarcaComida.Estado.SALTADO, estado, comidaId, habilitado, Modifier.fillMaxWidth(), false, tocar)
         }
     } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            BotonMarca(MarcaComida.Estado.COMIDO, estado, comidaId, habilitado, Modifier.weight(1f), tocar)
-            BotonMarca(MarcaComida.Estado.SALTADO, estado, comidaId, habilitado, Modifier.weight(1f), tocar)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            BotonMarca(MarcaComida.Estado.COMIDO, estado, comidaId, habilitado, Modifier.weight(1f), principal, tocar)
+            BotonMarca(MarcaComida.Estado.SALTADO, estado, comidaId, habilitado, Modifier, false, tocar)
         }
     }
 }
 
 @Composable
-private fun BotonMarca(e: MarcaComida.Estado, estado: MarcaComida.Estado?, comidaId: String, habilitado: Boolean, modifier: Modifier, alTocar: (MarcaComida.Estado) -> Unit) {
+private fun BotonMarca(
+    e: MarcaComida.Estado,
+    estado: MarcaComida.Estado?,
+    comidaId: String,
+    habilitado: Boolean,
+    modifier: Modifier,
+    principal: Boolean,
+    alTocar: (MarcaComida.Estado) -> Unit,
+) {
     val c = MyPump.colores
     val activo = estado == e
     val comi = e == MarcaComida.Estado.COMIDO
+    // Sin hacer: neutro. Lo que sigue: verde lleno. Hecho: verde suave con tilde. «Salté» marcada: fondo naranja con texto
+    // negro (el naranja como texto chico no llega a 4,5:1 sobre su fondo).
+    val lleno = comi && estado == null && principal && habilitado
     val fondo by animateColorAsState(
         when {
-            !activo -> c.campo
-            comi -> c.marca
-            else -> c.alerta.copy(alpha = 0.16f)
+            comi && activo -> c.marcaSuave
+            lleno -> c.marca
+            comi -> c.campo
+            activo -> c.alerta.copy(alpha = 0.16f)
+            else -> Color.Transparent
         },
         label = "fondo-marca",
     )
     val tinta = when {
-        !activo -> c.texto.copy(alpha = 0.8f)
-        comi -> c.sobreMarca
-        else -> c.alerta
+        comi && activo -> c.marcaTexto
+        lleno -> c.sobreMarca
+        comi -> c.texto
+        activo -> c.texto
+        else -> c.apoyo
     }
     Row(
         modifier
-            .heightIn(min = 48.dp)
+            .heightIn(min = if (comi) 52.dp else 48.dp)
             .alpha(if (habilitado) 1f else 0.45f)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(CircleShape)
             .background(fondo)
             // TalkBack: «Comí, seleccionado, botón: tocá dos veces para desmarcar».
             .clickable(enabled = habilitado, role = Role.Button, onClickLabel = if (activo) "desmarcar" else null) { alTocar(e) }
             .semantics { selected = activo }
             .testTag("${if (comi) "comi" else "salte"}-$comidaId")
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = if (comi) 12.dp else 18.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -992,9 +1020,13 @@ private fun BotonMarca(e: MarcaComida.Estado, estado: MarcaComida.Estado?, comid
             activo -> Box(Modifier.size(20.dp).clip(CircleShape).background(c.alerta), contentAlignment = Alignment.Center) {
                 Icon(Iconos.Cerrar, contentDescription = null, tint = c.tarjeta, modifier = Modifier.size(13.dp))
             }
-            else -> Icon(if (comi) Iconos.Tilde else Iconos.Cerrar, contentDescription = null, tint = tinta, modifier = Modifier.size(18.dp))
+            else -> Icon(if (comi) Iconos.Tilde else Iconos.Cerrar, contentDescription = null, tint = tinta, modifier = Modifier.size(if (comi) 20.dp else 16.dp))
         }
-        Text(if (comi) "Comí" else "Salté", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = tinta)
+        Text(
+            if (comi) "Comí" else "Salté",
+            style = if (comi) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge,
+            color = tinta,
+        )
     }
 }
 
