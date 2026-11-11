@@ -31,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +59,7 @@ import com.pumpteam.mypump.raiz.AnclaRevision
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.raiz.diaDeRevision
+import com.pumpteam.mypump.reglas.CheckGuiado
 import com.pumpteam.mypump.reglas.PesoCorporal
 import com.pumpteam.mypump.reglas.SemanaRevision
 import java.time.DayOfWeek
@@ -95,6 +97,17 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     // al componer, y se anota en cada cuadro del desplazamiento.
     val secciones = remember { HashMap<String, Float>() }
     var recargando by remember { mutableStateOf(false) }
+    // Check guiado (2.3.0): con la palanca `check_guiado` prendida, la sección del check es la tarjeta que abre el check de
+    // un paso por pantalla. Apagada (o en la demo), todo lo de abajo queda como siempre.
+    val conCheckGuiado = !esDemo && (revision?.guiadoPrendido?.collectAsStateWithLifecycle()?.value ?: false)
+    var checkGuiadoAbierto by rememberSaveable { mutableStateOf(false) }
+    var checkGuiadoPaso by rememberSaveable { mutableStateOf<String?>(null) }
+    // Con cuenta y la salud del sistema conectada: los últimos días al servidor, sin esperar ni frenar el envío del check.
+    val sincronizarSaludAlEnviar = {
+        val s = salud
+        if (!esDemo && s != null && s.conectado.value) alcance.launch { s.sincronizar() }
+        Unit
+    }
     val margen = with(LocalDensity.current) { Espacio.xs.toPx() }
 
     // Un aviso o el banner de las otras pestañas piden una sección: se va y se consume.
@@ -192,20 +205,35 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         modifier = Modifier.testTag("nota-revision-semanal"),
                     )
                     FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
-                    CheckSemanal(
-                        revision,
-                        Modifier.seccion(AnclaRevision.CHECK, secciones),
-                        salud = filasSaludSemana(salud),
-                        alEnviar = {
-                            // Con cuenta y la salud del sistema conectada: los últimos días al servidor, sin esperar ni
-                            // frenar el envío del check.
-                            val s = salud
-                            if (!esDemo && s != null && s.conectado.value) alcance.launch { s.sincronizar() }
-                        },
-                    )
+                    val r = revision
+                    if (conCheckGuiado && r != null) {
+                        CheckGuiadoTarjeta(r, fotos, Modifier.seccion(AnclaRevision.CHECK, secciones)) { paso ->
+                            checkGuiadoPaso = paso?.clave
+                            checkGuiadoAbierto = true
+                        }
+                    } else {
+                        CheckSemanal(
+                            revision,
+                            Modifier.seccion(AnclaRevision.CHECK, secciones),
+                            salud = filasSaludSemana(salud),
+                            alEnviar = sincronizarSaludAlEnviar,
+                        )
+                    }
                 }
             }
         }
+    }
+
+    val r = revision
+    if (conCheckGuiado && checkGuiadoAbierto && r != null) {
+        CheckGuiadoFlujo(
+            revision = r,
+            fotos = fotos,
+            salud = filasSaludSemana(salud),
+            pasoInicial = CheckGuiado.Paso.desde(checkGuiadoPaso),
+            alEnviar = sincronizarSaludAlEnviar,
+            alCerrar = { checkGuiadoAbierto = false },
+        )
     }
 }
 

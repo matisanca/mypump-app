@@ -152,6 +152,16 @@ class Escrituras(
                     ),
                 )
             }
+            // Lo marcado en «¿Notaste algo?» del check guiado. TRUE = guardado; FALSE = palanca apagada en el servidor; sin
+            // la función (propuesta sin aplicar) no hay dónde guardarlo. Las escalas, la nota y el peso no dependen de esto.
+            ModeloRevision.KIND_GUIADO -> ResultadoOp.Respuesta(
+                sinTablaEsHecho(
+                    cliente.llamar(
+                        "mypump_check_guiado_guardar",
+                        mapOf("p_token" to t, "p_fecha" to de(p, "fecha"), "p_respuestas" to (p["respuestas"] ?: ValorJson.Objeto(emptyMap()))),
+                    ),
+                ),
+            )
             "chat" -> {
                 // Arreglo nativo n.º 4 (el chat "en vuelo"): si el mensaje ya llegó (se mandó, se cortó la señal antes de
                 // la respuesta y la cola lo reintenta), no se manda de nuevo. El servidor deduplica el mismo texto dentro
