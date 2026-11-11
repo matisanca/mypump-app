@@ -259,6 +259,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
             BienvenidaGuiaDe(modelo, navegacion)
             // «Novedades de tu plan» (palanca `novedades_plan`): la de esta publicación, una vez, y la que abra la tarjeta.
             com.pumpteam.mypump.novedades.HojaDeNovedadesDe(modelo, navegacion)
+            // «Tu recorrido» (palanca `fin_plan`): sola una vez, y la que abran la tarjeta de Entreno o Mis datos.
+            com.pumpteam.mypump.recorrido.HojaDeRecorridoDe(modelo, navegacion)
             // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
             DialogoPreguntas(vm.preguntasEntreno)
             // Salud: el diagnóstico que pidió un link con `?diag=health` (SAL-13), arriba de todo.

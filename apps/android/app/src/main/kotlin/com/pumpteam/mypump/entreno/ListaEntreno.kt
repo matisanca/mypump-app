@@ -199,6 +199,8 @@ fun ListaEntreno(
                     // «Tu guía» mientras falta ver algo: verde y primera, arriba de todo, como iOS (revisión del 4-nov, hallazgo 5).
                     // «Tu entrega empieza a las 10:00 · Entrar» (2.2.0): desde 30 min antes hasta el fin de la franja.
                     EntregaAhoraDe(modelo)
+                    // «Tu recorrido» (palanca `fin_plan`): lo primero de la pantalla; con la tarjeta de la videollamada, debajo de esa.
+                    com.pumpteam.mypump.recorrido.TarjetaRecorridoDe(modelo)
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
                     TarjetaGimnasioDe(modelo)
                     com.pumpteam.mypump.novedades.TarjetaNovedadDe(modelo)
