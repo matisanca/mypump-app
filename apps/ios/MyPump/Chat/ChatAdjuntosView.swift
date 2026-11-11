@@ -128,8 +128,9 @@ private struct AudioEnBurbuja: View {
     let conCola: Bool
     @State private var cargando = false
     @State private var noSeEscucha = false
-    @ScaledMetric(relativeTo: .body) private var ancho: CGFloat = 220
+    @ScaledMetric(relativeTo: .body) private var ancho: CGFloat = 240
     @ScaledMetric(relativeTo: .body) private var boton: CGFloat = 36
+    @Environment(\.dynamicTypeSize) private var tamanoLetra
 
     var body: some View {
         let mio = !mensaje.esDelCoach
@@ -137,22 +138,31 @@ private struct AudioEnBurbuja: View {
         let total = max(adjunto.duracion ?? reproductor.duracion(adjunto.id) ?? 0, 0)
         let avance = suena && total > 0 ? min(1, reproductor.actual / total) : (reproductor.idCargado == adjunto.id && total > 0 ? min(1, reproductor.actual / total) : 0)
         let frente = mio ? Color.sobreMarca : Color.marcaTexto
-        HStack(spacing: Espacio.s) {
+        // Con letra muy grande el botón va arriba y la barra abajo: el texto del botón no se corta.
+        let disposicion = tamanoLetra.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.s))
+            : AnyLayout(HStackLayout(spacing: Espacio.s))
+        disposicion {
+            // Con texto visible («Escuchar» / «Pausar»), no solo el ícono: regla de botones grandes con texto.
             Button { Task { await alternar() } } label: {
-                ZStack {
-                    Circle().fill(mio ? Color.sobreMarca.opacity(0.2) : Color.marca.opacity(0.14))
+                HStack(spacing: 6) {
                     if cargando {
                         ProgressView().tint(frente)
                     } else {
                         Image(systemName: suena ? "pause.fill" : "play.fill")
-                            .font(.system(size: boton * 0.42, weight: .bold))
-                            .foregroundStyle(frente)
-                            .offset(x: suena ? 0 : 1.5)
+                            .font(.system(size: boton * 0.38, weight: .bold))
                             .contentTransition(.symbolEffect(.replace))
                     }
+                    Text(suena ? ReglasChatAdjuntos.textoPausar : ReglasChatAdjuntos.textoReproducir)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .fixedSize()
                 }
-                .frame(width: max(boton, 36), height: max(boton, 36))
-                .contentShape(.circle)
+                .foregroundStyle(frente)
+                .padding(.horizontal, 12)
+                .frame(minHeight: max(boton, 44))
+                .background(Capsule().fill(mio ? Color.sobreMarca.opacity(0.2) : Color.marca.opacity(0.14)))
+                .contentShape(.capsule)
             }
             .buttonStyle(.plain)
             .disabled(noSeEscucha || (mensaje.pendiente && !mensaje.fallo && chat == nil))
@@ -343,11 +353,14 @@ struct VisorFoto: View {
                 .accessibilityLabel(ReglasChatAdjuntos.textoFotoAccesible)
                 .accessibilityAddTraits(.isImage)
             Button(action: cerrar) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .bold))
+                // Con texto visible («Cerrar»), no solo la cruz.
+                Label(ReglasChatAdjuntos.textoCerrar, systemImage: "xmark")
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial, in: .circle)
+                    .lineLimit(1)
+                    .padding(.horizontal, Espacio.m)
+                    .frame(minHeight: 44)
+                    .background(.ultraThinMaterial, in: .capsule)
                     .environment(\.colorScheme, .dark)
             }
             .padding(Espacio.m)

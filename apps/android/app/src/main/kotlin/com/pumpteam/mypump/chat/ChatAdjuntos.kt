@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -218,22 +219,22 @@ private fun AudioEnBurbuja(m: BurbujaChat, a: AdjuntoChat, chat: ModeloChat?, re
     val total = max(a.duracion ?: reproductor.duracion(a.id) ?: 0.0, 0.0)
     val avance = if (reproductor.idCargado == a.id && total > 0) min(1.0, reproductor.actual / total) else 0.0
     val frente = if (mio) c.sobreMarca else c.marcaTexto
-    Row(
-        Modifier
-            .width(232.dp)
-            .alpha(if (m.pendiente && !m.fallo) 0.6f else 1f)
-            .background(if (mio) c.marca else c.tarjeta, forma)
-            .then(if (mio) Modifier else Modifier.border(1.dp, c.borde, forma))
-            .padding(start = 10.dp, end = 14.dp, top = 9.dp, bottom = 9.dp)
-            .semantics(mergeDescendants = true) { contentDescription = ReglasChatAdjuntos.textoAudioAccesible(total) }
-            .testTag("chat-audio"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
-    ) {
-        Box(
+    // Con letra muy grande el botón va arriba y la barra abajo: el texto del botón no se corta.
+    val grande = LocalDensity.current.fontScale >= 1.5f
+    val burbuja = Modifier
+        .then(if (grande) Modifier.widthIn(min = 232.dp, max = 320.dp) else Modifier.width(260.dp))
+        .alpha(if (m.pendiente && !m.fallo) 0.6f else 1f)
+        .background(if (mio) c.marca else c.tarjeta, forma)
+        .then(if (mio) Modifier else Modifier.border(1.dp, c.borde, forma))
+        .padding(start = 10.dp, end = 14.dp, top = 9.dp, bottom = 9.dp)
+        .semantics(mergeDescendants = true) { contentDescription = ReglasChatAdjuntos.textoAudioAccesible(total) }
+        .testTag("chat-audio")
+    // Con texto visible («Escuchar» / «Pausar»), no solo el ícono: regla de botones grandes con texto.
+    val boton: @Composable () -> Unit = {
+        Row(
             Modifier
-                .size(40.dp)
-                .clip(CircleShape)
+                .heightIn(min = 44.dp)
+                .clip(RoundedCornerShape(50))
                 .background(if (mio) c.sobreMarca.copy(alpha = 0.2f) else c.marca.copy(alpha = 0.14f))
                 .clickable(enabled = !noSeEscucha && chat != null, role = Role.Button) {
                     if (suena) {
@@ -248,14 +249,24 @@ private fun AudioEnBurbuja(m: BurbujaChat, a: AdjuntoChat, chat: ModeloChat?, re
                         }
                     }
                 }
-                .semantics { contentDescription = if (suena) ReglasChatAdjuntos.TEXTO_PAUSAR else ReglasChatAdjuntos.TEXTO_REPRODUCIR }
+                .padding(horizontal = 12.dp)
                 .testTag("chat-audio-play"),
-            contentAlignment = Alignment.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (cargando) CircularProgressIndicator(color = frente, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-            else Icon(if (suena) Pausa else Iconos.Play, contentDescription = null, tint = frente, modifier = Modifier.size(20.dp))
+            else Icon(if (suena) Pausa else Iconos.Play, contentDescription = null, tint = frente, modifier = Modifier.size(18.dp))
+            Text(
+                if (suena) ReglasChatAdjuntos.TEXTO_PAUSAR else ReglasChatAdjuntos.TEXTO_REPRODUCIR,
+                style = Letras.subtitulo,
+                color = frente,
+                maxLines = 1,
+                softWrap = false,
+            )
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+    }
+    val barra: @Composable (Modifier) -> Unit = { mod ->
+        Column(mod, verticalArrangement = Arrangement.spacedBy(5.dp)) {
             if (noSeEscucha) {
                 Text(ReglasChatAdjuntos.TEXTO_NO_SE_ESCUCHA, style = Letras.caption, color = if (mio) c.sobreMarca else c.textoSecundario)
             } else {
@@ -266,6 +277,17 @@ private fun AudioEnBurbuja(m: BurbujaChat, a: AdjuntoChat, chat: ModeloChat?, re
                     color = if (mio) c.sobreMarca.copy(alpha = 0.85f) else c.textoSecundario,
                 )
             }
+        }
+    }
+    if (grande) {
+        Column(burbuja, verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            boton()
+            barra(Modifier.fillMaxWidth())
+        }
+    } else {
+        Row(burbuja, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            boton()
+            barra(Modifier.weight(1f))
         }
     }
 }
@@ -403,20 +425,23 @@ internal fun VisorFoto(imagen: ImageBitmap, alCerrar: () -> Unit) {
                         translationY = desplazamiento.y
                     },
             )
-            Box(
+            // Con texto visible («Cerrar»), no solo la cruz.
+            Row(
                 Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
                     .padding(Espacio.m)
-                    .size(44.dp)
-                    .clip(CircleShape)
+                    .heightIn(min = 44.dp)
+                    .clip(RoundedCornerShape(50))
                     .background(Color.White.copy(alpha = 0.18f))
                     .clickable(role = Role.Button, onClick = alCerrar)
-                    .semantics { contentDescription = ReglasChatAdjuntos.TEXTO_CERRAR }
+                    .padding(horizontal = Espacio.m)
                     .testTag("chat-visor-cerrar"),
-                contentAlignment = Alignment.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Icon(Iconos.Cerrar, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(Iconos.Cerrar, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Text(ReglasChatAdjuntos.TEXTO_CERRAR, style = Letras.subtitulo, color = Color.White, maxLines = 1, softWrap = false)
             }
         }
     }
