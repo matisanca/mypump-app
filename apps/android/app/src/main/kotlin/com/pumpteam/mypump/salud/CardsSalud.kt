@@ -213,10 +213,13 @@ fun CardRecuperacion(salud: ModeloSalud, alVerTodo: () -> Unit, modifier: Modifi
                 )
                 if (salud.sincronizador != null) BotonConectarSalud(salud)
                 else NotaSalud("Si tenés reloj o anillo, conectalo desde ${t.desdeApp} y esto se llena solo.")
+                // 2.3.0: el detalle (por qué no conecta, el score, el diagnóstico) ya no tiene la entrada de Mis datos.
+                VerTodo(alVerTodo)
             }
             is SaludVista.CardRecuperacion.ConectadoSinScore -> {
                 Text(card.sinScore.frase(t), style = MaterialTheme.typography.bodyMedium.merge(Letras.cifras), fontWeight = FontWeight.Medium)
                 NotaSalud(card.motivo ?: card.sinScore.nota(t))
+                VerTodo(alVerTodo)
             }
             is SaludVista.CardRecuperacion.Calibrando -> {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -232,6 +235,7 @@ fun CardRecuperacion(salud: ModeloSalud, alVerTodo: () -> Unit, modifier: Modifi
                 )
                 Text("Estoy aprendiendo cómo es tu normal. ${card.yaSe}".trim(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 NotaSalud(card.motivo ?: "Sin unos días de historia, cualquier número sería inventado.")
+                VerTodo(alVerTodo)
             }
             SaludVista.CardRecuperacion.Oculto -> {
                 Text("Tenés el score apagado. Tus datos se siguen guardando y Mati los ve igual.", style = MaterialTheme.typography.bodyMedium)

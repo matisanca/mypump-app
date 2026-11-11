@@ -99,7 +99,7 @@ class MovimientoReducidoUiTest : PruebaUi() {
         p.nodo(etiqueta("cronometro"))
         servidor.demoraMs = 10_000
         p.abrirSalud()
-        p.tocar(etiqueta("segmento-fuerza"))
+        p.verSeccion("fuerza")
         p.nodo(etiqueta("progreso-cargando"), ms = 20_000)
         p.esperar("el esqueleto quieto", ms = 8_000, enElPrincipal = false) { Telefono.quietoConTope(2_000) && p.dibujosEn(600) == 0 }
         assertTrue("el esqueleto se fue antes de mirarlo", p.existe(etiqueta("progreso-cargando")))

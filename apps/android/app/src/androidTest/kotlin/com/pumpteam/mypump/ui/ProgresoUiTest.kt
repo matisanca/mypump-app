@@ -41,7 +41,7 @@ class ProgresoUiTest : PruebaUi() {
     /** Salud (desde la tarjeta Recuperación de Revisión, 2.1.0) y su segmento Fuerza. */
     private fun irAFuerza() {
         p.abrirSalud()
-        p.tocar(etiqueta("segmento-fuerza"))
+        p.verSeccion("fuerza")
     }
 
     /** PRO-01 a 03: los totales, las secciones por día y cada fila con su PR, su tope, su curva y la variación. */
@@ -54,12 +54,12 @@ class ProgresoUiTest : PruebaUi() {
         assertEquals(1, pedidosDeProgreso())
         // El mismo ejercicio en dos días es una sola fila, en "Tirón · Piernas"; los días van en nombre propio.
         // La card de series por músculo va arriba: se baja un poco para que la sección "Tirón" entre en la lista perezosa.
-        p.desplazar(etiqueta("progreso-lista"), 700f)
+        p.desplazar(etiqueta("mi-progreso-lista"), 700f)
         val textos = p.textosBajo(etiqueta("progreso-lista"))
         assertTrue(textos.toString(), textos.indexOf("Tirón · Piernas") in 0 until textos.indexOf("Tirón"))
         assertTrue(textos.contains("máx. por sesión"))
         assertFalse(textos.any { it == "TIRÓN" || it == "TIRÓN · PIERNAS" })
-        p.desplazar(etiqueta("progreso-lista"), -700f)
+        p.desplazar(etiqueta("mi-progreso-lista"), -700f)
         // Con el peso del cuerpo: "Peso corporal" y sin variación.
         val rollout = p.textosBajo(etiqueta("progreso-fila-$ROLLOUT"))
         assertTrue(rollout.toString(), rollout.containsAll(listOf("Rollout con ab wheel", "Core anterior", "Peso corporal", "—")))
@@ -126,7 +126,7 @@ class ProgresoUiTest : PruebaUi() {
         p.nodo(etiqueta("progreso-lista"))
         p.esperarQueNoEste(etiqueta("progreso-detalle"))
         assertTrue(p.enSalud())
-        assertTrue(p.seleccionado(etiqueta("segmento-fuerza")))
+        p.esperar("Fuerza a la vista, donde estaba") { p.enSeccion("fuerza").takeIf { it } }
     }
 
     /** Con el peso del cuerpo no hay gráfico de kilos: el progreso está en las repeticiones. */
@@ -222,7 +222,7 @@ class ProgresoUiTest : PruebaUi() {
         p.tocar(etiqueta("ver-demo"))
         // Salud se abre desde la tarjeta Recuperación de Revisión.
         p.abrirSalud()
-        p.tocar(etiqueta("segmento-fuerza"))
+        p.verSeccion("fuerza")
         p.nodo(etiqueta("progreso-totales"))
         assertFalse(p.existe(etiqueta("progreso-vacio")))
         assertTrue(servidor.llamadas.none { "historico" in it.funcion })

@@ -118,10 +118,11 @@ class EstudiosUiTest : PruebaUi() {
         p.nodo(etiqueta("mis-datos-pantalla"))
     }
 
+    /** Estudios vive en «Mi salud» (2.3.0): Revisión → la tarjeta Mi salud → el bloque de Estudios. */
     private fun abrirEstudios() {
-        irAMisDatos()
-        p.tocar(etiqueta("mis-datos-estudios"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        p.nodo(etiqueta("pestana-entreno"))
+        p.abrirMiSalud()
+        p.nodo(etiqueta("mi-salud-bloque-estudios"))
     }
 
     private val enCola: File get() = File(app.noBackupFilesDir, "MyPump")
@@ -130,12 +131,13 @@ class EstudiosUiTest : PruebaUi() {
     private fun recorrido(tema: String): DobleEstudios {
         val d = lanzar("completo")
         irAMisDatos()
-        p.nodo(etiqueta("mis-datos-estudios"))
-        p.nodo(texto("Estudios y órdenes"))
-        p.nodo(texto("Te faltan 3 estudios"))
+        // En Mis datos queda una sola fila, «Mi salud», que lleva ahí.
+        p.nodo(etiqueta("mis-datos-mi-salud"))
+        assertFalse(p.existe(texto("Estudios y órdenes")))
         Telefono.captura("est-mis-datos-$tema")
-        p.tocar(etiqueta("mis-datos-estudios"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        p.tocar(etiqueta("mis-datos-mi-salud"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
+        p.nodo(texto("Estudios y órdenes"))
         p.nodo(texto("Semana del 23/11"))
         p.nodo(texto("Te falta hacer"))
         p.nodo(texto("Antes del jueves 19/11"))
@@ -209,35 +211,39 @@ class EstudiosUiTest : PruebaUi() {
     @Test
     fun palancaApagadaNoSeVeNiLlamaNada() {
         val d = lanzar("apagado")
-        irAMisDatos()
+        p.nodo(etiqueta("pestana-entreno"))
+        p.abrirMiSalud()
         p.quieto(2500)
-        assertFalse(p.existe(etiqueta("mis-datos-estudios")))
+        // Mi salud sigue (la recuperación), sin el bloque de Estudios.
+        assertFalse(p.existe(etiqueta("mi-salud-bloque-estudios")))
         assertTrue("con la palanca apagada no se llama nada nuevo: ${d.llamadasEstudios}", d.llamadasEstudios.isEmpty())
     }
 
     @Test
     fun sinElServidorNuevoNoSeVe() {
         val d = lanzar("sinServidor")
-        irAMisDatos()
+        p.nodo(etiqueta("pestana-entreno"))
+        p.abrirMiSalud()
         p.quieto(2500)
-        assertFalse(p.existe(etiqueta("mis-datos-estudios")))
+        // Mi salud sigue (la recuperación), sin el bloque de Estudios.
+        assertFalse(p.existe(etiqueta("mi-salud-bloque-estudios")))
         assertTrue(d.llamadasEstudios.none { it.startsWith("estudios/") })
     }
 
     @Test
     fun noHabilitadoNoSeVe() {
         lanzar("noHabilitado")
-        irAMisDatos()
+        p.nodo(etiqueta("pestana-entreno"))
+        p.abrirMiSalud()
         p.quieto(2500)
-        assertFalse(p.existe(etiqueta("mis-datos-estudios")))
+        // Mi salud sigue (la recuperación), sin el bloque de Estudios.
+        assertFalse(p.existe(etiqueta("mi-salud-bloque-estudios")))
     }
 
     @Test
     fun vacioYTodoAlDia() {
         lanzar("vacio")
-        irAMisDatos()
-        p.nodo(texto("Todo al día"))
-        p.tocar(etiqueta("mis-datos-estudios"))
+        abrirEstudios()
         p.nodo(texto("Acá vas a ver los estudios que te pida Mati, tus órdenes y lo que nos mandes."))
         p.nodo(etiqueta("estudios-subir"))
         assertFalse(p.existe(texto("Tus estudios")))
@@ -382,7 +388,7 @@ class EstudiosUiTest : PruebaUi() {
         p.quieto(1200)
         Telefono.captura("est-visor-estudio-claro")
         p.atras()
-        p.nodo(etiqueta("estudios-pantalla"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
         p.esperar("los temporales se borran al cerrar") { archivosEn(File(app.cacheDir, "estudios-ver")).isEmpty().takeIf { it } }
     }
 
@@ -437,14 +443,14 @@ class EstudiosUiTest : PruebaUi() {
     private fun novedad(tema: String): DobleEstudios {
         val d = lanzar("novedad")
         // Arriba de Entreno, sin tocar nada: la tarjeta verde con el botón grande.
-        p.nodo(etiqueta("estudios-tarjeta-inicio"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"))
         p.nodo(texto("Tenés un estudio nuevo para hacer"))
-        p.nodo(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio-boton"))
         p.nodo(texto("Ver"))
         Telefono.captura("est-novedad-inicio-$tema")
         // Un toque: Estudios, con la tarjeta nueva a la vista y su «Nuevo».
-        p.tocar(etiqueta("estudios-tarjeta-inicio-boton"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        p.tocar(etiqueta("tarjeta-mi-salud-inicio-boton"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
         assertTrue(p.seleccionado(etiqueta("pestana-revision")))
         p.nodo(etiqueta("estudios-nuevo-${DobleEstudios.PEDIDO_ECO}"))
         p.nodo(texto("Nuevo"))
@@ -480,15 +486,15 @@ class EstudiosUiTest : PruebaUi() {
     @Test
     fun sinNovedadLaTarjetaLlevaASubirEnDosToques() {
         lanzar("completo")
-        p.nodo(etiqueta("estudios-tarjeta-inicio"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"))
         p.nodo(texto("Tenés un estudio para hacer"))
-        p.nodo(etiqueta("estudios-tarjeta-inicio-boton"))
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio-boton"))
         p.nodo(texto("Subir resultado"))
         assertFalse("sin nada sin ver no hay punto", p.existe(etiqueta("pestana-revision-novedad")))
         Telefono.captura("est-para-hacer-inicio-claro")
         // Un toque a Estudios, dos al selector de archivos.
-        p.tocar(etiqueta("estudios-tarjeta-inicio-boton"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        p.tocar(etiqueta("tarjeta-mi-salud-inicio-boton"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
         assertFalse(p.existe(texto("Nuevo")))
         p.tocar(etiqueta("estudios-subir-resultado"))
         p.nodo(etiqueta("estudios-sacar-fotos"))
@@ -502,47 +508,44 @@ class EstudiosUiTest : PruebaUi() {
         lanzar("vacio")
         p.nodo(etiqueta("pestana-entreno"))
         p.quieto(2500)
-        assertFalse(p.existe(etiqueta("estudios-tarjeta-inicio")))
+        assertFalse(p.existe(etiqueta("tarjeta-mi-salud-inicio")))
     }
 
     @Test
-    fun elPuntoMarcaElCaminoYSeApagaAlVerLaOrden() {
+    fun elCaminoEsLaTarjetaMiSaludYSeApagaAlVerLaOrden() {
         val d = lanzar("ordenNueva")
         p.nodo(texto("Tenés una orden nueva"))
         p.tocar(etiqueta("pestana-revision"))
-        // El punto en el botón de Mis datos y en la fila, leído como «Novedad».
-        assertEquals("Novedad", p.descripcion(etiqueta("mis-datos-novedad")))
-        p.tocar(etiqueta("mis-datos"))
-        p.nodo(etiqueta("mis-datos-pantalla"))
-        assertEquals("Novedad", p.descripcion(etiqueta("mis-datos-estudios-novedad")))
-        Telefono.captura("est-novedad-mis-datos-claro")
-        // La fila lleva a la orden nueva, que está más abajo que los pedidos: se desplaza sola.
-        p.tocar(etiqueta("mis-datos-estudios"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        // 2.3.0: el camino es la tarjeta «Mi salud» de Revisión, con el número y lo pendiente (el botón de Mis datos ya
+        // no lleva punto).
+        p.nodo(etiqueta("tarjeta-mi-salud-cuenta"))
+        p.nodo(textoQueContiene("Tenés una orden nueva"))
+        assertFalse(p.existe(etiqueta("mis-datos-novedad")))
+        Telefono.captura("est-novedad-revision-claro")
+        p.tocar(etiqueta("tarjeta-mi-salud"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
         p.nodo(etiqueta("estudios-nuevo-${DobleEstudios.ORDEN_LAB}"))
-        p.esperar("la orden marcada como vista", 15_000, enElPrincipal = false) { (d.vistasPedidas.toList() == listOf(listOf(DobleEstudios.ORDEN_LAB))).takeIf { it } }
+        p.esperar("la orden marcada como vista", 15_000, enElPrincipal = false) { d.vistasPedidas.flatten().contains(DobleEstudios.ORDEN_LAB).takeIf { it } }
         p.atras()
-        p.nodo(etiqueta("mis-datos-pantalla"))
-        p.esperarQueNoEste(etiqueta("mis-datos-estudios-novedad"))
-        p.atras()
-        p.esperarQueNoEste(etiqueta("mis-datos-novedad"))
+        p.nodo(etiqueta("revision-lista"))
+        p.esperarQueNoEste(etiqueta("mi-salud-pantalla"))
     }
 
     @Test
     fun tocarElAvisoConLaAppCerradaAbreEstudios() {
         lanzarDesdeElAviso("novedad")
-        p.nodo(etiqueta("estudios-pantalla"), ms = 30_000)
+        p.nodo(etiqueta("mi-salud-pantalla"), ms = 30_000)
         assertTrue(p.seleccionado(etiqueta("pestana-revision")))
         p.nodo(etiqueta("estudios-nuevo-${DobleEstudios.PEDIDO_ECO}"))
-        // Atrás vuelve a Mis datos, de donde cuelga.
+        // Atrás vuelve a Revisión, de donde cuelga Mi salud.
         p.atras()
-        p.nodo(etiqueta("mis-datos-pantalla"))
+        p.nodo(etiqueta("revision-lista"))
     }
 
     @Test
     fun elLinkConLaEscenaAbreEstudios() {
         lanzar("novedad") { abrirConLink("https://app.mypumpteam.com/?t=${ServidorDePrueba.TOKEN}&scene=estudios") }
-        p.nodo(etiqueta("estudios-pantalla"), ms = 30_000)
+        p.nodo(etiqueta("mi-salud-pantalla"), ms = 30_000)
     }
 
     @Test
@@ -550,18 +553,18 @@ class EstudiosUiTest : PruebaUi() {
         lanzar("soloOrdenNueva")
         p.nodo(texto("Tenés una orden nueva"))
         app.startActivity(CentroAvisos.intentDeAviso(app, "estudios"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
         p.nodo(etiqueta("estudios-nuevo-${DobleEstudios.ORDEN_LAB}"))
     }
 
-    /** Sin la sección, el aviso deja en Mis datos: nunca una pantalla en blanco ni el Chat. */
+    /** Sin la sección, el aviso deja en Mi salud sin el bloque de Estudios: nunca una pantalla en blanco ni el Chat. */
     private fun elAvisoCaeEnMisDatos(escenario: String): DobleEstudios {
         val d = lanzarDesdeElAviso(escenario)
-        p.nodo(etiqueta("mis-datos-pantalla"), ms = 30_000)
+        p.nodo(etiqueta("mi-salud-pantalla"), ms = 30_000)
         p.quieto(7_000)   // más que el tope de la espera
-        assertTrue(p.existe(etiqueta("mis-datos-pantalla")))
-        assertFalse(p.existe(etiqueta("estudios-pantalla")))
-        assertFalse(p.existe(etiqueta("mis-datos-estudios")))
+        assertTrue(p.existe(etiqueta("mi-salud-pantalla")))
+        assertFalse(p.existe(etiqueta("mi-salud-bloque-estudios")))
+        assertTrue(p.existe(etiqueta("mi-salud-bloque-recuperacion")))
         assertTrue(p.seleccionado(etiqueta("pestana-revision")))
         return d
     }

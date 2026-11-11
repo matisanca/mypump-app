@@ -154,9 +154,22 @@ private const val A_ENVIAR = "enviar:"
 private const val A_DEVOLUCION = "devolucion:"
 private const val A_VIDEO = "video:"
 
-/** «Mi técnica» en Mis datos: lo mandado, su estado y la devolución. */
+/**
+ * «Mi técnica»: lo mandado, su estado y la devolución. Desde la 2.3.0 (simplificar) vive en «Mi gimnasio y mi técnica»
+ * ([com.pumpteam.mypump.gimnasio.DondeEntrenoPantalla]): [titulo] es el de esa pantalla, [cabeza] el bloque del gimnasio
+ * (arriba, dentro de lo que se desplaza) y, con [conTitulo], la lista va bajo el título «Mi técnica». [devolucion] abre
+ * directo esa respuesta de Mati (el botón del renglón de Entreno, un toque).
+ */
 @Composable
-fun TecnicaPantalla(m: ModeloTecnica, modelo: ModeloApp, alVolver: () -> Unit) {
+fun TecnicaPantalla(
+    m: ModeloTecnica,
+    modelo: ModeloApp,
+    alVolver: () -> Unit,
+    titulo: String = T.entradaMisDatos,
+    cabeza: (@Composable ColumnScope.() -> Unit)? = null,
+    conTitulo: Boolean = false,
+    devolucion: String? = null,
+) {
     val v = observar(m)
     // Al volver de una muerte del proceso el estado todavía no está: se decide después de preguntar.
     var preguntado by remember { mutableStateOf(false) }
@@ -170,7 +183,7 @@ fun TecnicaPantalla(m: ModeloTecnica, modelo: ModeloApp, alVolver: () -> Unit) {
     LaunchedEffect(preguntado, v.estado == null) { if (preguntado && v.estado == null) alVolver() }
 
     // Una pila chica: la devolución y el video de una devolución.
-    var destino by rememberSaveable { mutableStateOf("") }
+    var destino by rememberSaveable { mutableStateOf(devolucion?.let { A_DEVOLUCION + it } ?: "") }
     var nombreEnvio by rememberSaveable { mutableStateOf("") }
     val volver: () -> Unit = {
         destino = when {
@@ -201,8 +214,8 @@ fun TecnicaPantalla(m: ModeloTecnica, modelo: ModeloApp, alVolver: () -> Unit) {
                 LaunchedEffect(Unit) { destino = "" }
             }
         }
-        else -> MarcoPantalla(T.entradaMisDatos, alVolver = alVolver) { relleno ->
-            ListaTecnica(m, v, relleno, alElegir = { destino = A_ELEGIR }, alAbrir = { destino = A_DEVOLUCION + it })
+        else -> MarcoPantalla(titulo, alVolver = alVolver) { relleno ->
+            ListaTecnica(m, v, relleno, alElegir = { destino = A_ELEGIR }, alAbrir = { destino = A_DEVOLUCION + it }, cabeza = cabeza, conTitulo = conTitulo)
         }
     }
 }
@@ -226,10 +239,20 @@ private fun FilaEnvio(titulo: String, detalle: String, modifier: Modifier = Modi
 }
 
 @Composable
-private fun ListaTecnica(m: ModeloTecnica, v: Vista, relleno: PaddingValues, alElegir: () -> Unit, alAbrir: (String) -> Unit) {
+private fun ListaTecnica(
+    m: ModeloTecnica,
+    v: Vista,
+    relleno: PaddingValues,
+    alElegir: () -> Unit,
+    alAbrir: (String) -> Unit,
+    cabeza: (@Composable ColumnScope.() -> Unit)? = null,
+    conTitulo: Boolean = false,
+) {
     val puede = v.estado != null && v.pendiente == null && v.estado.enRevision == null
     val envios = v.estado?.visibles ?: emptyList()
     Desplazable(relleno) {
+        cabeza?.invoke(this)
+        if (conTitulo) com.pumpteam.mypump.gimnasio.TituloBloqueDondeEntreno(com.pumpteam.mypump.reglas.DondeEntreno.TITULO_TECNICA, "donde-entreno-bloque-tecnica")
         v.aviso?.let { Nota(textoDe(it), Modifier.testTag("tecnica-aviso-envio"), alerta = true) }
         if (puede) {
             BotonMarca(T.entradaEjercicio, alTocar = {

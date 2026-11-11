@@ -161,12 +161,28 @@ object ReglasGuia {
         else -> Lugar.MIS_DATOS
     }
 
-    /** «Quitar de Entreno» mientras la tarjeta está; «Volver a mostrar en Entreno» solo si el plazo todavía no pasó. */
-    fun accionEntreno(r: ResumenGuia?, ocultaAMano: Boolean, ahora: Instant = Instant.now()): AccionEntreno = when {
+    /**
+     * «Quitar de Entreno» mientras la tarjeta está; «Volver a mostrar en Entreno» solo si el plazo todavía no pasó. Con la
+     * guía completa hace más de [DIAS_FILA_COMPLETA] días ([completaEn]) ya no está en Entreno: ninguna de las dos.
+     */
+    fun accionEntreno(r: ResumenGuia?, ocultaAMano: Boolean, ahora: Instant = Instant.now(), completaEn: Instant? = null): AccionEntreno = when {
         r == null || !mostrarTarjeta(r, ahora) -> AccionEntreno.NINGUNA
+        !filaInicioVigente(completaEn, ahora) -> AccionEntreno.NINGUNA
         ocultaAMano -> AccionEntreno.VOLVER_A_MOSTRAR
         else -> AccionEntreno.QUITAR
     }
+
+    // ── «Tu inicio con Mati» (simplificar, 11/11) ──
+
+    /**
+     * Con todo visto, «Tu guía» queda como una fila discreta dentro de «Tu inicio con Mati» durante estos días desde que se
+     * terminó; después sale de Entreno y queda en Mis datos («Ver mi guía»).
+     */
+    const val DIAS_FILA_COMPLETA = 7L
+
+    /** La fila discreta sigue: sin fecha (todavía no se anotó) o dentro de los 7 días. */
+    fun filaInicioVigente(completaEn: Instant?, ahora: Instant = Instant.now()): Boolean =
+        completaEn == null || ahora.isBefore(completaEn.plusSeconds(DIAS_FILA_COMPLETA * 86_400))
 
     // ── «Tu guía» bien destacada (pedido de Mati del 4/11 a la tarde, GUIA_DESTACADA.md) ──
 
@@ -204,7 +220,7 @@ object ReglasGuia {
         return "Antes de empezar, mirá tu guía. $cuantos Así en la videollamada vamos directo a lo tuyo."
     }
 
-    private fun instante(iso: String): Instant? = try {
+    internal fun instante(iso: String): Instant? = try {
         OffsetDateTime.parse(iso).toInstant()
     } catch (_: Exception) {
         try {

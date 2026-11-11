@@ -39,8 +39,8 @@ class SaludPestanaUiTest : PruebaUi() {
 
     private fun irA(segmento: String) {
         if (!p.existe(etiqueta("salud-pantalla"))) p.abrirSalud()
-        p.tocar(etiqueta("segmento-$segmento"))
-        p.esperar("$segmento elegido") { p.seleccionado(etiqueta("segmento-$segmento")) }
+        p.verSeccion("$segmento")
+        p.esperar("$segmento elegido") { p.enSeccion("$segmento") }
     }
 
     /** La rutina, el catálogo y el historial: press banca (pecho) 3 hoy y 1 la semana pasada; remo (espalda media) 2 la pasada. */
@@ -94,7 +94,7 @@ class SaludPestanaUiTest : PruebaUi() {
         assertFalse(p.existe(etiqueta("pestana-progreso")))
         p.abrirSalud()
         assertTrue(p.enSalud())
-        p.esperar("arranca en Recuperación") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.esperar("arranca en Recuperación") { p.enSeccion("recuperacion") }
         for (t in listOf("Recuperación", "Fuerza", "Cuerpo")) p.nodo(texto(t))
         p.nodo(etiqueta("card-recuperacion"))
         irA("cuerpo")
@@ -102,8 +102,8 @@ class SaludPestanaUiTest : PruebaUi() {
         // La tarjeta vuelve a abrir Salud en Recuperación, aunque se haya quedado en otro segmento.
         p.tocar(etiqueta("pestana-dieta"))
         p.abrirSalud()
-        p.esperar("en Recuperación") { p.seleccionado(etiqueta("segmento-recuperacion")) }
-        assertFalse(p.seleccionado(etiqueta("segmento-cuerpo")))
+        p.esperar("en Recuperación") { p.enSeccion("recuperacion") }
+        assertFalse(p.enSeccion("cuerpo"))
     }
 
     /**
@@ -121,13 +121,11 @@ class SaludPestanaUiTest : PruebaUi() {
         p.nodo(texto("1 sesión entrenada esta semana"), ms = 20_000)
         assertFalse(p.existe(etiqueta("trofeo-progreso")))
         p.nodo(texto("Tu progreso"))
-        // Pegada a Recuperación, debajo (las dos en la tarjeta «Cómo vengo»). Con la semana pendiente las fotos y el check
-        // van antes que esa tarjeta (upgrade 2.3.0), así que no se compara con las fotos.
-        val y = { t: String -> p.nodo(etiqueta(t)).let { n -> p.enPrincipal { n.positionInRoot.y } } }
-        assertTrue("Tu progreso, debajo de Recuperación", y("tarjeta-recuperacion-revision") < y("tarjeta-progreso-revision"))
+        // Recuperación se mudó a «Mi salud» (2.3.0): en Revisión queda solo Tu progreso.
+        assertFalse(p.existe(etiqueta("tarjeta-recuperacion-revision")))
         p.tocar(etiqueta("tarjeta-progreso-revision"))
         p.nodo(etiqueta("salud-pantalla"))
-        p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
+        p.esperar("Fuerza elegida") { p.enSeccion("fuerza") }
         assertTrue(p.enSalud())
     }
 
@@ -263,7 +261,7 @@ class SaludPestanaUiTest : PruebaUi() {
             p.nodo(etiqueta("card-salud"))
             p.quieto(800)
             foto("salud-01-recuperacion")
-            p.desplazar(etiqueta("recuperacion-lista"), 1_600f)
+            p.desplazar(etiqueta("mi-progreso-lista"), 1_600f)
             foto("salud-02-recuperacion-abajo")
 
             irA("fuerza")
@@ -277,7 +275,7 @@ class SaludPestanaUiTest : PruebaUi() {
             p.esperar("el check") { p.existe(etiqueta("cuerpo-check-energia")) }
             p.quieto(600)
             foto("salud-04-cuerpo")
-            p.desplazar(etiqueta("cuerpo-lista"), 1_600f)
+            p.desplazar(etiqueta("mi-progreso-lista"), 1_600f)
             p.quieto(400)
             foto("salud-05-cuerpo-abajo")
             assertEquals("Energía: 4 de 5", p.textosBajo(etiqueta("cuerpo-check-energia")).first())

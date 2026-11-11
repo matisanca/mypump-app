@@ -36,21 +36,27 @@ class SaludEnRevisionUiTest : PruebaUi() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("pestana-revision"))
-        p.nodo(etiqueta("tarjeta-recuperacion-revision"))
-        // Lo primero de Revisión con la semana de la demo ya enviada: antes que las fotos y el check (con la semana pendiente,
-        // «Cómo vengo» va después de los dos). Las tres en la misma pasada: buscar una puede desplazar la lista.
+        p.nodo(etiqueta("tarjeta-mi-salud"))
+        // 2.3.0: «Mi salud» arriba de todo, antes que las fotos y el check; en la demo solo trae la recuperación. Las tres en
+        // la misma pasada: buscar una puede desplazar la lista.
         p.nodo(etiqueta("seccion-fotos"))
         val (fotos, check, rec) = p.esperar("todo ubicado") {
-            listOf("seccion-fotos", "seccion-check", "tarjeta-recuperacion-revision").map { p.nodo(etiqueta(it), ms = 0).positionInRoot.y }
+            listOf("seccion-fotos", "seccion-check", "tarjeta-mi-salud").map { p.nodo(etiqueta(it), ms = 0).positionInRoot.y }
         }
-        assertTrue("Cómo vengo antes de las fotos: recuperación $rec, fotos $fotos", rec < fotos)
+        assertTrue("Mi salud antes de las fotos: $rec, fotos $fotos", rec < fotos)
         assertTrue("fotos antes del check: $fotos, $check", fotos < check)
         assertFalse("sin el corazón de arriba", p.existe(etiqueta("abrir-salud")))
+        assertFalse("Recuperación ya no está en Revisión", p.existe(etiqueta("tarjeta-recuperacion-revision")))
+        p.nodo(texto("Recuperación"))
+        Telefono.captura("salud-rev-00-mi-salud-demo")
+        p.tocar(etiqueta("tarjeta-mi-salud"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
         // En la demo: lo que se va a ver con la cuenta. 2.3.0: una fila con flecha (el renglón «Ver sueño…» ya no va).
         p.nodo(texto("Con tu cuenta, acá vas a ver tu recuperación de cada día."))
         assertFalse("sin el renglón Ver sueño", p.existe(texto("Ver sueño, corazón y cuerpo")))
-        // «Tu progreso», debajo; abre Salud en Fuerza (se prueba con cuenta en SaludPestanaUiTest). Desde la cola A la demo
-        // trae historial: ya no dice lo genérico.
+        // «Tu progreso» sigue en Revisión; abre Salud en Fuerza (se prueba con cuenta en SaludPestanaUiTest). Desde la cola A
+        // la demo trae historial: ya no dice lo genérico.
+        p.tocar(etiqueta("volver"))
         p.nodo(etiqueta("tarjeta-progreso-revision"))
         p.nodo(texto("Tu progreso"))
         // La línea sale del progreso de la demo, que se arma al abrir (un instante después que la fila).
@@ -58,16 +64,20 @@ class SaludEnRevisionUiTest : PruebaUi() {
         p.nodo(textoQueContiene("esta semana"))
         Telefono.captura("salud-rev-01-tarjeta-demo")
 
+        p.tocar(etiqueta("tarjeta-mi-salud"))
         p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.nodo(etiqueta("salud-pantalla"))
-        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.esperar("Recuperación elegida") { p.enSeccion("recuperacion") }
         assertTrue("Revisión marcada con Salud abierta", p.seleccionado(etiqueta("pestana-revision")))
+        // Volver lleva a Mi salud, de donde se abrió; otra vez, a Revisión.
         p.tocar(etiqueta("volver"))
         p.esperarQueNoEste(etiqueta("salud-pantalla"))
         p.nodo(etiqueta("tarjeta-recuperacion-revision"))
+        p.tocar(etiqueta("volver"))
+        p.esperarQueNoEste(etiqueta("mi-salud-pantalla"))
         p.tocar(etiqueta("tarjeta-progreso-revision"))
         p.nodo(etiqueta("salud-pantalla"))
-        p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
+        p.esperar("Fuerza elegida") { p.enSeccion("fuerza") }
     }
 
     @Test
@@ -87,12 +97,12 @@ class SaludEnRevisionUiTest : PruebaUi() {
         guardarCuenta()
         registrar(ActivityScenario.launch<MainActivity>(CentroAvisos.intentDeAviso(app, "progress"))).also {
             p.esperar("Revisión + Salud", ms = 30_000) { p.enSalud() }
-            p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
+            p.esperar("Fuerza elegida") { p.enSeccion("fuerza") }
             assertFalse(p.existe(etiqueta("pestana-salud")))
-            // Atrás vuelve a Revisión, con la tarjeta arriba.
+            // Atrás vuelve a Revisión, con la tarjeta Mi salud arriba.
             p.atras()
             p.esperarQueNoEste(etiqueta("salud-pantalla"))
-            p.nodo(etiqueta("tarjeta-recuperacion-revision"))
+            p.nodo(etiqueta("tarjeta-mi-salud"))
             assertTrue(p.seleccionado(etiqueta("pestana-revision")))
         }.close()
     }

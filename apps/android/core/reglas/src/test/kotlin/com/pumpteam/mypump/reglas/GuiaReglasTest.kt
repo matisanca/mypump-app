@@ -362,6 +362,11 @@ class GuiaReglasTest {
         // «Quitar de Entreno»: a Mis datos, y se puede volver a mostrar mientras el plazo no pasó.
         assertEquals(ReglasGuia.Lugar.MIS_DATOS, ReglasGuia.lugar(vigente, true, ahora))
         assertEquals(ReglasGuia.AccionEntreno.VOLVER_A_MOSTRAR, ReglasGuia.accionEntreno(vigente, true, ahora))
+        // Simplificar: con la guía completa hace más de 7 días ya no está en Entreno, ni para quitar ni para volver a mostrar.
+        val hace8 = ahora.minusSeconds(8 * 86_400)
+        assertEquals(ReglasGuia.AccionEntreno.NINGUNA, ReglasGuia.accionEntreno(vigente, false, ahora, completaEn = hace8))
+        assertEquals(ReglasGuia.AccionEntreno.NINGUNA, ReglasGuia.accionEntreno(vigente, true, ahora, completaEn = hace8))
+        assertEquals(ReglasGuia.AccionEntreno.QUITAR, ReglasGuia.accionEntreno(vigente, false, ahora, completaEn = ahora.minusSeconds(86_400)))
         // Pasado el plazo: Mis datos, sin acción (oculta o no).
         assertEquals(ReglasGuia.Lugar.MIS_DATOS, ReglasGuia.lugar(vencida, false, ahora))
         assertEquals(ReglasGuia.Lugar.MIS_DATOS, ReglasGuia.lugar(vencida, true, ahora))

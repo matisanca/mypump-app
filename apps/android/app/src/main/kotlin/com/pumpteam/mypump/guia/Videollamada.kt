@@ -36,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -91,6 +92,7 @@ import com.pumpteam.mypump.modelos.ReservaEntrega
 import com.pumpteam.mypump.modelos.TipoVideollamada
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.ReglasListaPrevia
+import com.pumpteam.mypump.datos.ModeloGuia
 import com.pumpteam.mypump.reglas.ReglasAgenda
 import com.pumpteam.mypump.salud.PantallaSuperpuesta
 import java.time.Instant
@@ -147,29 +149,55 @@ private fun letraGrande(): Boolean = LocalDensity.current.fontScale >= 1.5f
 // ── En Entreno: la tarjeta fija arriba ──
 
 /**
- * Arriba de todo en Entreno: la videollamada agendada (hasta que termina) o, con la palanca y horarios libres, «Agendá tu
- * videollamada». La reserva sale de la agenda (si se consultó) o del resumen. Con la pantalla en primer plano y en la
- * ventana, la agenda se consulta cada 30 s (el link si falta y «Mati ya está en la sala»). También agenda o borra los
- * avisos locales cuando cambia la reserva. Sin nada que mostrar no ocupa lugar.
+ * Lo de la videollamada de arriba de Entreno, ya calculado: la videollamada agendada (hasta que termina), «Agendá tu
+ * videollamada» (palanca `elegir_horario`, sin reserva y con horarios libres) y la lista previa. La reserva sale de la
+ * agenda (si se consultó) o del resumen. Mientras está en pantalla, con la app en primer plano y en la ventana, la agenda
+ * se consulta cada 30 s (el link si falta y «Mati ya está en la sala»); también agenda o borra los avisos locales cuando
+ * cambia la reserva. Lo usa «Tu inicio con Mati» ([TarjetaInicioConMati]), que decide el orden.
  */
+@Stable
+class EstadoVideollamada internal constructor(
+    val guia: ModeloGuia?,
+    /** La reserva para la tarjeta (de comienzo o de revisión), o null. */
+    val reserva: ReservaEntrega?,
+    /** «Agendá tu videollamada»: sin reserva, con la palanca y horarios libres. */
+    val ofreceHorario: Boolean,
+    /** «Antes de la videollamada» (palanca `lista_previa`), o null. */
+    val lista: ReglasListaPrevia.Vista?,
+    /** «Entrar» ya está activo. */
+    val habilitada: Boolean,
+    internal val ahora: Instant,
+    internal val elegir: Boolean,
+    internal val esDemo: Boolean,
+    internal val abrirGuia: (() -> Unit)?,
+    internal val abrirHorario: (ModoHorario) -> Unit,
+) {
+    val deRevision: Boolean get() = reserva?.tipo == TipoVideollamada.REVISION
+
+    /** La videollamada de comienzo (con la lista adentro) o «Elegí tu horario»: lo que va en «Tu inicio con Mati». */
+    val hayLlamadaDeInicio: Boolean get() = (reserva != null && !deRevision) || (reserva == null && ofreceHorario)
+
+    /** La lista previa como tarjeta propia: sin tarjeta de videollamada en ese lugar. */
+    val listaSola: ReglasListaPrevia.Vista? get() = lista?.takeIf { reserva == null }
+}
+
 @Composable
-fun TarjetaVideollamadaEntreno(modelo: ModeloApp, modifier: Modifier = Modifier) {
+fun rememberEstadoVideollamada(modelo: ModeloApp): EstadoVideollamada {
     // «Antes de la videollamada» (2.3.0): con la palanca apagada no hay lista (y no se llama a nada).
     val lista = vistaListaPrevia(modelo)
     val navegacion = LocalNavegacion.current
     val g = modelo.guia.collectAsStateWithLifecycle().value
+    var pantalla by remember { mutableStateOf<ModoHorario?>(null) }
     if (g == null) {
         // Sin guía no hay tarjeta de videollamada: la lista sola (y la fila de la guía no es un botón).
         SincronizarListaPrevia(modelo, clave = "")
-        lista?.let { TarjetaListaPrevia(it, abrirGuia = null, modifier = modifier) }
-        return
+        return EstadoVideollamada(null, null, false, lista, false, Instant.now(), false, false, null) { }
     }
     val abrirGuia: (() -> Unit)? = navegacion?.let { n -> { n.guia = true } }
     val resumen by g.resumen.collectAsStateWithLifecycle()
     val agenda by g.agenda.agenda.collectAsStateWithLifecycle()
     val guia by g.guia.collectAsStateWithLifecycle()
     val reservando by g.agenda.reservando.collectAsStateWithLifecycle()
-    val desdeCache by g.agenda.desdeCache.collectAsStateWithLifecycle()
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
     val elegir = Videollamada.elegirHorario(modelo)
     // La del resumen solo mientras la agenda no se trajo: si la agenda ya contestó sin reserva o con la reserva caída
@@ -178,7 +206,6 @@ fun TarjetaVideollamadaEntreno(modelo: ModeloApp, modifier: Modifier = Modifier)
     val fuente = if (deLaAgenda != null) deLaAgenda.reserva else resumen?.reserva
     val ahora = ahoraCada15s(fuente)
     val r = fuente?.takeIf { ReglasAgenda.paraTarjeta(it, ahora) }
-    var pantalla by remember { mutableStateOf<ModoHorario?>(null) }
     // Cuando cambian la guía o la agenda se vuelve a pedir la lista (el modelo no pide más de una vez por minuto).
     SincronizarListaPrevia(modelo, clave = "${r?.inicio}|${r?.estado}|${resumen.hashCode()}")
 
@@ -198,35 +225,42 @@ fun TarjetaVideollamadaEntreno(modelo: ModeloApp, modifier: Modifier = Modifier)
         if (esDemo || Entorno.enPruebas) return@LaunchedEffect
         CentroAvisos.programarVideollamada(contexto, ReglasAgenda.avisosLocales(confirmada, Instant.now(), ZoneId.systemDefault(), desdeMin))
     }
+    val a = agenda
+    val ofrece = r == null && elegir && a != null && reservando == null &&
+        ReglasAgenda.vista(a, ReglasAgenda.faltanAMostrar(a, guia), false) == ReglasAgenda.Vista.ELEGIR
+    pantalla?.let { m -> PantallaHorario(g.agenda, (m as? ModoHorario.Cambiar)?.reserva, alCerrar = { pantalla = null }) }
+    val habilitada = r != null && ReglasAgenda.estadoEntrar(r, ahora, desdeMin) == ReglasAgenda.EstadoEntrar.Habilitado
+    return EstadoVideollamada(g, r, ofrece, lista, habilitada, ahora, elegir, esDemo, abrirGuia) { pantalla = it }
+}
 
+/** La videollamada (con la lista previa adentro si es de comienzo) o «Elegí tu horario». Nada si no hay ninguna. */
+@Composable
+fun LlamadaEntreno(e: EstadoVideollamada, modifier: Modifier = Modifier) {
+    val g = e.guia ?: return
+    val r = e.reserva
     if (r != null) {
+        val agenda by g.agenda.agenda.collectAsStateWithLifecycle()
+        val desdeCache by g.agenda.desdeCache.collectAsStateWithLifecycle()
         TarjetaVideollamada(
             modeloAgenda = g.agenda,
             agenda = agenda,
             reserva = r,
-            ahora = ahora,
+            ahora = e.ahora,
             desdeCache = desdeCache,
-            esDemo = esDemo,
-            elegirHorario = elegir,
-            alCambiar = { pantalla = ModoHorario.Cambiar(r) },
+            esDemo = e.esDemo,
+            elegirHorario = e.elegir,
+            alCambiar = { e.abrirHorario(ModoHorario.Cambiar(r)) },
             modifier = modifier,
             // Solo con la videollamada de comienzo: con una de revisión la lista no se muestra.
-            listaPrevia = lista?.takeIf { r.tipo == TipoVideollamada.COMIENZO },
-            alAbrirGuia = abrirGuia,
+            listaPrevia = e.lista?.takeIf { r.tipo == TipoVideollamada.COMIENZO },
+            alAbrirGuia = e.abrirGuia,
         )
-    } else {
-        // Sin tarjeta de videollamada, la lista como tarjeta propia en ese mismo lugar.
-        lista?.let { TarjetaListaPrevia(it, abrirGuia, modifier) }
+    } else if (e.ofreceHorario) {
+        val agenda by g.agenda.agenda.collectAsStateWithLifecycle()
+        val a = agenda ?: return
+        val aviso by g.agenda.aviso.collectAsStateWithLifecycle()
+        TarjetaElegirHorario(a, aviso, alAbrir = { e.abrirHorario(ModoHorario.Elegir) }, modifier = modifier)
     }
-    if (r == null && elegir && agenda != null && reservando == null) {
-        val a = agenda!!
-        val vista = ReglasAgenda.vista(a, ReglasAgenda.faltanAMostrar(a, guia), reservando != null)
-        if (vista == ReglasAgenda.Vista.ELEGIR) {
-            val aviso by g.agenda.aviso.collectAsStateWithLifecycle()
-            TarjetaElegirHorario(a, aviso, alAbrir = { pantalla = ModoHorario.Elegir }, modifier = modifier)
-        }
-    }
-    pantalla?.let { m -> PantallaHorario(g.agenda, (m as? ModoHorario.Cambiar)?.reserva, alCerrar = { pantalla = null }) }
 }
 
 /** Qué se abre: elegir por primera vez o cambiar la que hay. */

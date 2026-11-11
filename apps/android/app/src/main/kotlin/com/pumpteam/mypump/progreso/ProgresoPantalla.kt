@@ -11,6 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -87,9 +89,8 @@ import kotlinx.coroutines.launch
  * red, y siempre con `ModeloApp.cargarProgreso`: agrupa por el ejercicio que se hace de verdad, el sustituto si hay
  * (PRO-02). Tirar hacia abajo lo vuelve a traer. En la demo no hay historial (como la web).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FuerzaSegmento(modelo: ModeloApp, estadoLista: LazyListState, alAbrir: (String) -> Unit) {
+fun FuerzaContenido(modelo: ModeloApp, alAbrir: (String) -> Unit) {
     val progreso by modelo.progreso.collectAsStateWithLifecycle()
     val p = progreso
     val tarjetas = p?.tarjetas?.collectAsStateWithLifecycle()?.value.orEmpty()
@@ -111,7 +112,7 @@ fun FuerzaSegmento(modelo: ModeloApp, estadoLista: LazyListState, alAbrir: (Stri
     val alcance = LocalAlcanceApp.current
     var recargando by remember { mutableStateOf(false) }
 
-    // El `.task` de iOS: al abrir Fuerza, solo si no hay tarjetas o faltó la red (lo demás se actualiza tirando). En el
+    // El `.task` de iOS: al abrir Mi progreso, solo si no hay tarjetas o faltó la red (lo demás se actualiza tirando). En el
     // alcance de la app: cambiar de pestaña no corta la carga a la mitad.
     LaunchedEffect(p) {
         val m = p ?: return@LaunchedEffect
@@ -130,32 +131,25 @@ fun FuerzaSegmento(modelo: ModeloApp, estadoLista: LazyListState, alAbrir: (Stri
             }
         }
     }
-
     val secciones = remember(tarjetas) { VistaProgreso.secciones(tarjetas) }
-    PullToRefreshBox(isRefreshing = recargando, onRefresh = ::recargar, modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = estadoLista,
-            modifier = Modifier.fillMaxSize().testTag(if (tarjetas.isEmpty()) "fuerza-lista" else "progreso-lista"),
-            // Al final, lo que tapa la barra de pestañas flotante: lo último queda arriba de ella.
-            contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xs, bottom = Espacio.xl + LocalRellenoInferior.current),
-            verticalArrangement = Arrangement.spacedBy(Espacio.l),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            item(key = "volumen") { CardVolumenMusculo(volumen, Modifier.widthIn(max = AnchoLectura), vacio = vacioVolumen) }
-            when {
-                // Trayendo el historial por primera vez.
-                p != null && estado == ModeloProgreso.Estado.CARGANDO && tarjetas.isEmpty() ->
-                    item(key = "cargando") { EsqueletoProgreso() }
-                // PRO-05: se cortó la red y no hay nada que mostrar.
-                p != null && estado == ModeloProgreso.Estado.SIN_RED && tarjetas.isEmpty() ->
-                    item(key = "sin-red") { SinRed(cargando = recargando, alReintentar = ::recargar, Modifier.fillParentMaxHeight(0.5f)) }
-                tarjetas.isEmpty() -> item(key = "vacio") { SinHistorial(Modifier.fillParentMaxHeight(0.5f)) }
-                else -> {
-                    item(key = "totales") { Totales(tarjetas.size, sesiones, Modifier.widthIn(max = AnchoLectura)) }
-                    items(secciones, key = { "seccion-${it.id}" }) { s ->
-                        SeccionProgreso(s, alAbrir, Modifier.widthIn(max = AnchoLectura))
-                    }
-                }
+    // Simplificar (11/11): una sección de «Mi progreso», en la misma columna que Recuperación y Cuerpo (tirar hacia abajo
+    // recarga toda la pantalla).
+    Column(
+        Modifier.fillMaxWidth().testTag(if (tarjetas.isEmpty()) "fuerza-lista" else "progreso-lista"),
+        verticalArrangement = Arrangement.spacedBy(Espacio.l),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CardVolumenMusculo(volumen, Modifier.widthIn(max = AnchoLectura), vacio = vacioVolumen)
+        when {
+            // Trayendo el historial por primera vez.
+            p != null && estado == ModeloProgreso.Estado.CARGANDO && tarjetas.isEmpty() -> EsqueletoProgreso()
+            // PRO-05: se cortó la red y no hay nada que mostrar.
+            p != null && estado == ModeloProgreso.Estado.SIN_RED && tarjetas.isEmpty() ->
+                SinRed(cargando = recargando, alReintentar = ::recargar, Modifier.heightIn(min = 240.dp))
+            tarjetas.isEmpty() -> SinHistorial(Modifier.heightIn(min = 240.dp))
+            else -> {
+                Totales(tarjetas.size, sesiones, Modifier.widthIn(max = AnchoLectura))
+                for (sec in secciones) key("seccion-${sec.id}") { SeccionProgreso(sec, alAbrir, Modifier.widthIn(max = AnchoLectura)) }
             }
         }
     }

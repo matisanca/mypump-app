@@ -33,19 +33,18 @@ class ControlesUiTest : PruebaUi() {
         return d
     }
 
+    /** El próximo control vive arriba de todo en «Mi salud» (2.3.0). */
     private fun abrirEstudios() {
         p.nodo(etiqueta("pestana-entreno"))
-        p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("mis-datos"))
-        p.tocar(etiqueta("mis-datos-estudios"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        p.abrirMiSalud()
     }
 
     /** Lo de antes sigue igual: la tarjeta de estudios pendientes sí; la del control, no. */
     private fun sinTarjetaDeControl() {
-        p.nodo(etiqueta("estudios-tarjeta-inicio"), 40_000)
+        // Simplificar: una sola tarjeta «Mi salud» arriba; lo primero son los estudios, no el control.
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio"), 40_000)
         p.quieto(2500)
-        assertFalse(p.existe(etiqueta("control-tarjeta-inicio")))
+        assertFalse(p.existe(texto("Tu próximo control de salud")))
         assertFalse(p.existe(texto("Ver mis estudios")))
     }
 
@@ -84,16 +83,18 @@ class ControlesUiTest : PruebaUi() {
 
     private fun enVentana(tema: String) {
         lanzar("controlEnVentana")
-        p.nodo(etiqueta("control-tarjeta-inicio-boton"), 40_000)
-        p.nodo(texto("Tu próximo control de salud"))
-        p.nodo(texto("El lunes 16/11"))
-        p.nodo(texto("Te vamos a mandar las órdenes unos días antes."))
-        p.nodo(texto("Ver mis estudios"))
-        assertTrue("arriba de todo, antes que la lista", p.existe(etiqueta("control-tarjeta-inicio")))
+        // Simplificar: la tarjeta «Mi salud» de arriba. Este escenario tiene además un estudio para hacer, que va primero
+        // (la misma prioridad que Revisión); el control cuenta como la segunda cosa.
+        p.nodo(etiqueta("tarjeta-mi-salud-inicio-boton"), 40_000)
+        p.esperar("las dos cosas") { p.descripcion(etiqueta("tarjeta-mi-salud-inicio-cuenta")).takeIf { it == "2 cosas para hacer" } }
+        p.nodo(texto("Tenés un estudio para hacer"))
+        p.nodo(texto("Y 1 cosa más"))
+        assertTrue("arriba de todo, antes que la lista", p.existe(etiqueta("tarjeta-mi-salud-inicio")))
         Telefono.captura("controles-inicio-$tema")
-        // Un toque: directo a Estudios, con el control en el bloque «Próximo control».
-        p.tocar(etiqueta("control-tarjeta-inicio-boton"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        // Un toque: directo a Mi salud, con el control en el bloque de arriba.
+        p.tocar(etiqueta("tarjeta-mi-salud-inicio-boton"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
+        p.nodo(etiqueta("mi-salud-bloque-control"))
         p.nodo(etiqueta("estudios-proximo-cuando"))
         p.nodo(texto("El lunes 16/11"))
         Telefono.captura("controles-estudios-$tema")

@@ -155,6 +155,15 @@ class ModeloGuia(
 
     private var abriendo = false
 
+    private val _completaEn = MutableStateFlow<java.time.Instant?>(null)
+
+    /**
+     * «Tu inicio con Mati» (simplificar, 11/11): cuándo detectó este teléfono la guía terminada por primera vez (null:
+     * todavía no, o volvió a faltar algo). `entregas_app_resumen` no trae la fecha y no se agrega SQL: se guarda en la
+     * carpeta de la cuenta (`guia-completa-en.json`). Ver [anotarCompleta] y `ReglasGuia.filaInicioVigente`.
+     */
+    val completaEn: StateFlow<java.time.Instant?> = _completaEn.asStateFlow()
+
     /**
      * La agenda de la entrega al final de la guía (2.2.0): ver [ModeloAgenda]. Sin el servidor nuevo queda en null y no se
      * muestra nada. En la demo, la de muestra, habilitada con lo visto en el teléfono.
@@ -181,6 +190,8 @@ class ModeloGuia(
         }
         val bienvenida = withContext(serieDisco) { disco?.leer(ARCHIVO_BIENVENIDA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
         if (_bienvenidaVista.value == null) _bienvenidaVista.value = bienvenida
+        val completa = withContext(serieDisco) { disco?.leer(ARCHIVO_COMPLETA_EN)?.let { ValorJson.desde(it) }?.comoTexto }
+        _completaEn.value = completa?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
         val tarjetaVista = withContext(serieDisco) { disco?.leer(ARCHIVO_TARJETA_VISTA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
         if (_pulsoTarjeta.value == null) _pulsoTarjeta.value = !tarjetaVista
         tarjetaVistaGuardada = tarjetaVistaGuardada || tarjetaVista
@@ -345,6 +356,27 @@ class ModeloGuia(
         }
     }
 
+    /**
+     * Anota la fecha la primera vez que la guía está terminada ([completa]: todo visto y sin una tanda nueva sin ver), y la
+     * borra si vuelve a faltar algo (un video nuevo de Mati): al verlo, los 7 días cuentan de nuevo. Para quien ya la tenía
+     * completa al actualizar, cuentan desde la primera vez que esta versión la ve. No llama al servidor.
+     */
+    fun anotarCompleta(completa: Boolean) {
+        // Después de leer el disco: si no, una fecha guardada se pisaría con la de ahora en cada arranque.
+        alcance.launch {
+            lecturaInicial.join()
+            val hay = _completaEn.value
+            if (completa && hay == null) {
+                val ahora = java.time.Instant.ofEpochMilli(reloj())
+                _completaEn.value = ahora
+                alDisco { guardar(ARCHIVO_COMPLETA_EN, ValorJson.Texto(ahora.toString())) }
+            } else if (!completa && hay != null) {
+                _completaEn.value = null
+                alDisco { borrar(ARCHIVO_COMPLETA_EN) }
+            }
+        }
+    }
+
     /** La bienvenida ya se mostró: no vuelve a salir para esta cuenta en este teléfono. No llama al servidor. */
     fun marcarBienvenidaVista() {
         if (_bienvenidaVista.value == true) return
@@ -486,6 +518,7 @@ class ModeloGuia(
         internal const val ARCHIVO_OCULTA = "guia-oculta.json"
         internal const val ARCHIVO_BIENVENIDA = "guia-bienvenida.json"
         internal const val ARCHIVO_TARJETA_VISTA = "guia-tarjeta-vista.json"
+        internal const val ARCHIVO_COMPLETA_EN = "guia-completa-en.json"
 
         /**
          * La guía de «Ver demo»: [guia] es la respuesta de muestra con la forma del get (`apps/shared/demo/guia.json`). Sin

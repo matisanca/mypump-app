@@ -1,6 +1,5 @@
 package com.pumpteam.mypump.entreno
 
-import com.pumpteam.mypump.presion.TarjetaPresionDe
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -117,14 +116,11 @@ import com.pumpteam.mypump.modelos.Ejercicio
 import com.pumpteam.mypump.raiz.BannerRevision
 import com.pumpteam.mypump.fotosinicio.TarjetaFotosInicioDe
 import com.pumpteam.mypump.gimnasio.TarjetaGimnasioDe
-import com.pumpteam.mypump.guia.TarjetaVideollamadaEntreno
-import com.pumpteam.mypump.guia.TarjetaGuiaDe
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.Js
 import com.pumpteam.mypump.reglas.NormalizacionRutina
 import com.pumpteam.mypump.reglas.Progresiones
 import com.pumpteam.mypump.reglas.ReglasEjercicio
-import com.pumpteam.mypump.reglas.ReglasGuia
 import com.pumpteam.mypump.reglas.SemanaEntreno
 import com.pumpteam.mypump.reglas.TextosEntreno
 import com.pumpteam.mypump.reglas.TiempoEntreno
@@ -206,19 +202,14 @@ fun ListaEntreno(
                         .padding(top = Espacio.xxs, bottom = Espacio.xl + relleno.calculateBottomPadding().takeIf { it > 0.dp }.let { it ?: LocalRellenoInferior.current }),
                     verticalArrangement = Arrangement.spacedBy(Espacio.l),
                 ) {
-                    // «Tu presión», primer ítem del desplazamiento mientras haya algo para hacer: una tarjeta más, no frena ni condiciona nada.
-                    TarjetaPresionDe(modelo)
-                    // La videollamada fija arriba (2.3.0), desde que se agenda hasta que termina (aunque la tarjeta de la
-                    // guía esté oculta); con la palanca `elegir_horario`, «Agendá tu videollamada».
-                    TarjetaVideollamadaEntreno(modelo)
+                    // «Tu inicio con Mati» (simplificar, 11/11): la guía, la videollamada de comienzo y la lista previa en UNA
+                    // tarjeta, primera de todas (la guía es lo primero). El mismo orden en iOS.
+                    com.pumpteam.mypump.guia.TarjetaInicioConMati(modelo)
+                    // «Mi salud» (simplificar): presión, estudios y control en UNA tarjeta, solo con algo para hacer. Una
+                    // tarjeta más: no frena ni condiciona nada (la presión nunca frena el entrenamiento).
+                    com.pumpteam.mypump.misalud.TarjetaMiSaludInicioDe(modelo)
                     // «Tu recorrido» (palanca `fin_plan`): lo primero de la pantalla; con la tarjeta de la videollamada, debajo de esa.
                     com.pumpteam.mypump.recorrido.TarjetaRecorridoDe(modelo)
-                    // Un estudio pedido o una orden nueva (10-nov): después de la entrega de ahora (tiene hora) y antes de
-                    // la guía. El mismo orden en iOS.
-                    com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo)
-                    // El próximo control de salud, desde que toca avisar (`controles_app`): lleva a Estudios en un toque.
-                    com.pumpteam.mypump.estudios.TarjetaControlInicioDe(modelo)
-                    TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
                     TarjetaFotosInicioDe(modelo, soloSiFaltan = true)
                     TarjetaGimnasioDe(modelo)
                     com.pumpteam.mypump.novedades.TarjetaNovedadDe(modelo)
@@ -240,8 +231,6 @@ fun ListaEntreno(
                             modifier = Modifier.testTag("aviso-demo"),
                         )
                     }
-                    // Con todo visto, la compacta en su lugar de siempre.
-                    TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.COMPACTA)
                     BannerRevision(modelo)
                     // «Pump del día» (2.3.0): solo con la palanca `metas_pasos` y una meta de pasos en el plan.
                     com.pumpteam.mypump.metas.PumpDelDiaDe(modelo)
@@ -252,6 +241,8 @@ fun ListaEntreno(
                     } else {
                         CuerpoDia(motor, v, preguntador, alAbrir, alCompletarDia, alCerrarDia = { cerrando = true })
                     }
+                    // «Mi gimnasio y mi técnica» (simplificar): el renglón grande al final, con la respuesta de Mati a un toque.
+                    com.pumpteam.mypump.gimnasio.EntradaDondeEntreno(modelo)
                     PieRespaldo(OrigenRespaldo.ENTRENO, Modifier.padding(top = Espacio.xs))
                 }
             }

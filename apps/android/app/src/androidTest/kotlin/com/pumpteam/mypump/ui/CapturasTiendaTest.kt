@@ -128,7 +128,7 @@ class CapturasTiendaTest : PruebaUi() {
             captura("$modo-3-dieta")
 
             p.abrirSalud()
-            p.tocar(etiqueta("segmento-fuerza"))
+            p.verSeccion("fuerza")
             p.esperar("los totales de Progreso") { p.textosBajo(etiqueta("progreso-totales")).contains("32") }
             esperarFotos()
             captura("$modo-5-progreso")

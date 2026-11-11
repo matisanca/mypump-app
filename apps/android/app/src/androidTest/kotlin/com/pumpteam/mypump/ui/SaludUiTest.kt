@@ -92,12 +92,15 @@ class SaludUiTest : PruebaUi() {
         }
     }
 
+    /**
+     * 2.3.0: la sección de salud de Mis datos se fue (una sola fila «Mi salud», como iOS). El resumen, conectar o instalar
+     * Health Connect y el detalle están en la tarjeta Recuperación de Salud (Revisión → Mi salud → Recuperación).
+     */
     private fun irAMisDatos() {
         guardarCuenta()
         abrir()
-        p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("mis-datos"))
-        p.nodo(etiqueta("mis-datos-pantalla"))
+        p.abrirSalud()
+        p.nodo(etiqueta("card-recuperacion"))
     }
 
     private fun sinApple() {
@@ -111,10 +114,10 @@ class SaludUiTest : PruebaUi() {
         guardarPreferencia(ClaveSalud.CONECTADO, "1")
         guardarPreferencia(ClaveSalud.HISTORIAL_HECHO, "1")
         irAMisDatos()
-        // El score de la última fila (45), con su banda.
-        p.nodo(textoQueContiene("45/100"))
+        // El score de la última fila (45), con su banda, en la tarjeta Recuperación de Salud.
+        p.esperar("el score 45/100") { p.textosBajo(etiqueta("card-recuperacion")).let { "45" in it && "/100" in it }.takeIf { it } }
         Telefono.captura("salud-mis-datos")
-        p.tocar(etiqueta("mis-datos-salud"))
+        p.tocar(etiqueta("ver-todos-mis-datos"))
         p.nodo(etiqueta("salud-detalle"))
         for (t in listOf("Cómo se arma tu recuperación", "Sueño", "Corazón", "Actividad", "Cuerpo", "Preferencias", "Health Connect")) p.nodo(texto(t))
         // Las secciones sin datos no se muestran (la cuenta no tiene respiración, oxígeno ni temperatura).
@@ -143,14 +146,14 @@ class SaludUiTest : PruebaUi() {
         p.nodo(etiqueta("salud-detalle"))
         p.atras()
         p.esperarQueNoEste(etiqueta("salud-detalle"))
-        p.nodo(etiqueta("mis-datos-pantalla"))
+        p.nodo(etiqueta("salud-pantalla"))
     }
 
     /** "Conectar Health Connect" pide el núcleo con el historial, después el resto (nunca escritura), y sincroniza. */
     @Test
     fun conectarDesdeMisDatosPideElNucleoConElHistorialYSincroniza() {
         irAMisDatos()
-        p.nodo(textoQueContiene("Conectá tu reloj o Health Connect"))
+        p.nodo(textoQueContiene("Tu recuperación se calcula con lo que mide tu reloj"))
         sinApple()
         p.tocar(etiqueta("conectar-salud"))
         p.esperar("se pidieron las dos tandas") { fuente.pedidos.size >= 2 }
@@ -226,7 +229,7 @@ class SaludUiTest : PruebaUi() {
         instr.addMonitor(monitor)
         try {
             irAMisDatos()
-            p.nodo(etiqueta("mis-datos-salud"))
+            p.nodo(etiqueta("ver-todos-mis-datos"))
             if (estado == EstadoHealthConnect.NO_SOPORTADO) {
                 p.quieto(500)
                 assertFalse(p.existe(etiqueta("instalar-health-connect")))
@@ -239,7 +242,7 @@ class SaludUiTest : PruebaUi() {
             }
             assertFalse("sin Health Connect no se ofrece conectarlo", p.existe(etiqueta("conectar-salud")))
             // El detalle dice por qué y tampoco ofrece conectar.
-            p.tocar(etiqueta("mis-datos-salud"))
+            p.tocar(etiqueta("ver-todos-mis-datos"))
             p.nodo(etiqueta("salud-detalle"))
             p.nodo(texto(porque))
             assertFalse(p.existe(etiqueta("conectar-health-connect")))
@@ -266,15 +269,15 @@ class SaludUiTest : PruebaUi() {
         irAMisDatos()
         p.nodo(texto("Actualizar Health Connect"))
         p.atras()
-        p.esperarQueNoEste(etiqueta("mis-datos-pantalla"))
+        p.esperarQueNoEste(etiqueta("salud-pantalla"))
         // Sin soporte: ni conectar ni instalar (la sección sigue: el resumen y, adentro, el diagnóstico).
         EstadoHealthConnect.forzado = EstadoHealthConnect.NO_SOPORTADO
-        p.tocar(etiqueta("mis-datos"))
-        p.nodo(etiqueta("mis-datos-salud"))
+        p.abrirSalud()
+        p.nodo(etiqueta("ver-todos-mis-datos"))
         p.quieto(500)
         assertFalse(p.existe(etiqueta("conectar-salud")))
         assertFalse(p.existe(etiqueta("instalar-health-connect")))
-        p.tocar(etiqueta("mis-datos-salud"))
+        p.tocar(etiqueta("ver-todos-mis-datos"))
         p.nodo(texto("Este teléfono no es compatible con Health Connect."))
         assertFalse(p.existe(etiqueta("instalar-health-connect")))
         assertFalse(p.existe(etiqueta("conectar-health-connect")))
@@ -294,7 +297,7 @@ class SaludUiTest : PruebaUi() {
             override suspend fun muestras(dataType: String, desde: Double, hasta: Double, limite: Int): List<MuestraSalud> = emptyList()
         }
         irAMisDatos()
-        p.tocar(etiqueta("mis-datos-salud"))
+        p.tocar(etiqueta("ver-todos-mis-datos"))
         p.nodo(texto("No está llegando ningún dato. Revisá que esté todo activado en Ajustes → Salud y bienestar → Health Connect → Pump Team."))
         p.nodo(texto("Reintentar"))
         sinApple()

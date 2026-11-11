@@ -45,9 +45,8 @@ class TecnicaUiTest : PruebaUi() {
 
     private fun miTecnica(escenario: String): DobleTecnica {
         val d = lanzar(escenario)
-        p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("mis-datos"))
-        p.tocar(etiqueta("mis-datos-tecnica"))
+        // Simplificar: Mi técnica vive en «Mi gimnasio y mi técnica», al final de Entreno.
+        p.abrirDondeEntreno()
         return d
     }
 
@@ -166,6 +165,9 @@ class TecnicaUiTest : PruebaUi() {
         p.tocar(etiqueta("mis-datos"))
         p.nodo(etiqueta("mis-datos-pantalla"))
         assertFalse(escenario, p.existe(etiqueta("mis-datos-tecnica")))
+        p.tocar(etiqueta("pestana-entreno"))
+        p.quieto(1000)
+        assertFalse(escenario, p.existe(etiqueta("donde-entreno-entrada")))
         assertTrue("$escenario: subió algo", d.bytesSubidos.isEmpty())
     }
 

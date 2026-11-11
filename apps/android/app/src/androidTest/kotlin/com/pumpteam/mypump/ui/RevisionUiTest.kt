@@ -62,8 +62,8 @@ class RevisionUiTest : PruebaUi() {
     private fun irASalud(segmento: String) {
         // Salud no está en la barra (2.1.0): se abre desde la tarjeta Recuperación de arriba de Revisión.
         p.abrirSalud()
-        p.tocar(etiqueta("segmento-$segmento"))
-        p.esperar("$segmento elegido") { p.seleccionado(etiqueta("segmento-$segmento")) }
+        p.verSeccion("$segmento")
+        p.esperar("$segmento elegido") { p.enSeccion("$segmento") }
     }
 
     /** Dónde empieza una sección, medido en pantallas de lo que se ve de Revisión (0 = arriba de todo, 1 = abajo). */
@@ -525,11 +525,15 @@ class RevisionUiTest : PruebaUi() {
      */
     @Test
     fun unLinkConSceneMyDayLlevaARecuperacion() {
+        // 2.3.0: `myday` abre «Mi salud», en la recuperación; de ahí, Salud en Recuperación.
         abrirConLink("https://app.mypumpteam.com/?t=${ServidorDePrueba.TOKEN}&scene=myday")
+        p.nodo(etiqueta("mi-salud-pantalla"), ms = 30_000)
+        assertTrue(p.seleccionado(etiqueta("pestana-revision")))
+        p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.esperar("Revisión + Salud") { p.enSalud() }
-        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.esperar("Recuperación elegida") { p.enSeccion("recuperacion") }
         p.nodo(etiqueta("card-recuperacion"))
-        // Volver lleva a Revisión, con la tarjeta Recuperación arriba.
+        // Volver lleva a Mi salud, con la fila Recuperación.
         p.tocar(etiqueta("volver"))
         p.esperarQueNoEste(etiqueta("salud-pantalla"))
         p.nodo(etiqueta("tarjeta-recuperacion-revision"))
@@ -543,8 +547,10 @@ class RevisionUiTest : PruebaUi() {
         irASalud("cuerpo")
         p.tocar(etiqueta("pestana-entreno"))
         app.startActivity(com.pumpteam.mypump.avisos.CentroAvisos.intentDeAviso(app, "myday"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
+        p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.esperar("Revisión + Salud") { p.enSalud() }
-        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.esperar("Recuperación elegida") { p.enSeccion("recuperacion") }
         p.nodo(etiqueta("card-recuperacion"))
     }
 
@@ -631,7 +637,7 @@ class RevisionUiTest : PruebaUi() {
         abrir()
         // Salud (desde la tarjeta de Revisión) arranca en Recuperación.
         p.abrirSalud()
-        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.esperar("Recuperación elegida") { p.enSeccion("recuperacion") }
         p.nodo(etiqueta("card-recuperacion"))
         p.nodo(etiqueta("card-salud"))
         // Arriba la recuperación y abajo la salud. Los hábitos, la racha y los 30 días ya no están.

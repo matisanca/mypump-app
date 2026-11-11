@@ -51,15 +51,11 @@ import com.pumpteam.mypump.diseno.RotuloSeccion
 import com.pumpteam.mypump.diseno.Separador
 import com.pumpteam.mypump.diseno.abrirEnNavegador
 import com.pumpteam.mypump.diseno.superficieTarjeta
-import com.pumpteam.mypump.fotosinicio.fotosInicioVisible
 import com.pumpteam.mypump.respaldo.HojaFuentes
-import com.pumpteam.mypump.salud.SeccionSaludMisDatos
 import com.pumpteam.mypump.guia.lugarDeLaGuia
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.ReglasGuia
 import com.pumpteam.mypump.reglas.TextosDocumentos
-import com.pumpteam.mypump.reglas.TextosFotosInicio
-import com.pumpteam.mypump.reglas.TextosGimnasio
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -69,7 +65,7 @@ import kotlinx.coroutines.withContext
  * privacidad y el borrado (D9), con la forma de los ajustes del teléfono. Ni la IA ni el aviso del domingo se configuran
  * acá (pedido de Mati, 14-oct): la IA trabaja bajo su aprobación y el aviso llega como un mensaje suyo (`AvisoDomingo`).
  *
- * Arriba, Salud (la recuperación, que abre el detalle, y conectar Health Connect: `SeccionSaludMisDatos`). De las
+ * La salud está en «Mi salud» (una sola fila lleva ahí). De las
  * notificaciones va solo "Activar notificaciones" (o "Activar en Ajustes"), si falta el permiso del sistema y no es la
  * demo, como en iOS (`SeccionNotificaciones`).
  */
@@ -88,30 +84,12 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
     }
 
     PantallaConTitulo("Mis datos", alVolver = alVolver, desplazable = true, modifier = Modifier.testTag("mis-datos-pantalla")) {
-        // Salud (SAL-09…13): la recuperación, que abre el detalle, y conectar Health Connect (salud/MisDatosSalud.kt).
-        SeccionSaludMisDatos(modelo)
-        SeccionNotificaciones(vm, modelo)
-        // «Logros» (2.3.0): el permiso para que Mati se entere de los récords. Sin la función, no hay sección.
-        com.pumpteam.mypump.logros.SeccionLogros(modelo)
-        Seccion(
-            "Apariencia",
-            pie = if (oscuro) "La app queda oscura aunque el teléfono esté en claro." else "La app sigue al teléfono: clara u oscura según cómo lo tengas.",
-        ) {
-            FilaInterruptor(
-                icono = Iconos.Luna,
-                color = c.sueno,
-                titulo = "Siempre en modo oscuro",
-                prendido = oscuro,
-                alCambiar = vm.apariencia::forzarOscuro,
-                etiqueta = "tema-oscuro",
-            )
-        }
-
-        Seccion("Tu información") {
-            // «Tu guía» después de la entrega (o quitada de Entreno): una sola fila, solo con resumen `ok: true`.
-            val guia by modelo.guia.collectAsStateWithLifecycle()
-            val navegacion = LocalNavegacion.current
-            // «Tu recorrido» (palanca `fin_plan`): arriba, junto a Novedades, mientras el servidor diga que se ve.
+        // Simplificar (11/11): unos 10 renglones en tres grupos, sin perder nada. Lo que salió tiene su lugar: Novedades del
+        // plan en Revisión (debajo de la devolución), Mi gimnasio y Mi técnica en «Mi gimnasio y mi técnica» (al final de
+        // Entreno) y las fotos de inicio en su tarjeta fija de Revisión. La salud está en «Mi salud» (una sola fila).
+        val navegacion = LocalNavegacion.current
+        Seccion("Mi plan") {
+            // «Tu recorrido» (palanca `fin_plan`): mientras el servidor diga que se ve.
             val finPlan by modelo.finPlan.collectAsStateWithLifecycle()
             val recorrido = finPlan?.recorrido?.collectAsStateWithLifecycle()?.value
             if (recorrido != null) {
@@ -119,42 +97,6 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                     com.pumpteam.mypump.recorrido.RecorridoUI.abierta = true
                 }
                 Separador(sangria = 58.dp)
-            }
-            // «Novedades de tu plan» (palanca `novedades_plan`): el lugar fijo, primero.
-            val novedades by modelo.novedades.collectAsStateWithLifecycle()
-            val palanca by modelo.palanca.collectAsStateWithLifecycle()
-            val esDemoNov by modelo.esDemo.collectAsStateWithLifecycle()
-            if (novedades != null && (palanca.novedadesPlan || esDemoNov)) {
-                FilaEnlace(Iconos.Chispas, c.marcaTexto, com.pumpteam.mypump.novedades.TextosNovedades.ENTRADA_MIS_DATOS, etiqueta = "mis-datos-novedades") {
-                    navegacion?.novedadesEnMisDatos = true
-                }
-                Separador(sangria = 58.dp)
-            }
-            guia?.let { g ->
-                if (lugarDeLaGuia(g).second == ReglasGuia.Lugar.MIS_DATOS) {
-                    FilaEnlace(Iconos.Video, c.marcaTexto, "Ver mi guía", etiqueta = "mis-datos-guia") { navegacion?.guiaEnMisDatos = true }
-                    Separador(sangria = 58.dp)
-                }
-            }
-            val gimnasio by modelo.gimnasio.collectAsStateWithLifecycle()
-            gimnasio?.let { g ->
-                val estadoGimnasio by g.estado.collectAsStateWithLifecycle()
-                if (estadoGimnasio != null && g.entradaVisible) {
-                    FilaEnlace(Iconos.Pesa, c.marcaTexto, TextosGimnasio.entradaMisDatos, etiqueta = "mis-datos-gimnasio") { navegacion?.gimnasioEnMisDatos = true }
-                    Separador(sangria = 58.dp)
-                }
-            }
-            if (fotosInicioVisible(modelo)) {
-                FilaEnlace(Iconos.Camara, c.marcaTexto, TextosFotosInicio.entradaMisDatos, etiqueta = "mis-datos-fotos-inicio") { navegacion?.fotosInicioEnMisDatos = true }
-                Separador(sangria = 58.dp)
-            }
-            val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
-            tecnica?.let { x ->
-                val estadoTecnica by x.estado.collectAsStateWithLifecycle()
-                if (estadoTecnica != null) {
-                    FilaEnlace(Iconos.Video, c.marcaTexto, com.pumpteam.mypump.reglas.TextosTecnica.entradaMisDatos, etiqueta = "mis-datos-tecnica") { navegacion?.tecnicaEnMisDatos = true }
-                    Separador(sangria = 58.dp)
-                }
             }
             // Documentos (contrato y consentimiento): solo si `mypump_contrato_get` devolvió alguno.
             val documentos by modelo.documentos.collectAsStateWithLifecycle()
@@ -169,38 +111,57 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                     Separador(sangria = 58.dp)
                 }
             }
-            // «Estudios y órdenes»: con la palanca apagada, sin el servidor nuevo o sin habilitar, la fila no existe.
-            val estudios by modelo.estudios.collectAsStateWithLifecycle()
-            estudios?.let { x ->
-                val estadoEstudios by x.estado.collectAsStateWithLifecycle()
-                estadoEstudios?.let { e ->
-                    FilaEnlace(
-                        Iconos.Documento, c.marcaTexto, com.pumpteam.mypump.reglas.TextosEstudios.entrada,
-                        etiqueta = "mis-datos-estudios", subtitulo = com.pumpteam.mypump.reglas.Estudios.subtitulo(e),
-                        novedad = com.pumpteam.mypump.reglas.Estudios.hayNovedad(e),
-                    ) { navegacion?.irAEstudios(resuelto = true) }
+            // «Tu guía» fuera de Entreno (después de la entrega, quitada, o pasados los 7 días de la fila): su lugar fijo.
+            val guia by modelo.guia.collectAsStateWithLifecycle()
+            guia?.let { g ->
+                if (lugarDeLaGuia(g).second == ReglasGuia.Lugar.MIS_DATOS) {
+                    FilaEnlace(Iconos.Video, c.marcaTexto, "Ver mi guía", etiqueta = "mis-datos-guia") { navegacion?.guiaEnMisDatos = true }
                     Separador(sangria = 58.dp)
                 }
             }
-            // Presión arterial: solo con la sección habilitada (palanca prendida y servidor nuevo).
+            // «Mi salud» (2.3.0): un atajo (lo pide la especificación).
+            val estudios by modelo.estudios.collectAsStateWithLifecycle()
+            val estadoEstudios = estudios?.estado?.collectAsStateWithLifecycle()?.value
             val presion by modelo.presion.collectAsStateWithLifecycle()
-            presion?.let { x ->
-                val estadoPresion by x.estado.collectAsStateWithLifecycle()
-                if (estadoPresion != null) {
-                    FilaEnlace(Iconos.Corazon, c.marcaTexto, com.pumpteam.mypump.reglas.TextosPresion.N.entrada, etiqueta = "mis-datos-presion") { navegacion?.abrirPresion(directo = false) }
-                    Separador(sangria = 58.dp)
-                }
+            val estadoPresion = presion?.estado?.collectAsStateWithLifecycle()?.value
+            // Como iOS: también con la salud del sistema (la recuperación vive en Mi salud), fuera de la demo.
+            val conSalud = modelo.salud.collectAsStateWithLifecycle().value != null && !modelo.esDemo.collectAsStateWithLifecycle().value
+            if (conSalud || estadoEstudios != null || estadoPresion != null) {
+                FilaEnlace(
+                    Iconos.Corazon, c.marcaTexto, com.pumpteam.mypump.reglas.MiSalud.TITULO,
+                    etiqueta = "mis-datos-mi-salud",
+                    novedad = estadoEstudios?.let(com.pumpteam.mypump.reglas.Estudios::hayNovedad) == true,
+                ) { navegacion?.irAMiSalud() }
+                Separador(sangria = 58.dp)
             }
             FilaEnlace(Iconos.Libro, c.marcaTexto, "Respaldo científico del plan", etiqueta = "mis-datos-respaldo") { fuentes = true }
-            Separador(sangria = 58.dp)
-            FilaEnlace(Iconos.Privacidad, c.agua, "Política de privacidad") { abrirEnNavegador(contexto, URL_PRIVACIDAD) }
-            Separador(sangria = 58.dp)
-            FilaEnlace(Iconos.Papelera, c.peligro, "Eliminar mis datos", colorTexto = c.peligro) { abrirEnNavegador(contexto, URL_BORRADO) }
         }
+
+        // Ajustes (simplificar): el modo oscuro y, debajo, las notificaciones (solo si falta el permiso) y los logros.
+        Seccion(
+            "Ajustes",
+            pie = if (oscuro) "La app queda oscura aunque el teléfono esté en claro." else "La app sigue al teléfono: clara u oscura según cómo lo tengas.",
+        ) {
+            FilaInterruptor(
+                icono = Iconos.Luna,
+                color = c.sueno,
+                titulo = "Siempre en modo oscuro",
+                prendido = oscuro,
+                alCambiar = vm.apariencia::forzarOscuro,
+                etiqueta = "tema-oscuro",
+            )
+        }
+        SeccionNotificaciones(vm, modelo)
+        // «Logros» (2.3.0): el permiso para que Mati se entere de los récords. Sin la función, no hay sección.
+        com.pumpteam.mypump.logros.SeccionLogros(modelo)
 
         var hayInforme by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { hayInforme = withContext(Dispatchers.IO) { vm.registroMigracion.isFile } }
-        Seccion(null, pie = "Pump Team no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.") {
+        Seccion("Privacidad", pie = "Pump Team no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.") {
+            FilaEnlace(Iconos.Privacidad, c.agua, "Política de privacidad") { abrirEnNavegador(contexto, URL_PRIVACIDAD) }
+            Separador(sangria = 58.dp)
+            FilaEnlace(Iconos.Papelera, c.peligro, "Eliminar mis datos", colorTexto = c.peligro) { abrirEnNavegador(contexto, URL_BORRADO) }
+            Separador(sangria = Espacio.m)
             FilaValor("Versión", vm.version)
             if (hayInforme) {
                 Separador(sangria = Espacio.m)

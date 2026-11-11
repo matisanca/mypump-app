@@ -68,7 +68,7 @@ class CasaUiTest : PruebaUi() {
         abrirMiGimnasioDesdeLaTarjeta()
         p.nodo(etiqueta("casa-lista"))
         p.tocar(etiqueta("casa-sin-equipo"))
-        assertTrue(p.habilitado(etiqueta("casa-enviar")))
+        p.esperar("enviar habilitado") { p.habilitado(etiqueta("casa-enviar")) }
     }
 
     @Test
@@ -86,9 +86,9 @@ class CasaUiTest : PruebaUi() {
     fun laVigenteDeCasaNoMuestraZonas() {
         lanzar("casaVigente")
         p.nodo(etiqueta("pestana-entreno"))
-        p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("mis-datos"))
-        p.tocar(etiqueta("mis-datos-gimnasio"))
+        // Simplificar: Mi gimnasio vive en «Mi gimnasio y mi técnica», al final de Entreno.
+        p.abrirDondeEntreno()
+        p.tocar(etiqueta("donde-entreno-gimnasio"))
         p.nodo(etiqueta("casa-vigente"))
         p.nodo(textoQueContiene("Mancuernas"))
         assertTrue(p.prendido(etiqueta("casa-interruptor")))
@@ -97,13 +97,17 @@ class CasaUiTest : PruebaUi() {
         p.nodo(etiqueta("casa-lista"))
     }
 
-    /** Con el gimnasio ya cargado no hay tarjeta, pero el botón de casa sigue en Entreno: dos toques hasta el interruptor. */
+    /**
+     * Con el gimnasio ya cargado no hay tarjeta; el interruptor de casa está en «Mi gimnasio y mi técnica» (simplificar): dos
+     * toques desde Entreno, como antes con el botón suelto.
+     */
     @Test
-    fun conElGimnasioCargadoElBotonDeCasaQuedaADosToques() {
+    fun conElGimnasioCargadoElInterruptorDeCasaQuedaADosToques() {
         lanzar("casaConGimnasioVigente")
-        p.nodo(etiqueta("casa-tarjeta"))
+        p.nodo(etiqueta("donde-entreno-entrada"), 20_000)
         assertFalse("con el gimnasio cargado la tarjeta no va", p.existe(etiqueta("gimnasio-tarjeta")))
-        p.tocar(etiqueta("casa-tarjeta"))
+        assertFalse("el botón suelto ya no está", p.existe(etiqueta("casa-tarjeta")))
+        p.abrirDondeEntreno()
         p.nodo(etiqueta("casa-interruptor"))
         assertFalse(p.prendido(etiqueta("casa-interruptor")))
     }

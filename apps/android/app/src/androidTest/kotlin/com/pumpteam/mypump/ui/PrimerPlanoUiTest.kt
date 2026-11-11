@@ -89,7 +89,7 @@ class PrimerPlanoUiTest : PruebaUi() {
 
         // Sin red, el peso de hoy queda en la cola…
         p.abrirSalud()
-        p.tocar(etiqueta("segmento-cuerpo"))
+        p.verSeccion("cuerpo")
         p.nodo(etiqueta("guardar-peso"))
         servidor.sinRed = true
         p.escribir(etiqueta("peso-hoy"), "80")
