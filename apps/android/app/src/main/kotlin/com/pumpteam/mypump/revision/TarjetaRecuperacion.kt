@@ -29,7 +29,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloProgreso
 import com.pumpteam.mypump.datos.ModeloSalud
-import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.FilaDestino
+import com.pumpteam.mypump.diseno.Letra
+import com.pumpteam.mypump.diseno.Separador
+import androidx.compose.foundation.layout.Box
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Numeros
@@ -46,30 +49,57 @@ import com.pumpteam.mypump.salud.cardRecuperacion
 import com.pumpteam.mypump.salud.colorBanda
 
 /**
- * «Recuperación», arriba de todo en Revisión (2.1.0, pedido de Mati del 4-nov: «la parte de salud […] la integraría con
- * la revisión […] que aparezca arriba de todo ahí»). Un resumen del caso que ya calcula `SaludVista.cardRecuperacion` (no
- * se repite la lógica): el score con su banda, o qué falta. Toda la tarjeta se toca y abre Salud en Recuperación, donde
- * está el detalle y el botón de conectar. Reemplaza al corazón que había arriba de Revisión. Gemela de la de iOS.
+ * «Recuperación» y «Tu progreso» en una sola tarjeta de dos filas con azulejo suave (2.3.0; antes dos tarjetas de tres
+ * pisos con emojis). Ocupan bastante menos diciendo lo mismo, y las fotos y el check suben.
+ */
+@Composable
+fun TarjetaComoVengo(salud: ModeloSalud?, modelo: ModeloApp, alAbrirSalud: () -> Unit, alAbrirFuerza: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().superficieTarjeta()) {
+        TarjetaRecuperacionRevision(salud, alAbrirSalud)
+        Separador(sangria = 64.dp)
+        TarjetaProgresoRevision(modelo, alAbrirFuerza)
+    }
+}
+
+/**
+ * «Recuperación», arriba en Revisión (2.1.0, pedido de Mati del 4-nov: «la parte de salud […] la integraría con la
+ * revisión»). Un resumen del caso que ya calcula `SaludVista.cardRecuperacion` (no se repite la lógica): el score con su
+ * banda, o qué falta. Toda la fila se toca y abre Salud en Recuperación, donde está el detalle y el botón de conectar.
+ * Gemela de la de iOS.
  *
- * Sin [salud] (la demo o sin cuenta) dice lo que se va a ver con la cuenta. Debajo va [TarjetaProgresoRevision].
+ * Sin [salud] (la demo o sin cuenta) dice lo que se va a ver con la cuenta.
  */
 @Composable
 fun TarjetaRecuperacionRevision(salud: ModeloSalud?, alAbrirSalud: () -> Unit, modifier: Modifier = Modifier) {
-    TarjetaRevision("🔋", "Recuperación", "Ver sueño, corazón y cuerpo", "tarjeta-recuperacion-revision", alAbrirSalud, modifier) {
-        if (salud == null) {
-            Texto("Con tu cuenta, acá vas a ver tu recuperación de cada día.")
-        } else {
-            when (val card = cardRecuperacion(salud)) {
-                is SaludVista.CardRecuperacion.ConScore -> ConScore(card.score)
-                SaludVista.CardRecuperacion.Oculto -> Texto("Ocultaste el número de recuperación. Tocá para ver tus datos de salud.")
-                is SaludVista.CardRecuperacion.Calibrando -> {
-                    Texto("Aprendiendo tu normal: ${card.dias} de 14 días")
-                    if (card.yaSe.isNotEmpty()) NotaSalud(card.yaSe)
-                }
-                is SaludVista.CardRecuperacion.ConectadoSinScore -> Texto(card.sinScore.frase(salud.textos))
-                // El botón de conectar está adentro de Salud.
-                SaludVista.CardRecuperacion.SinConectar -> Texto("Conectá tu reloj o Health Connect para ver tu recuperación de cada día.")
-            }
+    val card = salud?.let { cardRecuperacion(it) }
+    val conScore = (card as? SaludVista.CardRecuperacion.ConScore)?.score
+    // La línea de la fila: lo mismo que decía la tarjeta completa, en corto.
+    val resumen = when {
+        salud == null || card == null -> "Con tu cuenta, acá vas a ver tu recuperación de cada día."
+        conScore != null -> listOfNotNull(
+            conScore.bandaTexto,
+            conScore.confianza?.etiqueta,
+            conScore.frase ?: conScore.motivos.firstOrNull()?.let { "${if (it.sube) "↑" else "↓"} ${it.texto}" },
+            conScore.notaVieja,
+        ).joinToString(" · ")
+        card is SaludVista.CardRecuperacion.Oculto -> "Ocultaste el número de recuperación. Tocá para ver tus datos de salud."
+        card is SaludVista.CardRecuperacion.Calibrando -> listOfNotNull("Aprendiendo tu normal: ${card.dias} de 14 días", card.yaSe.ifEmpty { null }).joinToString(". ")
+        card is SaludVista.CardRecuperacion.ConectadoSinScore -> card.sinScore.frase(salud.textos)
+        // El botón de conectar está adentro de Salud.
+        else -> "Conectá tu reloj o Health Connect para ver tu recuperación de cada día."
+    }
+    FilaDestino(
+        Iconos.Corazon, "Recuperación", resumen, alAbrirSalud,
+        modifier.testTag("tarjeta-recuperacion-revision"),
+        etiquetaToque = "Abre Salud",
+    ) {
+        if (conScore != null) {
+            Text(
+                "${conScore.fila.score ?: 0}",
+                style = Letra.dato,
+                color = colorBanda(conScore.banda, apagado = conScore.confianza?.apagado == true),
+                modifier = Modifier.testTag("score-revision"),
+            )
         }
     }
 }
@@ -77,7 +107,7 @@ fun TarjetaRecuperacionRevision(salud: ModeloSalud?, alAbrirSalud: () -> Unit, m
 /**
  * «Tu progreso», debajo de Recuperación (2.1.0, aprobada por Mati el 4-nov): lo que era la pestaña Progreso, en una línea
  * (`ProgresoSemana.linea`: récords, con el trofeo, ejercicios que subieron o sesiones de la semana). Sin línea (o en la demo), lo
- * genérico en gris. Toda la tarjeta abre Salud en Fuerza. Si el progreso todavía no se cargó, lo trae una vez.
+ * genérico. Toda la fila abre Salud en Fuerza. Si el progreso todavía no se cargó, lo trae una vez.
  */
 @Composable
 fun TarjetaProgresoRevision(modelo: ModeloApp, alAbrirFuerza: () -> Unit, modifier: Modifier = Modifier) {
@@ -99,89 +129,18 @@ fun TarjetaProgresoRevision(modelo: ModeloApp, alAbrirFuerza: () -> Unit, modifi
         ProgresoSemana.linea(tarjetas.map { ProgresoSemana.ejercicio(it.nombre, it.filas) }, hoy)
     }
     val c = MyPump.colores
-    TarjetaRevision("📈", "Tu progreso", "Ver fuerza y récords", "tarjeta-progreso-revision", alAbrirFuerza, modifier,
-        pista = "Abre tu fuerza y tus récords") {
-        if (linea != null) {
-            // Con un récord, el trofeo a la izquierda (decorativo: el texto ya dice «Récord»).
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-                if (linea.record) {
-                    Icon(Iconos.Trofeo, contentDescription = null, tint = c.alerta, modifier = Modifier.size(20.dp).testTag("trofeo-progreso"))
-                }
-                Texto(linea.texto)
-            }
-        } else {
-            Text("Tu fuerza y tus récords, ejercicio por ejercicio.", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
-        }
-    }
-}
-
-/** Lo que comparten las tarjetas de arriba de Revisión: encabezado, contenido y la fila del pie con chevron, toda tocable. */
-@Composable
-private fun TarjetaRevision(
-    icono: String,
-    titulo: String,
-    pie: String,
-    etiqueta: String,
-    alTocar: () -> Unit,
-    modifier: Modifier,
-    pista: String = "Abre Salud",
-    contenido: @Composable ColumnScope.() -> Unit,
-) {
-    val c = MyPump.colores
-    Column(
-        modifier
-            .fillMaxWidth()
-            .superficieTarjeta()
-            .clickable(role = Role.Button, onClickLabel = pista, onClick = alTocar)
-            .padding(Espacio.m)
-            .testTag(etiqueta),
-        verticalArrangement = Arrangement.spacedBy(Espacio.s),
+    val record = linea?.record == true
+    FilaDestino(
+        // Con un récord, el trofeo (decorativo: el texto ya dice «Récord»).
+        if (record) Iconos.Trofeo else Iconos.Tendencia,
+        "Tu progreso",
+        linea?.texto ?: "Tu fuerza y tus récords, ejercicio por ejercicio.",
+        alAbrirFuerza,
+        modifier.testTag("tarjeta-progreso-revision"),
+        color = if (record) c.record else c.marcaTexto,
+        etiquetaToque = "Abre tu fuerza y tus récords",
     ) {
-        EncabezadoSalud(icono, titulo)
-        contenido()
-        HorizontalDivider(color = c.borde)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-            Text(
-                pie,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = c.marcaTexto,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(Iconos.Chevron, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(20.dp))
-        }
+        // Lo que buscan las pruebas: hay trofeo solo con récord.
+        if (record) Box(Modifier.size(1.dp).testTag("trofeo-progreso"))
     }
-}
-
-@Composable
-private fun Texto(texto: String) {
-    Text(texto, style = MaterialTheme.typography.bodyMedium.merge(Letras.cifras), fontWeight = FontWeight.Medium)
-}
-
-/** El score grande con «de 100», la banda en su color, la confianza (sin tocar: la tarjeta entera abre Salud) y una línea. */
-@Composable
-private fun ConScore(s: SaludVista.ConScore) {
-    val c = MyPump.colores
-    val color = colorBanda(s.banda, apagado = s.confianza?.apagado == true)
-    Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("${s.fila.score ?: 0}", style = Numeros.grande, color = color, modifier = Modifier.testTag("score-revision"))
-            Text("de 100", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, modifier = Modifier.padding(bottom = 6.dp))
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(s.bandaTexto, style = MaterialTheme.typography.titleMedium, color = color)
-            s.confianza?.let {
-                Text(
-                    it.etiqueta,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = c.textoSecundario,
-                    modifier = Modifier.clip(CircleShape).background(c.campo).padding(horizontal = 9.dp, vertical = 5.dp),
-                )
-            }
-        }
-    }
-    // Como iOS: la frase o, sin frase, el primer motivo con su flecha.
-    (s.frase ?: s.motivos.firstOrNull()?.let { "${if (it.sube) "↑" else "↓"} ${it.texto}" })
-        ?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-    s.notaVieja?.let { NotaSalud(it) }
 }

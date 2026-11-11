@@ -120,7 +120,7 @@ class SaludPestanaUiTest : PruebaUi() {
         // La tarjeta trae el progreso sola (sin pasar por Fuerza).
         p.nodo(texto("1 sesión entrenada esta semana"), ms = 20_000)
         assertFalse(p.existe(etiqueta("trofeo-progreso")))
-        p.nodo(texto("Ver fuerza y récords"))
+        p.nodo(texto("Tu progreso"))
         // Pegada a Recuperación: debajo, antes que las fotos.
         val y = { t: String -> p.nodo(etiqueta(t)).let { n -> p.enPrincipal { n.positionInRoot.y } } }
         assertTrue(y("tarjeta-recuperacion-revision") < y("tarjeta-progreso-revision"))

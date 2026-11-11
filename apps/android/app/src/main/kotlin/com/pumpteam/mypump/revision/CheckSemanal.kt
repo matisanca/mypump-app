@@ -55,7 +55,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.Checkin
 import com.pumpteam.mypump.datos.ModeloRevision
 import com.pumpteam.mypump.diseno.BotonMarca
-import com.pumpteam.mypump.diseno.EncabezadoSeccion
+import com.pumpteam.mypump.diseno.EncabezadoAvance
+import com.pumpteam.mypump.diseno.Numeros
+import com.pumpteam.mypump.diseno.apoyo
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
@@ -147,20 +149,8 @@ fun CheckSemanal(
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            val completas = CheckinSemanal.metricas.count { (valores[it.clave] ?: 0) != 0 }
-            EncabezadoSeccion("Check de la semana", Modifier.weight(1f), detalle = if (enviado) null else "$completas/4")
-            AnimatedVisibility(visible = enviado, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
-                Row(
-                    Modifier.padding(end = 4.dp).testTag("check-enviado"),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(IconosRevision.Enviado, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
-                    Text("Enviado", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
-                }
-            }
-        }
+        val completas = CheckinSemanal.metricas.count { (valores[it.clave] ?: 0) != 0 }
+        EncabezadoAvance("Check de la semana", completas, 4, completo = "Enviado", terminado = enviado, etiquetaCompleto = "check-enviado")
         Tarjeta(Modifier.animateContentSize(), espaciado = Espacio.l) {
             Text(
                 "Contame en 10 segundos cómo venís. Mati lo ve antes de tu devolución.",
@@ -251,7 +241,8 @@ private fun EscalaCinco(metrica: CheckinSemanal.Metrica, icono: ImageVector, col
     val c = MyPump.colores
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+            // Los íconos en gris: cuatro colores de adorno menos; el verde queda para el número elegido.
+            Icon(icono, contentDescription = null, tint = c.apoyo, modifier = Modifier.size(18.dp))
             Text(metrica.etiqueta, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         }
         Row(Modifier.fillMaxWidth()) {
@@ -261,7 +252,7 @@ private fun EscalaCinco(metrica: CheckinSemanal.Metrica, icono: ImageVector, col
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Box(
                         Modifier
-                            .size(44.dp)
+                            .size(48.dp)
                             .scale(escala)
                             .clip(CircleShape)
                             .background(if (elegido) c.marca else c.campo)
@@ -275,8 +266,7 @@ private fun EscalaCinco(metrica: CheckinSemanal.Metrica, icono: ImageVector, col
                     ) {
                         Text(
                             "$n",
-                            style = MaterialTheme.typography.bodyLarge.merge(Letras.cifras),
-                            fontWeight = FontWeight.SemiBold,
+                            style = Numeros.chico.merge(Letras.cifras),
                             color = if (elegido) c.sobreMarca else c.texto,
                             modifier = Modifier.clearAndSetSemantics {},
                         )
@@ -285,8 +275,8 @@ private fun EscalaCinco(metrica: CheckinSemanal.Metrica, icono: ImageVector, col
             }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp).clearAndSetSemantics {}) {
-            Text(metrica.bajo, style = Letras.caption2, color = c.textoSecundario, modifier = Modifier.weight(1f))
-            Text(metrica.alto, style = Letras.caption2, color = c.textoSecundario)
+            Text(metrica.bajo, style = Letras.caption2, color = c.apoyo, modifier = Modifier.weight(1f))
+            Text(metrica.alto, style = Letras.caption2, color = c.apoyo)
         }
     }
 }

@@ -188,11 +188,16 @@ fun Dato(titulo: String, valor: String, detalle: String?, icono: ImageVector, mo
 @Composable
 fun AvisoTenido(icono: ImageVector, texto: AnnotatedString, modifier: Modifier = Modifier, tono: Color = MyPump.colores.marcaTexto) {
     val c = MyPump.colores
+    // Una nota de contexto (verde) va sin caja: el único verde lleno de la pantalla es el botón. La caja queda para lo que anda mal.
+    if (tono == c.marcaTexto) {
+        com.pumpteam.mypump.diseno.NotaDiscreta(icono, texto, modifier, tono)
+        return
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Radio.control + 4.dp))
-            .background(if (tono == c.marcaTexto) c.marcaSuave else tono.copy(alpha = 0.12f))
+            .background(tono.copy(alpha = 0.12f))
             .padding(Espacio.m)
             .semantics(mergeDescendants = true) {},
         horizontalArrangement = Arrangement.spacedBy(Espacio.s),

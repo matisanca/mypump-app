@@ -66,7 +66,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.FormatoToken
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.diseno.Aviso
-import com.pumpteam.mypump.diseno.BotonMarca
+import com.pumpteam.mypump.diseno.Archivo
+import com.pumpteam.mypump.diseno.BotonAccion
+import com.pumpteam.mypump.diseno.BotonSecundario
+import com.pumpteam.mypump.diseno.apoyo
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.Inter
 import com.pumpteam.mypump.diseno.MarcaMyPump
@@ -175,11 +184,11 @@ fun AccesoPantalla(modelo: ModeloApp, alVerDemo: () -> Unit) {
                     )
                 }
                 Tarjeta(relleno = 20.dp, espaciado = 14.dp) {
-                    Text("Entrá con tu link", style = TextStyle(fontFamily = Inter, fontSize = 20.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold), color = c.texto)
+                    Text("Entrá con tu link", style = TextStyle(fontFamily = Archivo, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.W800), color = c.texto)
                     Text(
                         "Abrí el link que te pasó Mati por WhatsApp. Si no se abre solo, copialo y pegalo acá.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = c.textoSecundario,
+                        color = c.apoyo,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         TextField(
@@ -208,13 +217,20 @@ fun AccesoPantalla(modelo: ModeloApp, alVerDemo: () -> Unit) {
                             ),
                             modifier = Modifier.weight(1f).heightIn(min = 52.dp).testTag("campo-link"),
                         )
-                        FilledTonalIconButton(
-                            onClick = ::pegar,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = c.marcaSuave, contentColor = c.marcaTexto),
-                            modifier = Modifier.size(52.dp).testTag("pegar"),
+                        // Con su texto, no solo el ícono (regla de la 2.3.0: hay alumnos mayores).
+                        Row(
+                            Modifier
+                                .heightIn(min = 52.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(c.marcaSuave)
+                                .clickable(role = Role.Button, onClickLabel = "Pegar el link", onClick = ::pegar)
+                                .padding(horizontal = 14.dp)
+                                .testTag("pegar"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Icon(Iconos.Pegar, contentDescription = "Pegar el link")
+                            Icon(Iconos.Pegar, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(20.dp))
+                            Text("Pegar", style = MaterialTheme.typography.labelLarge, color = c.marcaTexto, modifier = Modifier.semantics { contentDescription = "Pegar el link" })
                         }
                     }
                     val e = error
@@ -227,7 +243,8 @@ fun AccesoPantalla(modelo: ModeloApp, alVerDemo: () -> Unit) {
                             Text(e, style = MaterialTheme.typography.bodySmall, color = c.peligro)
                         }
                     }
-                    BotonMarca(
+                    // El botón de la carga; sin link, gris pleno (un verde lavado parece roto).
+                    BotonAccion(
                         texto = "Entrar",
                         alTocar = { entrar(texto) },
                         habilitado = texto.isNotBlank(),
@@ -235,17 +252,12 @@ fun AccesoPantalla(modelo: ModeloApp, alVerDemo: () -> Unit) {
                         modifier = Modifier.testTag("entrar"),
                     )
                 }
-                TextButton(onClick = alVerDemo, modifier = Modifier.testTag("ver-demo")) {
-                    Text(
-                        buildAnnotatedString {
-                            withStyle(SpanStyle(color = c.textoSecundario)) { append("¿Querés ver cómo funciona? ") }
-                            withStyle(SpanStyle(color = c.marcaTexto, fontWeight = FontWeight.SemiBold)) { append("Ver demo") }
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("¿Querés ver cómo funciona?", style = MaterialTheme.typography.bodyMedium, color = c.apoyo)
+                    BotonSecundario("Ver demo", alTocar = alVerDemo, compacto = true, tono = c.marcaTexto, modifier = Modifier.defaultMinSize(minWidth = 160.dp, minHeight = 48.dp).testTag("ver-demo"))
                 }
                 TextButton(onClick = { abrirEnNavegador(contexto, URL_PRIVACIDAD) }) {
-                    Text("Política de privacidad", style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
+                    Text("Política de privacidad", style = MaterialTheme.typography.bodySmall, color = c.apoyo)
                 }
             }
         }
