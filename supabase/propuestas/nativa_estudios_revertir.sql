@@ -18,6 +18,7 @@ DROP FUNCTION IF EXISTS mypump_estudios_marcar_visto(UUID, TEXT, TIMESTAMPTZ);
 DROP FUNCTION IF EXISTS mypump_estudios_sin_ver(TEXT);
 DROP FUNCTION IF EXISTS mypump_estudios_registrar(TEXT, DATE, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, UUID);
 DROP FUNCTION IF EXISTS mypump_estudios_shas_guardados(TEXT, TEXT[]);
+DROP FUNCTION IF EXISTS mypump_estudios_error_avisado(UUID);
 DROP FUNCTION IF EXISTS mypump_estudios_errores_nuevos();
 DROP FUNCTION IF EXISTS mypump_estudios_devolver(UUID, BOOLEAN, TEXT);
 DROP FUNCTION IF EXISTS mypump_estudios_procesado(UUID, TEXT, JSONB);

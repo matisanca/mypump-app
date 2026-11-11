@@ -120,7 +120,8 @@ def main():
                      "testos\u00adterona", "andro\u0301genos", "inyeccio\u0301n", "cipionato", "1 cc", "c/7 días", "cada 3,5 dias", "x semana",
                      "t e s t o s t e r o n a", "flebotomía", "constancia", "trenbolona", "Sustanon", "deca", "winstrol", "anavar", "masteron",
                      "dbol", "clomid", "nolvadex", "arimidex", "cipio", "testo", "GH", "hormona de crecimiento", "BPC-157", "particulares",
-                     "2 veces a la semana", "1 por día", "E29.1 y E78.5", "Diagnóstico: a. Diagnóstico: b"]:
+                     "2 veces a la semana", "1 por día", "E29.1 y E78.5", "Diagnóstico: a. Diagnóstico: b", "tren ace", "uso de hormonas",
+                     "insulina rápida antes de entrenar", "somatotrofina"]:
             chequear(f"«{malo}» frena", uno(cur, prohibido, ("Laboratorio. " + malo + ". Sin cobertura", "[]")) is True)
         for bueno in ["Hemograma completo. Sin cobertura. E78.5", "Ecocardiograma Doppler color. OSDE 210", "por tratamiento hormonal en curso",
                       "Ferritina, hierro sérico, transferrina y saturación", "Vitamina D (25-OH), vitamina B12 y ácido fólico"]:
@@ -131,6 +132,14 @@ def main():
         chequear("GH como práctica del papel pasa; suelta en el texto no",
                  uno(cur, prohibido, ("Laboratorio. GH basal, hemograma. Sin cobertura", json.dumps(["GH basal"]))) is False
                  and uno(cur, prohibido, ("Laboratorio. GH basal, hemograma. Usa GH. Sin cobertura", json.dumps(["GH basal"]))) is True)
+        chequear("GH de dos letras como práctica pasa; como indicación no",
+                 uno(cur, prohibido, ("Laboratorio. GH, hemograma. Sin cobertura", json.dumps(["GH"]))) is False
+                 and uno(cur, prohibido, ("Laboratorio. GH, hemograma. Usa GH. Sin cobertura", json.dumps(["GH"]))) is True
+                 and uno(cur, prohibido, ("Laboratorio. Hemograma. Paciente Hughes. Sin cobertura", json.dumps(["GH"]))) is False)
+        chequear("insulina y somatotrofina como análisis pasan; finasteride no frena; resistencia a la insulina es diagnóstico",
+                 uno(cur, prohibido, ("Laboratorio. Insulinemia basal, Somatotrofina, hemograma. Finasteride. Diagnóstico: resistencia a la insulina. Sin cobertura",
+                                      json.dumps(["Insulinemia basal", "Somatotrofina"]))) is False
+                 and uno(cur, prohibido, ("Laboratorio. Insulinemia basal. Aplicar insulina. Sin cobertura", json.dumps(["Insulinemia basal"]))) is True)
         print("▸ Pedidos")
         pedir = ("SELECT mypump_estudios_pedir(%s, %s, %s, %s, %s::date, 'ensayo', %s::date, %s, %s::jsonb)")
         r = uno(cur, pedir, (CUENTA, "laboratorio", "orden", "ord-1", "2030-01-10", None, None, json.dumps(["Hemograma completo"])))

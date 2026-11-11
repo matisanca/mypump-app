@@ -83,12 +83,12 @@ DECLARE
            || 'stanozolol|metenolon|primobolan|drostanolon|mesterolon|proviron|oximetolon|metandrostenolon|dianabol|'
            || 'tamoxifen|clomifen|anastrozol|letrozol|exemestan|cabergolin|gonadotrof|gonadotrop|somatropin|somatotropin|'
            || 'semaglutid|tirzepatid|retatrutid|clenbuterol|aromatasa|enantato|cipionato|propionato|undecanoato|decanoato|'
-           || 'trenbolon|sustanon|winstrol|anavar|masteron|clomid|nolvadex|arimidex)';
+           || 'trenbolon|sustanon|winstrol|anavar|masteron|clomid|nolvadex|arimidex|somatotrofin|insulin)';
   -- Las mismas, sin las raíces cortas que aparecen al pegar palabras («Ana Bolaños», «sexo género»): para la pasada compacta.
   k_sust_c CONSTANT TEXT := '(testosteron|androgen|esteroid|nandrolon|trembolon|boldenon|oxandrolon|estanozolol|stanozolol|metenolon|'
            || 'primobolan|drostanolon|mesterolon|oximetolon|metandrostenolon|dianabol|tamoxifen|clomifen|anastrozol|letrozol|'
            || 'exemestan|cabergolin|gonadotrof|gonadotrop|somatropin|somatotropin|semaglutid|tirzepatid|retatrutid|clenbuterol|'
-           || 'trenbolon|sustanon|winstrol|anavar|masteron|clomid|nolvadex|arimidex)';
+           || 'trenbolon|sustanon|winstrol|anavar|masteron|clomid|nolvadex|arimidex|somatotrofin)';
   k_pal CONSTANT TEXT := '\m(aas|trt|trh|pct|serm|sarm|sarms|hcg|hgh|gh|deca|dbol|cipio|testo|bpc|diagnosticos|rp|receta|recetas|recetario|particular|particulares|ciclo|ciclos|posciclo|postciclo|dosis|'
            || 'dopaje|doping|vial|viales|ampolla|ampollas|peptido|peptidos|intramuscular|subcutanea|inyeccion|inyecciones|inyectable|'
            || 'inyectables|aplicacion|aplicaciones|comprimido|comprimidos|capsula|capsulas|posologia|semanal|semanales|quincenal|'
@@ -105,13 +105,20 @@ BEGIN
       RETURN TRUE;
     END IF;
     -- Cada práctica distinta se descuenta UNA vez. Las más largas primero: «testosterona total y libre» antes que «testosterona total».
+    -- Una práctica de dos letras («GH») vale, pero solo como palabra entera.
     FOR p IN SELECT y FROM (SELECT DISTINCT regexp_replace(mypump_estudios_plano(x), '\s+', ' ', 'g') AS y
-                              FROM jsonb_array_elements_text(p_practicas) x WHERE length(btrim(x)) >= 3) d
+                              FROM jsonb_array_elements_text(p_practicas) x WHERE length(btrim(x)) >= 2) d
               ORDER BY length(y) DESC, y LOOP
-      i := position(p IN v);
-      IF i > 0 THEN v := overlay(v PLACING ' | ' FROM i FOR length(p)); END IF;
+      IF length(p) < 3 THEN
+        IF p ~ '^[a-z0-9]{2}$' THEN v := regexp_replace(v, '\m' || p || '\M', ' | '); END IF;
+      ELSE
+        i := position(p IN v);
+        IF i > 0 THEN v := overlay(v PLACING ' | ' FROM i FOR length(p)); END IF;
+      END IF;
     END LOOP;
   END IF;
+  -- La resistencia a la insulina es un diagnóstico, no una indicación.
+  v := regexp_replace(v, '(resistencia a la insulina|insulino ?resistencia)', ' ', 'g');
   -- Pasada compacta: una palabra partida por el renglón («testoste-» / «rona») o con espacios entre letras.
   c := regexp_replace(v, '[^a-z0-9|]', '', 'g');
   RETURN v ~ k_sust
@@ -121,6 +128,8 @@ BEGIN
       OR v ~ '(inducid[oa]|secundari[oa] a|supresion del eje|bloqueo del eje|reduccion de danos)'
       OR v ~ k_dosis
       OR v ~ 'hormona de(l)? crecimiento'
+      OR v ~ '\mtren ace'
+      OR v ~ '\muso de hormonas?\M'
       OR v ~ '\m(t38|y42|f55|f1[0-9]|z72)\.?[0-9]?\M'
       -- Un papel por diagnóstico: más de un código (por categoría; «B12» no es un código) o la etiqueta repetida frena.
       OR (SELECT count(DISTINCT m[1]) FROM regexp_matches(v, '\m([a-z][0-9]{2})(\.[0-9]{1,2})?\M', 'g') m WHERE m[1] <> 'b12') > 1
@@ -677,25 +686,28 @@ BEGIN
 END;
 $$;
 
--- Envíos que quedaron en `error` y todavía no se le avisaron a Mati. Los marca como avisados: cada uno sale una vez.
+-- Envíos que quedaron en `error` y todavía no se le avisaron a Mati. NO los marca: el bot marca cada uno recién cuando
+-- el aviso salió bien (`mypump_estudios_error_avisado`); si el aviso falla, vuelve a salir en la pasada siguiente.
 CREATE OR REPLACE FUNCTION mypump_estudios_errores_nuevos()
-RETURNS JSONB
+RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT COALESCE(jsonb_agg(jsonb_build_object('id', s.id, 'cliente_id', s.cliente_id, 'intentos', s.intentos, 'error_detalle', s.error_detalle,
+           'archivos', (SELECT count(*) FROM mypump_estudios_archivos a WHERE a.envio_id = s.id)) ORDER BY s.actualizado_en, s.id), '[]'::JSONB)
+    FROM mypump_estudios_envios s WHERE s.estado = 'error' AND s.error_avisado_en IS NULL;
+$$;
+
+CREATE OR REPLACE FUNCTION mypump_estudios_error_avisado(p_id UUID)
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-DECLARE
-  v JSONB;
 BEGIN
-  WITH m AS (
-    UPDATE mypump_estudios_envios SET error_avisado_en = NOW()
-     WHERE estado = 'error' AND error_avisado_en IS NULL
-    RETURNING id, cliente_id, intentos, error_detalle,
-              (SELECT count(*) FROM mypump_estudios_archivos a WHERE a.envio_id = mypump_estudios_envios.id) AS archivos)
-  SELECT COALESCE(jsonb_agg(to_jsonb(m)), '[]'::JSONB) INTO v FROM m;
-  RETURN v;
+  UPDATE mypump_estudios_envios SET error_avisado_en = NOW() WHERE id = p_id AND estado = 'error' AND error_avisado_en IS NULL;
+  RETURN FOUND;
 END;
 $$;
+REVOKE ALL ON FUNCTION mypump_estudios_error_avisado(UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_estudios_error_avisado(UUID) TO service_role;
 
 -- De estas huellas, cuáles ya son una hoja guardada de ese alumno (para no duplicar al releer un envío tras una caída).
 CREATE OR REPLACE FUNCTION mypump_estudios_shas_guardados(p_cliente_id TEXT, p_shas TEXT[])
