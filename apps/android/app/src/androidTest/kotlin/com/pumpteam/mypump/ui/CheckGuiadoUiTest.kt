@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.ui
 
 import androidx.test.core.app.ActivityScenario
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pumpteam.mypump.MainActivity
 import com.pumpteam.mypump.reglas.CheckGuiado
@@ -70,6 +71,9 @@ class CheckGuiadoUiTest : PruebaUi() {
         p.quieto(400)
     }
 
+    /** v2: el avance se lee con palabras («Paso 2 de 6»), no solo en los segmentos. */
+    private fun avance(): String = p.textosBajo(etiqueta("cg-avance")).joinToString(" ")
+
     private fun titulo(): String = p.textosBajo(etiqueta("cg-titulo")).joinToString(" ")
 
     private fun esperarPaso(paso: CheckGuiado.Paso, catalogo: CheckGuiado.Catalogo = CheckGuiado.Catalogo.GENERAL) {
@@ -86,7 +90,7 @@ class CheckGuiadoUiTest : PruebaUi() {
         prender()
         sembrarSalud()
         abrirRevision()
-        // La tarjeta ocupa el lugar del check de siempre.
+        // La tarjeta reemplaza al check de siempre (y va primera: `laTarjetaEsLoPrimeroDeRevision`).
         p.nodo(etiqueta("check-guiado-tarjeta"))
         assertFalse(p.existe(etiqueta("enviar-check")))
         assertEquals(listOf(CheckGuiado.textoTarjeta(CheckGuiado.Estado.SIN_EMPEZAR)), p.textosBajo(etiqueta("check-guiado-texto")))
@@ -97,7 +101,7 @@ class CheckGuiadoUiTest : PruebaUi() {
 
         // 1. Peso: vacío no sigue; fuera de rango lo dice; válido sale por la cola de siempre, en el momento.
         esperarPaso(CheckGuiado.Paso.PESO)
-        assertEquals("Paso 1 de 6", p.descripcion(etiqueta("cg-avance")))
+        assertEquals("Paso 1 de 6", avance())
         assertFalse(p.habilitado(etiqueta("cg-seguir")))
         assertFalse("en el primer paso no hay Atrás", p.existe(etiqueta("cg-atras")))
         p.nodo(etiqueta("cg-peso-media"))
@@ -129,6 +133,12 @@ class CheckGuiadoUiTest : PruebaUi() {
         assertTrue(p.seleccionado(etiqueta("cg-escala-hambre-2")))
         assertFalse(p.existe(etiqueta("cg-falta")))
         Telefono.captura("cg-2-escalas-$tema")
+        // Con letra grande el contenido desliza: abajo de todo, la leyenda de la última escala queda entera arriba del botón.
+        p.desplazar(etiqueta("cg-paso-escalas"), 4000f)
+        p.esperar("la última escala, entera arriba del botón") {
+            p.nodo(etiqueta("cg-escala-adherencia-5"), ms = 0).boundsInRoot.bottom < p.nodo(etiqueta("cg-seguir"), ms = 0).boundsInRoot.top
+        }
+        Telefono.captura("cg-2-escalas-abajo-$tema")
         p.tocar(etiqueta("cg-seguir"))
 
         // 3. Fotos: sin las tres no sigue; se pueden dejar para después.
@@ -163,7 +173,7 @@ class CheckGuiadoUiTest : PruebaUi() {
 
         // 6. El resumen: lo contestado, la salud de 7 días y el envío.
         esperarPaso(CheckGuiado.Paso.RESUMEN)
-        assertEquals("Paso 6 de 6", p.descripcion(etiqueta("cg-avance")))
+        assertEquals("Paso 6 de 6", avance())
         assertTrue("78,4 kg" in p.textosBajo(etiqueta("cg-fila-peso")))
         assertTrue("4 de 5" in p.textosBajo(etiqueta("cg-fila-escalas")))
         assertTrue("2 de 5" in p.textosBajo(etiqueta("cg-fila-escalas-hambre")))
@@ -401,7 +411,7 @@ class CheckGuiadoUiTest : PruebaUi() {
         Telefono.captura("cg-8-tarjeta-enviado-completo")
         p.tocar(etiqueta("check-guiado-abrir"))
         esperarPaso(CheckGuiado.Paso.RESUMEN)
-        assertEquals("Paso 5 de 5", p.descripcion(etiqueta("cg-avance")))
+        assertEquals("Paso 5 de 5", avance())
         assertTrue("3 de 3" in p.textosBajo(etiqueta("cg-fila-fotos")))
         assertTrue("Retención de líquido o hinchazón" in p.textosBajo(etiqueta("cg-fila-senales")))
         assertTrue("todo bien" in p.textosBajo(etiqueta("cg-fila-nota")))
@@ -410,5 +420,55 @@ class CheckGuiadoUiTest : PruebaUi() {
         p.tocar(etiqueta("cg-cerrar"))
         p.esperarQueNoEste(etiqueta("check-guiado"))
         assertEquals(listOf("Cambiar algo"), p.textosBajo(etiqueta("check-guiado-abrir")))
+    }
+
+    /** v2: con la palanca prendida, la tarjeta del check es lo primero de Revisión y su botón es grande, de lado a lado y con texto. */
+    @Test
+    fun laTarjetaEsLoPrimeroDeRevision() {
+        prender()
+        abrirRevision()
+        p.nodo(etiqueta("check-guiado-abrir"))
+        val m = p.esperar("todo ubicado") {
+            listOf("check-guiado-tarjeta", "check-guiado-abrir", "tarjeta-recuperacion-revision", "tarjeta-progreso-revision", "seccion-fotos", "revision-lista")
+                .map { p.nodo(etiqueta(it), ms = 0).boundsInRoot }
+        }
+        val (tarjeta, boton, recuperacion, progreso, fotos) = m
+        val lista = m[5]
+        assertTrue("arriba de Recuperación", tarjeta.bottom <= recuperacion.top)
+        assertTrue("arriba de Tu progreso", tarjeta.bottom <= progreso.top)
+        assertTrue("arriba de las fotos", tarjeta.bottom <= fotos.top)
+        assertTrue("entera a la vista sin deslizar", tarjeta.top >= lista.top && tarjeta.bottom <= lista.bottom)
+        val densidad = InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density
+        assertTrue("el botón mide al menos 58 de alto", boton.height >= 58f * densidad - 1f)
+        assertTrue("el botón va de lado a lado de la tarjeta", boton.width >= tarjeta.width * 0.85f)
+        assertEquals(listOf("Empezar"), p.textosBajo(etiqueta("check-guiado-abrir")))
+        Telefono.captura("cg-0-revision-arriba-claro")
+    }
+
+    /** v2: el banner «Te falta tu check…» de las otras pestañas (ancla `check`) abre el check guiado directamente. */
+    @Test
+    fun elAnclaCheckAbreElFlujo() {
+        prender()
+        // Las fotos de la semana están: falta solo el check.
+        servidor.ponerFotos(mapOf(lunes to listOf("frente", "perfil", "espalda")))
+        guardarCuenta()
+        abrir()
+        p.esperar("se leyó la palanca y se pidió el check guiado") { servidor.a("mypump_check_guiado_get").firstOrNull() }
+        p.tocar(etiqueta("pestana-dieta"))
+        p.nodo(texto("Te falta tu check de la semana"))
+        p.tocar(etiqueta("banner-revision"))
+        // Sin tocar nada más: el check abierto en el primer paso (con las fotos subidas no hay paso de fotos).
+        esperarPaso(CheckGuiado.Paso.PESO)
+        assertEquals("Paso 1 de 5", avance())
+        assertEquals(listOf("Salir"), p.textosBajo(etiqueta("cg-cerrar")))
+        Telefono.captura("cg-10-ancla-abre-claro")
+        // «Salir» deja Revisión, con la tarjeta arriba.
+        p.tocar(etiqueta("cg-cerrar"))
+        p.esperarQueNoEste(etiqueta("check-guiado"))
+        p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
+        p.nodo(etiqueta("check-guiado-tarjeta"))
+        // Y no se vuelve a abrir solo.
+        p.quieto(1500)
+        assertFalse(p.existe(etiqueta("check-guiado")))
     }
 }

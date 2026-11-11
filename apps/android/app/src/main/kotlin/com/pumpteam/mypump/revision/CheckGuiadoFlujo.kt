@@ -53,6 +53,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -269,7 +270,7 @@ internal fun CheckGuiadoFlujo(
                     PasoListo(alCerrar = alCerrar)
                     return@Column
                 }
-                BarraCheck(indice, pasos.size, ::cerrar)
+                BarraCheck(indice, pasos.size, conAtras = indice > 0 || desdeResumen, alCerrar = ::cerrar, alAtras = ::atras)
                 AnimatedContent(
                     targetState = paso,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -282,7 +283,7 @@ internal fun CheckGuiadoFlujo(
                                 .fillMaxSize()
                                 .verticalScroll(rememberScrollState())
                                 .padding(horizontal = EstiloCheck.margen)
-                                .padding(top = Espacio.s, bottom = Espacio.l)
+                                .padding(top = Espacio.s, bottom = Espacio.xl)
                                 .testTag("cg-paso-${p.clave}"),
                             verticalArrangement = Arrangement.spacedBy(Espacio.l),
                         ) {
@@ -356,10 +357,8 @@ internal fun CheckGuiadoFlujo(
                     },
                     esProblema = aviso != null,
                     omitir = CheckGuiado.omitir(paso)?.takeIf { !desdeResumen || paso == Paso.PESO },
-                    conAtras = indice > 0 || desdeResumen,
                     alSeguir = ::seguir,
                     alOmitir = ::omitir,
-                    alAtras = ::atras,
                 )
             }
         }
@@ -372,41 +371,58 @@ private val GuardadorBorrador: Saver<CheckGuiado.Borrador, String> = Saver(
     restore = { texto -> runCatching { CheckGuiado.Borrador.desde(ValorJson.parsear(texto)) }.getOrNull() },
 )
 
-/** Arriba: cerrar, el avance (hasta el paso de ahora, inclusive) y «2 de 5». */
+/**
+ * Arriba: «Salir» y «Atrás» con texto (ningún botón es solo un ícono), «Paso 2 de 5» con palabras y, debajo, el avance en
+ * segmentos (hasta el paso de ahora, inclusive).
+ */
 @Composable
-private fun BarraCheck(indice: Int, total: Int, alCerrar: () -> Unit) {
+private fun BarraCheck(indice: Int, total: Int, conAtras: Boolean, alCerrar: () -> Unit, alAtras: () -> Unit) {
     val c = MyPump.colores
-    Row(
-        Modifier.fillMaxWidth().padding(start = Espacio.s, end = EstiloCheck.margen, top = Espacio.xs, bottom = Espacio.xs),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = EstiloCheck.margen).padding(top = Espacio.xs, bottom = Espacio.xs),
+        verticalArrangement = Arrangement.spacedBy(Espacio.xs),
     ) {
-        Box(
-            Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .clickable(role = Role.Button, onClick = alCerrar)
-                .semantics { contentDescription = "Cerrar" }
-                .testTag("cg-cerrar"),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(Modifier.size(36.dp).clip(CircleShape).background(c.campo), contentAlignment = Alignment.Center) {
-                Icon(Iconos.Cerrar, contentDescription = null, tint = c.texto, modifier = Modifier.size(18.dp))
-            }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+            BotonBarraCheck("Salir", Iconos.Cerrar, alCerrar, Modifier.testTag("cg-cerrar"))
+            if (conAtras) BotonBarraCheck("Atrás", null, alAtras, Modifier.testTag("cg-atras"))
+            Text(
+                "Paso ${indice + 1} de $total",
+                style = MaterialTheme.typography.bodyLarge.merge(Letras.cifras),
+                fontWeight = FontWeight.SemiBold,
+                color = c.textoSecundario,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+                modifier = Modifier.weight(1f).testTag("cg-avance"),
+            )
         }
-        AvanceCheck(total, indice + 1, Modifier.weight(1f).testTag("cg-avance"), descripcion = "Paso ${indice + 1} de $total")
-        Text(
-            "${indice + 1} de $total",
-            style = MaterialTheme.typography.bodyMedium.merge(Letras.cifras),
-            fontWeight = FontWeight.SemiBold,
-            color = c.textoSecundario,
-            maxLines = 1,
-            modifier = Modifier.testTag("cg-cuenta").clearAndSetSemantics {},
-        )
+        // Los segmentos repiten lo que ya dice el texto: para el lector de pantalla no existen.
+        AvanceCheck(total, indice + 1, Modifier.fillMaxWidth())
     }
 }
 
-/** Abajo, fijo: lo que falta (si hay), el botón principal y las salidas discretas. */
+/** Un botón de la barra de arriba: cápsula gris de 48 con texto (y la X en «Salir»). */
+@Composable
+private fun BotonBarraCheck(texto: String, icono: ImageVector?, alTocar: () -> Unit, modifier: Modifier = Modifier) {
+    val c = MyPump.colores
+    Row(
+        modifier
+            .heightIn(min = 48.dp)
+            .clip(CircleShape)
+            .background(c.campo)
+            .clickable(role = Role.Button, onClick = alTocar)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (icono != null) Icon(icono, contentDescription = null, tint = c.texto, modifier = Modifier.size(16.dp))
+        Text(texto, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = c.texto, maxLines = 1)
+    }
+}
+
+/**
+ * Abajo, fijo: lo que falta (si hay), el botón principal (uno solo por pantalla) y, debajo, la salida discreta del paso
+ * («Hoy no me pesé», «Las subo después»), también de ancho completo y con texto.
+ */
 @Composable
 private fun PieCheck(
     paso: Paso,
@@ -415,16 +431,14 @@ private fun PieCheck(
     aviso: String?,
     esProblema: Boolean,
     omitir: String?,
-    conAtras: Boolean,
     alSeguir: () -> Unit,
     alOmitir: () -> Unit,
-    alAtras: () -> Unit,
 ) {
     val c = MyPump.colores
     Column(
         Modifier.fillMaxWidth().padding(horizontal = EstiloCheck.margen).padding(top = Espacio.xs, bottom = Espacio.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Espacio.xxs),
+        verticalArrangement = Arrangement.spacedBy(Espacio.xs),
     ) {
         if (aviso != null) {
             Text(
@@ -433,22 +447,11 @@ private fun PieCheck(
                 fontWeight = FontWeight.Medium,
                 color = if (esProblema) c.alerta else c.textoSecundario,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = Espacio.xs).testTag("cg-falta"),
+                modifier = Modifier.testTag("cg-falta"),
             )
         }
         BotonPrincipalCheck(principal, alSeguir, Modifier.testTag(if (paso == Paso.RESUMEN) "cg-enviar" else "cg-seguir"), habilitado = habilitado)
-        if (conAtras || omitir != null) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (conAtras) SalidaDiscretaCheck("Atrás", alAtras, Modifier.testTag("cg-atras"))
-                Spacer(Modifier.weight(1f))
-                if (omitir != null) SalidaDiscretaCheck(omitir, alOmitir, Modifier.testTag("cg-omitir"))
-                // Sola, la salida va al centro.
-                if (!conAtras) Spacer(Modifier.weight(1f))
-            }
-        } else {
-            // El botón queda a la misma altura en todos los pasos.
-            Spacer(Modifier.height(48.dp))
-        }
+        if (omitir != null) SalidaDiscretaCheck(omitir, alOmitir, Modifier.testTag("cg-omitir"))
     }
 }
 

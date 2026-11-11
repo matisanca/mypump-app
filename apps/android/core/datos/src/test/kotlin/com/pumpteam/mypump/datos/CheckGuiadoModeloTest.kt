@@ -313,4 +313,27 @@ class CheckGuiadoModeloTest {
         assertFalse(m.guiadoPrendido.value)
         assertTrue(t.llamadas.isEmpty())
     }
+
+    /** v2: si el check está abierto lo sabe el modelo (una recreación de la pantalla no lo cierra) y solo abre con la palanca. */
+    @Test
+    fun elFlujoAbiertoViveEnElModeloYSoloConLaPalanca() = enUnHilo { alcance ->
+        val a = armar(Servidor(), alcance)
+        assertNull(a.m.flujoGuiado.value)
+        assertFalse(a.m.revisionCargada.value)
+        a.m.abrirFlujoGuiado()
+        assertEquals(ModeloRevision.FlujoGuiado(null), a.m.flujoGuiado.value)
+        a.m.abrirFlujoGuiado(Paso.FOTOS)
+        assertEquals(Paso.FOTOS, a.m.flujoGuiado.value?.paso)
+        a.m.cerrarFlujoGuiado()
+        assertNull(a.m.flujoGuiado.value)
+        // Un aviso que abre el check espera a saber si ya se envió.
+        a.m.cargarRevision()
+        assertTrue(a.m.revisionCargada.value)
+        // Se apaga la palanca con el check abierto: se cierra, y apagada no vuelve a abrir.
+        a.m.abrirFlujoGuiado()
+        a.m.recordarPalancaGuiado(false)
+        assertNull(a.m.flujoGuiado.value)
+        a.m.abrirFlujoGuiado()
+        assertNull(a.m.flujoGuiado.value)
+    }
 }

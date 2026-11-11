@@ -3,12 +3,14 @@ package com.pumpteam.mypump.revision
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloFotos
 import com.pumpteam.mypump.datos.ModeloRevision
@@ -44,8 +46,8 @@ internal fun fotosDeLaSemana(modelo: ModeloFotos?): FotosDeLaSemana {
 }
 
 /**
- * La tarjeta del check guiado en Revisión (2.3.0, con la palanca `check_guiado`): ocupa el lugar de la sección «Check de la
- * semana» y abre el check de un paso por pantalla ([CheckGuiadoFlujo]). El texto y el botón salen de `CheckGuiado.estado`:
+ * La tarjeta del check guiado en Revisión (2.3.0, con la palanca `check_guiado`): va primera, arriba de todo, y abre el
+ * check de un paso por pantalla ([CheckGuiadoFlujo]). El texto y el botón salen de `CheckGuiado.estado`:
  * sin empezar, a medias (se retoma donde quedó), enviado, o enviado sin las fotos (abre directo en las fotos).
  */
 @Composable
@@ -87,7 +89,7 @@ internal fun CheckGuiadoTarjeta(
             val abrir = { alAbrir(if (estado == CheckGuiado.Estado.ENVIADO_SIN_FOTOS) CheckGuiado.Paso.FOTOS else null) }
             // El verde, solo para lo que avanza: con todo enviado, «Cambiar algo» es un botón secundario.
             if (estado == CheckGuiado.Estado.ENVIADO) {
-                BotonSecundario(texto, alTocar = abrir, modifier = Modifier.testTag("check-guiado-abrir"))
+                BotonSecundario(texto, alTocar = abrir, modifier = Modifier.heightIn(min = 58.dp).testTag("check-guiado-abrir"))
             } else {
                 BotonPrincipalCheck(texto, alTocar = abrir, modifier = Modifier.testTag("check-guiado-abrir"))
             }

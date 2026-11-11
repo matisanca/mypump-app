@@ -107,22 +107,24 @@ internal fun BotonPrincipalCheck(texto: String, alTocar: () -> Unit, modifier: M
     }
 }
 
-/** La salida discreta («Hoy no me pesé», «Atrás»): solo texto, con una zona de toque de 48. */
+/** La salida discreta («Hoy no me pesé», «Las subo después»): un botón de ancho completo con texto, zona de toque de 48. */
 @Composable
 internal fun SalidaDiscretaCheck(texto: String, alTocar: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier
+            .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(CircleShape)
+            .background(MyPump.colores.campo.copy(alpha = 0.6f))
             .clickable(role = Role.Button, onClick = alTocar)
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(texto, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MyPump.colores.textoSecundario)
+        Text(texto, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MyPump.colores.texto, textAlign = TextAlign.Center)
     }
 }
 
-/** El avance: un segmento por paso, los hechos en verde lleno y el resto en el riel. Para TalkBack, «Paso 2 de 5». */
+/** El avance: un segmento por paso, los hechos en verde lleno y el resto en el riel. Con [descripcion], TalkBack la lee. */
 @Composable
 internal fun AvanceCheck(total: Int, hechos: Int, modifier: Modifier = Modifier, descripcion: String? = null) {
     val c = MyPump.colores

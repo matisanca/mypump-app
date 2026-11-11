@@ -102,8 +102,31 @@ class ModeloRevision(
     fun recordarPalancaGuiado(prendida: Boolean) {
         if (token == null || prendida == _guiadoPrendido.value) return
         _guiadoPrendido.value = prendida
+        if (!prendida) _flujoGuiado.value = null
         disco?.guardar(ARCHIVO_PALANCA_GUIADO, ValorJson.Booleano(prendida))
     }
+
+    /** El check guiado abierto en pantalla y, si se pidió, el paso en el que abre (las fotos, desde «Subir fotos»). */
+    data class FlujoGuiado(val paso: CheckGuiado.Paso? = null)
+
+    /**
+     * Si el check guiado está abierto. Vive en el modelo y no en la pantalla: una recreación de la Activity (cambio de tema,
+     * de tamaño de letra, dos seguidas con el teléfono lento) no lo cierra. Con la palanca apagada no abre.
+     */
+    private val _flujoGuiado = MutableStateFlow<FlujoGuiado?>(null)
+    val flujoGuiado: StateFlow<FlujoGuiado?> = _flujoGuiado.asStateFlow()
+
+    fun abrirFlujoGuiado(paso: CheckGuiado.Paso? = null) {
+        if (_guiadoPrendido.value) _flujoGuiado.value = FlujoGuiado(paso)
+    }
+
+    fun cerrarFlujoGuiado() {
+        _flujoGuiado.value = null
+    }
+
+    /** Ya se supo del servidor (o se intentó) cómo está el check de esta semana: un aviso que abre el check espera a esto. */
+    private val _revisionCargada = MutableStateFlow(false)
+    val revisionCargada: StateFlow<Boolean> = _revisionCargada.asStateFlow()
 
     /** Lo último que dijo `mypump_check_guiado_get` (queda en el disco: sin señal, la lista de «¿Notaste algo?» no cambia). */
     private val _guiado = MutableStateFlow(GuiadoServidor.desde(disco?.leer(ARCHIVO_GUIADO)?.let { ValorJson.desde(it) }))
@@ -175,6 +198,7 @@ class ModeloRevision(
         // Un check de esta semana que todavía no salió también (se mandó sin señal): si no, se vería sin enviar.
         aplicarCheckPendiente()
         if (prendido) aplicarGuiadoPendiente()
+        _revisionCargada.value = true
     }
 
     /** Lo marcado en «¿Notaste algo?» que todavía no salió gana sobre lo que trae el servidor, como el check. */
