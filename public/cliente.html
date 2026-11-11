@@ -718,6 +718,60 @@ main{padding:var(--space-4)}
 .recordatorio-semanal .rs-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .recordatorio-semanal .rs-tit{font-size:14px;font-weight:600;color:var(--color-text-primary)}
 .recordatorio-semanal .rs-sub{font-size:12px;color:var(--color-text-muted);line-height:1.35}
+/* «Pump del día» (metas, 2.3.0) */
+:root{--pump-vivo:#3fc152}
+[data-theme="dark"]{--pump-vivo:#7fdc85}
+.pump-card{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3);margin-bottom:var(--space-3);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:16px}
+.pump-card.is-lleno{border-color:color-mix(in oklab,var(--color-brand) 45%,var(--color-border))}
+.pump-fila{display:flex;align-items:center;gap:var(--space-3)}
+.pump-fila>svg{flex:none}
+.pump-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pump-eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-brand)}
+.pump-num{font-family:var(--font-num);color:var(--color-text-muted);font-size:14px}
+.pump-num strong{font-size:30px;line-height:1.05;font-weight:800;color:var(--color-text-primary);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.pump-estado{font-size:14px;font-weight:600;color:var(--color-text-primary)}
+.pump-sub{font-size:12.5px;color:var(--color-text-muted);line-height:1.35}
+.pump-racha{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--color-alerta)}
+.pump-conectar{align-self:flex-start}
+.pump-semana{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding-top:var(--space-1);border-top:1px solid var(--color-border)}
+.ps-dia{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;font-weight:600;color:var(--color-text-muted)}
+.ps-sin_dato,.ps-futuro{opacity:.45}
+.ps-hoy span,.ps-cumplido span{color:var(--color-text-primary)}
+.pump-torso .pt-campo{fill:color-mix(in oklab,var(--color-text-muted) 20%,transparent)}
+.pump-torso .pt-trazo path{fill:none;stroke:color-mix(in oklab,var(--color-text-muted) 55%,transparent);stroke-linecap:round;stroke-linejoin:round}
+.pump-torso .pt-sobre path{stroke:#fff}
+[data-theme="dark"] .pump-torso .pt-sobre path{stroke:#040E04}
+.pump-torso.is-lleno{filter:drop-shadow(0 0 8px color-mix(in oklab,var(--color-brand) 45%,transparent))}
+.pt-ola.is-viva{animation:ptOla 2.8s linear 2}
+@keyframes ptOla{to{transform:translateX(-312px)}}
+.ritmo-peso{margin-top:var(--space-2);padding:10px 12px;border-radius:12px;background:var(--color-brand-subtle);display:flex;flex-direction:column;gap:2px}
+.rp-meta{font-size:14px;font-weight:600;color:var(--color-text-primary)}
+.rp-ten{font-size:13px;color:var(--color-text-secondary)}
+.rp-ok{font-size:13px;font-weight:600;color:var(--color-brand)}
+.pump-cel{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;padding:24px}
+.pc-fondo{position:absolute;inset:0;background:radial-gradient(circle at 50% 42%,color-mix(in oklab,var(--color-brand) 28%,transparent),transparent 60%),color-mix(in oklab,var(--color-bg-primary) 86%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);animation:pcIn .25s ease-out both}
+.pc-centro{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;max-width:340px}
+.pc-figura{position:relative;width:200px;height:200px;display:grid;place-items:center;margin-bottom:8px}
+.pc-halo{position:absolute;inset:6px;border-radius:50%;background:radial-gradient(circle,color-mix(in oklab,var(--pump-vivo) 45%,transparent),transparent 68%);animation:pcIn .6s ease-out 1s both}
+.pc-onda{position:absolute;inset:16px;border-radius:50%;border:3px solid var(--pump-vivo);opacity:0;animation:pcOnda .9s cubic-bezier(.2,.7,.3,1) 1s both}
+.pc-torso{position:relative;animation:pcBombeo .55s cubic-bezier(.3,1.6,.5,1) 1s both}
+.pc-torso .pt-ola{animation:pcLlenar .75s cubic-bezier(.25,.8,.3,1) .25s both}
+.pc-torso .pt-sobre{animation:pcIn .3s ease-out .95s both}
+.pc-chispas{position:absolute;left:50%;top:50%}
+.pc-chispas i{position:absolute;width:6px;height:6px;margin:-3px;border-radius:50%;background:var(--pump-vivo);opacity:0;animation:pcChispa 1.6s cubic-bezier(.15,.7,.3,1) calc(1s + var(--d)) both}
+.pc-chispas i:nth-child(3n){background:var(--color-brand);width:4px;height:4px}
+.pc-tit{font-family:var(--font-display);font-size:34px;font-weight:800;letter-spacing:-.01em;color:var(--color-text-primary);animation:pcSube .4s ease-out 1.15s both}
+.pc-sub{font-size:16px;color:var(--color-text-secondary);animation:pcSube .4s ease-out 1.25s both}
+.pc-racha{display:inline-flex;align-items:center;gap:5px;font-size:15px;font-weight:600;color:var(--color-alerta);animation:pcSube .4s ease-out 1.35s both}
+.pc-seguir{margin-top:16px;min-width:180px;animation:pcSube .4s ease-out 1.45s both}
+.pump-cel.is-saliendo{transition:opacity .2s;opacity:0}
+@keyframes pcIn{from{opacity:0}}
+@keyframes pcSube{from{opacity:0;transform:translateY(10px)}}
+@keyframes pcLlenar{from{transform:translateY(60px)}}
+@keyframes pcBombeo{50%{transform:scale(1.09)}}
+@keyframes pcOnda{0%{opacity:.9;transform:scale(.55)}100%{opacity:0;transform:scale(1.5)}}
+@keyframes pcChispa{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.4)}}
+@media (prefers-reduced-motion:reduce){.pt-ola.is-viva,.pump-cel *,.pc-fondo{animation:none!important}.pc-onda,.pc-chispas{display:none}}
 .recordatorio-semanal .rs-chev{flex:none;color:var(--color-text-muted);opacity:.6;display:grid;place-items:center}
 .prog-banner{background:var(--color-brand-subtle);border:1px solid var(--color-brand);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);margin-bottom:var(--space-3);font-size:13px;line-height:1.4;color:var(--color-text-primary)}
 /* F3 — Start + cronómetro de sesión */
@@ -1598,6 +1652,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/gimnasio.js"></script>
 <script src="/js/gimnasio-cola.js"></script>
 <script src="/js/gimnasio-ui.js"></script>
+<script src="/js/metas.js"></script>
 <script src="/js/tecnica.js"></script>
 <script src="/js/tecnica-cola.js"></script>
 <script src="/js/tecnica-ui.js"></script>
@@ -1796,6 +1851,7 @@ async function leerPalancaWeb230() {
   _gimPalanca(cfg);
   _tecPalanca(cfg);
   _elegirHorarioPalanca(cfg);
+  _metasPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -4279,6 +4335,7 @@ function renderTrain() {
   _csEventos();
   csPintarPanel();
   syncCronoTick();   // F3 — arrancar/parar el tick del cronómetro según estado
+  try { _pumpPintar(); } catch (_) {}
 }
 
 /* F3 — Cronómetro de la SESIÓN (no confundir con el timer de descanso).
@@ -9450,6 +9507,7 @@ function renderSalud() {
   ].join('');
 
   root.innerHTML = `
+    <div id="myday-pump"></div>
     <div id="myday-recup"></div>
     ${recHtml}
     ${suenoHtml}
@@ -9471,6 +9529,7 @@ function renderSalud() {
   // después: si el chequeo se colgara, el resto de la pantalla ya está.
   try { renderAppleHealthEstado(); } catch (e) {}
   try { renderNotifPrefs(); } catch (e) {}
+  try { _pumpEnSalud(); } catch (_) {}
   const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('revision');
   const tg = document.getElementById('sdToggleRec');
   if (tg) tg.onclick = async () => {
@@ -9864,6 +9923,7 @@ function renderMydayPeso() {
         <div class="peso-hint">En ayunas al despertar, siempre en la misma condición.</div>
         ${serie.length >= 2 ? pesoChartSVG(serie, 312, 110) : ''}
         ${estado}
+        ${_ritmoPesoHTML(serie)}
       </div>
     </div>`;
 
@@ -10102,7 +10162,261 @@ function _pendientesSemana() {
   return { faltaCheck, faltanFotos, total: (faltaCheck ? 1 : 0) + (faltanFotos ? 1 : 0) };
 }
 
+/* ═══════ «PUMP DEL DÍA» Y RITMO DE PESO (metas del plan, 2.3.0) ═══════
+   Detrás de `metas_pasos`: apagada si el servidor no la manda. Sin meta en el plan
+   (meta_pasos_dia, ritmo_peso_kg_semana en la raíz de la dieta), no hay nada: la
+   web nunca inventa una meta. Reglas y textos en js/metas.js (vectores comunes con
+   las apps); esto es solo la pantalla. Gemelo de PumpDelDiaVistas.swift. */
+let _metasOn = false;
+// Solo en hosts de prueba, para capturas: ?metas=muestra|sinsalud[&pasos=N&pasosLuego=M].
+const _metasMuestra = (() => {
+  try {
+    if (!_hostDePrueba()) return null;
+    const q = new URLSearchParams(location.search), modo = q.get('metas');
+    if (modo !== 'muestra' && modo !== 'sinsalud') return null;
+    const n = window.Metas.numero(hoyLocal()), pasos = {};
+    if (modo === 'muestra') {
+      [11200, 8600, 10400, 12100, 10050].forEach((v, i) => { pasos[window.Metas.texto(n - 5 + i)] = v; });
+      pasos[hoyLocal()] = Number(q.get('pasos')) || 7420;
+    }
+    return { pasos, conectado: modo === 'muestra', luego: Number(q.get('pasosLuego')) || 0, celebrados: [] };
+  } catch (_) { return null; }
+})();
+function _metasPalanca(cfg) {
+  const on = !!(cfg && typeof cfg === 'object' && cfg.metas_pasos === true);
+  if (on === _metasOn) return;
+  _metasOn = on;
+  if (on && !(STATE.salud || []).some(r => r.tipo === 'pasos')) loadSalud().then(_pumpRepintar).catch(() => {});
+  _pumpRepintar();
+}
+function _metasPlan() {
+  if (_metasMuestra) return { metaPasos: 10000, ritmo: -0.5, vacio: false };
+  if (!_metasOn || !DIET || !window.Metas) return null;
+  const m = window.Metas.metasDe(DIET);
+  return m.vacio ? null : m;
+}
+function _pumpPasos() {
+  if (_metasMuestra) return _metasMuestra.pasos;
+  const p = {};
+  new Set((STATE.salud || []).filter(r => r.tipo === 'pasos').map(r => r.fecha)).forEach(f => {
+    const v = _saludValor('pasos', f);
+    if (v != null && isFinite(v)) p[f] = v;
+  });
+  return p;
+}
+/* null sin meta de pasos; si no, la vista y si hay Salud (conectada, o pasos de la última semana). */
+function _pumpEstado() {
+  const m = _metasPlan();
+  if (!m || m.metaPasos == null) return null;
+  const pasos = _pumpPasos(), hoy = hoyLocal(), M = window.Metas;
+  const v = M.vista(pasos, m.metaPasos, hoy);
+  if (!v) return null;
+  const n = M.numero(hoy);
+  const reciente = Object.keys(pasos).some(f => { const k = M.numero(f); return k != null && k > n - 7 && k <= n; });
+  const native = !!(window.MyPumpHealth && window.MyPumpHealth.isAvailable());
+  const conectado = _metasMuestra ? _metasMuestra.conectado : (reciente || (native && window.MyPumpHealth.isConnected()));
+  return { v, conectado, native };
+}
+// Lo celebrado, por cuenta y en este navegador. Sin almacenamiento, se celebra a lo sumo una vez por visita.
+const _pumpClave = () => { let h = 5381; for (const c of String(TOKEN || '')) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return 'mypump-metas-' + h.toString(36); };
+let _pumpMemoria = [];
+function _pumpCelebrados() {
+  if (_metasMuestra) return _metasMuestra.celebrados;
+  // Lo guardado más lo de esta visita: si setItem falla (cuota llena), la memoria evita celebrar en cada repintada.
+  let a = [];
+  try { a = JSON.parse(localStorage.getItem(_pumpClave()) || '[]'); } catch (_) {}
+  return Array.from(new Set((Array.isArray(a) ? a : []).concat(_pumpMemoria))).sort();
+}
+function _pumpMarcar(hoy) {
+  const c = window.Metas.marcar(_pumpCelebrados(), hoy);
+  _pumpMemoria = c;
+  if (_metasMuestra) { _metasMuestra.celebrados = c; return; }
+  try { localStorage.setItem(_pumpClave(), JSON.stringify(c)); } catch (_) {}
+}
+
+/* El torso del logo (public/icons/logo.svg, grilla de 512) que se llena de verde desde la cintura. */
+const _PUMP_TRAZOS = [
+  'M110,195C130,165 175,145 210,150L256,178L302,150C337,145 382,165 402,195L402,250C395,270 380,280 365,282L350,282L340,320L350,360L332,405L296,432L256,442L216,432L180,405L162,360L172,320L162,282L147,282C132,280 117,270 110,250Z',
+  'M210,195C195,215 195,245 220,265L250,275', 'M302,195C317,215 317,245 292,265L262,275', 'M256,282L256,405',
+  'M200,312L312,312', 'M195,348L317,348', 'M190,385L322,385',
+];
+let _pumpN = 0;
+function _torsoSVG(fraccion, lado, { vivo = false, detalle = true } = {}) {
+  const id = 'pt' + (++_pumpN);
+  const f = Math.max(0, Math.min(1, Number(fraccion) || 0));
+  const lleno = f >= 1;
+  // 0 es la cintura (442) y 1 los hombros (145): un 50 % se ve a mitad del torso.
+  const y = lleno ? 120 : 442 - f * 297;
+  const amp = lleno || f <= 0 ? 0 : 8;
+  const pts = [];
+  for (let x = -214; x <= 726; x += 13) pts.push(`${x},${(y + amp * Math.sin((x - 98) / 312 * 2 * Math.PI)).toFixed(1)}`);
+  const ola = `M-214,470L${pts.join('L')}L726,470Z`;
+  const ancho = Math.max(0.028 * 316, 1.4 * 316 / lado).toFixed(1);
+  const trazos = _PUMP_TRAZOS.map(d => `<path d="${d}"/>`).join('');
+  return `<svg class="pump-torso${lleno ? ' is-lleno' : ''}" viewBox="98 135.5 316 316" width="${lado}" height="${lado}" aria-hidden="true" focusable="false">
+    <defs><clipPath id="${id}c"><path d="${_PUMP_TRAZOS[0]}"/></clipPath><clipPath id="${id}n"><rect x="0" y="${y}" width="512" height="400"/></clipPath>
+    <linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--pump-vivo)"/><stop offset="1" style="stop-color:var(--color-brand)"/></linearGradient></defs>
+    <path class="pt-campo" d="${_PUMP_TRAZOS[0]}"/>
+    <g clip-path="url(#${id}c)"><path class="pt-ola${vivo && amp ? ' is-viva' : ''}" d="${ola}" fill="url(#${id}g)"/></g>
+    ${detalle ? `<g class="pt-trazo" stroke-width="${ancho}">${trazos}</g><g class="pt-trazo pt-sobre" stroke-width="${ancho}" clip-path="url(#${id}n)">${trazos}</g>` : ''}
+  </svg>`;
+}
+const _PUMP_LLAMA = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.2 1-3.8 2.4-5.1.2 1.6 1 2.6 2.1 3.1C11 8.6 11.3 5.2 12 2z"/></svg>';
+
+function _pumpTarjeta(e, enSalud) {
+  const { v, conectado, native } = e, T = window.Metas.T;
+  const semana = `<div class="pump-semana" aria-hidden="true">${v.semana.map(d => {
+    const fr = d.estado === 'cumplido' ? 1 : d.estado === 'hoy' ? v.fraccion : 0;
+    return `<div class="ps-dia ps-${d.estado}">${_torsoSVG(fr, 22, { detalle: false })}<span>${d.inicial}</span></div>`;
+  }).join('')}</div>`;
+  if (!conectado) {
+    const boton = native ? `<button class="btn-secondary pump-conectar" id="pumpConectar" data-test="pump-conectar">${T.conectarBoton}</button>` : '';
+    return `<div class="pump-card" id="pumpDelDia" data-test="pump-del-dia" role="group" aria-label="${T.nombre}">
+      <div class="pump-fila">${_torsoSVG(0, 64)}<div class="pump-txt">
+        <div class="pump-eyebrow">${T.nombre}</div>
+        <div class="pump-estado">${T.sinSalud(v.meta)}</div>
+        ${native ? `<div class="pump-sub">${T.conectar}</div>` : ''}</div></div>${boton}</div>`;
+  }
+  const racha = T.racha(v.racha);
+  return `<div class="pump-card${v.cumplido ? ' is-lleno' : ''}" id="pumpDelDia" data-test="pump-del-dia" role="group" aria-label="${T.accesible(v)}">
+    <div class="pump-fila">${_torsoSVG(v.fraccion, 76, { vivo: true })}
+      <div class="pump-txt" aria-hidden="true">
+        <div class="pump-eyebrow">${T.nombre}</div>
+        <div class="pump-num"><strong>${window.Metas.miles(v.pasosHoy)}</strong> <span>${T.deMeta(v)}</span></div>
+        <div class="pump-estado">${T.estado(v)}</div>
+        ${racha ? `<div class="pump-racha" data-test="pump-racha">${_PUMP_LLAMA}${racha}</div>` : ''}
+      </div></div>
+    ${semana}
+    ${enSalud ? `<div class="pump-sub">${T.lineaSalud(v.meta, v.promedio7)}</div>` : ''}
+  </div>`;
+}
+function _pumpEnganchar(host) {
+  const b = host && host.querySelector('#pumpConectar');
+  if (b) b.addEventListener('click', async () => {
+    b.disabled = true;
+    await _conectarSalud(b, window.Metas.T.conectarBoton, () => loadSalud().then(_pumpRepintar));
+  });
+}
+/* En Entreno, arriba de todo (abajo del recordatorio semanal). Se llama después de cada render de escena. */
+// A la medianoche, con la página abierta, la tarjeta pasa al día nuevo.
+let _pumpMedianoche = null;
+function _pumpAgendarMedianoche() {
+  if (_pumpMedianoche) return;
+  const a = new Date(), m = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 1, 0, 0, 5);
+  _pumpMedianoche = setTimeout(() => { _pumpMedianoche = null; _pumpRepintar(); }, m - a);
+}
+function _pumpPintar() {
+  document.querySelectorAll('#scene-train > #pumpDelDia').forEach(el => el.remove());
+  const e = _pumpEstado();
+  if (e) _pumpAgendarMedianoche();
+  if (!e || STATE.scene !== 'train') return;
+  const host = document.getElementById('scene-train');
+  if (!host) return;
+  const t = document.createElement('div');
+  t.innerHTML = _pumpTarjeta(e, false);
+  const card = t.firstElementChild;
+  const guia = host.querySelector(':scope > #guiaHost');
+  host.insertBefore(card, guia ? guia.nextSibling : host.firstChild);
+  _pumpEnganchar(card);
+  _pumpQuizasCelebrar(e);
+}
+function _pumpEnSalud() {
+  const el = document.getElementById('myday-pump');
+  if (!el) return;
+  const e = _pumpEstado();
+  el.innerHTML = e ? _pumpTarjeta(e, true) : '';
+  _pumpEnganchar(el);
+}
+function _pumpRepintar() {
+  try { _pumpPintar(); } catch (_) {}
+  try { if (STATE.scene === 'salud') _pumpEnSalud(); } catch (_) {}
+  try { if (STATE.scene === 'cuerpo') renderMydayPeso(); } catch (_) {}
+}
+
+/* «Pump lleno»: una sola vez por día, con la app a la vista. */
+let _pumpEspera = null;
+function _pumpQuizasCelebrar(e) {
+  const hoy = hoyLocal();
+  if (_pumpEspera || document.querySelector('.pump-cel') || document.visibilityState !== 'visible') return;
+  if (!e.conectado || !window.Metas.debeCelebrar(_pumpCelebrados(), hoy, e.v.pasosHoy, e.v.meta)) return;
+  // Un respiro: que se vea la tarjeta llena antes de la fiesta.
+  _pumpEspera = setTimeout(() => {
+    _pumpEspera = null;
+    const ahora = _pumpEstado();
+    if (!ahora || STATE.scene !== 'train' || document.visibilityState !== 'visible') return;
+    if (!window.Metas.debeCelebrar(_pumpCelebrados(), hoyLocal(), ahora.v.pasosHoy, ahora.v.meta)) return;
+    _pumpMarcar(hoyLocal());
+    _pumpCelebrar(ahora.v);
+  }, 900);
+}
+function _pumpCelebrar(v) {
+  const T = window.Metas.T;
+  const reducir = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const racha = T.celebracionRacha(v.racha);
+  // 44 chispas fijas (sin azar: se ve igual cada vez).
+  const chispas = reducir ? '' : Array.from({ length: 44 }, (_, i) => {
+    const a = i * 137.5 * Math.PI / 180, r = 90 + (i * 37 % 70);
+    return `<i style="--dx:${(Math.cos(a) * r).toFixed(0)}px;--dy:${(Math.sin(a) * r).toFixed(0)}px;--d:${(i % 5) * 40}ms"></i>`;
+  }).join('');
+  const el = document.createElement('div');
+  el.className = 'pump-cel' + (reducir ? ' is-quieta' : '');
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-labelledby', 'pumpCelTit');
+  el.setAttribute('aria-describedby', 'pumpCelSub');
+  el.dataset.test = 'pump-celebracion';
+  el.innerHTML = `<div class="pc-fondo"></div>
+    <div class="pc-centro">
+      <div class="pc-figura"><div class="pc-halo"></div><div class="pc-onda"></div><div class="pc-chispas">${chispas}</div>
+        <div class="pc-torso">${_torsoSVG(1, 168)}</div></div>
+      <div class="pc-tit" id="pumpCelTit">${T.lleno}</div>
+      <div class="pc-sub" id="pumpCelSub">${T.celebracion(v.meta)}</div>
+      ${racha ? `<div class="pc-racha">${_PUMP_LLAMA}${racha}</div>` : ''}
+      <button class="btn-primary pc-seguir" data-test="pump-seguir">${T.seguir}</button>
+    </div>`;
+  const cerrar = () => { el.classList.add('is-saliendo'); setTimeout(() => el.remove(), reducir ? 0 : 220); document.removeEventListener('keydown', tecla); };
+  const tecla = (ev) => { if (ev.key === 'Escape') cerrar(); };
+  el.querySelector('.pc-seguir').addEventListener('click', cerrar);
+  el.querySelector('.pc-fondo').addEventListener('click', cerrar);
+  document.addEventListener('keydown', tecla);
+  document.body.appendChild(el);
+  setTimeout(() => { const b = el.querySelector('.pc-seguir'); if (b) b.focus({ preventScroll: true }); }, reducir ? 0 : 1300);
+  // Vibración donde el navegador la tiene (Android); en iPhone la web no vibra.
+  try {
+    // Sin un toque previo en la página, el navegador la bloquea (y lo anota como error).
+    if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) {
+      if (reducir) navigator.vibrate(20);
+      else setTimeout(() => navigator.vibrate([8, 70, 8, 70, 8, 90, 35, 160, 20]), 250);
+    }
+  } catch (_) {}
+}
+// Volver a la app: los pasos nuevos y, si llegó, la celebración.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !_metasPlan()) return;
+  if (_metasMuestra) { _pumpRepintar(); return; }
+  loadSalud().then(_pumpRepintar).catch(() => {});
+});
+if (_metasMuestra && _metasMuestra.luego) setTimeout(() => { _metasMuestra.pasos[hoyLocal()] = _metasMuestra.luego; _pumpRepintar(); }, 5000);
+
+/* El ritmo de peso que buscamos, junto a la tendencia de la tarjeta de peso. Nunca un juicio negativo. */
+function _ritmoPesoHTML(serie) {
+  const m = _metasPlan();
+  if (!m || m.ritmo == null) return '';
+  let s = serie;
+  if (_metasMuestra) {
+    const n = window.Metas.numero(hoyLocal());
+    s = Array.from({ length: 14 }, (_, i) => ({ fecha: window.Metas.texto(n - 13 + i), kg: 84 - i * 0.075 }));
+  }
+  const r = window.Metas.ritmo(m.ritmo, s, hoyLocal());
+  return `<div class="ritmo-peso" data-test="ritmo-peso">
+    <div class="rp-meta">${r.meta}</div>
+    ${r.tendencia ? `<div class="rp-ten">${r.tendencia}</div>` : ''}
+    ${r.enRitmo ? `<div class="rp-ok">${window.Metas.T.enRitmo}</div>` : ''}
+  </div>`;
+}
+
 function renderRecordatorio() {
+  try { _pumpPintar(); } catch (_) {}
   if (DATA && DATA._isDemo) return;
   const p = _pendientesSemana();
 
@@ -11731,7 +12045,7 @@ async function init() {
   aplicarPendientesEntreno();
   if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
   // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio también va, como en la app.
-  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { _gimPalanca(r.ok ? r.data : null); _elegirHorarioPalanca(r.ok ? r.data : null); }).catch(() => {});
+  else if (TOKEN && !DEMO) window.mypumpDB.gimnasioRpc('mypump_get_app_config', {}).then((r) => { const c = r.ok ? r.data : null; _gimPalanca(c); _elegirHorarioPalanca(c); _metasPalanca(c); }).catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;

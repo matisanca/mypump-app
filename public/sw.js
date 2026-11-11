@@ -45,6 +45,7 @@ const SHELL = [
   '/js/gimnasio.js',
   '/js/gimnasio-cola.js',
   '/js/gimnasio-ui.js',
+  '/js/metas.js',
   '/css/gimnasio.css',
   '/js/tecnica.js',
   '/js/tecnica-cola.js',
