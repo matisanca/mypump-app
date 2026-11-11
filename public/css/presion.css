@@ -25,11 +25,11 @@
 .pre-grilla{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2)}
 .pre-evitar{align-items:flex-start;gap:6px}
 .pre-evitar strong{font-size:15px;line-height:1.3;font-weight:600}
-.pre-evitar small{font-size:13px;line-height:1.35;color:var(--color-text-secondary)}
+.pre-evitar small{font-size:15px;line-height:1.35;color:var(--color-text-secondary)}
 .pre-tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-2)}
 .pre-tres div{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;color:var(--color-text-primary)}
-.pre-tres strong{font-size:13px;line-height:1.3;font-weight:600;overflow-wrap:anywhere}
-.pre-tres small{font-size:13px;line-height:1.3;color:var(--color-text-secondary)}
+.pre-tres strong{font-size:15px;line-height:1.3;font-weight:600;overflow-wrap:anywhere}
+.pre-tres small{font-size:15px;line-height:1.3;color:var(--color-text-secondary)}
 .pre-ic{width:24px;height:24px;flex:none}
 
 /* Avance: un círculo por toma. */
@@ -41,7 +41,7 @@
 
 /* Tus tomas */
 .pre-chart{margin-top:0}
-.pre-leyenda{margin:0;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--color-text-secondary)}
+.pre-leyenda{margin:0;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;color:var(--color-text-secondary)}
 .pre-ley{width:9px;height:9px;border-radius:50%;box-sizing:border-box;border:2px solid var(--color-text-secondary);margin-left:var(--space-3)}
 .pre-ley:first-child{margin-left:0}
 .pre-ley.is-alta{background:var(--color-text-secondary)}
@@ -102,8 +102,8 @@
 .pre-talles-m{position:absolute;top:-7px;bottom:-7px;width:4px;margin-left:-2px;border-radius:2px;background:var(--color-text-primary);box-shadow:0 0 0 2px var(--color-bg-primary)}
 .pre-talles-txt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
 .pre-talles-txt span{display:flex;flex-direction:column;gap:1px;text-align:center;color:var(--color-text-secondary);overflow-wrap:anywhere}
-.pre-talles-txt strong{font-size:12px;line-height:1.25;font-weight:600}
-.pre-talles-txt small{font-size:11px;line-height:1.25}
+.pre-talles-txt strong{font-size:14px;line-height:1.25;font-weight:600}
+.pre-talles-txt small{font-size:13px;line-height:1.25}
 .pre-talles-txt span.is-on{color:var(--color-text-primary)}
 
 /* Texto de guardia: se tiene que leer entero, sin colores de alarma. */

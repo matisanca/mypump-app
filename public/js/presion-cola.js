@@ -577,6 +577,8 @@
       const c = this.curso;
       if (!c || c.sesion.tipo !== 'ortostatica') return;
       this._sumarSintomas(['mareo_al_pararse']);
+      // Si con el mareo la regla da guardia (pulso de 120 o más, o de 40 o menos, en alguna toma), manda la guardia.
+      if (c.sesion.tomas.length && P.evaluarSesion({ ...c.sesion, minutos_desde_ultima: 0 }).paso === 'guardia_sintomas') return this._evaluar();
       c.cierre = { mareo: true };
       c.sesion.texto_alumno = 'quedate_sentado_ortostatica';
       c.etapa = 'listo';
