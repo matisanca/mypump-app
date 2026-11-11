@@ -49,20 +49,18 @@ import com.pumpteam.mypump.salud.cardRecuperacion
 import com.pumpteam.mypump.salud.colorBanda
 
 /**
- * «Recuperación» y «Tu progreso» en una sola tarjeta de dos filas con azulejo suave (2.3.0; antes dos tarjetas de tres
- * pisos con emojis). Ocupan bastante menos diciendo lo mismo, y las fotos y el check suben.
+ * «Tu progreso» en una tarjeta de una fila con azulejo suave (2.3.0). Hasta el 11/11 iba con «Recuperación» arriba; esa
+ * fila se mudó a «Mi salud» (un solo lugar para lo de salud) y sigue siendo [TarjetaRecuperacionRevision].
  */
 @Composable
-fun TarjetaComoVengo(salud: ModeloSalud?, modelo: ModeloApp, alAbrirSalud: () -> Unit, alAbrirFuerza: () -> Unit, modifier: Modifier = Modifier) {
+fun TarjetaComoVengo(modelo: ModeloApp, alAbrirFuerza: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().superficieTarjeta()) {
-        TarjetaRecuperacionRevision(salud, alAbrirSalud)
-        Separador(sangria = 64.dp)
         TarjetaProgresoRevision(modelo, alAbrirFuerza)
     }
 }
 
 /**
- * «Recuperación», arriba en Revisión (2.1.0, pedido de Mati del 4-nov: «la parte de salud […] la integraría con la
+ * «Recuperación», en Mi salud desde la 2.3.0 (antes arriba en Revisión: 2.1.0, pedido de Mati del 4-nov: «la parte de salud […] la integraría con la
  * revisión»). Un resumen del caso que ya calcula `SaludVista.cardRecuperacion` (no se repite la lógica): el score con su
  * banda, o qué falta. Toda la fila se toca y abre Salud en Recuperación, donde está el detalle y el botón de conectar.
  * Gemela de la de iOS.

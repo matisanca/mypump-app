@@ -128,9 +128,9 @@ class PresionUiTest : PruebaUi() {
         tema(t)
         val d = lanzar("serie2")
         p.nodo(etiqueta("tarjeta-presion"), 20_000)
-        p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("mis-datos"))
-        p.tocar(etiqueta("mis-datos-presion"))
+        // Presión vive en «Mi salud» (2.3.0): Revisión → Mi salud → la fila de Presión.
+        p.abrirMiSalud()
+        p.tocar(etiqueta("mi-salud-presion"))
         p.nodo(etiqueta("presion-inicio"))
         p.tocar(etiqueta("presion-marcar-sintoma"))
         p.nodo(etiqueta("presion-sintoma-pantalla"))
@@ -191,9 +191,10 @@ class PresionUiTest : PruebaUi() {
         p.quieto(1_500)
         assertFalse(p.existe(etiqueta("tarjeta-presion")))
         p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("mis-datos"))
+        p.tocar(etiqueta("tarjeta-mi-salud"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
         p.quieto(500)
-        assertFalse(p.existe(etiqueta("mis-datos-presion")))
+        assertFalse(p.existe(etiqueta("mi-salud-bloque-presion")))
         assertTrue("no se llama a nada de presión", d.llamadasPresion.isEmpty())
     }
 
@@ -209,9 +210,9 @@ class PresionUiTest : PruebaUi() {
         p.nodo(etiqueta("pestana-entreno"), 20_000)
         p.quieto(1_000)
         assertFalse("sin serie abierta no hay tarjeta", p.existe(etiqueta("tarjeta-presion")))
-        p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("mis-datos"))
-        p.tocar(etiqueta("mis-datos-presion"))
+        // Presión vive en «Mi salud» (2.3.0): Revisión → Mi salud → la fila de Presión.
+        p.abrirMiSalud()
+        p.tocar(etiqueta("mi-salud-presion"))
         p.nodo(etiqueta("presion-inicio"))
         p.nodo(etiqueta("presion-sin-tomas"))
         assertFalse("sin la lista verificada no hay «Ver cuáles sirven»", p.existe(etiqueta("presion-ver-cuales")))

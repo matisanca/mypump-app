@@ -74,7 +74,8 @@ fun hayNovedadDeEstudios(modelo: ModeloApp): Boolean = estadoDeEstudios(modelo)?
 fun TarjetaEstudiosInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     val navegacion = LocalNavegacion.current
     val t = estadoDeEstudios(modelo)?.let(Estudios::tarjetaInicio) ?: return
-    val abrir = { navegacion?.irAEstudios(resuelto = true) ?: Unit }
+    // Lleva a Mi salud, a Estudios y su primera tarjeta nueva (2.3.0; antes a Mis datos → Estudios).
+    val abrir = { navegacion?.irAEstudios() ?: Unit }
     Column(
         modifier = modifier
             .fillMaxWidth()

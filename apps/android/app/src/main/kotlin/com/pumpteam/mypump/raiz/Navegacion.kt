@@ -10,6 +10,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.reglas.MiSalud
 
 /**
  * Las pestañas (GEN-01). Salud (lo que era Progreso) ya no está en la barra (2.1.0, «Salud dentro de Revisión»): se abre
@@ -90,7 +91,7 @@ class Navegacion(
     gimnasioEnMisDatos: Boolean = false,
     tecnicaEnMisDatos: Boolean = false,
     documentosEnMisDatos: Boolean = false,
-    estudiosEnMisDatos: Boolean = false,
+    miSalud: Boolean = false,
     fotosInicio: Boolean = false,
     fotosInicioEnMisDatos: Boolean = false,
     presion: Boolean = false,
@@ -126,17 +127,16 @@ class Navegacion(
     var novedadesEnMisDatos by mutableStateOf(false)
     /** «Documentos» (contrato y consentimiento) abierto desde Mis datos o desde el aviso del contrato pendiente. */
     var documentosEnMisDatos by mutableStateOf(documentosEnMisDatos)
-    /** «Estudios y órdenes» abierto desde Mis datos. */
-    var estudiosEnMisDatos by mutableStateOf(estudiosEnMisDatos)
-
     /**
-     * Cada pedido de ir a Estudios (un aviso, `?scene=estudios`) suma uno. La raíz espera a saber si la sección existe y
-     * recién ahí la abre: mientras tanto, y si no existe, se está en Mis datos. No se guarda al rotar: es de un momento.
+     * «Mi salud» (2.3.0, pedido de Mati del 11/11): todo lo de salud en una pantalla que cuelga de Revisión (como Mis datos).
+     * Ahí viven el próximo control, Estudios y órdenes, Presión y la entrada a la recuperación.
      */
-    var pedidoEstudios by mutableStateOf(0)
-        private set
+    var miSalud by mutableStateOf(miSalud)
 
-    /** Al abrirse, Estudios se desplaza hasta la primera tarjeta nueva y lo consume. */
+    /** El bloque de Mi salud al que hay que llevar (un aviso, una tarjeta del inicio). Mi salud lo consume al llegar. */
+    var anclaMiSalud by mutableStateOf<MiSalud.Bloque?>(null)
+
+    /** Al abrirse, el bloque de Estudios se desplaza hasta la primera tarjeta nueva y lo consume. */
     var enfocarEstudios by mutableStateOf(false)
     /** «Tus fotos de inicio» abierto desde la tarjeta de Revisión. */
     var fotosInicio by mutableStateOf(fotosInicio)
@@ -189,10 +189,12 @@ class Navegacion(
             tecnicaEnMisDatos = false
             novedadesEnMisDatos = false
             documentosEnMisDatos = false
-            estudiosEnMisDatos = false
+            miSalud = false
             fotosInicio = false
             fotosInicioEnMisDatos = false
         }
+        // Tocar Revisión con Salud abierta (desde Mi salud) también vuelve al principio de Revisión.
+        if (p == Pestana.REVISION && pestana == Pestana.SALUD) miSalud = false
         if (p == pestana && p == Pestana.ENTRENO) {
             guia = false
             gimnasio = false
@@ -208,25 +210,25 @@ class Navegacion(
             DestinoAviso.ENTRENO -> pestana = Pestana.ENTRENO
             DestinoAviso.DIETA -> pestana = Pestana.DIETA
             DestinoAviso.CHAT -> pestana = Pestana.CHAT
-            // `progress` (lo que era Progreso): Revisión + Salud → Fuerza.
+            // `progress` (lo que era Progreso): Revisión + Salud → Fuerza. No es de salud: no pasa por Mi salud.
             DestinoAviso.FUERZA -> irASalud(SegmentoSalud.FUERZA)
             DestinoAviso.REVISION -> irARevision(AnclaRevision.AVISO)
-            // `?scene=myday` y el aviso de Mi Día (ya no existe): Revisión + Salud → Recuperación.
-            DestinoAviso.RECUPERACION -> irASalud(SegmentoSalud.RECUPERACION)
-            DestinoAviso.MIS_DATOS -> irAMisDatos()
+            // `?scene=myday` y el aviso de Mi Día (ya no existe): Mi salud, en la recuperación (2.3.0; antes Salud directo).
+            DestinoAviso.RECUPERACION -> irAMiSalud(MiSalud.Bloque.RECUPERACION)
+            // `salud` (el kit lo sigue leyendo como Mis datos): desde la 2.3.0, Mi salud en la recuperación, como la web y iOS.
+            DestinoAviso.MIS_DATOS -> irAMiSalud(MiSalud.Bloque.RECUPERACION)
             // El aviso de «subí tus fotos de inicio»: Revisión con la pantalla abierta en la pose que falta. Si la sección
             // no está habilitada (o todavía no cargó), se ve Revisión y la pantalla aparece sola cuando llega.
             DestinoAviso.FOTOS_INICIO -> {
                 irARevision(null)
                 fotosInicio = true
             }
-            // El aviso de un estudio pedido o una orden nueva y `?scene=estudios`: Mis datos → Estudios.
+            // El aviso de un estudio pedido o una orden nueva y `?scene=estudios`: Mi salud, en Estudios (antes Mis datos →
+            // Estudios). Si la sección no existe (o no cargó), Mi salud igual se abre: es la caída segura.
             DestinoAviso.ESTUDIOS -> irAEstudios()
-            // El aviso de presión: a Entreno (donde vive la tarjeta) y, si la sección está habilitada, directo a lo pendiente.
-            DestinoAviso.PRESION -> {
-                pestana = Pestana.ENTRENO
-                abrirPresion(directo = true)
-            }
+            // El aviso de presión: Mi salud en Presión y, si la sección está habilitada, Presión encima, directo en lo
+            // pendiente. Al cerrarla queda Mi salud (antes, Entreno).
+            DestinoAviso.PRESION -> irAPresion(directo = true)
         }
     }
 
@@ -238,7 +240,8 @@ class Navegacion(
         tecnicaEnMisDatos = false
         novedadesEnMisDatos = false
         documentosEnMisDatos = false
-        estudiosEnMisDatos = false
+        miSalud = false
+        anclaMiSalud = null
         enfocarEstudios = false
         fotosInicioEnMisDatos = false
     }
@@ -250,25 +253,28 @@ class Navegacion(
     }
 
     /**
-     * A «Estudios y órdenes», en la primera tarjeta nueva. Primero Mis datos, que es la caída segura. Con [resuelto] (la
-     * tarjeta de Entreno: la sección ya está a la vista) se abre en el momento; si no (un aviso o un link, tal vez con la
-     * app recién abierta) queda pedido y la raíz la abre cuando sabe que existe ([abrirEstudiosPedido]).
+     * A «Mi salud», en [bloque] si lo hay: Revisión con Mi salud abierta (Atrás vuelve a Revisión). Si el bloque todavía no
+     * está (la sección no cargó), Mi salud espera un rato y si no aparece se queda arriba de todo.
      */
-    fun irAEstudios(resuelto: Boolean = false) {
-        irAMisDatos()
-        if (resuelto) {
-            enfocarEstudios = true
-            estudiosEnMisDatos = true
-        } else {
-            pedidoEstudios++
-        }
+    fun irAMiSalud(bloque: MiSalud.Bloque? = null) {
+        irARevision(null)
+        miSalud = true
+        anclaMiSalud = bloque
     }
 
-    /** La sección existe: se abre, salvo que mientras se esperaba el alumno se haya ido a otro lado. */
-    fun abrirEstudiosPedido() {
-        if (pestana != Pestana.REVISION || !misDatos || guiaEnMisDatos || gimnasioEnMisDatos || tecnicaEnMisDatos || novedadesEnMisDatos || documentosEnMisDatos) return
+    /** A «Estudios y órdenes» dentro de Mi salud, en la primera tarjeta nueva (avisos, links, tarjetas del inicio, novedades). */
+    fun irAEstudios() {
+        irAMiSalud(MiSalud.Bloque.ESTUDIOS)
         enfocarEstudios = true
-        estudiosEnMisDatos = true
+    }
+
+    /** Al control de salud de Mi salud (la tarjeta del inicio). */
+    fun irAControl() = irAMiSalud(MiSalud.Bloque.CONTROL)
+
+    /** A Presión dentro de Mi salud y, encima, la pantalla de Presión ([directo]: en lo que toca). */
+    fun irAPresion(directo: Boolean) {
+        irAMiSalud(MiSalud.Bloque.PRESION)
+        abrirPresion(directo)
     }
 
     /** A Revisión (fuera de Mis datos) y, si hay [ancla], a esa sección. */
@@ -280,27 +286,37 @@ class Navegacion(
         tecnicaEnMisDatos = false
         novedadesEnMisDatos = false
         documentosEnMisDatos = false
-        estudiosEnMisDatos = false
+        miSalud = false
+        anclaMiSalud = null
+        enfocarEstudios = false
         fotosInicio = false
         fotosInicioEnMisDatos = false
         anclaRevision = ancla
     }
 
     /**
-     * A Salud, en ese segmento: Revisión con Salud abierta encima (la barra marca Revisión y Atrás vuelve a Revisión). La
-     * usan la tarjeta Recuperación y los avisos y links de fuerza o recuperación.
+     * A Salud, en ese segmento: Revisión con Salud abierta encima (la barra marca Revisión y Atrás vuelve a Revisión o, con
+     * [desdeMiSalud], a Mi salud). La usan la fila Recuperación de Mi salud, «Tu progreso», el Pump del día y el aviso de
+     * fuerza.
      */
-    fun irASalud(segmento: SegmentoSalud) {
+    fun irASalud(segmento: SegmentoSalud, desdeMiSalud: Boolean = false) {
         segmentoSalud = segmento
+        miSalud = desdeMiSalud
+        anclaMiSalud = null
         // Mis datos quedaba prendido: al volver a Revisión desde la barra caía ahí (revisión, hallazgo 2).
         misDatos = false
         aperturasSalud++
         pestana = Pestana.SALUD
     }
 
+    /** Atrás desde Salud: a Mi salud si se abrió desde ahí; si no, a Revisión. */
+    fun volverDeSalud() {
+        if (miSalud) pestana = Pestana.REVISION else irARevision(null)
+    }
+
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos, it.documentosEnMisDatos, it.estudiosEnMisDatos, it.fotosInicio, it.fotosInicioEnMisDatos, it.presion, it.presionDirecta) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos, it.gimnasio, it.gimnasioEnMisDatos, it.tecnicaEnMisDatos, it.documentosEnMisDatos, it.miSalud, it.fotosInicio, it.fotosInicioEnMisDatos, it.presion, it.presionDirecta) },
             restore = {
                 Navegacion(
                     Pestana.entries.firstOrNull { p -> p.name == it[0] } ?: Pestana.ENTRENO,

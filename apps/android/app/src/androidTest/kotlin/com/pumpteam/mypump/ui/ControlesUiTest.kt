@@ -33,12 +33,10 @@ class ControlesUiTest : PruebaUi() {
         return d
     }
 
+    /** El próximo control vive arriba de todo en «Mi salud» (2.3.0). */
     private fun abrirEstudios() {
         p.nodo(etiqueta("pestana-entreno"))
-        p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("mis-datos"))
-        p.tocar(etiqueta("mis-datos-estudios"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        p.abrirMiSalud()
     }
 
     /** Lo de antes sigue igual: la tarjeta de estudios pendientes sí; la del control, no. */
@@ -91,9 +89,10 @@ class ControlesUiTest : PruebaUi() {
         p.nodo(texto("Ver mis estudios"))
         assertTrue("arriba de todo, antes que la lista", p.existe(etiqueta("control-tarjeta-inicio")))
         Telefono.captura("controles-inicio-$tema")
-        // Un toque: directo a Estudios, con el control en el bloque «Próximo control».
+        // Un toque: directo a Mi salud, con el control en el bloque de arriba.
         p.tocar(etiqueta("control-tarjeta-inicio-boton"))
-        p.nodo(etiqueta("estudios-pantalla"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
+        p.nodo(etiqueta("mi-salud-bloque-control"))
         p.nodo(etiqueta("estudios-proximo-cuando"))
         p.nodo(texto("El lunes 16/11"))
         Telefono.captura("controles-estudios-$tema")

@@ -153,16 +153,12 @@ private fun CuerpoConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp, navegac
             vm.destinoConsumido()
         }
     }
-    // Un aviso o un link de Estudios: ya se está en Mis datos (la caída segura); se espera, con tope, a saber si la sección
-    // existe (con la app recién abierta la carga puede no haber terminado) y recién ahí se abre.
-    LaunchedEffect(navegacion.pedidoEstudios) {
-        if (navegacion.pedidoEstudios == 0) return@LaunchedEffect
-        if (modelo.estudiosParaAviso() != null) navegacion.abrirEstudiosPedido()
-    }
     val novedadEstudios = com.pumpteam.mypump.estudios.hayNovedadDeEstudios(modelo)
     // Salir de Dieta de verdad vuelve a hoy (girar el teléfono no: la pestaña sigue siendo la misma).
     LaunchedEffect(navegacion.pestana) { if (navegacion.pestana != Pestana.DIETA && modelo.enDiaPasado) modelo.irADia(null) }
     val enMisDatos = navegacion.pestana == Pestana.REVISION && navegacion.misDatos
+    // Mi salud (2.3.0) cuelga de Revisión, como Mis datos: Atrás vuelve a Revisión.
+    val enMiSalud = navegacion.pestana == Pestana.REVISION && !navegacion.misDatos && navegacion.miSalud
     val enGuia = navegacion.pestana == Pestana.ENTRENO && navegacion.guia
     val enGuiaDeMisDatos = enMisDatos && navegacion.guiaEnMisDatos
     // Salud (fuera de la barra desde la 2.1.0) cuelga de Revisión: Atrás vuelve a Revisión, de donde se abre.
@@ -178,12 +174,12 @@ private fun CuerpoConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp, navegac
     BackHandler(enabled = enMisDatos && navegacion.tecnicaEnMisDatos) { navegacion.tecnicaEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.novedadesEnMisDatos) { navegacion.novedadesEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.documentosEnMisDatos) { navegacion.documentosEnMisDatos = false }
-    BackHandler(enabled = enMisDatos && navegacion.estudiosEnMisDatos) { navegacion.estudiosEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.fotosInicioEnMisDatos) { navegacion.fotosInicioEnMisDatos = false }
     BackHandler(enabled = navegacion.pestana == Pestana.ENTRENO && navegacion.gimnasio) { navegacion.gimnasio = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
-    BackHandler(enabled = enSalud) { navegacion.irARevision(null) }
+    BackHandler(enabled = enMiSalud) { navegacion.miSalud = false }
+    BackHandler(enabled = enSalud) { navegacion.volverDeSalud() }
     // Después del que vuelve a Entreno: con las fotos de inicio abiertas sobre Revisión, Atrás vuelve a Revisión.
     // Solo con la pantalla a la vista: un pedido que no se pudo abrir (la sección no está) no se come el Atrás.
     val conFotosInicio = com.pumpteam.mypump.fotosinicio.fotosInicioVisible(modelo)
@@ -254,32 +250,29 @@ private fun CuerpoConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp, navegac
                                             com.pumpteam.mypump.novedades.NovedadesListaPantalla(
                                                 modelo.novedades.value!!, alVolver = { navegacion.novedadesEnMisDatos = false },
                                                 deEstudios = estadoEst?.let(com.pumpteam.mypump.reglas.Estudios::novedad),
-                                                alIrAEstudios = { navegacion.irAEstudios(resuelto = true) },
+                                                alIrAEstudios = { navegacion.irAEstudios() },
                                             )
                                         } else if (navegacion.documentosEnMisDatos && docs != null) {
                                             com.pumpteam.mypump.misdatos.DocumentosPantalla(docs, alVolver = { navegacion.documentosEnMisDatos = false })
-                                        } else if (navegacion.estudiosEnMisDatos && est != null) {
-                                            com.pumpteam.mypump.estudios.EstudiosPantalla(
-                                                est,
-                                                alVolver = { navegacion.estudiosEnMisDatos = false },
-                                                enfocar = navegacion.enfocarEstudios,
-                                                alEnfocar = { navegacion.enfocarEstudios = false },
-                                            )
                                         } else {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }
+                                    } else if (navegacion.miSalud) {
+                                        com.pumpteam.mypump.misalud.MiSaludPantalla(modelo, navegacion, alVolver = { navegacion.miSalud = false })
                                     } else if (navegacion.fotosInicio && fir != null && com.pumpteam.mypump.fotosinicio.fotosInicioVisible(modelo)) {
                                         FotosInicioPantalla(fir, alVolver = { navegacion.fotosInicio = false }, directo = true)
                                     } else {
                                         RevisionPantalla(
                                             modelo,
                                             alAbrirMisDatos = { navegacion.misDatos = true },
-                                            alAbrirSalud = { navegacion.irASalud(SegmentoSalud.RECUPERACION) },
+                                            alAbrirMiSalud = { b ->
+                                                if (b == com.pumpteam.mypump.reglas.MiSalud.Bloque.ESTUDIOS) navegacion.irAEstudios() else navegacion.irAMiSalud(b)
+                                            },
                                             alAbrirFuerza = { navegacion.irASalud(SegmentoSalud.FUERZA) },
                                         )
                                     }
                                 }
-                                Pestana.SALUD -> SaludPantalla(modelo, alVolver = { navegacion.irARevision(null) })
+                                Pestana.SALUD -> SaludPantalla(modelo, alVolver = { navegacion.volverDeSalud() })
                                 Pestana.SUPLEMENTACION -> {
                                     val m = suplementacion
                                     if (m != null) SuplementacionPantalla(m, modelo)

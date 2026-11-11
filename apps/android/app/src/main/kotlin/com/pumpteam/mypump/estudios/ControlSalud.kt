@@ -60,6 +60,14 @@ private fun estudiosConControles(modelo: ModeloApp): ModeloEstudios? {
     return m?.takeIf { palanca.controlesApp }
 }
 
+/** El control de salud está cerca: la tarjeta del inicio se ve. Lo cuenta la tarjeta «Mi salud» de Revisión. */
+@Composable
+fun hayControlCerca(modelo: ModeloApp): Boolean {
+    val m = estudiosConControles(modelo) ?: return false
+    val c by m.controles.collectAsStateWithLifecycle()
+    return m.tarjetaControl(c) != null
+}
+
 /** La tarjeta de arriba de Entreno, con el patrón de la destacada: verde, letra grande y el botón blanco de ancho completo. */
 @Composable
 fun TarjetaControlInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
@@ -67,7 +75,8 @@ fun TarjetaControlInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     val m = estudiosConControles(modelo) ?: return
     val c by m.controles.collectAsStateWithLifecycle()
     val t = m.tarjetaControl(c) ?: return
-    val abrir = { navegacion?.irAEstudios(resuelto = true) ?: Unit }
+    // Lleva a Mi salud, al próximo control (2.3.0; antes a Estudios).
+    val abrir = { navegacion?.irAControl() ?: Unit }
     Column(
         modifier = modifier
             .fillMaxWidth()

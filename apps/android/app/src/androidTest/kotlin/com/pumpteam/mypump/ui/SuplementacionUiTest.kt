@@ -83,17 +83,19 @@ class SuplementacionUiTest : PruebaUi() {
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("pestana-revision"))
         p.nodo(etiqueta("mis-datos"))
-        // El corazón de arriba ya no está: lo reemplaza la tarjeta Recuperación.
+        // El corazón de arriba ya no está: Recuperación está en «Mi salud» (2.3.0).
         assertFalse(p.existe(etiqueta("abrir-salud")))
+        p.tocar(etiqueta("tarjeta-mi-salud"))
         p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.nodo(etiqueta("salud-pantalla"))
         p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         p.tocar(etiqueta("segmento-fuerza"))
         p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
-        // Volver (la flecha) lleva a Revisión.
+        // Volver (la flecha) lleva a Mi salud, en Revisión.
         p.tocar(etiqueta("volver"))
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
         p.esperarQueNoEste(etiqueta("salud-pantalla"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
         // Otra vez (en Recuperación, aunque antes quedó en Fuerza), y con Atrás del sistema.
         p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.nodo(etiqueta("salud-pantalla"))
@@ -115,7 +117,7 @@ class SuplementacionUiTest : PruebaUi() {
         p.tocar(etiqueta("pestana-revision"))
         p.nodo(etiqueta("mis-datos"))
         assertFalse(p.existe(etiqueta("abrir-salud")))
-        p.nodo(etiqueta("tarjeta-recuperacion-revision"))
+        p.nodo(etiqueta("tarjeta-mi-salud"))
     }
 
     @Test

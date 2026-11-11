@@ -92,7 +92,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalud: () -> Unit, alAbrirFuerza: () -> Unit) {
+fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirMiSalud: (com.pumpteam.mypump.reglas.MiSalud.Bloque?) -> Unit, alAbrirFuerza: () -> Unit) {
     val revision by modelo.revision.collectAsStateWithLifecycle()
     val salud by modelo.salud.collectAsStateWithLifecycle()
     val fotos by modelo.fotos.collectAsStateWithLifecycle()
@@ -164,7 +164,6 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
         navegacion.anclaRevision = null
     }
 
-    val novedadEstudios = com.pumpteam.mypump.estudios.hayNovedadDeEstudios(modelo)
     MarcoPantalla(
         "Revisión",
         subtitulo = semanaActual(),
@@ -180,11 +179,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     .testTag("mis-datos"),
                 contentAlignment = Alignment.Center,
             ) {
+                // Un estudio pedido o una orden sin ver ya no marca Mis datos: el camino es la tarjeta «Mi salud», con su número.
                 Icon(Iconos.Persona, contentDescription = null, tint = MyPump.colores.marcaTexto, modifier = Modifier.size(26.dp))
-                // Un estudio pedido o una orden sin ver: el punto marca el camino (Mis datos → Estudios y órdenes).
-                if (novedadEstudios) {
-                    com.pumpteam.mypump.estudios.PuntoNovedad(Modifier.align(Alignment.TopEnd).padding(2.dp).testTag("mis-datos-novedad"))
-                }
             }
         },
     ) { relleno ->
@@ -232,6 +228,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         color = MyPump.colores.apoyo,
                         modifier = Modifier.padding(horizontal = 4.dp).testTag("nota-revision-semanal"),
                     )
+                    // «Mi salud» (2.3.0, pedido de Mati del 11/11): arriba, grande, con lo pendiente. Sin ningún bloque, no está.
+                    com.pumpteam.mypump.misalud.TarjetaMiSaludDe(modelo, alAbrirMiSalud)
                     // Fotos de inicio: arriba de todo, solo con la sección habilitada para esta cuenta. El orden de iOS: fotos
                     // de inicio, devolución, check guiado y el resto.
                     TarjetaFotosInicioDe(modelo)
@@ -264,8 +262,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                             FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones), tuCambio)
                             if (conTarjeta == null) Check(revision, salud, esDemo, alcance, secciones)
                         }
-                        // La recuperación y el progreso, en una sola tarjeta de dos filas (reemplazan al corazón que había arriba).
-                        TarjetaComoVengo(salud, modelo, alAbrirSalud, alAbrirFuerza)
+                        // El progreso (la recuperación se mudó a Mi salud en la 2.3.0).
+                        TarjetaComoVengo(modelo, alAbrirFuerza)
                         if (!semanaPendiente) AvisoPlanIncompleto(modelo)
                     }
                     if (!semanaPendiente) {

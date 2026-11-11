@@ -93,9 +93,10 @@ class AvisosUiTest : PruebaUi() {
             p.esperar("Dieta elegida") { p.seleccionado(etiqueta("pestana-dieta")) }
             p.nodo(texto("de 2.373 kcal"))
         }.close()
-        // Un push que mostró el sistema: "salud" es Mis datos.
+        // Un push que mostró el sistema: "salud" abre Mi salud en la recuperación (2.3.0; antes Mis datos).
         registrar(ActivityScenario.launch<MainActivity>(intentDePush("salud"))).also {
-            p.nodo(etiqueta("mis-datos-pantalla"))
+            p.nodo(etiqueta("mi-salud-pantalla"))
+            p.nodo(etiqueta("mi-salud-bloque-recuperacion"))
             assertTrue(p.seleccionado(etiqueta("pestana-revision")))
         }.close()
         // Uno desconocido (el histórico "comentarios") o sin destino: Chat.
@@ -120,16 +121,16 @@ class AvisosUiTest : PruebaUi() {
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
         app.startActivity(intentDePush("train"))
         p.esperar("Entreno elegido") { p.seleccionado(etiqueta("pestana-entreno")) }
-        // `progress` (lo que era Progreso): Revisión + Salud → Fuerza; el viejo `myday`: Revisión + Salud → Recuperación.
+        // `progress` (lo que era Progreso): Revisión + Salud → Fuerza; el viejo `myday` (2.3.0): Mi salud, en la recuperación.
         app.startActivity(intentDePush("progress"))
         p.esperar("Revisión + Salud") { p.enSalud() }
         p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
         app.startActivity(intentDePush("myday"))
-        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
-        assertTrue(p.enSalud())
-        // Atrás vuelve a Revisión, de donde cuelga Salud.
+        p.nodo(etiqueta("mi-salud-bloque-recuperacion"))
+        assertFalse(p.existe(etiqueta("salud-pantalla")))
+        // Atrás vuelve a Revisión, de donde cuelga Mi salud.
         p.atras()
-        p.esperarQueNoEste(etiqueta("salud-pantalla"))
+        p.esperarQueNoEste(etiqueta("mi-salud-pantalla"))
         assertTrue(p.seleccionado(etiqueta("pestana-revision")))
     }
 

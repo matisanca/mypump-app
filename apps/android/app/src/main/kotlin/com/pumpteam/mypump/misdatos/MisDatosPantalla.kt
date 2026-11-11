@@ -53,7 +53,6 @@ import com.pumpteam.mypump.diseno.abrirEnNavegador
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.fotosinicio.fotosInicioVisible
 import com.pumpteam.mypump.respaldo.HojaFuentes
-import com.pumpteam.mypump.salud.SeccionSaludMisDatos
 import com.pumpteam.mypump.guia.lugarDeLaGuia
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.ReglasGuia
@@ -69,7 +68,7 @@ import kotlinx.coroutines.withContext
  * privacidad y el borrado (D9), con la forma de los ajustes del teléfono. Ni la IA ni el aviso del domingo se configuran
  * acá (pedido de Mati, 14-oct): la IA trabaja bajo su aprobación y el aviso llega como un mensaje suyo (`AvisoDomingo`).
  *
- * Arriba, Salud (la recuperación, que abre el detalle, y conectar Health Connect: `SeccionSaludMisDatos`). De las
+ * La salud está en «Mi salud» (una sola fila lleva ahí). De las
  * notificaciones va solo "Activar notificaciones" (o "Activar en Ajustes"), si falta el permiso del sistema y no es la
  * demo, como en iOS (`SeccionNotificaciones`).
  */
@@ -88,8 +87,8 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
     }
 
     PantallaConTitulo("Mis datos", alVolver = alVolver, desplazable = true, modifier = Modifier.testTag("mis-datos-pantalla")) {
-        // Salud (SAL-09…13): la recuperación, que abre el detalle, y conectar Health Connect (salud/MisDatosSalud.kt).
-        SeccionSaludMisDatos(modelo)
+        // La recuperación (SAL-09…13) se mudó a «Mi salud» (2.3.0, como iOS): acá queda solo la fila «Mi salud». El detalle
+        // y conectar Health Connect están en la tarjeta de Recuperación de Salud.
         SeccionNotificaciones(vm, modelo)
         // «Logros» (2.3.0): el permiso para que Mati se entere de los récords. Sin la función, no hay sección.
         com.pumpteam.mypump.logros.SeccionLogros(modelo)
@@ -169,27 +168,20 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
                     Separador(sangria = 58.dp)
                 }
             }
-            // «Estudios y órdenes»: con la palanca apagada, sin el servidor nuevo o sin habilitar, la fila no existe.
+            // «Mi salud» (2.3.0): Estudios y órdenes y Presión arterial se mudaron ahí; queda una sola fila.
             val estudios by modelo.estudios.collectAsStateWithLifecycle()
-            estudios?.let { x ->
-                val estadoEstudios by x.estado.collectAsStateWithLifecycle()
-                estadoEstudios?.let { e ->
-                    FilaEnlace(
-                        Iconos.Documento, c.marcaTexto, com.pumpteam.mypump.reglas.TextosEstudios.entrada,
-                        etiqueta = "mis-datos-estudios", subtitulo = com.pumpteam.mypump.reglas.Estudios.subtitulo(e),
-                        novedad = com.pumpteam.mypump.reglas.Estudios.hayNovedad(e),
-                    ) { navegacion?.irAEstudios(resuelto = true) }
-                    Separador(sangria = 58.dp)
-                }
-            }
-            // Presión arterial: solo con la sección habilitada (palanca prendida y servidor nuevo).
+            val estadoEstudios = estudios?.estado?.collectAsStateWithLifecycle()?.value
             val presion by modelo.presion.collectAsStateWithLifecycle()
-            presion?.let { x ->
-                val estadoPresion by x.estado.collectAsStateWithLifecycle()
-                if (estadoPresion != null) {
-                    FilaEnlace(Iconos.Corazon, c.marcaTexto, com.pumpteam.mypump.reglas.TextosPresion.N.entrada, etiqueta = "mis-datos-presion") { navegacion?.abrirPresion(directo = false) }
-                    Separador(sangria = 58.dp)
-                }
+            val estadoPresion = presion?.estado?.collectAsStateWithLifecycle()?.value
+            // Como iOS: también con la salud del sistema (la recuperación vive en Mi salud), fuera de la demo.
+            val conSalud = modelo.salud.collectAsStateWithLifecycle().value != null && !modelo.esDemo.collectAsStateWithLifecycle().value
+            if (conSalud || estadoEstudios != null || estadoPresion != null) {
+                FilaEnlace(
+                    Iconos.Corazon, c.marcaTexto, com.pumpteam.mypump.reglas.MiSalud.TITULO,
+                    etiqueta = "mis-datos-mi-salud",
+                    novedad = estadoEstudios?.let(com.pumpteam.mypump.reglas.Estudios::hayNovedad) == true,
+                ) { navegacion?.irAMiSalud() }
+                Separador(sangria = 58.dp)
             }
             FilaEnlace(Iconos.Libro, c.marcaTexto, "Respaldo científico del plan", etiqueta = "mis-datos-respaldo") { fuentes = true }
             Separador(sangria = 58.dp)

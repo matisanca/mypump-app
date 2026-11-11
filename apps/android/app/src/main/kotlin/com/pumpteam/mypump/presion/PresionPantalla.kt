@@ -357,21 +357,26 @@ internal fun MarcarSintomaPresion(modelo: ModeloPresion, enSesion: Boolean, alGu
  * servidor nuevo o sin la sección habilitada, no existe.
  */
 @Composable
-fun TarjetaPresionDe(app: ModeloApp, modifier: Modifier = Modifier) {
+fun TarjetaPresionDe(app: ModeloApp, modifier: Modifier = Modifier, enMiSalud: Boolean = false) {
     val navegacion = LocalNavegacion.current ?: return
-    TarjetaPresion(app, navegacion, modifier)
+    TarjetaPresion(app, navegacion, modifier, enMiSalud)
 }
 
+/**
+ * En el inicio (2.3.0, «Mi salud») va solo con algo para hacer («La de hoy ya está» no) y lleva a Mi salud, con Presión
+ * encima. En Mi salud ([enMiSalud]) va siempre que haya tarjeta y abre Presión.
+ */
 @Composable
-private fun TarjetaPresion(app: ModeloApp, navegacion: Navegacion, modifier: Modifier): Boolean {
+private fun TarjetaPresion(app: ModeloApp, navegacion: Navegacion, modifier: Modifier, enMiSalud: Boolean): Boolean {
     val modelo = app.presion.collectAsStateWithLifecycle().value ?: return false
     // Leerlos hace que la tarjeta siga a lo que cambia en el servidor y en el teléfono.
     val estado by modelo.estado.collectAsStateWithLifecycle()
     val local by modelo.local.collectAsStateWithLifecycle()
     val t = remember(estado, local) { modelo.tarjeta } ?: return false
+    if (!enMiSalud && t is ModeloPresion.Tarjeta.HoyListo) return false
     val c = MyPump.colores
     val forma = RoundedCornerShape(Radio.tarjeta)
-    val abrir = { directo: Boolean -> navegacion.abrirPresion(directo) }
+    val abrir = { directo: Boolean -> if (enMiSalud) navegacion.abrirPresion(directo) else navegacion.irAPresion(directo) }
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         Tarjeta(
             Modifier

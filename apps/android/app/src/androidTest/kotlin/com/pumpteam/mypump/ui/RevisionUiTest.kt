@@ -525,11 +525,15 @@ class RevisionUiTest : PruebaUi() {
      */
     @Test
     fun unLinkConSceneMyDayLlevaARecuperacion() {
+        // 2.3.0: `myday` abre «Mi salud», en la recuperación; de ahí, Salud en Recuperación.
         abrirConLink("https://app.mypumpteam.com/?t=${ServidorDePrueba.TOKEN}&scene=myday")
+        p.nodo(etiqueta("mi-salud-pantalla"), ms = 30_000)
+        assertTrue(p.seleccionado(etiqueta("pestana-revision")))
+        p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.esperar("Revisión + Salud") { p.enSalud() }
         p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         p.nodo(etiqueta("card-recuperacion"))
-        // Volver lleva a Revisión, con la tarjeta Recuperación arriba.
+        // Volver lleva a Mi salud, con la fila Recuperación.
         p.tocar(etiqueta("volver"))
         p.esperarQueNoEste(etiqueta("salud-pantalla"))
         p.nodo(etiqueta("tarjeta-recuperacion-revision"))
@@ -543,6 +547,8 @@ class RevisionUiTest : PruebaUi() {
         irASalud("cuerpo")
         p.tocar(etiqueta("pestana-entreno"))
         app.startActivity(com.pumpteam.mypump.avisos.CentroAvisos.intentDeAviso(app, "myday"))
+        p.nodo(etiqueta("mi-salud-pantalla"))
+        p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.esperar("Revisión + Salud") { p.enSalud() }
         p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         p.nodo(etiqueta("card-recuperacion"))

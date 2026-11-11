@@ -91,7 +91,6 @@ import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.entreno.reducirMovimiento
 import com.pumpteam.mypump.raiz.LocalNavegacion
-import com.pumpteam.mypump.raiz.SegmentoSalud
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.PesoCorporal
 import com.pumpteam.mypump.reglas.PumpDelDia
@@ -233,7 +232,7 @@ fun TarjetaPumpDelDia(vista: PumpDelDia.Vista, conectado: Boolean, modifier: Mod
             .fillMaxWidth()
             .superficieTarjeta()
             .clip(RoundedCornerShape(Radio.tarjeta))
-            .then(if (tocable) Modifier.clickable { navegacion?.irASalud(SegmentoSalud.RECUPERACION) } else Modifier)
+            .then(if (tocable) Modifier.clickable { navegacion?.irAMiSalud(com.pumpteam.mypump.reglas.MiSalud.Bloque.RECUPERACION) } else Modifier)
             .padding(Espacio.m)
             .then(if (conectado) Modifier.clearAndSetSemantics { contentDescription = leido } else Modifier)
             .testTag("pump-del-dia"),
@@ -299,7 +298,7 @@ private fun SinSalud(vista: PumpDelDia.Vista, enSalud: Boolean) {
     Text(PumpDelDia.CONECTAR, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
     if (!enSalud) {
         BotonSecundario(
-            PumpDelDia.CONECTAR_BOTON, { navegacion?.irASalud(SegmentoSalud.RECUPERACION) },
+            PumpDelDia.CONECTAR_BOTON, { navegacion?.irAMiSalud(com.pumpteam.mypump.reglas.MiSalud.Bloque.RECUPERACION) },
             Modifier.padding(top = 4.dp).testTag("pump-conectar"), compacto = true, tono = c.marcaTexto,
         )
     }

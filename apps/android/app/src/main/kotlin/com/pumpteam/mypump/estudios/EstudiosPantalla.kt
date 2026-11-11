@@ -103,10 +103,12 @@ private const val VISTA_MS = 1_000L
 
 /** Sin pedido: «Subir un estudio» suelto. */
 private const val SUBIDA_SUELTA = ""
-
 /**
  * «Estudios y órdenes» (`estudios/CONTRATO_APP.md`): lo que falta hacer, las órdenes, lo que ya llegó y la subida. Acá no
  * hay valores, rangos ni interpretación: solo qué se pidió, qué llegó y si Mati ya lo vio.
+ *
+ * Desde la 2.3.0 la app la muestra dentro de «Mi salud» ([com.pumpteam.mypump.misalud.MiSaludPantalla]), con las mismas
+ * piezas ([ConEstudios] y [ContenidoEstudios]); esta pantalla suelta queda para las pruebas de Estudios.
  *
  * Con [enfocar] (se llegó desde un aviso, un link o la tarjeta de Entreno) se desplaza hasta la primera tarjeta nueva y
  * avisa con [alEnfocar]. Una tarjeta nueva que estuvo a la vista deja de ser novedad en el servidor; acá conserva su
@@ -116,25 +118,56 @@ private const val SUBIDA_SUELTA = ""
 fun EstudiosPantalla(m: ModeloEstudios, alVolver: () -> Unit, enfocar: Boolean = false, alEnfocar: () -> Unit = {}) {
     val estado by m.estado.collectAsStateWithLifecycle()
     // Al volver de una muerte del proceso el estado todavía no está: se decide después de preguntar.
+    val preguntado = sincronizarEstudios(m)
+    LaunchedEffect(preguntado, estado == null) { if (preguntado && estado == null) alVolver() }
+    val e = estado ?: return Box(Modifier.fillMaxSize().background(MyPump.colores.fondo))
+    ConEstudios(m, e) { acciones ->
+        Principal(
+            m, e, alVolver, acciones,
+            // Recién con lo que contestó el servidor: la copia de antes puede no tener lo nuevo.
+            enfocar = enfocar && preguntado,
+            alEnfocar = alEnfocar,
+        )
+    }
+}
+
+/**
+ * Pregunta al servidor una vez al entrar. La palanca no se recuerda de una vez para la otra: al volver de una muerte del
+ * proceso se espera a que la carga de la app la lea. Sin esa lectura (o apagada) no se llama a nada. Devuelve si ya se
+ * preguntó. El «Recibido» de un envío se lee una vez: al salir ya no hace falta.
+ */
+@Composable
+fun sincronizarEstudios(m: ModeloEstudios): Boolean {
     var preguntado by remember { mutableStateOf(false) }
     LaunchedEffect(m) {
-        // La palanca no se recuerda de una vez para la otra: al volver de una muerte del proceso se espera a que la carga
-        // de la app la lea. Sin esa lectura (o apagada) no se llama a nada y la pantalla se cierra.
         if (m.palanca.value == null) withTimeoutOrNull(ESPERA_PALANCA_MS) { m.palanca.filterNotNull().first() }
         m.sincronizar()
         preguntado = true
     }
-    LaunchedEffect(preguntado, estado == null) { if (preguntado && estado == null) alVolver() }
-    // El «Recibido» de un envío se lee una vez: al salir de la pantalla ya no hace falta.
     DisposableEffect(m) { onDispose { m.limpiarAviso() } }
+    return preguntado
+}
 
+/** Lo que la lista de Estudios hace al tocar algo, y lo que se vio como nuevo en esta visita. */
+class AccionesEstudios internal constructor(
+    val nuevasAca: Set<String>,
+    val alSubir: (String?) -> Unit,
+    val alPedirFecha: (String) -> Unit,
+    val alAbrirOrden: (String) -> Unit,
+    val alVerEstudio: (EstudioRecibido) -> Unit,
+)
+
+/**
+ * Lo que cuelga de la lista de Estudios: el detalle de una orden y el visor (a pantalla completa, en lugar de [lista]), la
+ * subida y la fecha de «Ya me lo hice». Lo usan la pantalla suelta y el bloque de «Mi salud», así no se repite nada.
+ */
+@Composable
+fun ConEstudios(m: ModeloEstudios, e: EstadoEstudios, lista: @Composable (AccionesEstudios) -> Unit) {
     var ordenAbierta by rememberSaveable { mutableStateOf<String?>(null) }
     var subida by rememberSaveable { mutableStateOf<String?>(null) }
     var fechaDe by rememberSaveable { mutableStateOf<String?>(null) }
     // Rotar el teléfono no cierra lo que se está mirando (el papel se vuelve a bajar: en el teléfono no queda guardado).
     var abierto by rememberSaveable(stateSaver = Abierto.Guarda) { mutableStateOf<Abierto?>(null) }
-
-    val e = estado ?: return Box(Modifier.fillMaxSize().background(MyPump.colores.fondo))
     // Lo que se vio como nuevo en esta visita (sobrevive a entrar a una orden y volver).
     val nuevasAca = remember(m) { mutableStateMapOf<String, Boolean>() }
     for (id in Estudios.nuevas(e)) if (id !in nuevasAca) nuevasAca[id] = true
@@ -142,26 +175,20 @@ fun EstudiosPantalla(m: ModeloEstudios, alVolver: () -> Unit, enfocar: Boolean =
     val viendo = abierto
     BackHandler(enabled = orden != null && viendo == null) { ordenAbierta = null }
 
-    fun verOrden(o: OrdenEstudios) {
-        abierto = Abierto("orden", o.id, o.titulo)
-    }
-
     when {
         viendo != null -> VisorEstudios(m, viendo, alCerrar = { abierto = null })
-        orden != null -> DetalleOrden(orden, alVolver = { ordenAbierta = null }, alVer = { verOrden(orden) })
-        else -> Principal(
-            m, e, alVolver,
-            nuevasAca = nuevasAca.keys,
-            // Recién con lo que contestó el servidor: la copia de antes puede no tener lo nuevo.
-            enfocar = enfocar && preguntado,
-            alEnfocar = alEnfocar,
-            alSubir = { subida = it ?: SUBIDA_SUELTA },
-            alPedirFecha = { fechaDe = it },
-            alAbrirOrden = { id ->
-                // Con la orden en la lista se abre su detalle; si no está (no debería), el papel directo.
-                if (e.orden(id) != null) ordenAbierta = id else abierto = Abierto("orden", id, T.verOrden)
-            },
-            alVerEstudio = { s -> s.id?.let { abierto = Abierto("estudio", it, s.titulo) } },
+        orden != null -> DetalleOrden(orden, alVolver = { ordenAbierta = null }, alVer = { abierto = Abierto("orden", orden.id, orden.titulo) })
+        else -> lista(
+            AccionesEstudios(
+                nuevasAca = nuevasAca.keys,
+                alSubir = { subida = it ?: SUBIDA_SUELTA },
+                alPedirFecha = { fechaDe = it },
+                alAbrirOrden = { id ->
+                    // Con la orden en la lista se abre su detalle; si no está (no debería), el papel directo.
+                    if (e.orden(id) != null) ordenAbierta = id else abierto = Abierto("orden", id, T.verOrden)
+                },
+                alVerEstudio = { s -> s.id?.let { abierto = Abierto("estudio", it, s.titulo) } },
+            ),
         )
     }
 
@@ -175,25 +202,12 @@ private fun Principal(
     m: ModeloEstudios,
     e: EstadoEstudios,
     alVolver: () -> Unit,
-    nuevasAca: Set<String>,
+    acciones: AccionesEstudios,
     enfocar: Boolean,
     alEnfocar: () -> Unit,
-    alSubir: (String?) -> Unit,
-    alPedirFecha: (String) -> Unit,
-    alAbrirOrden: (String) -> Unit,
-    alVerEstudio: (EstudioRecibido) -> Unit,
 ) {
-    val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
-    val cola by m.cola.collectAsStateWithLifecycle()
-    val progreso by m.progreso.collectAsStateWithLifecycle()
-    val sinSenal by m.sinSenal.collectAsStateWithLifecycle()
-    val aviso by m.aviso.collectAsStateWithLifecycle()
-    val errorCarga by m.errorCarga.collectAsStateWithLifecycle()
-    val detenida by m.detenida.collectAsStateWithLifecycle()
     var recargando by remember { mutableStateOf(false) }
-    val hoy = e.hoy
-    val bloques = Estudios.bloques(e)
     val desplazamiento = rememberScrollState()
     val reducir = reducirMovimiento()
     val margenAncla = with(LocalDensity.current) { 72.dp.roundToPx() }
@@ -210,20 +224,6 @@ private fun Principal(
         if (reducir) desplazamiento.scrollTo(destino) else desplazamiento.animateScrollTo(destino)
         alEnfocar()
     }
-    fun Modifier.siEsElAncla(a: Estudios.Ancla): Modifier =
-        if (a == ancla) onGloballyPositioned { yAncla = it.positionInRoot().y + desplazamiento.value } else this
-
-    // Las tarjetas nuevas que están en pantalla: pasado un momento dejan de ser novedad (siguen pendientes). Si falla, queda
-    // como estaba y se reintenta la próxima vez que se vean. El pedido corre en el alcance de la app: salir no lo corta.
-    val aLaVista = remember(m) { mutableStateMapOf<String, Boolean>() }
-    val sinMarcar = Estudios.nuevas(e).filter { aLaVista[it] == true }
-    LaunchedEffect(sinMarcar) {
-        if (sinMarcar.isEmpty()) return@LaunchedEffect
-        delay(VISTA_MS)
-        alcance.launch { m.marcarVistas(sinMarcar) }
-    }
-    fun Modifier.vista(id: String, nuevo: Boolean): Modifier =
-        if (nuevo) alEstarALaVista { if (aLaVista[id] != it) aLaVista[id] = it } else this
 
     MarcoPantalla(T.titulo, alVolver = alVolver) { relleno ->
         PullToRefreshBox(
@@ -249,63 +249,105 @@ private fun Principal(
                     .testTag("estudios-pantalla"),
                 verticalArrangement = Arrangement.spacedBy(Espacio.m),
             ) {
-                if (errorCarga) Renglon(Iconos.SinNube, T.errorDeCarga, c.textoSecundario, Modifier.padding(horizontal = Espacio.xxs).testTag("estudios-error-carga"), vivo = true)
-                EstadoDeLaSubida(cola, progreso, sinSenal, detenida, aviso, alReintentar = { alcance.launch { m.reintentar() } })
+                ContenidoEstudios(m, e, acciones, alUbicarAncla = { yAncla = it + desplazamiento.value })
+            }
+        }
+    }
+}
 
-                for (bloque in bloques) {
-                    when (bloque) {
-                        Estudios.Bloque.VACIO -> Tarjeta(Modifier.testTag("estudios-vacio"), relleno = Espacio.l) {
-                            Icon(Iconos.Documento, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(28.dp))
-                            Text(T.vacio, style = MaterialTheme.typography.bodyLarge, color = c.textoSecundario)
-                        }
-                        Estudios.Bloque.PROXIMO -> e.proximo?.let { ProximoControl(it) }
-                        Estudios.Bloque.PENDIENTES -> Seccion(T.teFaltaHacer) {
-                            for (p in e.pendientes) {
-                                TarjetaPendiente(
-                                    m, p, hoy,
-                                    nuevo = p.nuevo || p.id in nuevasAca,
-                                    modifier = Modifier.siEsElAncla(Estudios.Ancla.Pendiente(p.id)).vista(p.id, p.nuevo),
-                                    alSubir = { alSubir(p.id) }, alPedirFecha = { alPedirFecha(p.id) }, alAbrirOrden = alAbrirOrden,
-                                )
-                            }
-                        }
-                        Estudios.Bloque.SUBIR -> BotonMarca(T.subirUnEstudio, alTocar = { alSubir(null) }, modifier = Modifier.testTag("estudios-subir"))
-                        Estudios.Bloque.ORDENES -> Seccion(T.tusOrdenes) {
-                            Tarjeta(relleno = 0.dp, espaciado = 0.dp) {
-                                e.ordenes.forEachIndexed { i, o ->
-                                    if (i > 0) Separador(sangria = 64.dp)
-                                    FilaOrden(
-                                        o,
-                                        nuevo = o.nuevo || o.id in nuevasAca,
-                                        modifier = Modifier.siEsElAncla(Estudios.Ancla.Orden(o.id)).vista(o.id, o.nuevo),
-                                    ) { alAbrirOrden(o.id) }
-                                }
-                            }
-                        }
-                        Estudios.Bloque.ESTUDIOS -> Seccion(T.tusEstudios) {
-                            Tarjeta(relleno = 0.dp, espaciado = 0.dp) {
-                                var primera = true
-                                // Primero lo que se mandó desde la app y todavía no se ve como estudio; después, los estudios.
-                                for (s in e.envios) {
-                                    if (!primera) Separador(sangria = Espacio.m)
-                                    primera = false
-                                    FilaEnvio(s)
-                                }
-                                for (s in e.estudios) {
-                                    if (!primera) Separador(sangria = Espacio.m)
-                                    primera = false
-                                    FilaEstudio(s) { alVerEstudio(s) }
-                                }
-                            }
-                            Text(
-                                T.notaFija,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = c.textoSecundario,
-                                modifier = Modifier.padding(horizontal = Espacio.xs).testTag("estudios-nota-fija"),
-                            )
-                        }
+/**
+ * La lista de Estudios, para poner dentro de una columna que se desplaza: el aviso de error, el estado de la subida y los
+ * bloques en su orden. Sin [conProximo] no va el «Próximo control» (en «Mi salud» es un bloque aparte, arriba).
+ * [alUbicarAncla] recibe dónde quedó (en la pantalla) la tarjeta a la que hay que llevar.
+ */
+@Composable
+fun ContenidoEstudios(
+    m: ModeloEstudios,
+    e: EstadoEstudios,
+    acciones: AccionesEstudios,
+    conProximo: Boolean = true,
+    alUbicarAncla: (Float) -> Unit = {},
+) {
+    val c = MyPump.colores
+    val alcance = LocalAlcanceApp.current
+    val cola by m.cola.collectAsStateWithLifecycle()
+    val progreso by m.progreso.collectAsStateWithLifecycle()
+    val sinSenal by m.sinSenal.collectAsStateWithLifecycle()
+    val aviso by m.aviso.collectAsStateWithLifecycle()
+    val errorCarga by m.errorCarga.collectAsStateWithLifecycle()
+    val detenida by m.detenida.collectAsStateWithLifecycle()
+    val hoy = e.hoy
+    val bloques = Estudios.bloques(e)
+    val ancla = Estudios.ancla(e)
+    fun Modifier.siEsElAncla(a: Estudios.Ancla): Modifier =
+        if (a == ancla) onGloballyPositioned { alUbicarAncla(it.positionInRoot().y) } else this
+
+    // Las tarjetas nuevas que están en pantalla: pasado un momento dejan de ser novedad (siguen pendientes). Si falla, queda
+    // como estaba y se reintenta la próxima vez que se vean. El pedido corre en el alcance de la app: salir no lo corta.
+    val aLaVista = remember(m) { mutableStateMapOf<String, Boolean>() }
+    val sinMarcar = Estudios.nuevas(e).filter { aLaVista[it] == true }
+    LaunchedEffect(sinMarcar) {
+        if (sinMarcar.isEmpty()) return@LaunchedEffect
+        delay(VISTA_MS)
+        alcance.launch { m.marcarVistas(sinMarcar) }
+    }
+    fun Modifier.vista(id: String, nuevo: Boolean): Modifier =
+        if (nuevo) alEstarALaVista { if (aLaVista[id] != it) aLaVista[id] = it } else this
+
+    if (errorCarga) Renglon(Iconos.SinNube, T.errorDeCarga, c.textoSecundario, Modifier.padding(horizontal = Espacio.xxs).testTag("estudios-error-carga"), vivo = true)
+    EstadoDeLaSubida(cola, progreso, sinSenal, detenida, aviso, alReintentar = { alcance.launch { m.reintentar() } })
+
+    for (bloque in bloques) {
+        when (bloque) {
+            Estudios.Bloque.VACIO -> Tarjeta(Modifier.testTag("estudios-vacio"), relleno = Espacio.l) {
+                Icon(Iconos.Documento, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(28.dp))
+                Text(T.vacio, style = MaterialTheme.typography.bodyLarge, color = c.textoSecundario)
+            }
+            Estudios.Bloque.PROXIMO -> if (conProximo) e.proximo?.let { ProximoControl(it) }
+            Estudios.Bloque.PENDIENTES -> Seccion(T.teFaltaHacer) {
+                for (p in e.pendientes) {
+                    TarjetaPendiente(
+                        m, p, hoy,
+                        nuevo = p.nuevo || p.id in acciones.nuevasAca,
+                        modifier = Modifier.siEsElAncla(Estudios.Ancla.Pendiente(p.id)).vista(p.id, p.nuevo),
+                        alSubir = { acciones.alSubir(p.id) }, alPedirFecha = { acciones.alPedirFecha(p.id) }, alAbrirOrden = acciones.alAbrirOrden,
+                    )
+                }
+            }
+            Estudios.Bloque.SUBIR -> BotonMarca(T.subirUnEstudio, alTocar = { acciones.alSubir(null) }, modifier = Modifier.testTag("estudios-subir"))
+            Estudios.Bloque.ORDENES -> Seccion(T.tusOrdenes) {
+                Tarjeta(relleno = 0.dp, espaciado = 0.dp) {
+                    e.ordenes.forEachIndexed { i, o ->
+                        if (i > 0) Separador(sangria = 64.dp)
+                        FilaOrden(
+                            o,
+                            nuevo = o.nuevo || o.id in acciones.nuevasAca,
+                            modifier = Modifier.siEsElAncla(Estudios.Ancla.Orden(o.id)).vista(o.id, o.nuevo),
+                        ) { acciones.alAbrirOrden(o.id) }
                     }
                 }
+            }
+            Estudios.Bloque.ESTUDIOS -> Seccion(T.tusEstudios) {
+                Tarjeta(relleno = 0.dp, espaciado = 0.dp) {
+                    var primera = true
+                    // Primero lo que se mandó desde la app y todavía no se ve como estudio; después, los estudios.
+                    for (s in e.envios) {
+                        if (!primera) Separador(sangria = Espacio.m)
+                        primera = false
+                        FilaEnvio(s)
+                    }
+                    for (s in e.estudios) {
+                        if (!primera) Separador(sangria = Espacio.m)
+                        primera = false
+                        FilaEstudio(s) { acciones.alVerEstudio(s) }
+                    }
+                }
+                Text(
+                    T.notaFija,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.textoSecundario,
+                    modifier = Modifier.padding(horizontal = Espacio.xs).testTag("estudios-nota-fija"),
+                )
             }
         }
     }
@@ -385,7 +427,7 @@ private fun EstadoDeLaSubida(
 
 /** La tarjeta chica de arriba: el control que viene, todavía sin nada para hacer. */
 @Composable
-private fun ProximoControl(p: ControlEstudios) {
+fun ProximoControl(p: ControlEstudios) {
     val c = MyPump.colores
     val cuando = p.cuando
     Row(

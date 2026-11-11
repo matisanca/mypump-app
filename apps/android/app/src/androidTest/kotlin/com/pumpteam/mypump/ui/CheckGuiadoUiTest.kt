@@ -579,15 +579,16 @@ class CheckGuiadoUiTest : PruebaUi() {
         abrirRevision()
         p.nodo(etiqueta("check-guiado-abrir"))
         val m = p.esperar("todo ubicado") {
-            listOf("check-guiado-tarjeta", "check-guiado-abrir", "tarjeta-recuperacion-revision", "tarjeta-progreso-revision", "seccion-fotos", "revision-lista")
+            listOf("check-guiado-tarjeta", "check-guiado-abrir", "tarjeta-mi-salud", "tarjeta-progreso-revision", "seccion-fotos", "revision-lista")
                 .map { p.nodo(etiqueta(it), ms = 0).boundsInRoot }
         }
-        val (tarjeta, boton, recuperacion, progreso, fotos) = m
+        val (tarjeta, boton, miSalud, progreso, fotos) = m
         val lista = m[5]
         // Lo que la lista perezosa compuso por adelantado y todavía no ubicó (más abajo de la pantalla) tiene bordes vacíos:
         // con la lista sin desplazar, eso también queda debajo de la tarjeta («Cómo vengo» va después de fotos y check).
         fun debajo(r: androidx.compose.ui.geometry.Rect) = r.isEmpty || tarjeta.bottom <= r.top
-        assertTrue("arriba de Recuperación: tarjeta $tarjeta, recuperación $recuperacion", debajo(recuperacion))
+        // 2.3.0: «Mi salud» va arriba de todo, debajo del encabezado; el check, enseguida.
+        assertTrue("debajo de Mi salud: tarjeta $tarjeta, Mi salud $miSalud", miSalud.bottom <= tarjeta.top)
         assertTrue("arriba de Tu progreso: $progreso", debajo(progreso))
         assertTrue("arriba de las fotos: $fotos", debajo(fotos))
         assertTrue("entera a la vista sin deslizar", tarjeta.top >= lista.top && tarjeta.bottom <= lista.bottom)

@@ -554,12 +554,24 @@ object FotosDePrueba {
     }
 }
 
+/** «Mi salud» (2.3.0): Revisión → la tarjeta «Mi salud». */
+fun Pantalla.abrirMiSalud() {
+    // Ya abierta (por ejemplo, al volver de Salud): tocar la pestaña la cerraría (es volver al principio de Revisión).
+    if (existe(etiqueta("mi-salud-pantalla"))) return
+    tocar(etiqueta("pestana-revision"))
+    quieto(300)
+    // Revisión recuerda su pila (como con Mis datos): si se había dejado Mi salud abierta, ya está ahí.
+    esperar("Revisión o Mi salud", enElPrincipal = false) { (existe(etiqueta("tarjeta-mi-salud")) || existe(etiqueta("mi-salud-pantalla"))).takeIf { it } }
+    if (!existe(etiqueta("mi-salud-pantalla"))) tocar(etiqueta("tarjeta-mi-salud"))
+    nodo(etiqueta("mi-salud-pantalla"))
+}
+
 /**
- * Salud (2.1.0): ya no es pestaña. Se abre desde la tarjeta Recuperación de arriba de Revisión, en Recuperación, y tapa
- * Revisión (que queda marcada en la barra) hasta volver.
+ * Salud (2.1.0): ya no es pestaña. Desde la 2.3.0 se abre desde la fila Recuperación de «Mi salud» (antes, de arriba de
+ * Revisión), en Recuperación, y tapa Revisión (que queda marcada en la barra) hasta volver.
  */
 fun Pantalla.abrirSalud() {
-    tocar(etiqueta("pestana-revision"))
+    abrirMiSalud()
     tocar(etiqueta("tarjeta-recuperacion-revision"))
     nodo(etiqueta("salud-pantalla"))
 }
