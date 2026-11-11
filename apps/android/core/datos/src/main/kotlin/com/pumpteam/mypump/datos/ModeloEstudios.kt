@@ -234,6 +234,15 @@ class ModeloEstudios(
     private val _preparando = MutableStateFlow(0)
     /** Archivos que se están convirtiendo para la hoja. */
     val preparando: StateFlow<Int> = _preparando.asStateFlow()
+    private val _resuelto = MutableStateFlow(false)
+    /**
+     * En esta sesión ya se supo si la sección existe: terminó un [sincronizar] (con la palanca apagada, sin llamar a nada).
+     * Quien llega desde un aviso espera esto antes de decidir a dónde va ([ModeloApp.estudiosParaAviso]).
+     */
+    val resuelto: StateFlow<Boolean> = _resuelto.asStateFlow()
+
+    /** Los ids que se están marcando como vistos ahora: no se mandan dos veces a la vez. */
+    private val marcando = ConcurrentHashMap.newKeySet<String>()
 
     private val drenando = Mutex()
     private val reintentoProgramado = AtomicBoolean(false)
@@ -265,10 +274,46 @@ class ModeloEstudios(
     suspend fun sincronizar() {
         if (_palanca.value != true) {
             apagar()
+            _resuelto.value = true
             return
         }
         refrescar()
+        _resuelto.value = true
         drenarEnFondo()   // un PDF grande no frena a quien espera
+    }
+
+    // ── Novedades ──
+
+    /**
+     * El único punto de entrada para una lista de «Novedades de tu plan»: el texto y el destino (`estudios`), los mismos del
+     * aviso al teléfono. null si no hay nada sin ver (o la sección no existe).
+     */
+    val novedadDeEstudios: Estudios.Novedad? get() = _estado.value?.let(Estudios::novedad)
+
+    /**
+     * La tarjeta estuvo de verdad en pantalla dentro de Estudios: deja de ser novedad (sigue pendiente). Solo se mandan los
+     * ids que hoy están como nuevos. Si falla no se guarda nada: se vuelve a intentar la próxima vez que se vea. Con la
+     * palanca apagada o sin la sección no llama a nada.
+     */
+    suspend fun marcarVistas(ids: Collection<String>) {
+        if (_palanca.value != true) return
+        val e = _estado.value ?: return
+        val nuevas = Estudios.nuevas(e).toSet()
+        // `add` devuelve false si ya se estaba mandando: cada id va en un solo pedido a la vez.
+        val faltan = ids.distinct().filter { it in nuevas && marcando.add(it) }
+        if (faltan.isEmpty()) return
+        try {
+            val p = mapOf("p_token" to ValorJson.Texto(token), "p_ids" to ValorJson.Lista(faltan.map { ValorJson.Texto(it) }))
+            // `null` (link caído), un corte o un error: queda como estaba.
+            val r = cliente.llamar("mypump_estudios_novedades_vistas", p) as? Resultado.Ok ?: return
+            if (r.valor["ok"] == ValorJson.Booleano(true)) {
+                refrescar()
+            } else if (r.valor["error"]?.comoTexto == "no_habilitado") {
+                apagar()
+            }
+        } finally {
+            marcando.removeAll(faltan.toSet())
+        }
     }
 
     /** «Probar de nuevo» con la cola detenida. */
@@ -495,6 +540,7 @@ class ModeloEstudios(
     fun borrarTodo() {
         apagar()
         _palanca.value = false
+        marcando.clear()
         descartarBorrador()
         _cola.value = emptyList()
         vueltas.clear()

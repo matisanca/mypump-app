@@ -35,12 +35,14 @@ class DobleEstudios : Transporte {
     val llamadas = java.util.concurrent.CopyOnWriteArrayList<String>()
     var proximo: ValorJson? = null
     val pendientes = ArrayList<MutableMap<String, ValorJson>>()
-    val ordenes = ArrayList<Map<String, ValorJson>>()
+    val ordenes = ArrayList<MutableMap<String, ValorJson>>()
     val estudios = ArrayList<Map<String, ValorJson>>()
     val envios = java.util.concurrent.CopyOnWriteArrayList<Envio>()
     var cabecerasUltimaSubida: Map<String, String> = emptyMap()
     var ultimoHecho: ValorJson? = null
     var ultimoUrls: ValorJson? = null
+    /** Los `p_ids` de cada `novedades_vistas`, en orden. */
+    val vistasPedidas = java.util.concurrent.CopyOnWriteArrayList<List<String>>()
 
     val llamadasEstudios: List<String> get() = llamadas.filter { "estudios" in it }
     val intentosDeSubida: Int get() = llamadas.count { it == "estudios/upload" }
@@ -67,6 +69,8 @@ class DobleEstudios : Transporte {
 
     private fun atender(nombre: String, p: Pedido): Pair<Int, String> {
         if (nombre == "mypump_get_app_config") return 200 to """{"estudios_app":$palanca}"""
+        // Una cuenta inventada, para las pruebas que arman `ModeloApp` entero.
+        if (nombre == "mypump_get_cliente_info") return 200 to """[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"""
         if (nombre.startsWith("mypump_estudios") && sinFuncion) return 404 to """{"code":"PGRST202","message":"no existe"}"""
         if (nombre.startsWith("mypump_estudios") && tokenCaido) return 200 to "null"
         if (nombre == "mypump_estudios_envio_nuevo" || nombre == "mypump_estudios_enviar") {
@@ -78,6 +82,7 @@ class DobleEstudios : Transporte {
             "mypump_estudios_envio_nuevo" -> 200 to envioNuevo(cuerpo(p))
             "mypump_estudios_enviar" -> 200 to enviarEnvio(cuerpo(p))
             "mypump_estudios_hecho" -> 200 to hecho(cuerpo(p))
+            "mypump_estudios_novedades_vistas" -> 200 to novedadesVistas(cuerpo(p))
             "estudios/upload" -> subida(p)
             "estudios/urls" -> urls(cuerpo(p))
             else -> 200 to "[]"
@@ -146,6 +151,21 @@ class DobleEstudios : Transporte {
         return """{"ok":true,"estado":"hecho"}"""
     }
 
+    /** Solo lo propio y lo que seguía sin ver; lo demás se ignora. */
+    private fun novedadesVistas(j: ValorJson): String {
+        if (!habilitado) return """{"ok":false,"error":"no_habilitado"}"""
+        val ids = (j["p_ids"] as? ValorJson.Lista)?.elementos?.mapNotNull { it.comoTexto } ?: return """{"ok":false,"error":"ids"}"""
+        vistasPedidas += ids
+        var marcadas = 0
+        for (fila in pendientes + ordenes) {
+            if (fila["nuevo"] == si && fila["id"]?.comoTexto in ids) {
+                fila["nuevo"] = ValorJson.Booleano(false)
+                marcadas++
+            }
+        }
+        return """{"ok":true,"marcadas":$marcadas}"""
+    }
+
     private fun urls(j: ValorJson): Pair<Int, String> {
         ultimoUrls = j
         val id = j["id"]?.comoTexto
@@ -166,10 +186,14 @@ class DobleEstudios : Transporte {
 
     private fun vista(): ValorJson = ValorJson.objeto(
         "habilitado" to si, "hoy" to t(HOY),
+        // Como el servidor: pedidos a la vista (no los ya hechos) y órdenes vigentes que todavía no se vieron.
+        "novedades" to ValorJson.Numero(
+            (pendientes.count { it["nuevo"] == si && it["estado"]?.comoTexto != "hecho" } + ordenes.count { it["nuevo"] == si && it["vigente"] == si }).toDouble(),
+        ),
         "topes" to ValorJson.objeto("archivos_por_envio" to ValorJson.Numero(20.0), "mb_por_archivo" to ValorJson.Numero(20.0)),
         "proximo_control" to (proximo ?: ValorJson.Nulo),
         "pendientes" to ValorJson.Lista(pendientes.map { ValorJson.Objeto(LinkedHashMap(it)) }),
-        "ordenes" to ValorJson.Lista(ordenes.map { ValorJson.Objeto(it) }),
+        "ordenes" to ValorJson.Lista(ordenes.map { ValorJson.Objeto(LinkedHashMap(it)) }),
         "estudios" to ValorJson.Lista(estudios.map { ValorJson.Objeto(it) }),
         "envios" to ValorJson.Lista(
             envios.map {
@@ -235,7 +259,7 @@ class DobleEstudios : Transporte {
                 "reintento" -> d.proximasSubidas.add(503)
                 "corte" -> d.proximasSubidas.addAll(listOf(200, 0))
                 "topeDia" -> d.topeDia = true
-                "completo" -> {
+                "completo", "novedad", "ordenNueva", "soloOrdenNueva" -> {
                     d.proximo = parsear("""{"tipo":"laboratorio","titulo":"Análisis de laboratorio","desde":"2026-11-23","hasta":"2026-11-29"}""")
                     d.pendientes += mapa("""{"id":"$PEDIDO_LAB","tipo":"laboratorio","titulo":"Análisis de laboratorio","detalle":null,"desde":null,"hasta":"2026-11-19","estado":"pedido","hecho_fecha":null,"orden_id":"$ORDEN_LAB"}""")
                     d.pendientes += mapa("""{"id":"$PEDIDO_ECO","tipo":"ecocardiograma","titulo":"Ecocardiograma","detalle":null,"desde":null,"hasta":"2026-11-05","estado":"pedido","hecho_fecha":null,"orden_id":null}""")
@@ -244,6 +268,20 @@ class DobleEstudios : Transporte {
                     d.ordenes += mapa("""{"id":"$ORDEN_VENCIDA","tipo":"ergometria","titulo":"Ergometría","emitida":"2026-08-20","vence":"2026-10-19","vigente":false}""")
                     d.estudios += mapa("""{"id":"$ESTUDIO_VISTO","tipo":"laboratorio","titulo":"Análisis de laboratorio","fecha":"2026-08-14","hojas":4,"estado":"visto","recibido_en":"2026-08-15T13:02:11Z","se_puede_abrir":true}""")
                     d.estudios += mapa("""{"id":"$ESTUDIO_RECIBIDO","tipo":"ecografia","titulo":"Ecografía","fecha":null,"hojas":1,"estado":"recibido","recibido_en":"2026-11-04T13:02:11Z","se_puede_abrir":false}""")
+                    when (nombre) {
+                        // Un pedido y su orden sin ver: la tarjeta de arriba dice «estudio nuevo», y adentro las dos llevan «Nuevo».
+                        "novedad" -> {
+                            d.pendientes.first { it["id"]?.comoTexto == PEDIDO_ECO }["nuevo"] = ValorJson.Booleano(true)
+                            d.ordenes.first { it["id"]?.comoTexto == ORDEN_LAB }["nuevo"] = ValorJson.Booleano(true)
+                        }
+                        // Solo una orden sin ver.
+                        "ordenNueva" -> d.ordenes.first { it["id"]?.comoTexto == ORDEN_LAB }["nuevo"] = ValorJson.Booleano(true)
+                        // Solo una orden sin ver y nada por hacer.
+                        "soloOrdenNueva" -> {
+                            d.pendientes.clear()
+                            d.ordenes.first { it["id"]?.comoTexto == ORDEN_LAB }["nuevo"] = ValorJson.Booleano(true)
+                        }
+                    }
                 }
             }
             return d

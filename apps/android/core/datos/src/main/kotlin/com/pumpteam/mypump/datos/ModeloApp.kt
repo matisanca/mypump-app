@@ -41,6 +41,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -807,6 +808,23 @@ class ModeloApp(
     /** Con la palanca apagada, o sin haberla leído en esta sesión, no se llama a nada: la app es la de siempre. */
     private suspend fun sincronizarEstudios() {
         _estudios.value?.sincronizar()
+    }
+
+    /**
+     * Tocaron un aviso de Estudios o un link con `?scene=estudios`: la sección, si existe; null = no está disponible (la
+     * palanca apagada, la cuenta sin la función, el `get` caído) y se queda en Mis datos. Con la app recién abierta la carga
+     * puede no haber terminado: se espera a saberlo, con un tope corto. No llama a nada: solo mira.
+     */
+    suspend fun estudiosParaAviso(topeMs: Long = 6_000, pasoMs: Long = 200, esperar: suspend (Long) -> Unit = { delay(it) }): ModeloEstudios? {
+        var quedan = topeMs
+        while (true) {
+            if (_esDemo.value || (_fase.value != Fase.CARGANDO && _fase.value != Fase.LISTO)) return null
+            val e = _estudios.value
+            if (e != null && e.resuelto.value) return e.takeIf { it.estado.value != null }
+            if (quedan <= 0) return null
+            esperar(pasoMs)
+            quedan -= pasoMs
+        }
     }
 
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */

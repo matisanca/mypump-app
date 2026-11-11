@@ -5,6 +5,7 @@ import java.time.ZoneId
 import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /** Los vectores que comparte con iOS (`apps/shared/vectores/estudios.json`): mismos textos, mismas fechas, misma tolerancia. */
@@ -33,6 +34,7 @@ class EstudiosVectoresTest {
             "guiaSubida" to t.guiaSubida, "sacarFotos" to t.sacarFotos, "elegirFotos" to t.elegirFotos, "elegirPDF" to t.elegirPdf, "quitar" to t.quitar,
             "sinSenal" to t.sinSenal, "envioRecibido" to t.recibidoAviso, "topeDia" to t.topeDia, "archivoRechazado" to t.archivoRechazado,
             "comoPrepararte" to t.comoPrepararte, "dondeHacerlo" to t.dondeHacerlo, "noSePudoAbrir" to t.noSePudoAbrir,
+            "estudioNuevo" to t.estudioNuevo, "ordenNueva" to t.ordenNueva, "estudioParaHacer" to t.estudioParaHacer, "nuevo" to t.nuevo, "novedad" to t.novedad,
         )
         // Si el vector suma un texto, esta prueba falla hasta que Android lo tenga.
         assertEquals((v["textos"] as ValorJson.Objeto).campos.mapValues { it.value.comoTexto }, propios)
@@ -82,6 +84,38 @@ class EstudiosVectoresTest {
     @Test fun subida() {
         for (c in lista(v["subida"])) {
             assertEquals(c["accion"]?.comoTexto, Estudios.clasificarSubida(entero(c["status"])!!, c["ok"] == ValorJson.Booleano(true)).name.lowercase(), "$c")
+        }
+    }
+
+    /**
+     * `novedades` y `nuevo`: el punto, la tarjeta de arriba, la novedad para la lista del plan, a qué tarjeta se lleva y qué
+     * ids se mandan a marcar. Los textos no nombran qué estudio ni por qué.
+     */
+    @Test fun novedades() {
+        assertEquals(v["destino"]?.comoTexto, Estudios.DESTINO)
+        val casos = lista(v["novedades"])
+        assertTrue(casos.size >= 10)
+        for (c in casos) {
+            val nombre = c["nombre"]?.comoTexto
+            val e = EstadoEstudios.desde(c["respuesta"])!!
+            val x = c["espera"]!!
+            assertEquals(x["indicador"] == ValorJson.Booleano(true), Estudios.hayNovedad(e), nombre)
+            val n = Estudios.novedad(e)
+            assertEquals(x["novedad"]?.comoTexto, n?.titulo, nombre)
+            if (n != null) assertEquals("estudios", n.destino, nombre)
+            val t = Estudios.tarjetaInicio(e)
+            val tarjeta = x["tarjeta"] as? ValorJson.Objeto
+            if (tarjeta == null) {
+                assertNull(t, nombre)
+            } else {
+                assertEquals(Estudios.TarjetaInicio(tarjeta["titulo"]!!.comoTexto!!, tarjeta["boton"]!!.comoTexto!!, tarjeta["nueva"] == ValorJson.Booleano(true)), t, nombre)
+            }
+            val ancla = (x["ancla"] as? ValorJson.Objeto)?.let { a ->
+                val id = a["id"]!!.comoTexto!!
+                if (a["clase"]?.comoTexto == "orden") Estudios.Ancla.Orden(id) else Estudios.Ancla.Pendiente(id)
+            }
+            assertEquals(ancla, Estudios.ancla(e), nombre)
+            assertEquals(textos(x["nuevas"]), Estudios.nuevas(e), nombre)
         }
     }
 

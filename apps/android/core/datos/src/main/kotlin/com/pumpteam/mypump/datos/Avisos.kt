@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.reglas.Estudios
 import com.pumpteam.mypump.reglas.SemanaRevision
 import java.time.DayOfWeek
 import java.time.Instant
@@ -14,10 +15,12 @@ import kotlinx.serialization.json.Json
 /**
  * A dónde lleva tocar un aviso: el `destino` que mandan `push.py` (comentarios del coach) y la notificación local del
  * domingo. Uno desconocido, como el histórico `comentarios`, cae a Chat (NOT-03). Desde la 2.1, `progress` abre Salud →
- * Fuerza (lo que era Progreso) y el viejo `myday` (Mi Día ya no existe) abre Salud → Recuperación.
+ * Fuerza (lo que era Progreso) y el viejo `myday` (Mi Día ya no existe) abre Salud → Recuperación. `estudios` abre Mis
+ * datos → Estudios y órdenes; si la sección no está (palanca apagada, cuenta sin la función, `get` caído), queda en Mis
+ * datos ([ModeloApp.estudiosParaAviso]).
  */
 enum class DestinoAviso {
-    ENTRENO, DIETA, CHAT, REVISION, FUERZA, RECUPERACION, MIS_DATOS;
+    ENTRENO, DIETA, CHAT, REVISION, FUERZA, RECUPERACION, MIS_DATOS, ESTUDIOS;
 
     companion object {
         fun deDestino(destino: String?): DestinoAviso = when (destino) {
@@ -27,6 +30,7 @@ enum class DestinoAviso {
             "myday" -> RECUPERACION
             "revision" -> REVISION
             "salud" -> MIS_DATOS
+            Estudios.DESTINO -> ESTUDIOS
             else -> CHAT
         }
 
@@ -35,7 +39,7 @@ enum class DestinoAviso {
          * escena inexistente dejaba la app en blanco).
          */
         fun deEscena(escena: String?): DestinoAviso? =
-            if (escena in listOf("train", "diet", "chat", "revision", "progress", "salud", "myday")) deDestino(escena) else null
+            if (escena in listOf("train", "diet", "chat", "revision", "progress", "salud", "myday", Estudios.DESTINO)) deDestino(escena) else null
 
         /** Los extras con que tocar un aviso abre la app: el `destino` (el de push.py y el de los locales)… */
         const val EXTRA_DESTINO = "destino"

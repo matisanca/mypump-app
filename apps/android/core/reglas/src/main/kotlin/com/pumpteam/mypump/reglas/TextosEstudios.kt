@@ -69,6 +69,14 @@ object TextosEstudios {
     const val vacio = "Acá vas a ver los estudios que te pida Mati, tus órdenes y lo que nos mandes."
     const val errorDeCarga = "No se pudo cargar. Deslizá para reintentar."
 
+    // Novedades: la tarjeta de arriba, el aviso y la etiqueta. Ninguno dice qué estudio ni por qué.
+    const val estudioNuevo = "Tenés un estudio nuevo para hacer"
+    const val ordenNueva = "Tenés una orden nueva"
+    const val estudioParaHacer = "Tenés un estudio para hacer"
+    const val nuevo = "Nuevo"
+    /** Solo para el lector de pantalla: lo que dice el punto de la pestaña y de la fila. */
+    const val novedad = "Novedad"
+
     // Lo que no está en el contrato porque no se lee: solo lo dice el lector de pantalla o nombra un archivo de la hoja.
     fun fotoN(n: Int) = "Foto $n"
     fun pdfN(n: Int) = "PDF $n"

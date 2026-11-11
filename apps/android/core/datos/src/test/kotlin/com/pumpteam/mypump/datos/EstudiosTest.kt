@@ -5,6 +5,7 @@ import com.pumpteam.mypump.reglas.Estudios
 import java.io.File
 import java.nio.file.Files
 import java.time.LocalDate
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -812,5 +813,162 @@ class EstudiosTest {
         val xref = texto.substringAfter("startxref\n").substringBefore("\n").toInt()
         assertTrue(texto.substring(xref).startsWith("xref"))
         assertEquals(2, Regex("/Type /Page ").findAll(texto).count())
+    }
+
+    // ── Novedades, aviso y destino ──
+
+    /**
+     * El `destino` del aviso y la escena del link, como los vectores que comparte con iOS: `estudios` es un destino propio; uno
+     * parecido cae a Chat (aviso) o no hace nada (link), como cualquier desconocido.
+     */
+    @Test fun destinoEstudiosComoLosVectores() {
+        val v = ValorJson.parsear(Compartido.texto("vectores/estudios.json"))
+        fun va(d: DestinoAviso?): String? = when (d) {
+            DestinoAviso.ESTUDIOS -> "estudios"
+            DestinoAviso.MIS_DATOS -> "misDatos"
+            DestinoAviso.CHAT -> "chat"
+            null -> null
+            else -> "otro"
+        }
+        val avisos = (v["destinos"]!!["avisos"] as ValorJson.Lista).elementos
+        val escenas = (v["destinos"]!!["escenas"] as ValorJson.Lista).elementos
+        assertTrue(avisos.size >= 4 && escenas.size >= 3)
+        for (c in avisos) assertEquals(c["va"]?.comoTexto, va(DestinoAviso.deDestino(c["destino"]?.comoTexto)), "$c")
+        for (c in escenas) assertEquals(c["va"]?.comoTexto, va(DestinoAviso.deEscena(c["escena"]?.comoTexto)), "$c")
+        assertEquals(DestinoAviso.ESTUDIOS, DestinoAviso.deDestino(Estudios.DESTINO))
+        assertEquals(DestinoAviso.ESTUDIOS, DestinoAviso.deDestino(v["destino"]?.comoTexto))
+        // Tocar el push: con la marca de aviso va a Estudios; sin ella (el ícono, un link) no es un aviso.
+        assertEquals(DestinoAviso.ESTUDIOS, DestinoAviso.alTocar(setOf(DestinoAviso.EXTRA_FCM, DestinoAviso.EXTRA_DESTINO), "estudios"))
+        assertNull(DestinoAviso.alTocar(setOf(DestinoAviso.EXTRA_DESTINO), "estudios"))
+    }
+
+    @Test fun laNovedadSeApagaAlVerlaYElPedidoSiguePendiente(): Unit = runBlocking {
+        val d = DobleEstudios.escenario("novedad")
+        val m = armar(d).m
+        m.usarPalanca(true)
+        assertFalse(m.resuelto.value)
+        m.sincronizar()
+        assertTrue(m.resuelto.value)
+        fun e() = m.estado.value!!
+        assertEquals(2, e().novedades)
+        assertTrue(Estudios.hayNovedad(e()))
+        assertEquals(Estudios.Novedad("Tenés un estudio nuevo para hacer", "estudios"), m.novedadDeEstudios)
+        assertEquals(Estudios.TarjetaInicio("Tenés un estudio nuevo para hacer", "Ver", nueva = true), Estudios.tarjetaInicio(e()))
+        val pedido = DobleEstudios.PEDIDO_ECO
+        val orden = DobleEstudios.ORDEN_LAB
+        assertEquals(Estudios.Ancla.Pendiente(pedido), Estudios.ancla(e()))
+        // Lo que no está como nuevo, o no existe, no se manda.
+        m.marcarVistas(listOf(DobleEstudios.PEDIDO_LAB, "no-es-de-nadie"))
+        m.marcarVistas(emptyList())
+        assertTrue(d.vistasPedidas.isEmpty())
+        // Se vio el pedido: queda la orden, y el pedido sigue pendiente.
+        m.marcarVistas(listOf(pedido, pedido))
+        assertEquals(listOf(listOf(pedido)), d.vistasPedidas.toList())
+        assertEquals(3, e().pendientes.size)
+        assertTrue(e().pendientes.none { it.nuevo })
+        assertEquals("Tenés una orden nueva", m.novedadDeEstudios?.titulo)
+        assertEquals(Estudios.Ancla.Orden(orden), Estudios.ancla(e()))
+        // Se vio la orden: ya no hay novedad; queda el recordatorio de lo que falta, con el botón de subir.
+        m.marcarVistas(listOf(pedido, orden))
+        assertEquals(listOf(listOf(pedido), listOf(orden)), d.vistasPedidas.toList())
+        assertFalse(Estudios.hayNovedad(e()))
+        assertNull(m.novedadDeEstudios)
+        assertEquals(Estudios.TarjetaInicio("Tenés un estudio para hacer", "Subir resultado", nueva = false), Estudios.tarjetaInicio(e()))
+        assertTrue(d.llamadas.none { "cliente_id" in it })
+    }
+
+    @Test fun soloUnaOrdenNuevaYNadaPorHacer(): Unit = runBlocking {
+        val d = DobleEstudios.escenario("soloOrdenNueva")
+        val m = armar(d).m
+        m.usarPalanca(true)
+        m.sincronizar()
+        assertEquals("Tenés una orden nueva", Estudios.tarjetaInicio(m.estado.value!!)?.titulo)
+        m.marcarVistas(listOf(DobleEstudios.ORDEN_LAB))
+        assertFalse(Estudios.hayNovedad(m.estado.value!!))
+        assertNull(Estudios.tarjetaInicio(m.estado.value!!), "sin novedad y sin nada por hacer no hay tarjeta")
+    }
+
+    @Test fun siMarcarFallaQuedaComoEstabaYSeReintenta(): Unit = runBlocking {
+        val d = DobleEstudios.escenario("novedad")
+        val m = armar(d).m
+        m.usarPalanca(true)
+        m.sincronizar()
+        val pedido = DobleEstudios.PEDIDO_ECO
+        val orden = DobleEstudios.ORDEN_LAB
+        d.sinRed = true
+        m.marcarVistas(listOf(pedido))
+        assertTrue(d.vistasPedidas.isEmpty())
+        assertEquals(2, m.estado.value?.novedades, "sin red no cambia nada")
+        d.sinRed = false
+        d.tokenCaido = true
+        m.marcarVistas(listOf(pedido))
+        assertEquals(2, m.estado.value?.novedades, "con el link caído tampoco")
+        assertTrue(m.cola.value.isEmpty(), "no usa la cola de subida")
+        d.tokenCaido = false
+        m.marcarVistas(listOf(pedido, orden))
+        assertEquals(listOf(listOf(pedido, orden)), d.vistasPedidas.toList())
+        assertFalse(Estudios.hayNovedad(m.estado.value!!))
+    }
+
+    @Test fun conLaPalancaApagadaNoHayNovedadNiSeMarcaNada(): Unit = runBlocking {
+        val d = DobleEstudios.escenario("novedad")
+        val m = armar(d).m
+        // Sin leer la palanca en esta sesión: aunque hubiera estado, no se marca nada.
+        m.refrescar()
+        m.marcarVistas(listOf(DobleEstudios.PEDIDO_ECO))
+        assertFalse("mypump_estudios_novedades_vistas" in d.llamadasEstudios)
+        m.usarPalanca(false)
+        m.sincronizar()
+        assertTrue(m.resuelto.value)
+        assertNull(m.estado.value)
+        assertNull(m.novedadDeEstudios)
+        val antes = d.llamadasEstudios
+        m.marcarVistas(listOf(DobleEstudios.PEDIDO_ECO))
+        assertEquals(antes, d.llamadasEstudios)
+    }
+
+    @Test fun siLaDeshabilitanAlMarcarLaSeccionSeApaga(): Unit = runBlocking {
+        val d = DobleEstudios.escenario("novedad")
+        val m = armar(d).m
+        m.usarPalanca(true)
+        m.sincronizar()
+        d.habilitado = false
+        m.marcarVistas(listOf(DobleEstudios.PEDIDO_ECO))
+        assertNull(m.estado.value)
+        assertNull(m.novedadDeEstudios)
+    }
+
+    /** El aviso tocado con la app cerrada: se espera a saber si hay sección antes de decidir, con tope. */
+    @Test fun elAvisoEsperaASaberSiLaSeccionExiste() = enUnHilo { alcance ->
+        fun app(d: DobleEstudios) = ModeloApp(ClienteRpc(transporte = d), TokenEnMemoria(token), carpetaTemporal("estudios-aviso"), PreferenciasEnMemoria(), alcance)
+        // La carga todavía no terminó: espera y abre Estudios.
+        val a = app(DobleEstudios.escenario("novedad"))
+        val llegada = async { a.estudiosParaAviso(topeMs = 20_000, pasoMs = 5) }
+        a.cargar()
+        val e = llegada.await()
+        assertNotNull(e)
+        assertTrue(e === a.estudios.value)
+        assertTrue(Estudios.hayNovedad(e!!.estado.value!!))
+        // Ya resuelto: contesta en el momento.
+        assertTrue(a.estudiosParaAviso(topeMs = 0) === a.estudios.value)
+        // Sin la sección (palanca apagada, sin el servidor nuevo, cuenta sin la función): Mis datos.
+        for (caso in listOf("apagado", "sinServidor", "noHabilitado")) {
+            val otra = app(DobleEstudios.escenario(caso))
+            otra.cargar()
+            assertNull(otra.estudiosParaAviso(topeMs = 0), caso)
+        }
+        // El `get` falla: Mis datos.
+        val caida = DobleEstudios.escenario("novedad")
+        val b = app(caida)
+        b.cargar()
+        caida.sinRed = true
+        b.estudios.value!!.apagar()
+        b.estudios.value!!.sincronizar()
+        assertNull(b.estudiosParaAviso(topeMs = 0))
+        // Nunca se llega a saber: se corta en el tope, sin llamar a nada.
+        val muda = DobleEstudios.escenario("novedad")
+        val c = app(muda)
+        assertNull(c.estudiosParaAviso(topeMs = 50, pasoMs = 5))
+        assertTrue(muda.llamadasEstudios.isEmpty())
     }
 }

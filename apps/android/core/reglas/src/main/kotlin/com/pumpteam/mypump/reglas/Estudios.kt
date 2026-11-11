@@ -29,9 +29,20 @@ data class PendienteEstudios(
     val hecho: Boolean,
     val hechoFecha: LocalDate?,
     val ordenId: String?,
+    /** El alumno todavía no lo vio. Solo con el `true` del servidor. */
+    val nuevo: Boolean = false,
 )
 
-data class OrdenEstudios(val id: String, val tipo: String?, val titulo: String, val emitida: LocalDate?, val vence: LocalDate?, val vigente: Boolean)
+data class OrdenEstudios(
+    val id: String,
+    val tipo: String?,
+    val titulo: String,
+    val emitida: LocalDate?,
+    val vence: LocalDate?,
+    val vigente: Boolean,
+    /** El alumno todavía no la vio. Solo con el `true` del servidor. */
+    val nuevo: Boolean = false,
+)
 
 data class EstudioRecibido(val id: String?, val tipo: String?, val titulo: String, val fecha: LocalDate?, val hojas: Int, val visto: Boolean, val sePuedeAbrir: Boolean)
 
@@ -48,6 +59,8 @@ data class EstadoEstudios(
     val ordenes: List<OrdenEstudios>,
     val estudios: List<EstudioRecibido>,
     val envios: List<EnvioRecibido>,
+    /** Pedidos a la vista y órdenes vigentes que el alumno todavía no vio. Sin el campo (servidor viejo), 0. */
+    val novedades: Int = 0,
 ) {
     fun orden(id: String?): OrdenEstudios? = id?.let { i -> ordenes.firstOrNull { it.id == i } }
 
@@ -68,6 +81,7 @@ data class EstadoEstudios(
                         desde = p["desde"].dia(), hasta = p["hasta"].dia(),
                         // Un estado desconocido es «pedido».
                         hecho = p["estado"].texto() == "hecho", hechoFecha = p["hecho_fecha"].dia(), ordenId = p["orden_id"].texto(),
+                        nuevo = p["nuevo"] == ValorJson.Booleano(true),
                     )
                 },
                 ordenes = j["ordenes"].lista().mapNotNull { o ->
@@ -75,6 +89,7 @@ data class EstadoEstudios(
                         id = o["id"].texto() ?: return@mapNotNull null, tipo = o["tipo"].texto(), titulo = titulo(o), emitida = o["emitida"].dia(), vence = o["vence"].dia(),
                         // Lo decide el servidor: solo un `false` explícito la cierra (el teléfono no la da por vencida por su cuenta).
                         vigente = o["vigente"] != ValorJson.Booleano(false),
+                        nuevo = o["nuevo"] == ValorJson.Booleano(true),
                     )
                 },
                 estudios = j["estudios"].lista().filter { it is ValorJson.Objeto }.map { e ->
@@ -88,6 +103,7 @@ data class EstadoEstudios(
                 envios = j["envios"].lista().filter { it is ValorJson.Objeto && it["estado"].texto() != "borrador" }.map { s ->
                     EnvioRecibido(s["id"].texto(), s["archivos"].entero() ?: 0, s["pedido_id"].texto(), s["enviado_en"].texto())
                 },
+                novedades = j["novedades"].entero() ?: 0,
             )
         }
     }
@@ -147,6 +163,61 @@ object Estudios {
 
     /** El subtítulo de la fila de Mis datos: lo que falta (también lo ya hecho sin resultado) o «Todo al día». */
     fun subtitulo(e: EstadoEstudios): String = TextosEstudios.subtitulo(e.pendientes.size)
+
+    // ── Novedades ──
+
+    /** El `destino` del aviso al teléfono y la escena del link (`?scene=estudios`). */
+    const val DESTINO = "estudios"
+
+    /** La tarjeta a la que hay que llevar al alumno dentro de Estudios. */
+    sealed interface Ancla {
+        val id: String
+
+        data class Pendiente(override val id: String) : Ancla
+        data class Orden(override val id: String) : Ancla
+    }
+
+    /** La novedad de Estudios para una lista de novedades del plan: el texto y a dónde lleva. */
+    data class Novedad(val titulo: String, val destino: String)
+
+    /** La tarjeta de arriba de la primera pestaña. `nueva`: hay algo sin ver; si no, es el recordatorio de lo que falta hacer. */
+    data class TarjetaInicio(val titulo: String, val boton: String, val nueva: Boolean)
+
+    /** El punto de la pestaña y de la fila de Mis datos: mientras el servidor diga que hay algo sin ver. */
+    fun hayNovedad(e: EstadoEstudios): Boolean = e.novedades > 0
+
+    /** Los ids (pedidos y órdenes, mezclados) que el alumno todavía no vio: lo único que se manda a marcar. */
+    fun nuevas(e: EstadoEstudios): List<String> = e.pendientes.filter { it.nuevo }.map { it.id } + e.ordenes.filter { it.nuevo }.map { it.id }
+
+    /**
+     * Con algo sin ver: «Tenés un estudio nuevo para hacer» si hay un pedido nuevo y «Tenés una orden nueva» si lo nuevo son
+     * solo órdenes. Ninguno dice qué estudio ni por qué. Si el servidor cuenta novedades y no marca ninguna fila, se decide
+     * por lo que hay: con pedidos, el estudio; sin pedidos, la orden.
+     */
+    fun novedad(e: EstadoEstudios): Novedad? {
+        if (!hayNovedad(e)) return null
+        val pedido = e.pendientes.any { it.nuevo } || (e.ordenes.none { it.nuevo } && e.pendientes.isNotEmpty())
+        return Novedad(if (pedido) TextosEstudios.estudioNuevo else TextosEstudios.ordenNueva, DESTINO)
+    }
+
+    /**
+     * Con novedad, su texto y «Ver». Sin novedad y con algo por hacer, «Tenés un estudio para hacer» y «Subir resultado».
+     * Sin ninguna de las dos cosas no hay tarjeta.
+     */
+    fun tarjetaInicio(e: EstadoEstudios): TarjetaInicio? {
+        novedad(e)?.let { return TarjetaInicio(it.titulo, TextosEstudios.ver, nueva = true) }
+        if (e.pendientes.isEmpty()) return null
+        return TarjetaInicio(TextosEstudios.estudioParaHacer, TextosEstudios.subirResultado, nueva = false)
+    }
+
+    /**
+     * A qué tarjeta se lleva al llegar desde un aviso o desde la tarjeta de arriba: la primera nueva en el orden de la
+     * pantalla (los pedidos van antes que las órdenes); sin nada nuevo, el primer pedido. null: no hay a dónde.
+     */
+    fun ancla(e: EstadoEstudios): Ancla? =
+        e.pendientes.firstOrNull { it.nuevo }?.let { Ancla.Pendiente(it.id) }
+            ?: e.ordenes.firstOrNull { it.nuevo }?.let { Ancla.Orden(it.id) }
+            ?: e.pendientes.firstOrNull()?.let { Ancla.Pendiente(it.id) }
 
     // ── Fechas ──
 
