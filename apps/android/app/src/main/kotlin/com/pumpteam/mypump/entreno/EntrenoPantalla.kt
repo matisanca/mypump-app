@@ -211,12 +211,21 @@ private fun SinRutina(modelo: ModeloApp) {
             modifier = Modifier.padding(relleno).fillMaxSize(),
         ) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                // La videollamada también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
-                com.pumpteam.mypump.guia.TarjetaVideollamadaEntreno(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
-com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
-                com.pumpteam.mypump.recorrido.TarjetaRecorridoDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
-                TarjetaPresionDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
-                TarjetaGimnasioDe(modelo, Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs))
+                // Sin rutina, las mismas tarjetas de arriba y en el mismo orden que con rutina (`ListaEntreno`): en el flujo
+                // nuevo la guía, la videollamada y el contrato pueden llegar antes que el plan. El mismo orden en iOS.
+                val borde = Modifier.padding(horizontal = Espacio.m, vertical = Espacio.xs)
+                TarjetaPresionDe(modelo, borde)
+                // Con la lista previa adentro (o sola, sin guía).
+                com.pumpteam.mypump.guia.TarjetaVideollamadaEntreno(modelo, borde)
+                com.pumpteam.mypump.recorrido.TarjetaRecorridoDe(modelo, borde)
+                com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo, borde)
+                // Sin rutina no hay «más abajo»: la guía va en el lugar de la destacada, sea cual sea su estilo.
+                com.pumpteam.mypump.guia.TarjetaGuiaDe(modelo, borde)
+                com.pumpteam.mypump.fotosinicio.TarjetaFotosInicioDe(modelo, borde, soloSiFaltan = true)
+                TarjetaGimnasioDe(modelo, borde)
+                com.pumpteam.mypump.novedades.TarjetaNovedadDe(modelo, borde)
+                // El contrato sin firmar (palanca `contrato_app`): justo el pre-inicio, antes de que haya rutina.
+                com.pumpteam.mypump.misdatos.AvisoContratoPendiente(modelo, borde)
                 Spacer(Modifier.height(80.dp))
                 EstadoVacio(
                     icono = Iconos.Pesa,

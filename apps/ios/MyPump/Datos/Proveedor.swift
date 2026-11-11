@@ -81,8 +81,6 @@ enum Proveedor {
 }
 
 #if DEBUG
-/// Todo pedido falla como sin señal (`-sinRed YES`).
-#if DEBUG
 /// `-tecnicaDePrueba`: lo de técnica lo contesta el doble (sin red), y la cuenta y el plan salen de las muestras.
 private struct TecnicaDePrueba: Transporte {
     let doble: DobleTecnica
@@ -240,7 +238,6 @@ private struct GimnasioDePrueba: Transporte {
         return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
 }
-#endif
 
 #if DEBUG
 /// `-checkGuiadoDePrueba general|ciclo|cicloGlp1|apagado|enviado|sinServidor` (`cicloGlp1`: además usa un GLP-1): la palanca `check_guiado`, el check de la semana y lo
@@ -317,6 +314,7 @@ private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
 }
 #endif
 
+/// Todo pedido falla como sin señal (`-sinRed YES`).
 private struct SinRed: Transporte {
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) { throw URLError(.notConnectedToInternet) }
 }

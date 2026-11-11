@@ -94,7 +94,10 @@ public final class ModeloApp {
     /// Cuántas veces tocó algo del día pasado (la lectura no pisa lo que se tocó mientras viajaba).
     @ObservationIgnored var ordenDiaPasado = 0
     /// La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido).
-    public private(set) var palanca = PalancaRemota.arranque()
+    public private(set) var palanca: PalancaRemota
+    /// Dónde se recuerda la palanca entre arranques. En la app, siempre `.standard`; las pruebas pasan uno propio para no
+    /// pisarse con las que corren en paralelo.
+    @ObservationIgnored private let palancaDefaults: UserDefaults
 
     /// Cuántas cargas terminaron con todo traído del servidor. `cargar()` sobre una cuenta ya cargada no pasa por
     /// `.cargando`: quien espera "la próxima carga con red" (la Fase R después de un corte) mira esto.
@@ -185,7 +188,10 @@ public final class ModeloApp {
     /// Lo que el motor de Entreno carga aparte después de cada carga (sesión, historial, comentarios).
     @ObservationIgnored private var cargaDelMotor: Task<Void, Never>?
 
-    public init(cliente: ClienteRPC = ClienteRPC(), almacen: AlmacenToken = TokenEnKeychain(), raizDisco: URL? = nil) {
+    public init(cliente: ClienteRPC = ClienteRPC(), almacen: AlmacenToken = TokenEnKeychain(), raizDisco: URL? = nil,
+                palancaDefaults: UserDefaults = .standard) {
+        self.palancaDefaults = palancaDefaults
+        palanca = PalancaRemota.arranque(defaults: palancaDefaults)
         self.cliente = cliente
         self.almacen = almacen
         self.raizDisco = raizDisco
@@ -613,7 +619,7 @@ public final class ModeloApp {
         guard vigente() else { return }
         if let palancaLeida {
             palanca = palancaLeida.conArgumentosDePrueba()
-            palancaLeida.recordar()
+            palancaLeida.recordar(defaults: palancaDefaults)
             estudios?.usarPalanca(palancaLeida.estudiosApp)
             revision?.guiadoPrendido = palancaLeida.checkGuiado
             documentos?.usarPalanca(palanca.contratoApp)
@@ -718,7 +724,7 @@ public final class ModeloApp {
         await sincronizarFeedback()
         await sincronizarEstudios()
         await sincronizarWins()
-        await sincronizarListaPrevia()
+        await sincronizarListaPreviaYa()
         await sincronizarPresion()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
@@ -889,6 +895,12 @@ public final class ModeloApp {
     /// La lista previa a la videollamada: solo lee. Apagada, se borra lo guardado. También la pide Entreno cuando cambia la
     /// guía o la agenda (el modelo no pide más de una vez por minuto).
     public func sincronizarListaPrevia() async {
+        // Mientras carga no: la palanca recordada puede ser vieja, y `cargar` la mira apenas la lee (como Android).
+        guard fase == .listo else { return }
+        await sincronizarListaPreviaYa()
+    }
+
+    private func sincronizarListaPreviaYa() async {
         guard !esDemo, let listaPrevia else { return }
         if palanca.listaPrevia { await listaPrevia.refrescar() } else { listaPrevia.apagar() }
     }
@@ -998,7 +1010,7 @@ public final class ModeloApp {
         await sincronizarFotosInicio()
         if toca(.salud) { await salud?.alVolver() }   // con Apple Health conectada: 7 días y retomar el historial
         await sincronizarWins()
-        await sincronizarListaPrevia()
+        await sincronizarListaPreviaYa()
         await sincronizarPresion()
         _ = await entreno?.alVolverAPrimerPlano()
     }

@@ -234,16 +234,21 @@ struct WinsModeloTests {
         #expect(!armar(d, raiz: r).prendida)
     }
 
-    @Test func modeloAppArrancaConLaPalancaRecordada() async {
+    @Test func modeloAppArrancaConLaPalancaRecordada() async throws {
         let r = raiz()
         let d = DobleColaA.escenario("conPermiso")
-        let a = app(d, raiz: r)
+        // Sus propios UserDefaults: con `.standard`, otra prueba en paralelo pisaba la palanca recordada.
+        let suite = "mypump-pruebas-palanca-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let a = ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: d), almacen: TokenEnMemoria(token), raizDisco: r,
+                          palancaDefaults: defaults)
         await a.cargar()
         #expect(a.palanca.winsApp && a.wins?.prendida == true)
-        defer { UserDefaults.standard.removeObject(forKey: "mypump-palanca-wins-app") }
         // Otro arranque sin red: la palanca sale de lo recordado y el modelo arranca prendido.
         d.sinRed = true
-        let b = app(d, raiz: r)
+        let b = ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: d), almacen: TokenEnMemoria(token), raizDisco: r,
+                          palancaDefaults: defaults)
         #expect(b.wins?.prendida == true && b.wins?.permiso == true)
     }
 

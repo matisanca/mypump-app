@@ -185,7 +185,9 @@ private fun CuerpoConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp, navegac
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
     BackHandler(enabled = enSalud) { navegacion.irARevision(null) }
     // Después del que vuelve a Entreno: con las fotos de inicio abiertas sobre Revisión, Atrás vuelve a Revisión.
-    BackHandler(enabled = navegacion.pestana == Pestana.REVISION && !navegacion.misDatos && navegacion.fotosInicio) { navegacion.fotosInicio = false }
+    // Solo con la pantalla a la vista: un pedido que no se pudo abrir (la sección no está) no se come el Atrás.
+    val conFotosInicio = com.pumpteam.mypump.fotosinicio.fotosInicioVisible(modelo)
+    BackHandler(enabled = navegacion.pestana == Pestana.REVISION && !navegacion.misDatos && navegacion.fotosInicio && conFotosInicio) { navegacion.fotosInicio = false }
 
     CompositionLocalProvider(LocalNavegacion provides navegacion) {
         val densidad = LocalDensity.current

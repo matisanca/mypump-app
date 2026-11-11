@@ -1010,8 +1010,6 @@ class ModeloApp(
         }
         _rutina.value = rutinaJson?.let { decodificar(it.aJson(), RutinaActiva::desde) }
         _dieta.value = dietaNormalizada(dietaJson)
-        // El servidor dijo que no hay dieta: no hay reemplazos del teléfono que decidir y los de la cola vieja pueden salir.
-        // Si la dieta no llegó (red), siguen esperando.
         // El servidor dijo que no hay dieta (ninguna fila): no hay reemplazos que decidir y pueden salir. Si no llegó (red) o llegó
         // una que todavía no se puede usar (Mati la está armando), siguen esperando: soltarlos ahí perdía los que estaban solo
         // en el teléfono cuando la dieta volvía a servir (revisión adversarial del 15-oct, hallazgo 4).

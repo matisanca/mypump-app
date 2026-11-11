@@ -36,8 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -117,9 +118,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     val alcance = LocalAlcanceApp.current
     val navegacion = LocalNavegacion.current
     val desplazamiento = rememberScrollState()
-    // Dónde empieza cada sección dentro de lo que se desplaza (para las anclas). No es estado de Compose: nadie lo lee
-    // al componer, y se anota en cada cuadro del desplazamiento.
-    val secciones = remember { HashMap<String, Float>() }
+    // Dónde está cada sección y lo que se desplaza (para las anclas). No es estado de Compose: nadie lo lee al componer.
+    val secciones = remember { Secciones() }
     var recargando by remember { mutableStateOf(false) }
     // Check guiado (2.3.0): con la palanca `check_guiado` prendida, la sección del check es la tarjeta que abre el check de
     // un paso por pantalla. Apagada (o en la demo), todo lo de abajo queda como siempre.
@@ -209,6 +209,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
             ) {
                 Column(
                     Modifier
+                        // Lo que se desplaza: las anclas se miden contra esto (algunas secciones van en una columna interna).
+                        .onGloballyPositioned { secciones.contenido = it }
                         .widthIn(max = AnchoLectura)
                         .fillMaxWidth()
                         .padding(horizontal = Espacio.m)
@@ -224,6 +226,9 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         color = MyPump.colores.apoyo,
                         modifier = Modifier.padding(horizontal = 4.dp).testTag("nota-revision-semanal"),
                     )
+                    // Fotos de inicio: arriba de todo, solo con la sección habilitada para esta cuenta. El orden de iOS: fotos
+                    // de inicio, devolución, check guiado y el resto.
+                    TarjetaFotosInicioDe(modelo)
                     // La devolución de Mati, arriba de todo. Apagada (el modelo queda sin estado) o sin ninguna publicada, no hay nada.
                     // En la demo con historial, las inventadas (nunca las de una cuenta).
                     val devoluciones = if (esDemo) demoHistorial?.devoluciones else devolucion
@@ -237,8 +242,6 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                        // Fotos de inicio: arriba de todo, solo con la sección habilitada para esta cuenta.
-                        TarjetaFotosInicioDe(modelo)
                         // Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo).
                         SemanaRevision.textoDia(diaDeRevision(modelo))?.let {
                             Text(
@@ -280,7 +283,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
 }
 
 @Composable
-private fun Check(revision: ModeloRevision?, salud: ModeloSalud?, esDemo: Boolean, alcance: CoroutineScope, secciones: HashMap<String, Float>) {
+private fun Check(revision: ModeloRevision?, salud: ModeloSalud?, esDemo: Boolean, alcance: CoroutineScope, secciones: Secciones) {
     CheckSemanal(
         revision,
         Modifier.seccion(AnclaRevision.CHECK, secciones),
@@ -293,10 +296,26 @@ private fun Check(revision: ModeloRevision?, salud: ModeloSalud?, esDemo: Boolea
     )
 }
 
-/** Anota dónde empieza la sección (dentro de lo que se desplaza) y la deja encontrar en las pruebas (`seccion-check`). */
-private fun Modifier.seccion(clave: String, secciones: HashMap<String, Float>): Modifier =
+/**
+ * Las secciones con ancla y lo que se desplaza. La altura se mide contra el contenido de la lista (no contra el padre
+ * directo: con la semana pendiente, fotos y check van en una columna interna, debajo de la devolución y del check guiado).
+ */
+private class Secciones {
+    var contenido: LayoutCoordinates? = null
+    val lugares = HashMap<String, LayoutCoordinates>()
+
+    /** Dónde empieza la sección dentro de lo que se desplaza (no cambia al desplazar). */
+    fun y(clave: String): Float? {
+        val c = contenido?.takeIf { it.isAttached } ?: return null
+        val l = lugares[clave]?.takeIf { it.isAttached } ?: return null
+        return c.localPositionOf(l, Offset.Zero).y
+    }
+}
+
+/** Anota dónde está la sección y la deja encontrar en las pruebas (`seccion-check`). */
+private fun Modifier.seccion(clave: String, secciones: Secciones): Modifier =
     this
-        .onGloballyPositioned { secciones[clave] = it.positionInParent().y }
+        .onGloballyPositioned { secciones.lugares[clave] = it }
         .testTag("seccion-$clave")
 
 /**
@@ -304,12 +323,12 @@ private fun Modifier.seccion(clave: String, secciones: HashMap<String, Float>): 
  * cargando y la sección se movió (el gráfico del peso, el check), se corrige una vez, salvo que el cliente ya se haya
  * movido solo.
  */
-private suspend fun irA(ancla: String, secciones: Map<String, Float>, desplazamiento: ScrollState, margen: Float) {
-    val y = secciones[ancla] ?: return
+private suspend fun irA(ancla: String, secciones: Secciones, desplazamiento: ScrollState, margen: Float) {
+    val y = secciones.y(ancla) ?: return
     desplazamiento.animateScrollTo((y - margen).roundToInt().coerceAtLeast(0))
     val dejado = desplazamiento.value
     delay(700)
-    val ahora = secciones[ancla] ?: return
+    val ahora = secciones.y(ancla) ?: return
     if (abs(ahora - y) > margen && desplazamiento.value == dejado && !desplazamiento.isScrollInProgress) {
         desplazamiento.animateScrollTo((ahora - margen).roundToInt().coerceAtLeast(0))
     }

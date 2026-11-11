@@ -117,17 +117,11 @@ public struct PalancaRemota: Equatable, Sendable {
         if defaults.bool(forKey: claveCasa) { p.casa = true }
         if defaults.bool(forKey: claveWins) { p.winsApp = true }
         if defaults.bool(forKey: claveListaPrevia) { p.listaPrevia = true }
-        #if DEBUG
-        if let v = defaults.string(forKey: "winsApp") { p.winsApp = v == "YES" }
-        if let v = defaults.string(forKey: "listaPrevia") { p.listaPrevia = v == "YES" }
-        #endif
         if defaults.bool(forKey: claveCheckGuiado) { p.checkGuiado = true }
         if defaults.bool(forKey: claveContratoApp) { p.contratoApp = true }
-        #if DEBUG
-        if let v = defaults.string(forKey: "contratoApp") { p.contratoApp = v == "YES" }
-        #endif
         if defaults.bool(forKey: clavePresionApp) { p.presionApp = true }
-        return p
+        // Pruebas de interfaz y capturas (solo DEBUG): `-winsApp`, `-listaPrevia` y `-contratoApp`, lo mismo que sobre lo leído.
+        return p.conArgumentosDePrueba(defaults: defaults)
     }
     public func recordar(defaults: UserDefaults = .standard) {
         defaults.set(contadorRepsReloj, forKey: Self.claveContadorReps)
