@@ -1007,6 +1007,11 @@ public final class ModeloApp {
             await sincronizarTecnica()
             await chat?.consultarAdjuntos(palanca: palanca.chatAdjuntos)
             await sincronizarFeedback()
+        } else {
+            // Lo que quedó «Esperando señal» sale en cada vuelta: el intervalo es para releer, no para subir (como
+            // `alVolverLaRed`). Sin nada en la cola no hay pedido.
+            if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
+            if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
         }
         // La devolución y los estudios llegan con un aviso que trae al alumno: se releen en cada vuelta (un pedido chico
         // cada uno, y solo con su palanca prendida), sin esperar el intervalo.

@@ -1304,6 +1304,11 @@ class ModeloApp(
             sincronizarTecnica()
             _chat.value?.consultarAdjuntos(palancaAdjuntos())
             sincronizarFeedback()
+        } else {
+            // Lo que quedó «Esperando señal» sale en cada vuelta: el intervalo es para releer, no para subir (como
+            // `alVolverLaRed`). Sin nada en la cola no hay pedido.
+            _gimnasio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+            _tecnica.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
         }
         // La devolución y los estudios llegan con un aviso que trae al alumno: se releen en cada vuelta (un pedido chico
         // cada uno, y solo con su palanca prendida), sin esperar el intervalo.
