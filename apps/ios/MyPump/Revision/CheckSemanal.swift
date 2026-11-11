@@ -36,16 +36,9 @@ struct CheckSemanal: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.s) {
-            EncabezadoSeccion(titulo: "Check de la semana",
-                              detalle: enviado ? nil : "\(CheckinSemanal.metricas.count - CheckinSemanal.metricas.filter { (valores[$0.clave] ?? 0) == 0 }.count)/4") {
-                if enviado {
-                    Label("Enviado", systemImage: "checkmark.circle.fill")
-                        .labelStyle(EtiquetaCompacta())
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.marcaTexto)
-                        .transition(.scale.combined(with: .opacity))
-                }
-            }
+            EncabezadoAvance(titulo: "Check de la semana",
+                             hechos: enviado ? 4 : CheckinSemanal.metricas.filter { (valores[$0.clave] ?? 0) != 0 }.count,
+                             total: 4, completo: "Enviado")
             VStack(alignment: .leading, spacing: Espacio.l) {
                 Text("Contame en 10 segundos cómo venís. Mati lo ve antes de tu devolución.")
                     .font(.subheadline)
@@ -210,7 +203,7 @@ private struct EscalaCinco: View {
                 .font(.subheadline.weight(.semibold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.primary)
-                .labelStyle(IconoTeñido(color: color))
+                .labelStyle(IconoTeñido(color: .secondary))
             HStack(spacing: 0) {
                 ForEach(1...5, id: \.self) { n in
                     let elegido = valor == n
@@ -218,7 +211,7 @@ private struct EscalaCinco: View {
                         withAnimation(.snappy(duration: 0.25)) { valor = elegido ? nil : n }
                     } label: {
                         Text("\(n)")
-                            .font(.body.weight(.semibold).monospacedDigit())
+                            .font(.numeroChico)
                             .foregroundStyle(elegido ? Color.sobreMarca : Color.primary)
                             .frame(width: 44, height: 44)
                             .background(elegido ? Color.marca : Color.campo, in: .circle)
