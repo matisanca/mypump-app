@@ -30,12 +30,13 @@ caso('tarjeta de Revisión: oculta sin bloques, visible con uno', () => {
 });
 
 caso('sin nada pendiente: la lista de lo que hay, con comas e «y»', () => {
-  assert.equal(M.lista(['control', 'estudios', 'presion', 'recuperacion']), 'Control, estudios y órdenes, presión y recuperación');
+  assert.equal(M.lista(['control', 'estudios', 'presion', 'recuperacion']), 'Control, estudios, presión y recuperación');
   assert.equal(M.lista(['presion', 'recuperacion']), 'Presión y recuperación');
   assert.equal(M.lista([]), '');
+  assert.equal(M.T.verMiControl, 'Ver mi control');
   const t = M.tarjeta({ ...todo, tarjetaEstudios: null, controlCerca: false, tarjetaPresion: { estado: 'hoyListo', faltan: 1 } });
   assert.equal(t.numero, 0);
-  assert.equal(t.linea, 'Control, estudios y órdenes, presión y recuperación');
+  assert.equal(t.linea, 'Control, estudios, presión y recuperación');
 });
 
 caso('con pendientes: número (máximo 3) y la línea de lo primero, por prioridad', () => {

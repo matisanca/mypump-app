@@ -14968,7 +14968,8 @@ function _msPintarInicio() {
   if (!t) { if (host) host.remove(); return; }
   const EU = window.EstudiosUI, PU = window.PresionUI, T = window.MiSalud.T;
   const boton = (t.primero === 'estudios' ? (EU.tarjetaInicio() || {}).boton
-    : t.primero === 'control' ? (EU.tarjetaControl() || {}).boton
+    // El control con su bloque «Próximo control»: «Ver mi control» (como iPhone y Android). Sin él, va a Estudios.
+    : t.primero === 'control' ? (EU.hayProximoControl() ? T.verMiControl : (EU.tarjetaControl() || {}).boton)
     : PU && PU.botonTarjeta ? PU.botonTarjeta() : null) || 'Ver';
   if (!host) {
     host = document.createElement('section');

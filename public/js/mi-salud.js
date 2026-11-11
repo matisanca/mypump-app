@@ -21,12 +21,14 @@
     presionFaltan: (n) => (n === 1 ? 'Te falta 1 toma de presión' : `Te faltan ${n} tomas de presión`),
     pendientes: (n) => (n === 1 ? '1 cosa para hacer' : `${n} cosas para hacer`),
     entradaMisDatos: 'Mi salud',
+    // El botón de la tarjeta de Entreno cuando lo primero es el control y lleva al bloque «Próximo control».
+    verMiControl: 'Ver mi control',
     pieMisDatos: 'Tus controles, estudios, presión y recuperación, y la conexión con tu reloj.',
   };
 
   /* El orden de la pantalla. */
   const BLOQUES = ['control', 'estudios', 'presion', 'recuperacion'];
-  const NOMBRES = { control: 'control', estudios: 'estudios y órdenes', presion: 'presión', recuperacion: 'recuperación' };
+  const NOMBRES = { control: 'control', estudios: 'estudios', presion: 'presión', recuperacion: 'recuperación' };
   const TOPE = 3;
 
   /* e: lo que dicen hoy las secciones.
@@ -44,7 +46,7 @@
     return BLOQUES.filter((b) => ve[b]);
   }
 
-  /* «Control, estudios y órdenes, presión y recuperación»: lo que hay adentro, en el orden de la pantalla. */
+  /* «Control, estudios, presión y recuperación» (igual que iPhone y Android): lo que hay adentro, en el orden de la pantalla. */
   function lista(bs) {
     const n = (bs || []).map((b) => NOMBRES[b]).filter(Boolean);
     if (!n.length) return '';
