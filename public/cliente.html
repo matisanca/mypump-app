@@ -1267,6 +1267,29 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 /* ── Check guiado (2.3.0): tarjeta en Revisión y check a pantalla completa. Todo lo de adentro va en em: si la letra
    crece, crece todo junto; el contenido desliza y el botón principal queda fijo abajo. ── */
 .cg-tarjeta{padding:18px 18px 20px}
+.tc-tarjeta{padding:18px 18px 20px;display:flex;flex-direction:column;gap:14px}
+.tc-tarjeta .cg-t-tit{margin:0}
+.tc-poses{display:flex;flex-wrap:wrap;gap:8px}
+.tc-pose{flex:1 1 0;min-width:max-content;min-height:48px;border:0;border-radius:999px;padding:6px 16px;background:var(--color-bg-tertiary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:17px;font-weight:700;cursor:pointer;touch-action:manipulation}
+.tc-pose.is-on{background:var(--color-brand);color:var(--color-on-brand)}
+.tc-pose:focus-visible{outline:3px solid color-mix(in oklab,var(--color-brand) 65%,var(--color-text-primary));outline-offset:2px}
+.tc-par{display:grid;grid-template-columns:1fr 1fr;gap:10px;cursor:pointer}
+.tc-foto{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tc-img{aspect-ratio:3/4;border-radius:var(--radius-md);overflow:hidden;background:var(--color-bg-tertiary);display:grid;place-items:center}
+.tc-img img{width:100%;height:100%;object-fit:cover;display:block}
+.tc-img span{padding:8px;text-align:center;color:var(--color-text-secondary);font-family:var(--font-sans);font-size:15px}
+.tc-foto figcaption{text-align:center;font-family:var(--font-sans);font-size:15px;font-weight:600;line-height:1.25;color:var(--color-text-primary)}
+.tc-pie{margin:0;text-align:center;font-family:var(--font-display);font-size:19px;font-weight:700;color:var(--color-text-primary)}
+.tc-espera{display:flex;gap:14px;align-items:flex-start}
+.tc-espera .tc-foto{flex:0 0 40%;max-width:150px}
+.tc-espera p{margin:0;font-family:var(--font-sans);font-size:17px;line-height:1.4;color:var(--color-text-secondary)}
+.tc-listo{width:100%;max-width:360px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.tc-listo-tit{margin:0;text-align:center;font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--color-text-primary)}
+.tc-comparador{display:flex;flex-direction:column;gap:12px;margin-bottom:var(--space-4)}
+.tc-comp-hdr{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px;font-family:var(--font-sans);font-size:17px}
+.tc-comp-hdr span{color:var(--color-text-secondary);font-weight:600}
+.fp-galeria.is-open.is-pantalla{position:fixed;inset:0;z-index:60;margin:0;border:0;border-radius:0;box-shadow:none;overflow-y:auto;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 24px)}
+.fp-gal-close.is-texto{width:auto;min-height:44px;padding:0 18px;border-radius:999px;background:var(--color-bg-tertiary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:17px;font-weight:700}
 .cg-t-tit{font-family:var(--font-display);font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.15;margin:0 0 6px;color:var(--color-text-primary)}
 .cg-t-txt{font-size:15px;line-height:1.4;color:var(--color-text-secondary);margin:0 0 14px}
 .cg-tarjeta .cg-seg{margin-bottom:16px}
@@ -11782,6 +11805,110 @@ const CheckGuiado = (() => {
     textoTarjeta, botonTarjeta, opsDeEnvio, rpcGuardar };
 })();
 /* ═══ CHECK GUIADO · REGLAS (fin) ═══ */
+/* ═══ TU CAMBIO · REGLAS (inicio) ═══
+   «Tu cambio» (2.3.0, detrás de `check_guiado`; pedido de Mati del 11/11): la foto de la semana 1 al lado de la última,
+   por pose, siempre a la vista en Revisión. Las mismas reglas que TuCambio.swift y TuCambio.kt; los casos compartidos
+   están en apps/shared/vectores/tucambio.json y los corre scripts/test-tucambio.mjs.
+   · La semana 1 es la foto más vieja de esa pose: la de inicio si es de esa semana o de antes; si no, la de progreso más
+     vieja. Empate de semana: gana la de inicio.
+   · La última es la de progreso más nueva de esa pose, de una semana posterior a la semana 1.
+   · El par aparece desde que hay dos semanas distintas con alguna foto (contando la de inicio). Antes: el texto de espera
+     y la foto que haya. El pie es el del comparador de siempre: «8 semanas · -2,4 kg». */
+const TuCambio = (() => {
+  const POSES_TC = [['frente', 'Frente'], ['perfil', 'Perfil'], ['espalda', 'Espalda']];
+  const T = {
+    titulo: 'Tu cambio',
+    textoEspera: 'Tu cambio se va a ver acá desde tu segunda semana de fotos',
+    rotuloAntes: 'Semana 1',
+    rotuloEstaSemana: 'Esta semana',
+    botonVer: 'Ver mis fotos',
+    poseInicial: 'frente',
+    listoTitulo: 'Tu cambio hasta hoy',
+  };
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const FECHA = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const dia = (f) => { const m = FECHA.exec(f); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5 : null; };
+  const texto = (n) => new Date(n * 864e5).toISOString().slice(0, 10);
+  // El lunes de la semana de esa fecha (1970-01-01 fue jueves).
+  const lunes = (f) => { const n = dia(f); return n == null ? f : texto(n - ((((n + 3) % 7) + 7) % 7)); };
+  const minuscula = (s) => s.slice(0, 1).toLowerCase() + s.slice(1);
+
+  // El pie del comparador: "8 semanas · -2,4 kg" (el peso es el primero cargado desde el lunes de cada semana).
+  function resumen(primera, ultima, peso) {
+    const pesoEn = (sem) => { const c = peso.filter(p => p.fecha >= sem).sort((a, b) => a.fecha < b.fecha ? -1 : 1)[0]; return c ? c.kg : null; };
+    const semDif = Math.round(((dia(ultima) || 0) - (dia(primera) || 0)) / 7);
+    let r = `${semDif} semana${semDif === 1 ? '' : 's'}`;
+    const p0 = pesoEn(primera), p1 = pesoEn(ultima);
+    if (p0 != null && p1 != null) { const d = p1 - p0; r += ` · ${d > 0 ? '+' : ''}${d.toFixed(1).replace('.', ',')} kg`; }
+    return r;
+  }
+  function fecha(f) {
+    const p = String(f).split('-');
+    if (p.length !== 3) return f;
+    const m = parseInt(p[1], 10), d = parseInt(p[2], 10);
+    if (!(m >= 1 && m <= 12) || isNaN(d)) return f;
+    return `${d} de ${MESES[m - 1]}`;
+  }
+  const etiquetaPose = (pose) => ((POSES_TC.find(p => p[0] === pose) || [pose, pose])[1]).toLowerCase();
+  const sinFoto = (pose) => `Sin foto de ${etiquetaPose(pose)}`;
+  // El marco de la derecha cuando esa pose tiene una sola foto.
+  const sinOtra = (pose) => `Todavía no hay otra foto de ${etiquetaPose(pose)}`;
+  const rotulo = (semana, actual) => semana === actual ? T.rotuloEstaSemana : `Semana del ${fecha(semana)}`;
+  function accesible(r, falta) {
+    const base = r === T.rotuloEstaSemana ? 'Foto de esta semana' : `Foto de la ${minuscula(r)}`;
+    return falta ? `${base}, ${minuscula(sinFoto(falta))}` : base;
+  }
+  // La fecha local (AAAA-MM-DD) de un `tomada_en` del servidor. Solo la fecha, o ilegible: sus 10 primeros caracteres, si son una fecha.
+  function fechaLocal(iso, zona) {
+    // «+0000» → «+00:00» (Postgres puede mandar cualquiera de las dos).
+    const s = String(iso || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+    if (FECHA.test(s)) return s;
+    const ms = /T\d{2}:\d{2}/.test(s) ? Date.parse(s) : NaN;
+    if (isNaN(ms)) { const p = s.slice(0, 10); return dia(p) != null ? p : null; }
+    try { return new Intl.DateTimeFormat('en-CA', { timeZone: zona || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms)); }
+    catch (_) { return s.slice(0, 10); }
+  }
+
+  /* fotos: [[semana, pose]] de progreso (servidor y cola); inicio: { pose: fecha local }; semanaActual: el lunes de hoy. */
+  function vista({ fotos, inicio, semanaActual, pose, peso }) {
+    const poses = POSES_TC.map(p => p[0]);
+    const elegida = poses.includes(pose) ? pose : T.poseInicial;
+    const semIni = {};
+    Object.keys(inicio || {}).forEach(k => { if (poses.includes(k)) semIni[k] = lunes(inicio[k]); });
+    const momentos = new Set([...fotos.filter(f => poses.includes(f[1])).map(f => f[0]), ...Object.values(semIni)]);
+    const semanasDe = (p) => [...new Set(fotos.filter(f => f[1] === p).map(f => f[0]))].sort();
+    const primera = (p) => {
+      const deProgreso = semanasDe(p)[0];
+      const s = semIni[p];
+      if (s != null && (deProgreso == null || s <= deProgreso)) return { origen: 'inicio', semana: s };
+      return deProgreso != null ? { origen: 'progreso', semana: deProgreso } : null;
+    };
+    if (momentos.size < 2) {
+      const orden = [elegida, ...poses.filter(p => p !== elegida)];
+      const p = orden.find(x => primera(x) != null) || elegida;
+      return { modo: 'espera', pose: p, antes: primera(p), despues: null, texto: T.textoEspera, pie: null,
+        rotuloAntes: T.rotuloAntes, rotuloDespues: '', accesibleAntes: accesible(T.rotuloAntes), accesibleDespues: '', vacioDespues: sinFoto(p) };
+    }
+    const antes = primera(elegida);
+    const ultima = semanasDe(elegida).slice(-1)[0];
+    const despues = antes && ultima != null && ultima > antes.semana ? { origen: 'progreso', semana: ultima } : null;
+    const pie = antes && despues ? resumen(antes.semana, despues.semana, peso || []) : null;
+    if (antes && !despues) {
+      // Esa pose tiene una sola foto: se rotula con su semana (nunca «Semana 1») y el otro marco dice que todavía no hay otra.
+      const r = rotulo(antes.semana, semanaActual);
+      return { modo: 'par', pose: elegida, antes, despues: null, texto: null, pie: null, rotuloAntes: r, rotuloDespues: '',
+        accesibleAntes: accesible(r), accesibleDespues: sinOtra(elegida), vacioDespues: sinOtra(elegida) };
+    }
+    const rd = rotulo(despues ? despues.semana : semanaActual, semanaActual);
+    return { modo: 'par', pose: elegida, antes, despues, texto: null, pie, rotuloAntes: T.rotuloAntes, rotuloDespues: rd,
+      accesibleAntes: accesible(T.rotuloAntes, antes ? null : elegida), accesibleDespues: accesible(rd, despues ? null : elegida),
+      vacioDespues: sinFoto(elegida) };
+  }
+
+  return { T, POSES: POSES_TC, vista, fecha, sinFoto, sinOtra, fechaLocal, rotulo, accesible, lunes };
+})();
+/* ═══ TU CAMBIO · REGLAS (fin) ═══ */
+
 
 /* ═══════ FOTOS DE PROGRESO (P2/P3) ═══════
    Se suben al servicio de la Mini (bucket privado). El Blob NO puede ir al
@@ -12391,7 +12518,7 @@ function renderMydayFotos() {
     ? (_w ? `<div class="fp-bloqueado">Con la primera foto arranca tu historial.</div>`
       : `<div class="fp-bloqueado">Con la primera foto arranca tu historial.<br><small>Mismo lugar y misma luz cada semana: asi la comparacion muestra tu cambio y no el del ambiente.</small></div>`)
     : `<button class="fp-vergaleria" id="fpVerGaleria">Ver mis fotos · ${semanas.length} semana${semanas.length === 1 ? '' : 's'}</button>` +
-      (semanas.length < 4
+      (semanas.length < 4 && !checkGuiadoPrendido()
         ? `<div class="fp-nota-comp">El comparador antes/después se abre en ${faltan} semana${faltan > 1 ? 's' : ''} más.</div>`
         : '');
 
@@ -12452,7 +12579,8 @@ function renderMydayFotos() {
   el.querySelectorAll('[data-foto-reintentar]').forEach(b => b.addEventListener('click', () => { _fotoReintentar(b.dataset.fotoReintentar).catch(() => {}); }));
   el.querySelectorAll('[data-foto-descartar]').forEach(b => b.addEventListener('click', () => { _fotoDescartar(b.dataset.fotoDescartar); renderMydayFotos(); }));
   const ver = document.getElementById('fpVerGaleria');
-  if (ver) ver.addEventListener('click', abrirGaleriaFotos);
+  if (ver) ver.addEventListener('click', () => abrirGaleriaFotos());
+  renderTuCambio();
 }
 
 // Un input con capture= abre la camara y NO deja llegar al carrete; uno sin
@@ -12556,7 +12684,163 @@ async function _tomarFoto(pose, origen) {
   inp.click();
 }
 
-async function abrirGaleriaFotos() {
+/* ═══ TU CAMBIO · PANTALLA (inicio) ═══
+   La tarjeta «Tu cambio» de Revisión, debajo de la del check (solo con la palanca `check_guiado`; apagada no existe ni se
+   lee nada nuevo). Solo usa lo que la página ya tiene: las fotos de progreso con sus URLs firmadas (y las que esperan en la
+   cola), las de inicio guiadas (FotosInicioUI) y el peso. Tocarla abre el comparador a pantalla completa. Las fotos son
+   privadas: no hay ningún botón para mandarlas afuera. */
+let _tcPose = TuCambio.T.poseInicial;
+
+function _tcFuentes() {
+  const fotos = (STATE.fotos || []).map(f => [f.semana_lunes, f.pose]);
+  const q = _fotoqLeer();
+  Object.values(q).forEach(p => fotos.push([_lunesISO(p.fecha), p.pose]));
+  const inicio = {};
+  const m = window.FotosInicioUI && window.FotosInicioUI._modelo;
+  if (m && m.estado) {
+    TuCambio.POSES.forEach(([k]) => {
+      const enCola = (m._colaCuerpo || []).filter(c => c.pose === k).pop();
+      const f = (m.estado.fotos || []).find(x => x.pose === k);
+      const iso = enCola ? enCola.tomadaEn : (f ? f.tomadaEn : null);
+      const d = iso ? TuCambio.fechaLocal(iso) : null;
+      if (d) inicio[k] = d;
+    });
+  }
+  return { fotos, inicio, m: m && m.estado ? m : null, q };
+}
+
+function _tcVista(pose) {
+  const f = _tcFuentes();
+  return { v: TuCambio.vista({ fotos: f.fotos, inicio: f.inicio, semanaActual: _lunesISO(hoyLocal()), pose, peso: _pesoSerie() }), f };
+}
+
+// La imagen: la de inicio (la de la cola o la firmada), la de progreso que espera subir (es la más nueva) o la firmada.
+function _tcImagen(foto, pose, f) {
+  if (!foto) return null;
+  if (foto.origen === 'inicio') return f.m ? f.m.miniaturaPose(pose) : null;
+  const k = `${foto.semana}|${pose}`;
+  if (f.q[k] && f.q[k].dataUrl) return f.q[k].dataUrl;
+  return ((STATE.fotosUrls && STATE.fotosUrls.mapa) || {})[k] || null;
+}
+
+function _tcMarco(src, rotulo, accesible, vacio, testid) {
+  return `<figure class="tc-foto" role="img" aria-label="${escapeHtml(accesible)}" data-testid="${testid}">
+      <div class="tc-img">${src ? `<img src="${escapeHtml(src)}" alt="">` : `<span>${escapeHtml(vacio)}</span>`}</div>
+      ${rotulo ? `<figcaption aria-hidden="true">${escapeHtml(rotulo)}</figcaption>` : ''}
+    </figure>`;
+}
+
+function _tcParHtml(v, f) {
+  return `<div class="tc-par" data-testid="tucambio-par">
+    ${_tcMarco(_tcImagen(v.antes, v.pose, f), v.rotuloAntes, v.accesibleAntes, TuCambio.sinFoto(v.pose), 'tucambio-antes')}
+    ${_tcMarco(_tcImagen(v.despues, v.pose, f), v.rotuloDespues, v.accesibleDespues, v.vacioDespues, 'tucambio-despues')}
+  </div>`;
+}
+
+// Frente / Perfil / Espalda: tres botones grandes con texto; el elegido, verde lleno.
+function _tcPosesHtml(pose) {
+  return `<div class="tc-poses" role="group" aria-label="Pose">${TuCambio.POSES.map(([k, e]) =>
+    `<button type="button" class="tc-pose${k === pose ? ' is-on' : ''}" aria-pressed="${k === pose}" data-tc-pose="${k}" data-testid="tucambio-pose-${k}">${e}</button>`).join('')}</div>`;
+}
+
+function _tcEnlazarPoses(raiz, alElegir) {
+  raiz.querySelectorAll('[data-tc-pose]').forEach(b => b.addEventListener('click', () => alElegir(b.dataset.tcPose)));
+}
+
+// Las URLs firmadas que falten o vencieron (las de siempre: /progreso/urls y /inicio/urls). Una sola firma en vuelo por
+// fuente, y si falla o vuelve vacía no se reintenta antes de un minuto (así nunca queda pidiendo en bucle).
+const TC_REINTENTO_MS = 60 * 1000;
+let _tcProgresoEspera = 0;
+let _tcInicioEnVuelo = false;
+let _tcInicioEspera = 0;
+
+function _tcFirmar(f) {
+  const ahora = Date.now();
+  const vencidas = !STATE.fotosUrls || !(STATE.fotosUrls.exp > ahora);
+  // El mismo candado que la sección de fotos.
+  if (vencidas && !STATE._firmando && ahora >= _tcProgresoEspera && (STATE.fotos || []).length) {
+    STATE._firmando = true;
+    cargarFotosFirmadas().then((mapa) => {
+      STATE._firmando = false;
+      const vigentes = STATE.fotosUrls && STATE.fotosUrls.exp > Date.now();
+      if (mapa && vigentes) _tcRepintar(); else _tcProgresoEspera = Date.now() + TC_REINTENTO_MS;
+    }).catch(() => { STATE._firmando = false; _tcProgresoEspera = Date.now() + TC_REINTENTO_MS; });
+  }
+  if (f.m && !_tcInicioEnVuelo && ahora >= _tcInicioEspera) {
+    const ids = (f.m.estado.fotos || []).filter(x => !f.m.miniaturas[x.id]).map(x => x.id);
+    const faltan = ids.some(id => !f.m.urls[id]);
+    const vencen = !(f.m._urlsVencen > ahora);
+    if (ids.length && (faltan || vencen)) {
+      _tcInicioEnVuelo = true;
+      const antes = f.m.urls;
+      // firmar() no vuelve a pedir si están todas y no vencieron; si cambió algo, se repinta.
+      Promise.resolve(f.m.firmar(ids)).catch(() => {}).then(() => {
+        _tcInicioEnVuelo = false;
+        // Si volvió sin alguna (o no volvió), un minuto antes de pedir de nuevo; si trajo algo, se repinta.
+        if (f.m.urls === antes || ids.some(id => !f.m.urls[id])) _tcInicioEspera = Date.now() + TC_REINTENTO_MS;
+        if (f.m.urls !== antes) _tcRepintar();
+      });
+    }
+  }
+}
+
+// La tarjeta y, si está abierta, la pantalla «Listo» del check guiado.
+function _tcRepintar() {
+  renderTuCambio();
+  const listo = document.querySelector('[data-testid="cg-listo-tucambio"]');
+  if (listo) {
+    const nuevo = _tcListoHtml(true);
+    if (nuevo) listo.outerHTML = nuevo;
+  }
+}
+
+function renderTuCambio() {
+  const el = document.getElementById('rv-tucambio');
+  if (!el) return;
+  if (!checkGuiadoPrendido()) { el.innerHTML = ''; return; }
+  const { v, f } = _tcVista(_tcPose);
+  const enfocada = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.tcPose : null;
+  el.innerHTML = `
+    <section class="myday-section tc-tarjeta" data-testid="tucambio-tarjeta" aria-labelledby="tcTit">
+      <h3 class="cg-t-tit" id="tcTit">${escapeHtml(TuCambio.T.titulo)}</h3>
+      ${v.modo === 'par' ? `
+        ${_tcPosesHtml(v.pose)}
+        ${_tcParHtml(v, f)}
+        ${v.pie ? `<p class="tc-pie" data-testid="tucambio-pie">${escapeHtml(v.pie)}</p>` : ''}
+        <button type="button" class="cg-btn is-suave" id="tcVer" data-testid="tucambio-ver">${escapeHtml(TuCambio.T.botonVer)}</button>` : `
+        <div class="tc-espera">
+          ${v.antes ? _tcMarco(_tcImagen(v.antes, v.pose, f), v.rotuloAntes, v.accesibleAntes, TuCambio.sinFoto(v.pose), 'tucambio-antes') : ''}
+          <p data-testid="tucambio-espera">${escapeHtml(v.texto)}</p>
+        </div>`}
+    </section>`;
+  _tcEnlazarPoses(el, (p) => { _tcPose = p; renderTuCambio(); });
+  if (enfocada) { const b = el.querySelector(`[data-tc-pose="${enfocada}"]`); if (b) b.focus({ preventScroll: true }); }
+  const abrir = () => abrirGaleriaFotos({ pose: _tcPose });
+  const par = el.querySelector('.tc-par'); if (par) par.addEventListener('click', abrir);
+  const ver = el.querySelector('#tcVer'); if (ver) ver.addEventListener('click', abrir);
+  _tcFirmar(f);
+}
+
+// «Listo» del check guiado: el par de frente, solo con las dos fotos.
+function _tcListoHtml(repintando) {
+  if (!checkGuiadoPrendido()) return '';
+  const { v, f } = _tcVista(TuCambio.T.poseInicial);
+  if (v.modo !== 'par' || !v.antes || !v.despues) return '';
+  // Si le faltan las URLs, se piden y la pantalla se repinta sola al llegar.
+  if (!repintando) setTimeout(() => _tcFirmar(f), 0);
+  return `<div class="tc-listo" data-testid="cg-listo-tucambio">
+    <h3 class="tc-listo-tit">${escapeHtml(TuCambio.T.listoTitulo)}</h3>
+    ${_tcParHtml(v, f)}
+    ${v.pie ? `<p class="tc-pie" data-testid="cg-listo-pie">${escapeHtml(v.pie)}</p>` : ''}
+  </div>`;
+}
+/* ═══ TU CAMBIO · PANTALLA (fin) ═══ */
+
+/* `opciones.pose`: la pose con que abre el comparador de «Tu cambio» (con la palanca `check_guiado`, a pantalla completa). */
+// El elemento que tenía el foco al abrir la galería (para devolvérselo al cerrarla).
+let _tcAntesDeAbrir = null;
+async function abrirGaleriaFotos(opciones) {
+  _tcAntesDeAbrir = document.activeElement;
   _fpMsg('Cargando tus fotos…');
   const mapa = await cargarFotosFirmadas();
   _fpMsg('');
@@ -12574,10 +12858,15 @@ async function abrirGaleriaFotos() {
   // El comparador antes/despues espera a las 4 semanas: antes compara luz,
   // hora y retencion de liquido, no cambios reales. La TIRA por semana no
   // espera nada: son sus fotos y tiene que poder verlas siempre.
-  const hayComparador = semanas.length >= 4;
+  const conTuCambio = checkGuiadoPrendido();
+  const hayComparador = !conTuCambio && semanas.length >= 4;
 
   let bloqueComp = '';
-  if (hayComparador) {
+  if (conTuCambio) {
+    // «Tu cambio»: desde 2 semanas, con la semana 1 de inicio si la hay; el selector grande y las dos fotos.
+    if (opciones && opciones.pose) _tcPose = opciones.pose;
+    if (_tcVista(_tcPose).v.modo === 'par') bloqueComp = '<div class="tc-comparador" id="tcComp" data-testid="tucambio-comparador"></div>';
+  } else if (hayComparador) {
     const serieP = _pesoSerie();
     const pesoEn = (sem) => {
       const cand = serieP.filter(p => p.fecha >= sem).sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
@@ -12596,7 +12885,7 @@ async function abrirGaleriaFotos() {
         <div class="fp-comp" id="fpComp"></div>
         <div class="fp-comp-meta">${resumen}</div>`;
     }
-  } else {
+  } else if (!conTuCambio) {
     const faltan = 4 - semanas.length;
     bloqueComp = `<div class="fp-bloqueado">El comparador antes/después se abre en ${faltan} semana${faltan > 1 ? 's' : ''} más.<br><small>Antes de 4 semanas la comparación es ruido: cambia la luz, la hora y la retención de líquido, no vos.</small></div>`;
   }
@@ -12611,12 +12900,25 @@ async function abrirGaleriaFotos() {
   cont.innerHTML = `
     <div class="fp-gal-hdr">
       <strong>Tus fotos</strong>
-      <button class="fp-gal-close" id="fpGalClose">✕</button>
+      ${conTuCambio ? '<button class="fp-gal-close is-texto" id="fpGalClose" data-testid="galeria-listo">Listo</button>' : '<button class="fp-gal-close" id="fpGalClose">✕</button>'}
     </div>
     ${bloqueComp}
     <div class="fp-tira">${tira}</div>
     <div class="fp-sem" id="fpSem"></div>`;
   cont.classList.add('is-open');
+  cont.classList.toggle('is-pantalla', conTuCambio);
+  if (conTuCambio) {
+    const pintarTc = () => {
+      const caja = document.getElementById('tcComp');
+      if (!caja) return;
+      const { v, f } = _tcVista(_tcPose);
+      caja.innerHTML = `<div class="tc-comp-hdr"><strong>Antes y ahora</strong>${v.pie ? `<span>${escapeHtml(v.pie)}</span>` : ''}</div>${_tcPosesHtml(v.pose)}${_tcParHtml(v, f)}`;
+      _tcEnlazarPoses(caja, (p) => { _tcPose = p; pintarTc(); renderTuCambio(); const b = caja.querySelector(`[data-tc-pose="${p}"]`); if (b) b.focus({ preventScroll: true }); });
+    };
+    pintarTc();
+    cont.scrollTop = 0;
+    document.getElementById('fpGalClose').focus({ preventScroll: true });
+  }
 
   // Tocar una semana de la tira abre las 3 poses de esa semana.
   const verSemana = (sem) => {
@@ -12647,7 +12949,25 @@ async function abrirGaleriaFotos() {
       b.classList.add('is-on'); pintarComp(b.dataset.p);
     }));
   }
-  document.getElementById('fpGalClose').addEventListener('click', () => cont.classList.remove('is-open'));
+  if (!conTuCambio) {
+    document.getElementById('fpGalClose').addEventListener('click', () => cont.classList.remove('is-open', 'is-pantalla'));
+    return;
+  }
+  // A pantalla completa es un diálogo: Escape o «Listo» lo cierran y el foco vuelve a donde estaba.
+  const volver = _tcAntesDeAbrir;
+  cont.setAttribute('role', 'dialog');
+  cont.setAttribute('aria-modal', 'true');
+  cont.setAttribute('aria-label', 'Tus fotos');
+  const cerrar = () => {
+    cont.classList.remove('is-open', 'is-pantalla');
+    ['role', 'aria-modal', 'aria-label'].forEach(a => cont.removeAttribute(a));
+    document.removeEventListener('keydown', alTeclado, true);
+    const destino = volver && document.contains(volver) ? volver : document.getElementById('tcVer');
+    if (destino) destino.focus({ preventScroll: true });
+  };
+  const alTeclado = (e) => { if (e.key === 'Escape') { e.preventDefault(); cerrar(); } };
+  document.addEventListener('keydown', alTeclado, true);
+  document.getElementById('fpGalClose').addEventListener('click', cerrar);
 }
 
 async function loadCheckin() {
@@ -12920,6 +13240,7 @@ function _cgRenderTarjeta(el) {
     </section>`;
   _repintarSaludSemana();
   el.querySelector('#cgAbrir').addEventListener('click', () => _cgAbrir(e === 'enviadoSinFotos' ? 'fotos' : null));
+  renderTuCambio();   // «Tu cambio», debajo
 }
 
 /* A dónde llevan los avisos de «te falta tu check»: a Revisión y, si todavía no lo mandó, directo al check abierto en el
@@ -13262,7 +13583,8 @@ function _cgPintar() {
     cuerpo.innerHTML = `
       <div class="cg-listo-ico" aria-hidden="true">${_CG_ICO.tilde}</div>
       <h2 class="cg-titulo" id="cgTitulo" data-testid="cg-listo" tabindex="-1">Listo</h2>
-      <p class="cg-apoyo">Mati lo ve antes de tu devolución.</p>`;
+      <p class="cg-apoyo">Mati lo ve antes de tu devolución.</p>
+      ${_tcListoHtml()}`;
     pie.innerHTML = '<button type="button" class="cg-btn" data-cg="cerrar" data-testid="cg-cerrar-listo">Cerrar</button>';
     cuerpo.querySelector('#cgTitulo').focus({ preventScroll: true });
     if (STATE.scene === 'revision') renderMydayCheckin();
@@ -13366,7 +13688,7 @@ function renderRevision() {
   const guiado = checkGuiadoPrendido();
   root.innerHTML = `
     <div id="rv-devolucion" hidden></div>
-    ${guiado ? '<div id="myday-checkin"></div>' : ''}
+    ${guiado ? '<div id="myday-checkin"></div><div id="rv-tucambio"></div>' : ''}
     ${web230() ? '<p class="rv-nota" id="rv-semanal">La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días.</p>' : '<div id="rv-tarjetas" class="rv-tarjetas"></div>'}
     <div id="rv-dia" class="rv-nota" hidden></div>
     ${web230() ? '<div id="rv-tarjetas" class="rv-tarjetas"></div>' : ''}

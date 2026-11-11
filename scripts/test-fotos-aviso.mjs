@@ -155,6 +155,8 @@ function montar({ guion = [], fotos = [], cuota, jpeg } = {}) {
     loadFotos: async () => { STATE.fotos = [...fotos, ...s.bucket]; },
     fotosFirmadas: () => new Promise(r => firmas.pedidos.push(r)),
     renderRecordatorio() {},
+    renderTuCambio() {},   // «Tu cambio» tiene su propio test (test-tucambio.mjs)
+    checkGuiadoPrendido: () => false,   // con la palanca apagada, la sección de siempre
     _pedirFoto() {},
   };
   const api = new Function(...Object.keys(ctx),
