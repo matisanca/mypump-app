@@ -330,6 +330,7 @@ public final class ModeloApp {
         chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
         if enPrimerPlano { chat?.empezarSondeo() }
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola, disco: disco)
+        revision?.guiadoPrendido = palanca.checkGuiado
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
         tecnica = ModeloTecnica(cliente: cliente, token: t, disco: disco)
@@ -451,6 +452,7 @@ public final class ModeloApp {
         if let palancaLeida {
             palanca = palancaLeida
             palancaLeida.recordar()
+            revision?.guiadoPrendido = palancaLeida.checkGuiado
             await outbox?.usarPalanca(opsLegadas: palancaLeida.opsLegadas)
         }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
