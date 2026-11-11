@@ -584,6 +584,23 @@
       return d.getTime() <= marca.getTime();
     },
 
+    // ── La tarjeta de la novedad: grande o en fila (2.3.0, TarjetaGuiaDestacada.vaEnFila) ──
+    // Cuántos días va grande una novedad antes de pasar a la fila.
+    DIAS_GRANDE: 7,
+    // La tarjeta va GRANDE siempre que haya riesgo de que la pasen por alto, y en fila solo cuando se cumplen las dos:
+    // · ya terminó la guía de base (lo único sin ver es la tanda nueva), y
+    // · la novedad lleva más de DIAS_GRANDE días publicada (`novedad_en`, la fecha del servidor: vale igual en todos
+    //   sus dispositivos y no se reinicia al reinstalar).
+    // Sin fecha legible, grande. La primera vez («Empezá por acá», sin novedad) nunca pasa por acá: es siempre grande.
+    // `n`: el avance de la novedad; `a`: el de toda la guía; `ahora`: Date.
+    vaEnFila(n, a, novedadEn, ahora) {
+      if (!n || !a) return false;
+      const baseCompleta = (a.total - a.vistos) <= (n.total - n.vistos);
+      const desde = novedadEn ? R.instante(novedadEn) : null;
+      if (!baseCompleta || !desde || !(ahora instanceof Date) || isNaN(ahora.getTime())) return false;
+      return ahora.getTime() - desde.getTime() > R.DIAS_GRANDE * 86400000;
+    },
+
     mostrarBienvenida(r, yaVista, quitada, ahora) {
       if (yaVista || !r || r.vistos !== 0) return false;
       return R.tarjetaEnEntreno(r, quitada, ahora);

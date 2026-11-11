@@ -1424,7 +1424,9 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .cs-progreso{display:flex;gap:4px}
 .cs-progreso i{flex:1;height:4px;border-radius:2px;background:var(--color-bg-tertiary);transition:background .3s}
 .cs-progreso i.is-hecha{background:var(--color-brand)}
-.cs-progreso i.is-actual{background:color-mix(in oklab,var(--color-brand) 36%,transparent)}
+/* Sin verdes a medias (sobre negro, el verde al 36 % daba 1,9:1 y quedaba oliva): hecha, verde lleno; lo demás, riel. */
+.cs-progreso i,.cs-progreso i.is-actual{background:var(--riel)}
+.cs-progreso i.is-hecha{background:var(--avance)}
 .cs-p-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;font-size:15px}
 .cs-p-top b{font-family:var(--font-num);font-weight:800}
 .cs-record{color:var(--color-record)}
@@ -1566,6 +1568,258 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 .dz-res+.dz-res{border-top:1px solid var(--color-border)}
 .dz-res small{color:var(--color-text-muted);font-size:13px;white-space:nowrap}
 .dz-resultados .dz-hoja-nota{padding:16px}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sistema 2.3.0 — gemelo de apps/ios/MyPump/Diseno/Sistema.swift.
+   · Un foco por pantalla: la tarjeta principal (.heroe), oscura en los dos modos.
+   · Pocas cajas: las notas van sin fondo (.nota-discreta).
+   · El verde es de lo que avanza: el botón (.btn-accion) y el avance (.av-seg).
+   · En oscuro el verde va lleno o no va: nada de verde translúcido como relleno
+     de avance, y sobre verde vivo el texto va casi negro (--sobre-marca).
+   Va al final de la hoja a propósito: pisa las capas viejas de arriba.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.heroe{
+  /* Adentro rige siempre el modo oscuro: se redeclaran los colores para todo lo que vive en la tarjeta. */
+  --color-text-primary:#ffffff;--color-text-secondary:rgba(235,235,245,.78);--color-text-muted:rgba(235,235,245,.6);
+  --color-brand:#5bbe62;--color-brand-hover:#6fcb75;--color-on-brand:#040e04;--color-brand-text:#5bbe62;--color-brand-subtle:rgba(91,190,98,.16);
+  --color-prot:#ff5c7a;--color-carb:#ffb020;--color-fat:#7d8bff;--color-alerta:#ff9f0a;
+  --color-border:rgba(255,255,255,.12);--color-bg-tertiary:rgba(255,255,255,.14);
+  --marca:var(--color-brand);--sobre-marca:var(--color-on-brand);--marca-texto:var(--color-brand-text);--marca-suave:var(--color-brand-subtle);
+  --avance:#5bbe62;--riel:rgba(255,255,255,.14);--apoyo:rgba(235,235,245,.6);--campo:rgba(255,255,255,.14);
+  position:relative;display:flex;flex-direction:column;gap:14px;margin:0 0 var(--space-4);padding:20px;
+  background:var(--superficie-heroe);color:var(--color-text-primary);
+  border:1px solid rgba(255,255,255,.08);border-radius:28px;box-shadow:0 10px 20px rgba(0,0,0,.22)
+}
+[data-theme="dark"] .heroe{box-shadow:none}
+.hr-cab{display:flex;flex-direction:column;gap:4px}
+.hr-ceja{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--apoyo)}
+.hr-titulo{margin:0;font-family:var(--font-display);font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05;overflow-wrap:anywhere}
+.hr-datos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hr-dato{display:flex;flex-direction:column;gap:1px;min-width:0}
+.hr-dato b{font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hr-dato b small{font-size:1em;font-weight:700}
+.hr-dato span{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--apoyo)}
+.hr-pie{margin:0;font-size:13px;line-height:1.4;color:var(--apoyo);text-align:center}
+.hr-pie::first-letter{text-transform:uppercase}
+
+/* AvanceSegmentos */
+.av-seg{display:flex;gap:4px;height:5px}
+.av-seg i{flex:1;min-width:0;border-radius:3px;background:var(--riel);transition:background .3s}
+.av-seg i.is-hecho{background:var(--avance)}
+.av-seg.is-barra{background:var(--riel);border-radius:3px;overflow:hidden}
+.av-seg.is-barra i{flex:none;background:var(--avance);transition:width .4s}
+
+/* BotonAccion: el que avanza. Texto de 19 px en negrita (texto grande para WCAG: 3:1 sobre el verde en claro; en oscuro, casi negro). */
+.btn-accion,.btn-primary,.error-paste-btn,.session-start{
+  display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;height:auto;padding:8px 20px;
+  border:0;border-radius:29px;background:var(--marca);color:var(--sobre-marca);
+  font-family:var(--font-display);font-size:19px;font-weight:700;line-height:1.15;letter-spacing:0;text-align:center;cursor:pointer;
+  box-shadow:0 6px 14px color-mix(in oklab,var(--marca) 30%,transparent);transition:transform .15s,filter .2s
+}
+.btn-accion:hover,.btn-primary:hover,.error-paste-btn:hover,.session-start:hover{background:var(--marca);filter:brightness(.96)}
+.btn-accion:active,.btn-primary:active,.error-paste-btn:active,.session-start:active{transform:scale(.975)}
+.btn-accion svg,.btn-primary svg{flex:none}
+/* Deshabilitado: gris pleno, nunca verde lavado. */
+.btn-accion:disabled,.btn-primary:disabled,.session-start:disabled{background:var(--campo);color:var(--color-text-secondary);border:0;box-shadow:none;opacity:1;transform:none;cursor:default}
+.session-start{margin:0}
+.session-start strong{font-size:inherit;font-weight:inherit}
+.session-start .ss-icon{display:inline-flex;font-size:0}
+.session-start .ss-icon svg{width:18px;height:18px}
+
+/* Entreno: la sesión en curso dentro de la tarjeta principal */
+.heroe .session-crono{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 12px;margin:0;padding:0;background:none;border:0;border-radius:0;font-family:var(--font-sans)}
+.sc-reloj{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sc-estado{display:flex;align-items:center;gap:8px}
+.heroe .session-crono .sc-lbl{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--apoyo)}
+.heroe .session-crono .sc-dot{width:9px;height:9px;background:var(--marca);box-shadow:none}
+.heroe .session-crono .sc-time{font-family:var(--font-display);font-size:44px;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+.heroe .session-crono .sc-hint{margin:0;font-size:13px;line-height:1.4;color:var(--apoyo)}
+.heroe .session-crono.is-vieja{flex-direction:column;align-items:stretch}
+.heroe .session-crono.is-vieja .sc-dot{background:var(--color-alerta);animation:none}
+.heroe .session-crono .sc-reset{margin:0;padding:8px 20px;border:0;font-family:var(--font-display);font-size:19px;font-weight:700;background:var(--marca);color:var(--sobre-marca);border-radius:29px}
+.hr-terminar{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border:0;border-radius:24px;background:var(--campo);color:var(--color-text-primary);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer}
+.hr-terminar:active{transform:scale(.97)}
+/* El día cerrado o completo es la misma tarjeta */
+.finish-card.heroe{margin-top:0;border:1px solid rgba(255,255,255,.08);border-radius:28px;gap:14px}
+.finish-card.heroe .eyebrow{font-size:12px;letter-spacing:.08em;color:var(--marca-texto)}
+.finish-card.heroe h2{font-size:30px;line-height:1.08}
+.finish-card.heroe .finish-summary{padding:0;background:none;border:0}
+.finish-card.heroe .fs-cell .lbl{font-size:11px;color:var(--apoyo)}
+.finish-card.heroe .fs-cell .val{font-family:var(--font-display);font-size:22px;font-weight:700}
+.finish-card.heroe .fs-cell .val small{font-size:13px;color:var(--apoyo)}
+.finish-card.heroe .finish-cerrado-msg{color:var(--marca-texto);text-align:left;padding:0}
+.finish-pie{margin-top:var(--space-4)}
+.finish-pie .btn-secondary-outline{min-height:52px;border-radius:26px;font-size:16px;font-weight:600;color:var(--color-text-primary);border-color:var(--color-border-strong)}
+
+/* Entreno: con la tarjeta, la cabecera deja solo los días (el nombre, la semana y el avance están en la tarjeta). */
+.app:has(#scene-train.is-active .hr-entreno) .hdr-row,
+.app:has(#scene-train.is-active .hr-entreno) .hdr-progress{display:none}
+.app:has(#scene-train.is-active .hr-entreno) .day-picker{padding-top:var(--space-3)}
+/* Los días: el elegido con anillo verde (el negro es de la tarjeta principal); el hecho, verde suave con tilde. */
+.day-pill{min-height:48px;justify-content:center;border:2px solid transparent;background:var(--color-bg-primary);color:var(--color-text-primary);box-shadow:none}
+.day-pill .dp-n{font-size:10px;opacity:1;color:var(--apoyo)}
+.day-pill .dp-name{font-size:14px}
+.day-pill.is-active,.day-pill.is-active.is-done{background:var(--color-bg-primary);color:var(--color-text-primary);border-color:var(--marca);box-shadow:none}
+.day-pill.is-active .dp-n{opacity:1;color:var(--marca-texto)}
+.day-pill.is-done{background:var(--marca-suave);color:var(--color-text-primary);border-color:transparent}
+.day-pill.is-active.is-done{background:var(--marca-suave);border-color:var(--marca)}
+.day-pill.is-done .dp-n,.day-pill .dp-check,.day-pill.is-active.is-done .dp-check{color:var(--marca-texto);opacity:1}
+.rest-bar.is-done{background:var(--marca);box-shadow:0 14px 40px rgba(0,0,0,.18)}
+
+/* NotaDiscreta: contexto sin caja */
+.nota-discreta,.prog-banner.nota-discreta,.prog-banner.is-calibracion.nota-discreta{display:flex;align-items:flex-start;gap:8px;margin:0 0 var(--space-4);padding:0 4px;background:none;border:0;border-radius:0;font-size:13px;line-height:1.45;color:var(--apoyo)}
+.nota-discreta>svg{flex:none;width:17px;height:17px;margin-top:1px;color:var(--marca-texto)}
+.nota-discreta strong,.nota-discreta b{color:var(--color-text-primary)}
+
+/* EncabezadoAvance: «Fotos de la semana · 0 de 3» con sus segmentos */
+.enc-avance{display:flex;flex-direction:column;gap:8px;margin:var(--space-5) 0 var(--space-3);padding:0 4px}
+.enc-avance-fila{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.enc-avance h3{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--color-text-primary)}
+.ea-cuenta{font-size:15px;font-weight:500;color:var(--apoyo);white-space:nowrap}
+.ea-cuenta b{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--color-text-primary)}
+.ea-listo{font-size:15px;font-weight:600;color:var(--marca-texto);white-space:nowrap}
+
+/* FilaDestino con AzulejoSuave */
+.tarjeta-filas{background:var(--color-bg-primary);border-radius:24px;overflow:hidden}
+.fila-destino{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:14px 16px;cursor:pointer}
+.fila-destino+.fila-destino{border-top:1px solid var(--color-border)}
+.fila-destino:focus-visible{outline:2px solid var(--marca);outline-offset:-2px}
+.azulejo{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--marca-suave);color:var(--marca-texto)}
+.azulejo svg{width:20px;height:20px}
+.fd-cuerpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.fd-tit{font-size:17px;font-weight:600;color:var(--color-text-primary)}
+.fd-chev{flex:none;display:inline-flex;color:var(--color-text-muted)}
+.solo-lector{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* Dieta: lo que comí hoy en la tarjeta principal (kcal grandes, barra gruesa, tres macros sin cajas) */
+.dz-hdr.heroe{margin:var(--space-3) 0;padding:20px;gap:16px;border-radius:28px;background:var(--superficie-heroe)}
+.dz-kcal{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 10px}
+.dz-kcal b{font-family:var(--font-display);font-size:68px;font-weight:800;line-height:.95;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.dz-kcal span{font-size:16px;color:var(--apoyo)}
+.dz-kcal-bar{height:12px;border-radius:6px;background:var(--riel);overflow:hidden}
+.dz-kcal-bar span{display:block;height:100%;border-radius:6px;background:var(--avance);transition:width .5s}
+.heroe .dz-cajas{gap:14px}
+.heroe .dz-caja{padding:0;background:none;border-radius:0;gap:5px;min-width:0}
+.heroe .dz-caja-lbl{font-size:13px;color:var(--apoyo)}
+.heroe .dz-caja-val{display:flex;align-items:baseline;flex-wrap:wrap;font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}
+.heroe .dz-caja-val b{font-weight:700}
+.heroe .dz-caja-val span{font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--apoyo);white-space:nowrap}
+.heroe .dz-caja-bar{height:5px;margin-top:0;background:var(--riel)}
+/* Con poco ancho (teléfono chico o letra grande) los macros pasan a filas */
+@media (max-width:339px){.heroe .dz-cajas{grid-template-columns:1fr}.dz-kcal b{font-size:56px}.hr-titulo{font-size:28px}}
+.dz-notas{display:flex;flex-direction:column;gap:6px;margin:0 0 var(--space-4);padding:0 4px}
+.dz-notas .dz-linea{margin:0;padding:0;font-size:13px;line-height:1.45}
+.dz-notas .dz-elegidas{color:var(--color-text-primary)}
+.dz-notas .dz-elegidas.is-ok{color:var(--marca-texto)}
+.dz-notas .diet-cite{margin:0;padding:0;border:0;font-size:12px;color:var(--apoyo)}
+.dz-notas .diet-cite .cite-link{color:var(--color-text-secondary)}
+/* Comí / Salté: verde lleno solo en la próxima comida sin marcar; neutro en las demás; marcada, verde suave con tilde. */
+.dz-track{display:flex;align-items:center;gap:10px}
+.dz-track-btn{min-height:48px;height:auto;padding:0 18px;border:0;border-radius:24px;background:var(--campo);color:var(--color-text-primary);font-size:16px;font-weight:600}
+.dz-track-btn.yes{flex:1}
+.dz-track-btn.yes.is-proxima{min-height:54px;border-radius:27px;background:var(--marca);color:var(--sobre-marca);font-family:var(--font-display);font-size:19px;font-weight:700;box-shadow:0 6px 14px color-mix(in oklab,var(--marca) 30%,transparent)}
+.dz-track-btn.yes.is-active{background:var(--marca-suave);color:var(--marca-texto);box-shadow:none}
+.dz-track-btn.no{flex:none;padding:0 14px;background:none;color:var(--apoyo)}
+.dz-track-btn.no.is-active{background:color-mix(in oklab,var(--color-alerta) 16%,transparent);color:var(--color-text-primary)}
+.dz-aviso{padding:0 2px;background:none;border-radius:0}
+
+/* Revisión */
+.rv-tarjetas{margin-bottom:0}
+.rv-card.fila-destino .rv-tit{font-size:17px;font-weight:600}
+.rv-card.fila-destino .rv-txt{font-size:15px;line-height:1.35;color:var(--apoyo)}
+.rv-card.fila-destino .rv-num{font-family:var(--font-display)}
+.rv-nota{font-size:14px;line-height:1.45;color:var(--apoyo);margin:0 0 var(--space-3);padding:0 4px}
+.fp-seccion,.ck-seccion{border:0;border-radius:24px;box-shadow:none}
+.fp-seccion .myday-section-body,.ck-seccion .myday-section-body{padding:16px}
+/* Fotos: los tres marcos primero; la guía para sacarlas debajo y sin caja */
+.fp-slots{gap:10px}
+.fp-slot{min-height:132px;gap:6px;padding:10px 4px;border:1.5px dashed color-mix(in oklab,var(--apoyo) 70%,transparent);border-radius:18px;background:none;color:var(--color-text-primary)}
+.fp-slot-ico{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--marca-suave);color:var(--marca-texto);font-size:18px;font-weight:700}
+.fp-slot-ico svg{width:20px;height:20px}
+.fp-slot-lbl{font-size:16px;font-weight:600}
+.fp-slot-acc,.fp-slot-sub{font-size:13px;font-family:var(--font-sans);color:var(--apoyo)}
+.fp-slot.is-done{border-style:solid;border-color:var(--marca);background:var(--marca-suave);color:var(--color-text-primary)}
+.fp-slot.is-done .fp-slot-ico{background:none}
+.fp-slot.has-thumb{padding:0}
+.fp-aviso{margin:var(--space-4) 0 0;padding:0;border-radius:0;background:none;gap:6px;font-size:15px;line-height:1.45;color:var(--apoyo)}
+.fp-aviso b{font-size:17px;color:var(--color-text-primary)}
+.fp-intro{margin:var(--space-3) 0 0;font-size:13px;line-height:1.45;color:var(--apoyo)}
+.fp-intro b{color:var(--color-text-primary)}
+.fp-bloqueado{margin-top:var(--space-3);padding:0;border:0;border-radius:0;text-align:left;font-size:13px;line-height:1.45;color:var(--apoyo)}
+.fp-serie,.fp-msg.is-ok,.fp-link{color:var(--marca-texto)}
+@media (max-width:339px){.fp-slots{grid-template-columns:1fr}.fp-slot{min-height:64px;flex-direction:row;justify-content:flex-start;gap:12px;padding:10px 14px}.fp-slot-acc{margin-left:auto}}
+/* Check: números en Archivo; el verde queda para el elegido */
+.ck-intro{font-size:15px;line-height:1.4;color:var(--apoyo)}
+.ck-metric{margin-bottom:var(--space-4)}
+.ck-metric-lbl{font-size:16px}
+.ck-metric-hint{font-size:12px;color:var(--apoyo)}
+.ck-scale{gap:8px}
+.ck-dot{height:48px;border:0;border-radius:24px;background:var(--campo);color:var(--color-text-primary);font-family:var(--font-display);font-size:19px;font-weight:700}
+.ck-dot.is-on{background:var(--marca);color:var(--sobre-marca)}
+.ck-nota{font-size:16px;border:0;border-radius:14px;background:var(--campo)}
+.ck-saved{color:var(--marca-texto)}
+
+[data-theme="dark"] .fp-seccion,[data-theme="dark"] .ck-seccion{background:var(--color-bg-primary);border:0}
+/* Acceso: «Entrar» es el botón que avanza; sin link espera en gris pleno (no un verde lavado, que parece roto).
+   «Ver demo» es un botón, no un link chico. */
+.error-icon{display:grid;place-items:center;width:72px;height:72px;border-radius:22px;background:var(--marca-suave);color:var(--marca-texto);font-size:0}
+.error-icon svg{width:34px;height:34px}
+.error-title{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.error-sub{font-size:16px;line-height:1.5;color:var(--apoyo);max-width:320px}
+.error-paste-hint{font-size:15px;color:var(--apoyo)}
+.error-paste-input{height:52px;padding:0 16px;border-radius:14px;font-family:var(--font-sans);font-size:16px}
+.error-paste-input:focus{border-color:var(--marca)}
+.error-paste-input:placeholder-shown~.error-paste-btn{background:var(--campo);color:var(--color-text-secondary);box-shadow:none}
+.error-paste-err{font-size:14px;color:var(--color-danger);border-color:var(--color-danger)}
+.error-demo-btn{display:block;width:auto;min-height:48px;margin:var(--space-3) auto 0;padding:0 28px;border:1px solid var(--color-border-strong);border-radius:24px;background:var(--color-bg-primary);color:var(--marca-texto);font-size:16px;font-weight:600;text-decoration:none}
+.error-demo-btn:hover{color:var(--marca-texto)}
+.error-demo-btn[hidden]{display:none}
+.error-code:empty{display:none}
+#guiaHost:not([hidden]){margin-bottom:var(--space-3)}
+
+/* ═══ Regla de visibilidad de la 2.3.0 (hay alumnos mayores): botones con texto, 44 px de toque, letra de 13 px o más ═══ */
+/* La barra de pestañas: `button svg:not([width]){width:1em}` dejaba los íconos en 10 px. */
+.tabbar .tab svg{width:24px;height:24px;stroke-width:1.9}
+.tabbar .tab{font-size:11px;letter-spacing:0;font-weight:600}
+/* Mis datos (por ahí se llega a Documentos, Novedades y la guía oculta): con su nombre, no solo el ícono. */
+#misDatosBtn{width:auto;min-height:44px;padding:0 14px;gap:8px;border-radius:22px;font-family:inherit;font-size:15px;font-weight:600;color:var(--color-text-primary)}
+#misDatosBtn svg{width:20px;height:20px}
+#misDatosBtn[hidden]{display:none}
+.fila-destino .azulejo svg{width:20px;height:20px}
+.fp-slot .fp-slot-ico svg{width:20px;height:20px}
+.sd-volver{min-height:44px;font-size:16px;font-weight:600;color:var(--marca-texto)}
+/* Avisos de arriba (revisión pendiente, contrato) */
+.recordatorio-semanal,.aviso-contrato{padding:12px;gap:12px;border:0;border-radius:18px}
+.recordatorio-semanal .rs-ico,.aviso-contrato .rs-ico{width:36px;height:36px;border-radius:10px;background:var(--marca-suave);color:var(--marca-texto)}
+.recordatorio-semanal .rs-tit,.aviso-contrato .rs-tit{font-size:16px}
+.recordatorio-semanal .rs-sub,.aviso-contrato .rs-sub{font-size:13px;color:var(--apoyo)}
+.recordatorio-semanal .rs-chev,.aviso-contrato .rs-chev{opacity:1}
+.doc-btn{min-height:48px;font-size:16px}
+/* Novedades del plan y devolución */
+.nov-ver{min-height:44px;padding:0 10px;display:inline-flex;align-items:center}
+.nov-ceja,.nov-chip,.nov-tarjeta-ceja,.dv-nueva{font-size:13px}
+/* Pump del día */
+.pump-eyebrow{font-size:13px;color:var(--marca-texto)}
+.pump-sub{font-size:13px;color:var(--apoyo)}
+.ps-dia{font-size:12px;color:var(--apoyo)}
+/* Chat: foto, audio y enviar con su nombre debajo del ícono; enviar sin texto espera en gris pleno */
+.chat-btn,.chat-send{flex-direction:column;gap:1px;width:54px;height:52px;border-radius:16px}
+#chatFoto::after{content:"Foto"}
+#chatMic::after{content:"Audio"}
+#chatSend::after{content:"Enviar"}
+#chatFoto::after,#chatMic::after,#chatSend::after{font-family:var(--font-sans);font-size:12px;font-weight:600;line-height:1.1}
+.chat-btn{color:var(--marca-texto)}
+.chat-btn.is-grabando::after{content:none}
+.chat-send:disabled{opacity:1;background:var(--campo);color:var(--color-text-secondary)}
+.chat-reintentar{min-height:44px;padding:0 16px;font-size:14px}
+.chat-adj-play{width:44px;height:44px}
+.chat-adj-dur,.chat-adj-fallo,.chat-adj-nocarga{font-size:13px}
+/* Me duele y estado de suplementos */
+.ex-swap-btn{min-height:44px;font-size:15px}
+.fb-duele-btn{color:var(--color-text-primary);border-style:solid;border-color:var(--color-border-strong)}
+.fb-marca,.fb-seg-b{min-height:44px}
+.fb-supl-resumen{font-size:13px}
+.fb-supl .supl-ceja{font-size:13px}
 </style>
 <link rel="preload" href="/fonts/archivo-var-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
@@ -1599,7 +1853,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 
 <!-- PANTALLA DE ERROR -->
 <div id="errorScreen" hidden>
-  <div class="error-icon">🔒</div>
+  <div class="error-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
   <div class="error-title" id="errTitle">Enlace inválido</div>
   <div class="error-sub" id="errSub">Este enlace no existe o fue revocado. Escribile a Mati por WhatsApp para que te mande uno nuevo.</div>
   <div class="error-code" id="errCode"></div>
@@ -1627,7 +1881,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
         <div class="hdr-title" id="hdrTitle">Cargando…</div>
       </div>
       <button class="icon-btn" id="misDatosBtn" aria-label="Mis datos" hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg><span>Mis datos</span>
       </button>
       <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -4790,6 +5044,22 @@ function getNombreBloque(bloque) {
   return raw.toUpperCase();
 }
 
+/* Piezas del sistema 2.3.0 (gemelas de Diseno/Sistema.swift). */
+const _ICO_NOTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/></svg>';
+// AvanceSegmentos: un segmento por unidad (ejercicios, fotos, el check). Hecho o no hecho: sin verdes a medias.
+// Pasados los 12, una sola barra.
+function _avanceSegmentos(total, hechos) {
+  const t = Math.max(1, total | 0), h = Math.max(0, Math.min(t, hechos | 0));
+  if (t > 12) return `<div class="av-seg is-barra" aria-hidden="true"><i style="width:${(h / t * 100).toFixed(1)}%"></i></div>`;
+  return `<div class="av-seg" aria-hidden="true">${Array.from({ length: t }, (_, i) => `<i${i < h ? ' class="is-hecho"' : ''}></i>`).join('')}</div>`;
+}
+// EncabezadoAvance: título de sección con «0 de 3» y sus segmentos.
+function _encabezadoAvance(titulo, hechos, total, completo) {
+  return `<div class="enc-avance"><div class="enc-avance-fila"><h3>${titulo}</h3>${hechos >= total
+    ? `<span class="ea-listo">✓ ${completo}</span>`
+    : `<span class="ea-cuenta"><b>${hechos}</b> de ${total}</span>`}</div>${_avanceSegmentos(total, hechos)}</div>`;
+}
+
 function renderTrain() {
   const root = $('#scene-train');
   const allEx = DATA.dia.bloques.flatMap(b => b.ejercicios);
@@ -4832,7 +5102,7 @@ function renderTrain() {
       }
     }
     html += `
-    <div class="finish-card">
+    <div class="finish-card heroe">
       <div class="eyebrow">${_diaFinalizado ? '✓ DÍA CERRADO' : 'SESIÓN COMPLETA'}</div>
       <h2>${completedCount}/${totalEx} ejercicios listos</h2>
       <div class="finish-summary">
@@ -4846,49 +5116,73 @@ function renderTrain() {
     </div>`;
   }
 
-  // Banner-resumen: cuántos ejercicios cambian carga/volumen esta semana.
+  // Banner-resumen: cuántos ejercicios cambian carga/volumen esta semana. Va sin caja (NotaDiscreta de la app) y debajo
+  // de la tarjeta principal: en pantalla queda un solo verde lleno, el botón.
   const _exDia = DATA.dia.bloques.flatMap(b => b.ejercicios);
   const _nCambian = _exDia.filter(ex => ex.tipo !== 'calentamiento' && computeProgresionNota(ex, DATA.rutina.semana_actual)?.cambia).length;
   // Calibración solo en la semana 1 del PRIMER macrociclo (fase 2+ continúa cargas)
   const _esCalibracion = (DATA.rutina.semana_actual || 1) <= 1 && !(DATA.rutina.semana_offset || 0);
+  let notaSemana = '';
   if (_nCambian > 0) {
-    html += `<div class="prog-banner">Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</div>`;
+    notaSemana = `<div class="prog-banner nota-discreta">${_ICO_NOTA}<span>Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</span></div>`;
   } else if (_esCalibracion) {
-    html += `<div class="prog-banner is-calibracion">Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto.</div>`;
+    notaSemana = `<div class="prog-banner is-calibracion nota-discreta">${_ICO_NOTA}<span>Semana de calibración. Llevá cada serie al fallo y encontrá tu peso real. Las reps son una guía, si te salen más o menos está perfecto.</span></div>`;
   }
 
+  // La tarjeta principal del día (Heroe de la app): el nombre, hechos, tiempo, lo que resta, un segmento por ejercicio
+  // y el botón. Reemplaza a la barra de la cabecera, al botón suelto y al pie con los tres datos.
   // F3 — Inicio claro del cronómetro de sesión (el timer de DESCANSO es otro y
   // no se toca). Si el cliente no toca Start, arranca solo con la primera serie
   // (comportamiento histórico) y el cronómetro lo aclara.
   if (!_diaFinalizado && !allDone) {
+    const _diasH = DATA._dias || [DATA.dia];
+    const _semH = (DATA.rutina.semana_actual || 1) + (DATA.rutina.semana_offset || 0);
+    const _semTotH = (DATA.rutina.semanas_total || 0) + (DATA.rutina.semana_offset || 0);
+    let accion;
     if (!_sessionStart) {
-      html += `
-      <button class="session-start" id="btnStartSesion">
-        <span class="ss-icon">▶</span>
-        <span class="ss-txt"><strong>Empezar entrenamiento</strong>
-        <small>arranca el cronómetro de la sesión — o empezá directo: corre solo con tu primera serie</small></span>
-      </button>`;
+      accion = `
+      <button class="session-start btn-accion" id="btnStartSesion">
+        <span class="ss-icon" aria-hidden="true">${ICONS.play}</span>
+        <strong>Empezar entrenamiento</strong>
+      </button>
+      <p class="hr-pie">arranca el cronómetro de la sesión — o empezá directo: corre solo con tu primera serie</p>`;
     } else if (Date.now() - _sessionStart > SESION_MAX_H * 3600000) {
       // La sesión quedó abierta de otro día. Mostrar "76:18:53 EN CURSO" es
       // mentira y además pone nervioso. Se ofrece reiniciar el conteo, que es
       // lo que el cliente realmente quiere hacer al volver al gym.
-      html += `
+      accion = `
       <div class="session-crono is-vieja" id="sessionCrono">
-        <span class="sc-dot"></span>
-        <span class="sc-lbl">SIN CERRAR</span>
+        <div class="sc-estado"><span class="sc-dot"></span><span class="sc-lbl">SIN CERRAR</span></div>
         <span class="sc-hint">quedó abierta de antes — no te preocupes, no perdiste nada</span>
-        <button class="sc-reset" id="btnReiniciarCrono">Empezar de nuevo</button>
+        <button class="sc-reset btn-accion" id="btnReiniciarCrono">Empezar de nuevo</button>
       </div>`;
     } else {
-      html += `
+      accion = `
       <div class="session-crono" id="sessionCrono">
-        <span class="sc-dot"></span>
-        <span class="sc-lbl">EN CURSO</span>
-        <span class="sc-time" id="cronoTime">${fmtCrono(Date.now() - _sessionStart)}</span>
-        ${_startedByButton ? '' : '<span class="sc-hint">⏱ arrancó con tu primera serie</span>'}
-      </div>`;
+        <div class="sc-reloj">
+          <div class="sc-estado"><span class="sc-dot"></span><span class="sc-lbl">EN CURSO</span></div>
+          <span class="sc-time" id="cronoTime">${fmtCrono(Date.now() - _sessionStart)}</span>
+        </div>
+        <button class="hr-terminar" id="heroeTerminar" aria-label="Terminar el entrenamiento de hoy">${ICONS.flag} Terminar</button>
+      </div>
+      ${_startedByButton ? '' : '<p class="hr-pie sc-hint">⏱ arrancó con tu primera serie</p>'}`;
     }
+    html += `
+    <section class="heroe hr-entreno" aria-label="Entrenamiento de hoy">
+      <div class="hr-cab">
+        <div class="hr-ceja">DÍA ${getDayNum(DATA.dia, _diasH)} · SEMANA ${_semH}${_semTotH ? ` DE ${_semTotH}` : ''}</div>
+        <h2 class="hr-titulo">${escapeHtml(DATA.dia.nombre || '')}</h2>
+      </div>
+      <div class="hr-datos">
+        <div class="hr-dato"><b>${completedCount}/${totalEx}</b><span>Hechos</span></div>
+        <div class="hr-dato"><b>${mins ? `${mins}<small> min</small>` : '—'}</b><span>Tiempo</span></div>
+        <div class="hr-dato"><b>${pendingCount}<small> ej</small></b><span>Restan</span></div>
+      </div>
+      ${_avanceSegmentos(totalEx, completedCount)}
+      ${accion}
+    </section>`;
   }
+  html += notaSemana;
 
   for (let bi=0; bi<DATA.dia.bloques.length; bi++) {
     const b = DATA.dia.bloques[bi];
@@ -4928,16 +5222,11 @@ function renderTrain() {
     </div>`;
   }
 
-  // Footer: siempre visible cuando hay sesión iniciada
+  // Pie: los tres datos (hechos, tiempo, restan) subieron a la tarjeta principal; acá queda la salida.
   if (!allDone) {
     const hasStarted = _sesionIniciada || completedCount > 0;
     html += `
-    <div class="finish-card" style="margin-top:0">
-      <div class="finish-summary">
-        <div class="fs-cell"><span class="lbl">Hechos</span><span class="val">${completedCount}/${totalEx}</span></div>
-        <div class="fs-cell"><span class="lbl">Tiempo</span><span class="val">${mins||'—'}<small>min</small></span></div>
-        <div class="fs-cell"><span class="lbl">Restan</span><span class="val">${pendingCount}<small>ej</small></span></div>
-      </div>
+    <div class="finish-pie">
       <button class="btn-secondary-outline" id="earlyFinishBtn" ${!hasStarted?'style="opacity:.5"':''}>
         ${ICONS.flag} Terminar el entrenamiento de hoy
       </button>
@@ -6577,6 +6866,9 @@ function bindTrainEvents() {
   // Botón "Cerrar sesión" visible antes de que todo esté completo
   const efb = $('#earlyFinishBtn');
   if (efb) efb.addEventListener('click', openEarlyFinishModal);
+  // El mismo cierre, a mano en la tarjeta principal mientras corre la sesión.
+  const ht = $('#heroeTerminar');
+  if (ht) ht.addEventListener('click', openEarlyFinishModal);
 
   $$('[data-tecnica-ex]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
@@ -8064,8 +8356,6 @@ function renderDiet() {
   const { delDia, dia } = _diaDieta();
   const consumido = calcularConsumido();
   const pctKcal = tg.kcal > 0 ? Math.min(100, (consumido.kcal / tg.kcal) * 100) : 0;
-  const RING_CIRC = 2 * Math.PI * 58;
-  const ringOffset = RING_CIRC * (1 - pctKcal / 100);
   const hayAjustes = Object.keys(STATE.ajustesDieta).length > 0;
   const kcalElegidas = delDia.reduce((s, c) => s + dia[c.id].kcal, 0);
   const desvio = tg.kcal > 0 ? (kcalElegidas - tg.kcal) / tg.kcal * 100 : 0;
@@ -8073,29 +8363,27 @@ function renderDiet() {
   const caja = (cls, label, val, meta) => `
     <div class="dz-caja ${cls}">
       <div class="dz-caja-lbl"><span class="dz-dot"></span>${label}</div>
-      <div class="dz-caja-val">${Math.round(val)} g</div>
-      <div class="dz-caja-meta">de ${meta} g</div>
-      <div class="dz-caja-bar"><span style="width:${meta > 0 ? Math.min(100, val / meta * 100).toFixed(1) : 0}%"></span></div>
+      <div class="dz-caja-val"><b>${Math.round(val)}</b><span>&nbsp;/ ${meta} g</span></div>
+      <div class="dz-caja-bar"><span style="width:${meta > 0 && val > 0 ? Math.max(4, Math.min(100, val / meta * 100)).toFixed(1) : 0}%"></span></div>
     </div>`;
   const nHechas = consumido.nComidasMarcadas, nSalt = consumido.nSalteadas;
 
   root.innerHTML = `
   ${barraDias}
   ${tipoDiaHtml}
-  <div class="dz-hdr">
-    <div class="dz-ring">
-      <svg viewBox="0 0 132 132"><circle class="track" cx="66" cy="66" r="58"/>
-        <circle class="ring" cx="66" cy="66" r="58" stroke-dasharray="${RING_CIRC.toFixed(2)}" stroke-dashoffset="${ringOffset.toFixed(2)}"/></svg>
-      <div class="dz-ring-c"><b>${Math.round(consumido.kcal).toLocaleString('es-AR')}</b><span>de ${Number(tg.kcal).toLocaleString('es-AR')} kcal</span></div>
-    </div>
+  <div class="dz-hdr heroe" role="group" aria-label="${esHoy ? 'Lo que comiste hoy' : 'Lo que comiste ese día'}">
+    <div class="dz-kcal"><b>${Math.round(consumido.kcal).toLocaleString('es-AR')}</b><span>de ${Number(tg.kcal).toLocaleString('es-AR')} kcal</span></div>
+    <div class="dz-kcal-bar" aria-hidden="true"><span style="width:${pctKcal > 0 ? Math.max(3, pctKcal).toFixed(1) : 0}%"></span></div>
     <div class="dz-cajas">
       ${caja('p', 'Proteínas', consumido.prot, tg.prot)}
       ${caja('c', 'Carbos', consumido.carb, tg.carb)}
       ${caja('f', 'Grasas', consumido.fat, tg.fat)}
     </div>
-    <div class="dz-linea">${nHechas || nSalt
+  </div>
+  <div class="dz-notas">
+    <div class="dz-linea nota-discreta">${_ICO_NOTA}<span>${nHechas || nSalt
       ? `Comiste ${nHechas} de ${consumido.nComidas} comidas${nSalt ? ` · salteaste ${nSalt}` : ''}`
-      : (esHoy ? 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.' : 'Tocá «Comí» en lo que comiste ese día y acá se va sumando.')}</div>
+      : (esHoy ? 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.' : 'Tocá «Comí» en lo que comiste ese día y acá se va sumando.')}</span></div>
     <div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? (esHoy ? 'Con tus ajustes de hoy' : 'Con tus ajustes de ese día') : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>
     ${renderDietCite()}
   </div>
@@ -8104,8 +8392,16 @@ function renderDiet() {
   ${renderComidasLibres()}
   ${plan.comidas.map((c, i) => renderMeal(c, i, delDia, dia)).join('')}
   ${renderFuentesFooter('dieta')}`;
+  _marcarProximaComida(root);
   bindDietEvents();
   _bindBarraDias();
+}
+
+// «Comí» va en verde lleno SOLO en la próxima comida sin marcar (la primera de arriba que no se comió, no se salteó y se
+// puede marcar); en las demás, neutro. Así al deslizar hay un solo botón verde: el que toca.
+function _marcarProximaComida(root) {
+  const b = root.querySelector('.dz-meal:not(.is-comido):not(.is-saltado):not(.is-omitida) .dz-track-btn.yes:not([disabled])');
+  if (b) b.classList.add('is-proxima');
 }
 
 // F10 — Sección "Comidas libres": lo que comiste fuera del plan (foto → IA
@@ -11243,6 +11539,7 @@ function renderRecordatorio() {
 function renderMydayFotos() {
   const el = document.getElementById('myday-fotos');
   if (!el) return;
+  const _ICO_CAMARA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.2"/></svg>';
   if (!FOTOS_URL()) { el.innerHTML = ''; return; }   // servicio no configurado
 
   const semanaAct = _lunesISO(hoyLocal());
@@ -11273,9 +11570,9 @@ function renderMydayFotos() {
     const thumb = urls[`${semanaAct}|${p.k}`];
     return `<button class="fp-slot${lista ? ' is-done' : ''}${thumb ? ' has-thumb' : ''}" data-pose="${p.k}">
       ${thumb ? `<img class="fp-slot-img" src="${thumb}" alt="" loading="lazy">` : ''}
-      ${thumb ? '' : `<span class="fp-slot-ico">${lista ? '✓' : '+'}</span>`}
+      ${thumb ? '' : `<span class="fp-slot-ico">${lista ? '✓' : _ICO_CAMARA}</span>`}
       <span class="fp-slot-lbl">${p.label}</span>
-      ${subiendo ? '<span class="fp-slot-sub">subiendo…</span>' : ''}
+      ${subiendo ? '<span class="fp-slot-sub">subiendo…</span>' : (lista ? '' : '<span class="fp-slot-acc">Agregar</span>')}
     </button>`;
   }).join('');
 
@@ -11285,23 +11582,22 @@ function renderMydayFotos() {
   // retencion de liquido), no cambios reales.
   const faltan = 4 - semanas.length;
   const comparador = semanas.length === 0
-    ? `<div class="fp-bloqueado">Con la primera foto arranca tu historial.<br><small>Mismo lugar y misma luz cada semana: asi la comparacion muestra tu cambio y no el del ambiente.</small></div>`
+    ? `<div class="fp-bloqueado">Con la primera foto arranca tu historial.</div>`
     : `<button class="fp-vergaleria" id="fpVerGaleria">Ver mis fotos · ${semanas.length} semana${semanas.length === 1 ? '' : 's'}</button>` +
       (semanas.length < 4
         ? `<div class="fp-nota-comp">El comparador antes/después se abre en ${faltan} semana${faltan > 1 ? 's' : ''} más.</div>`
         : '');
 
+  // «Mismo lugar, misma luz» se dice UNA sola vez: en la guía para sacarlas cuando está, y si no en la línea de privacidad.
+  // Los tres marcos van primero (es lo que se toca) y la guía debajo, sin caja.
+  const conGuia = web230() && STATE.fotosCargadas && deEstaSemana.size < 3;
   el.innerHTML = `
-    <div class="myday-section">
-      <div class="myday-section-hdr">
-        <span class="myday-section-icon">📸</span>
-        <span class="myday-section-title">Fotos de la semana</span>
-        ${deEstaSemana.size === 3 ? '<span class="ck-saved">✓ completas</span>' : ''}
-      </div>
+    ${_encabezadoAvance('Fotos de la semana', deEstaSemana.size, 3, 'completas')}
+    <div class="myday-section fp-seccion">
       <div class="myday-section-body">
-        ${web230() && STATE.fotosCargadas && deEstaSemana.size < 3 ? `<div class="fp-aviso" role="note"><b>Tus fotos de la semana</b><span>Esta semana todavía no subiste tus fotos. Sacalas en el mismo lugar y con la misma luz que siempre, con la misma ropa, el celu vertical a la altura del ombligo y a 2 o 3 metros. Frente, perfil y espalda. Así vemos bien cómo venís</span></div>` : ''}
-        <p class="fp-intro">Mismo lugar, misma luz, en ayunas. Las ve <b>solo Mati</b>: no se publican ni salen de la app.</p>
         <div class="fp-slots">${slots}</div>
+        ${conGuia ? `<div class="fp-aviso" role="note"><b>Tus fotos de la semana</b><span>Esta semana todavía no subiste tus fotos. Sacalas en el mismo lugar y con la misma luz que siempre, con la misma ropa, el celu vertical a la altura del ombligo y a 2 o 3 metros. Frente, perfil y espalda. Así vemos bien cómo venís</span></div>` : ''}
+        <p class="fp-intro">${conGuia ? 'En ayunas.' : 'Mismo lugar, misma luz, en ayunas.'} Las ve <b>solo Mati</b>: no se publican ni salen de la app.</p>
         ${serie >= 2 ? `<div class="fp-serie">${serie} semanas seguidas registradas</div>` : ''}
         ${comparador}
         ${Object.keys(_fotosRechazadas()).sort().map(k => `<div class="fp-msg is-err" data-foto-rechazada="${_claveFotoSegura(k)}">Esta foto no se pudo subir
@@ -11556,13 +11852,10 @@ function renderMydayCheckin() {
       </div>
     </div>`;
 
+  const nMarcadas = CHECKIN_METRICAS.filter(m => ck[m.k]).length;
   el.innerHTML = `
-    <div class="myday-section">
-      <div class="myday-section-hdr">
-        <span class="myday-section-icon">📝</span>
-        <span class="myday-section-title">Check de la semana</span>
-        ${yaGuardado ? '<span class="ck-saved">✓ enviado</span>' : ''}
-      </div>
+    ${_encabezadoAvance('Check de la semana', yaGuardado && !STATE.checkinDraft ? CHECKIN_METRICAS.length : nMarcadas, CHECKIN_METRICAS.length, 'enviado')}
+    <div class="myday-section ck-seccion">
       <div class="myday-section-body">
         <p class="ck-intro">Contame en 10 segundos cómo venís. Mati lo ve antes de tu devolución.</p>
         ${CHECKIN_METRICAS.map(escala).join('')}
@@ -11656,10 +11949,10 @@ function renderRevision() {
   // (se entra por la tarjeta Recuperación); el peso de la semana va en el check.
   root.innerHTML = `
     <div id="rv-devolucion" hidden></div>
-    <div id="rv-tarjetas" class="rv-tarjetas"></div>
-    <div id="rv-dia" class="rv-nota" hidden></div>
-    ${_avisoPlanHtml()}
     ${web230() ? '<p class="rv-nota" id="rv-semanal">La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días.</p>' : ''}
+    <div id="rv-dia" class="rv-nota" hidden></div>
+    <div id="rv-tarjetas" class="rv-tarjetas"></div>
+    ${_avisoPlanHtml()}
     <div id="myday-fotos"></div>
     <div id="fpGaleria" class="fp-galeria"></div>
     <div id="myday-checkin"></div>`;
@@ -11729,6 +12022,8 @@ const _CHEV_DER = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 const _TROFEO = '<svg class="rv-trofeo" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V17h3v3H8v-3h3v-2.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3V3Zm0 4H6v1a2 2 0 0 0 1 1.7V7Zm10 0v2.7A2 2 0 0 0 18 8V7h-1Z"/></svg>';
 
 /* Tarjetas «Recuperación» y «Tu progreso» de Revisión (RecuperacionTarjeta.swift). */
+const _ICO_BATERIA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10" rx="2.5"/><path d="M22 11v2"/><rect x="5" y="10" width="8" height="4" rx="1" fill="currentColor" stroke="none"/></svg>';
+const _ICO_PROGRESO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 15 4-5 3 3 5-6"/></svg>';
 function _renderRevTarjetas() {
   const el = document.getElementById('rv-tarjetas');
   if (!el) return;
@@ -11771,14 +12066,15 @@ function _renderRevTarjetas() {
   const prog = linea
     ? `<div class="rv-linea">${linea.record ? _TROFEO : ''}<span>${escapeHtml(linea.texto)}</span></div>`
     : txt('Tu fuerza y tus récords, ejercicio por ejercicio.');
-  const tarjeta = (id, titulo, cuerpo, pie) => `
-    <button class="rv-card" id="${id}">
-      <div class="rv-tit">${titulo}</div>
-      ${cuerpo}
-      <div class="rv-pie"><span>${pie}</span>${_CHEV_DER}</div>
+  // FilaDestino de la app: azulejo de verde suave, título, una línea y la flecha. «Ver…» queda para el lector de pantalla.
+  const tarjeta = (id, icono, titulo, cuerpo, pie) => `
+    <button class="rv-card fila-destino" id="${id}">
+      <span class="azulejo" aria-hidden="true">${icono}</span>
+      <div class="fd-cuerpo"><div class="rv-tit fd-tit">${titulo}</div>${cuerpo}</div>
+      <span class="solo-lector">${pie}</span><span class="fd-chev" aria-hidden="true">${_CHEV_DER}</span>
     </button>`;
-  el.innerHTML = tarjeta('rvRecup', 'Recuperación', rec, 'Ver sueño, corazón y cuerpo')
-               + tarjeta('rvProg', 'Tu progreso', prog, 'Ver fuerza y récords');
+  el.innerHTML = `<div class="tarjeta-filas">${tarjeta('rvRecup', _ICO_BATERIA, 'Recuperación', rec, 'Ver sueño, corazón y cuerpo')
+               }${tarjeta('rvProg', _ICO_PROGRESO, 'Tu progreso', prog, 'Ver fuerza y récords')}</div>`;
   document.getElementById('rvRecup').onclick = () => setScene('salud');
   document.getElementById('rvProg').onclick = () => setScene('progress');
 }

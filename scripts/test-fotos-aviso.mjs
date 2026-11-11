@@ -40,7 +40,7 @@ const ini = html.indexOf('const POSES = [');
 const fin = html.indexOf('\nasync function loadFotos()', ini);
 if (ini < 0 || fin < 0) { console.error('✗ no encontré la cola de fotos en cliente.html'); process.exit(1); }
 const fuente = html.slice(ini, fin).replace(funcion('_subirFoto'), '').replace(funcion('_fotoAJpeg'), '')
-  + '\n' + ['cargarFotosFirmadas', 'renderMydayFotos', '_tomarFoto', 'abrirGaleriaFotos'].map(funcion).join('\n');
+  + '\n' + ['cargarFotosFirmadas', '_avanceSegmentos', '_encabezadoAvance', 'renderMydayFotos', '_tomarFoto', 'abrirGaleriaFotos'].map(funcion).join('\n');
 
 let ok = 0, fail = 0;
 const t = async (nombre, fn) => {

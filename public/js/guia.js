@@ -1453,6 +1453,15 @@
 .gu-boton-blanco{min-height:50px;width:100%;border:0;border-radius:var(--radius-full);background:#fff;color:#157a28;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
 .gu-boton-blanco svg{width:16px;height:16px}
 .gu-boton-blanco:active{transform:scale(.97);opacity:.9}
+.gu-fila{flex-direction:row;align-items:center;gap:12px;padding:8px 4px 8px 12px;border-radius:22px;box-shadow:none}
+[data-theme="dark"] .gu-fila{box-shadow:none}
+.gu-fila .gu-icono-play{width:40px;height:40px;flex:0 0 40px}
+.gu-fila .gu-icono-play svg{width:16px;height:16px}
+.gu-fila-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.gu-fila .gu-dest-ceja{font-size:11px}
+.gu-fila .gu-dest-sub{font-weight:600;line-height:1.25}
+.gu-fila .gu-boton-blanco{flex:none;width:auto;min-height:44px;padding:0 20px;font-weight:700}
+.gu-fila .gu-ocultar{flex:none;min-width:36px;padding:0;display:flex;align-items:center;justify-content:center}
 .gu-compacta{width:100%;border:0;background:var(--color-bg-primary);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:14px 16px;display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer}
 .gu-anillo{position:relative;width:44px;height:44px;flex:0 0 44px;color:var(--color-brand)}
 .gu-anillo>svg{width:44px;height:44px;transform:rotate(-90deg)}
@@ -1536,7 +1545,7 @@
 .vl-titulo{margin:0;flex:1 1 9rem;min-width:0;font-size:.9375rem;font-weight:700;color:var(--color-brand-text)}
 .vl-activa .vl-titulo{color:#fff}
 .vl-agendar .vl-titulo{font-size:1.0625rem;color:var(--color-text-primary)}
-.vl-cuando{flex:0 0 auto;padding:.3125rem .625rem;border-radius:var(--radius-full);background:var(--color-brand-subtle);color:var(--color-brand-text);font-size:.75rem;font-weight:700}
+.vl-cuando{flex:0 0 auto;padding:.3125rem .625rem;border-radius:var(--radius-full);background:var(--color-brand-subtle);color:var(--color-brand-text);font-size:.8125rem;font-weight:700}
 .vl-activa .vl-cuando{background:#fff;color:#157a28}
 .vl-fecha{display:flex;flex-direction:column;gap:.125rem}
 .vl-dia{font-size:1.25rem;font-weight:600}
@@ -1592,7 +1601,7 @@
 .vl-p-horas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,8.5rem),1fr));gap:.5rem}
 .vl-p-hora{position:relative;min-height:4.5rem;padding:.5rem;border:0;border-radius:var(--radius-md);background:var(--color-bg-tertiary);color:var(--color-text-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.125rem;cursor:pointer}
 .vl-p-hora b{font-family:var(--font-display);font-size:1.5rem;font-weight:800;font-variant-numeric:tabular-nums}
-.vl-p-hora span{font-size:.75rem;color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
+.vl-p-hora span{font-size:.8125rem;color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
 .vl-p-hora[aria-pressed="true"]{background:var(--color-brand);color:var(--color-on-brand)}
 .vl-p-hora[aria-pressed="true"] span{color:inherit;opacity:.85}
 .vl-p-hora .vl-p-tilde{position:absolute;top:.5rem;right:.5rem;width:1.125rem;height:1.125rem}
@@ -2925,6 +2934,17 @@
       const a = nov || m.avanceTarjeta;
       const t = nov ? R.textoTarjetaNovedad(nov) : R.textoTarjeta(a);
       const pulso = m.primeraSesionTarjeta && !reducirMovimiento();
+      // 2.3.0: la novedad va GRANDE hasta que termina la guía de base y durante los primeros R.DIAS_GRANDE días desde
+      // `novedad_en`; recién con las dos cosas pasa a la fila verde (sigue primera, con su botón). Sin fecha legible,
+      // grande. Con poco ancho (teléfono chico o letra ampliada), siempre grande.
+      const angosto = !!(window.matchMedia && matchMedia('(max-width:339px)').matches);
+      if (nov && !angosto && R.vaEnFila(nov, m.avanceTarjeta, m.novedadEn, new Date())) {
+        return `<div class="gu-tarjeta gu-destacada gu-fila" role="group" aria-label="Novedad en tu guía">
+          <span class="gu-icono-play" aria-hidden="true">${I.play}</span>
+          <div class="gu-fila-texto"><span class="gu-dest-ceja">Novedad en tu guía</span><span class="gu-dest-sub">${esc(t)}</span></div>
+          <button type="button" class="gu-boton-blanco" data-gu-t="abrir" aria-label="Ver lo nuevo">Ver</button>
+          <button type="button" class="gu-ocultar" data-gu-t="ocultar" title="La guía queda en Mis datos" aria-label="Ocultar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
+      }
       return `<div class="gu-tarjeta gu-destacada" role="group" aria-label="${nov ? 'Novedad en tu guía' : 'Tu guía'}">
         <div class="gu-dest-cab"><span class="gu-dest-ceja">${nov ? 'Novedad en tu guía' : 'Empezá por acá'}</span>
           <button type="button" class="gu-ocultar" data-gu-t="ocultar" title="La guía queda en Mis datos">Ocultar</button></div>

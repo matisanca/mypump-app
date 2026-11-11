@@ -132,6 +132,23 @@ const g2 = () => guia(structuredClone(MUESTRA_V2));
   ok(!R.quitadaVigente(true, null, '2026-11-05T12:00:00-03:00'), 'marca sin fecha con novedad: vuelve');
   ok(R.quitadaVigente(true, null, 'ayer'), 'una novedad que no se entiende no cambia nada');
 }
+{
+  // 2.3.0: la novedad va grande hasta completar la guía de base y los primeros 7 días; después, en fila.
+  const nov = { total: 2, vistos: 0, minutosRestantes: 1 };
+  const base = { total: 10, vistos: 8, minutosRestantes: 1 };          // lo único sin ver es lo nuevo
+  const sinTerminar = { total: 10, vistos: 3, minutosRestantes: 9 };   // le falta la guía de base
+  const en = '2026-11-01T12:00:00-03:00';
+  eq(R.DIAS_GRANDE, 7, 'los días son una constante');
+  ok(!R.vaEnFila(nov, base, en, fecha('2026-11-03T12:00:00-03:00')), 'novedad de 2 días: grande');
+  ok(!R.vaEnFila(nov, base, en, fecha('2026-11-08T12:00:00-03:00')), 'a los 7 días justos: grande');
+  ok(R.vaEnFila(nov, base, en, fecha('2026-11-08T12:00:01-03:00')), 'pasados los 7 días y con la base completa: fila');
+  ok(!R.vaEnFila(nov, sinTerminar, en, fecha('2026-12-20T12:00:00-03:00')), 'sin terminar la guía de base: grande, aunque pasen semanas');
+  ok(!R.vaEnFila(nov, base, 'no-es-fecha', fecha('2026-12-20T12:00:00-03:00')), 'fecha ilegible: grande');
+  ok(!R.vaEnFila(nov, base, null, fecha('2026-12-20T12:00:00-03:00')), 'sin fecha: grande');
+  ok(!R.vaEnFila(null, base, en, fecha('2026-12-20T12:00:00-03:00')), 'sin novedad (la primera vez): grande');
+  ok(!R.vaEnFila(nov, base, en, null), 'sin reloj: grande');
+  ok(R.vaEnFila({ total: 2, vistos: 1, minutosRestantes: 1 }, { total: 10, vistos: 9, minutosRestantes: 1 }, '2026-11-01 15:00:00+00', fecha('2026-11-20T12:00:00-03:00')), 'a medio ver lo nuevo, fecha del servidor: fila');
+}
 
 // ── Obligatorios (ObligatoriosTests) ──
 {
