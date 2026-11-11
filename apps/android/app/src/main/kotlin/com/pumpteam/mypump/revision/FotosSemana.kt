@@ -93,6 +93,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: Modifier = Modifier) {
+    val alcance = LocalAlcanceApp.current
     val fotos = modelo?.fotos?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pendientes = modelo?.pendientes?.collectAsStateWithLifecycle()?.value ?: emptyMap()
     val urls = modelo?.urls?.collectAsStateWithLifecycle()?.value ?: emptyMap()
