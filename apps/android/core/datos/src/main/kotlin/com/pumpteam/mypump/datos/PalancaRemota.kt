@@ -34,6 +34,11 @@ data class PalancaRemota(
     val meDuele: Boolean = false,
     /** «Lo compré / lo estoy tomando» (`suple_estado`). Sin la clave, apagado. */
     val supleEstado: Boolean = false,
+    /**
+     * Elegir y cambiar el horario de la videollamada en la pantalla nueva (`elegir_horario`, 2.3.0). Sin la clave, apagada:
+     * la agenda de la guía queda como en la 2.2.0 y no se llama a `entregas_app_cambiar`.
+     */
+    val elegirHorario: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -54,6 +59,7 @@ data class PalancaRemota(
             chatAdjuntos = (j["chat_adjuntos"] as? ValorJson.Booleano)?.valor ?: false,
             meDuele = (j["me_duele"] as? ValorJson.Booleano)?.valor ?: false,
             supleEstado = (j["suple_estado"] as? ValorJson.Booleano)?.valor ?: false,
+            elegirHorario = (j["elegir_horario"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

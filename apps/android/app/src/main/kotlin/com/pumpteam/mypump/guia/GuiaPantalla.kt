@@ -111,7 +111,7 @@ private const val LLAMADA = "__llamada__"
  * (`ok: false`, token revocado) la sección se cierra sola, sin mensaje.
  */
 @Composable
-fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -> Unit) {
+fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -> Unit, elegirHorario: Boolean = false) {
     val guia by modelo.guia.collectAsStateWithLifecycle()
     val estado by modelo.estado.collectAsStateWithLifecycle()
     val desdeCache by modelo.desdeCache.collectAsStateWithLifecycle()
@@ -196,6 +196,8 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
                                 zona = ZoneId.systemDefault(),
                                 alIrAlProximo = irAlProximo,
                                 alReservar = { f -> alcance.launch { modelo.agenda.reservar(f) } },
+                                modeloAgenda = modelo.agenda,
+                                elegirHorario = elegirHorario,
                             )
                         }
                     }

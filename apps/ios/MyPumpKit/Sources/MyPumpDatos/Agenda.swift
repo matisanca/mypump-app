@@ -132,7 +132,7 @@ public final class ModeloAgenda {
 
     private func anunciar(_ r: ReservaAgenda) {
         switch r.estado {
-        case .confirmada: anuncio = textos.confirmada(r) ?? "Tu entrega quedó confirmada"
+        case .confirmada: anuncio = "Tu \(ReglasAgenda.nombre(r.tipo)) quedó agendada"
         case .fallo: anuncio = textos.fallo(r.motivo == "tomada" ? .tomada : .error)
         case .pendiente: anuncio = textos.pendiente
         }
@@ -178,13 +178,19 @@ public final class ModeloAgenda {
     public func vigilarSala() async {
         if esMuestra { return }
         // Antes de la franja solo se mira el reloj (sin red); en la franja, la agenda.
-        while !Task.isCancelled, let r = agenda?.reserva, r.estado == .confirmada, !ReglasAgenda.puedeEntrar(r, ahora: ahora),
+        while !Task.isCancelled, let r = agenda?.reserva, r.estado == .confirmada, r.meetUrl == nil || r.salaAbiertaEn == nil,
               let f = ReglasGuia.instante(r.fin), ahora < f {
             try? await Task.sleep(for: esperaSala)
             guard !Task.isCancelled else { return }
             if ReglasAgenda.esperandoSala(agenda?.reserva, ahora: ahora, avisoMin: avisoMin) { await consultar() }
         }
     }
+
+    /// Desde cuántos minutos antes se habilita «Entrar» (el del servidor; nil: los 10 de la app).
+    public var entrarDesdeMin: Int? { agenda?.entrarDesdeMin }
+
+    /// Se puede cambiar la reserva desde la app (lo dice el servidor; la palanca la mira la pantalla).
+    public var puedeCambiar: Bool { ReglasAgenda.puedeCambiar(agenda, ahora: ahora) }
 
     /// Hay una reserva pendiente (la de la tarjeta de Entreno o la de la cola).
     public var pendiente: Bool { enCola != nil || agenda?.reserva?.estado == .pendiente }
@@ -209,6 +215,28 @@ public final class ModeloAgenda {
         if await outbox.operaciones.contains(where: { $0.kind == Self.kind }) { return }
         await outbox.encolar(Self.kind, .objeto([
             "id": .texto(UUID().uuidString.lowercased()), "franja": .texto(f.id), "inicio": .texto(f.inicio), "fin": .texto(f.fin),
+        ]), dedupeKey: Self.clave)
+        sondear()
+    }
+
+    /// Cambiar la reserva confirmada a otra franja (`entregas_app_cambiar`, palanca `elegir_horario`). Va por la misma cola
+    /// y el mismo carril que reservar, con `p_id` fijo; el servidor libera la anterior solo si toma la nueva.
+    public func cambiar(a f: FranjaAgenda) async {
+        guard enCola == nil, let r = agenda?.reserva, r.estado == .confirmada, let idVieja = r.id, !idVieja.isEmpty,
+              ReglasAgenda.puedeCambiar(agenda, ahora: ahora) else { return }
+        aviso = nil
+        if esMuestra {
+            agenda?.reserva = ReservaAgenda(id: r.id, inicio: f.inicio, fin: f.fin, estado: .confirmada, meetUrl: r.meetUrl, tipo: r.tipo)
+            if var c = agenda?.cambio { c.restantes = c.restantes.map { max(0, $0 - 1) }; agenda?.cambio = c }
+            if let n = agenda?.reserva { anunciar(n) }
+            return
+        }
+        guard let outbox else { return }
+        enCola = f
+        if await outbox.operaciones.contains(where: { $0.kind == Self.kind }) { return }
+        await outbox.encolar(Self.kind, .objeto([
+            "id": .texto(UUID().uuidString.lowercased()), "franja": .texto(f.id), "inicio": .texto(f.inicio), "fin": .texto(f.fin),
+            "cambia": .texto(idVieja),
         ]), dedupeKey: Self.clave)
         sondear()
     }
@@ -240,6 +268,7 @@ public final class ModeloAgenda {
                 case "tomada": aviso = .tomada
                 case "franja": aviso = .vencida
                 case "obligatorios", "autorizada", "ya_tiene": aviso = nil   // la agenda de nuevo dice qué pasa
+                case "tope", "plazo": aviso = .sinCambio   // el cambio ya no se puede desde la app
                 default: aviso = .error
                 }
                 if let a = aviso { anuncio = a.texto; anuncios += 1 }
@@ -279,7 +308,18 @@ extension Escrituras {
         guard let id = p["id"]?.comoTexto, UUID(uuidString: id) != nil, let franja = p["franja"]?.comoTexto, !franja.isEmpty else {
             return .respuesta(.success(.objeto(["ok": .bool(false), "motivo": .texto("error")])))
         }
-        let r = await cliente.llamar("entregas_app_reservar", ["p_token": .texto(token), "p_franja": .texto(franja), "p_id": .texto(id)])
+        // Un cambio (palanca `elegir_horario`): la misma op con la reserva que se deja (`cambia`).
+        let r: Result<JSONValue, ErrorRPC>
+        if let vieja = p["cambia"]?.comoTexto {
+            // Con la palanca `elegir_horario` apagada (o sin la reserva vieja) no se llama a nada: la reserva queda.
+            guard !vieja.isEmpty, PalancaRemota.arranque().elegirHorario else {
+                return .respuesta(.success(.objeto(["ok": .bool(false), "motivo": .texto("plazo")])))
+            }
+            r = await cliente.llamar("entregas_app_cambiar", ["p_token": .texto(token), "p_reserva": .texto(vieja), "p_franja": .texto(franja),
+                                                             "p_id": .texto(id)])
+        } else {
+            r = await cliente.llamar("entregas_app_reservar", ["p_token": .texto(token), "p_franja": .texto(franja), "p_id": .texto(id)])
+        }
         switch r {
         case .failure(let e) where e.funcionInexistente:
             return .respuesta(.success(.objeto(["ok": .bool(false), "motivo": .texto("error")])))

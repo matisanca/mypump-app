@@ -34,6 +34,7 @@ import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.RegistroPush
 import com.pumpteam.mypump.datos.TransporteOkHttp
 import com.pumpteam.mypump.datos.registrarPush
+import com.pumpteam.mypump.reglas.ReglasAgenda
 import com.pumpteam.mypump.reglas.SemanaRevision
 import com.pumpteam.mypump.legado.ArranqueMigracion
 import java.io.File
@@ -278,6 +279,7 @@ object CentroAvisos {
     /** Sin cuenta (salió), con el link vencido o en la demo: el aviso del domingo ya no es para este teléfono. */
     fun alQuedarSinCuenta(c: Context) {
         cancelarDomingo(c)
+        cancelarVideollamada(c)
     }
 
     suspend fun registrarPush(c: Context, m: ModeloApp, version: String): Boolean {
@@ -461,9 +463,103 @@ object CentroAvisos {
     fun reagendar(c: Context, zona: ZoneId = ZoneId.systemDefault()) {
         crearCanales(c)
         limpiarCapacitor(c)
+        reagendarVideollamada(c)
         val cuando = AvisoDomingo.pendiente(domingoPendiente(c), zona)
         if (cuando != null && hayCuentaGuardada(c) && concedido(c) && armarDomingo(c, cuando)) return
         cancelarDomingo(c)
+    }
+
+    // ── La videollamada (2.3.0): un día antes y cuando se habilita «Entrar» ──
+
+    const val ACCION_VIDEOLLAMADA = "com.pumpteam.mypump.AVISO_VIDEOLLAMADA"
+    const val ID_VIDEOLLAMADA_DIA = 7_101
+    const val ID_VIDEOLLAMADA_ENTRAR = 7_102
+
+    /** Los avisos de la videollamada agendados (para volver a armarlos al reiniciar el teléfono, que borra las alarmas). */
+    const val CLAVE_VIDEOLLAMADA = "mypump_avisos_videollamada"
+    private const val EXTRA_TITULO = "mypump_titulo"
+    private const val EXTRA_CUERPO = "mypump_cuerpo"
+    private const val EXTRA_ID = "mypump_id_aviso"
+    private const val SEP_CAMPO = '\u001F'
+    private const val SEP_AVISO = '\u001E'
+
+    /** Una alarma inexacta, pero con poco margen: el de «Entrar» tiene que llegar a tiempo. */
+    private const val VENTANA_VIDEOLLAMADA_MS = 60_000L
+
+    private fun numeroVideollamada(id: String): Int = if (id == ReglasAgenda.ID_AVISO_DIA) ID_VIDEOLLAMADA_DIA else ID_VIDEOLLAMADA_ENTRAR
+
+    private fun alarmaVideollamada(c: Context, numero: Int, crear: Boolean, aviso: ReglasAgenda.AvisoLocal? = null): PendingIntent? =
+        PendingIntent.getBroadcast(
+            c,
+            numero,
+            // Los extras no cuentan para encontrarla: el mismo número la pisa (reprogramar) o la encuentra (cancelar).
+            Intent(c, ReceptorAvisos::class.java).setAction(ACCION_VIDEOLLAMADA).apply {
+                if (aviso != null) putExtra(EXTRA_ID, aviso.id).putExtra(EXTRA_TITULO, aviso.titulo).putExtra(EXTRA_CUERPO, aviso.cuerpo)
+            },
+            PendingIntent.FLAG_IMMUTABLE or (if (crear) PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_NO_CREATE),
+        )
+
+    /**
+     * Agenda los avisos de la videollamada ([ReglasAgenda.avisosLocales]) con ids fijos: reprogramar pisa los anteriores y
+     * una lista vacía (sin reserva confirmada) los borra. Solo con el permiso que la app ya tenía: nunca lo pide. Al tocar,
+     * Entreno, donde está la tarjeta.
+     */
+    fun programarVideollamada(c: Context, avisos: List<ReglasAgenda.AvisoLocal>) {
+        cancelarVideollamada(c)
+        if (avisos.isEmpty() || !concedido(c)) return
+        val armados = avisos.filter { armarVideollamada(c, it) }
+        PreferenciasCompartidas(c).guardar(
+            CLAVE_VIDEOLLAMADA,
+            armados.joinToString(SEP_AVISO.toString()) { listOf(it.id, it.fecha.toEpochMilli().toString(), it.titulo, it.cuerpo).joinToString(SEP_CAMPO.toString()) }
+                .ifEmpty { null },
+        )
+    }
+
+    private fun armarVideollamada(c: Context, a: ReglasAgenda.AvisoLocal): Boolean {
+        val am = c.getSystemService(AlarmManager::class.java) ?: return false
+        val pi = alarmaVideollamada(c, numeroVideollamada(a.id), crear = true, aviso = a) ?: return false
+        am.setWindow(AlarmManager.RTC_WAKEUP, a.fecha.toEpochMilli(), VENTANA_VIDEOLLAMADA_MS, pi)
+        return true
+    }
+
+    /** Ni las alarmas ni lo anotado. */
+    fun cancelarVideollamada(c: Context) {
+        PreferenciasCompartidas(c).guardar(CLAVE_VIDEOLLAMADA, null)
+        for (n in listOf(ID_VIDEOLLAMADA_DIA, ID_VIDEOLLAMADA_ENTRAR)) {
+            val pi = alarmaVideollamada(c, n, crear = false) ?: continue
+            c.getSystemService(AlarmManager::class.java)?.cancel(pi)
+            pi.cancel()
+        }
+    }
+
+    /** Los avisos de la videollamada anotados (para las pruebas y para volver a armarlos). */
+    fun avisosVideollamada(c: Context): List<ReglasAgenda.AvisoLocal> =
+        PreferenciasCompartidas(c).leer(CLAVE_VIDEOLLAMADA).orEmpty().split(SEP_AVISO).mapNotNull { linea ->
+            val p = linea.split(SEP_CAMPO)
+            val ms = p.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
+            if (p.size != 4) null else ReglasAgenda.AvisoLocal(p[0], Instant.ofEpochMilli(ms), p[2], p[3])
+        }
+
+    /** Al prender el teléfono o actualizar la app: los que todavía no sonaron, de nuevo. */
+    private fun reagendarVideollamada(c: Context) {
+        val pendientes = avisosVideollamada(c).filter { it.fecha.isAfter(Instant.now()) }
+        if (pendientes.isEmpty() || !hayCuentaGuardada(c)) cancelarVideollamada(c) else programarVideollamada(c, pendientes)
+    }
+
+    /** Sonó uno: se publica (con cuenta y permiso) y se saca de lo anotado. */
+    fun alSonarVideollamada(c: Context, intent: Intent) {
+        val titulo = intent.getStringExtra(EXTRA_TITULO) ?: return
+        val numero = numeroVideollamada(intent.getStringExtra(EXTRA_ID).orEmpty())
+        val cuerpo = intent.getStringExtra(EXTRA_CUERPO)
+        val quedan = avisosVideollamada(c).filter { numeroVideollamada(it.id) != numero }
+        PreferenciasCompartidas(c).guardar(
+            CLAVE_VIDEOLLAMADA,
+            quedan.joinToString(SEP_AVISO.toString()) { listOf(it.id, it.fecha.toEpochMilli().toString(), it.titulo, it.cuerpo).joinToString(SEP_CAMPO.toString()) }
+                .ifEmpty { null },
+        )
+        if (hayCuentaGuardada(c) && concedido(c)) {
+            publicar(c, ETIQUETA, numero, CANAL_MENSAJES, titulo, cuerpo, "train", Notification.CATEGORY_REMINDER)
+        }
     }
 
     // ── Lo que dejó la Capacitor (NOT-08) ──

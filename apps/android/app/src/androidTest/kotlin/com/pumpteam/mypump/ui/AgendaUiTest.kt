@@ -66,9 +66,12 @@ class AgendaUiTest : PruebaUi() {
         return """{"id": "r1", "inicio": "$i", "fin": "${i.plus(1, ChronoUnit.HOURS)}", "estado": "$estado", "meet_url": ${meet?.let { "\"$it\"" } ?: "null"}, "motivo": null}"""
     }
 
-    /** Una reserva confirmada que empieza en 10 min (dentro de la ventana de la sala), con o sin Mati en el Meet. */
+    /**
+     * Una reserva confirmada que empieza en 25 min (dentro de la ventana de consultas, antes de los 10 min de «Entrar»), con
+     * o sin Mati en el Meet.
+     */
     private fun reservaHoy(sala: Boolean): String {
-        val i = Instant.now().plus(10, ChronoUnit.MINUTES).truncatedTo(ChronoUnit.MINUTES)
+        val i = Instant.now().plus(25, ChronoUnit.MINUTES).truncatedTo(ChronoUnit.MINUTES)
         val abierta = if (sala) "\"${Instant.now().minus(1, ChronoUnit.MINUTES)}\"" else "null"
         return """{"id": "r1", "inicio": "$i", "fin": "${i.plus(1, ChronoUnit.HOURS)}", "estado": "confirmada", "meet_url": "$meet", "motivo": null, "sala_abierta_en": $abierta}"""
     }
@@ -211,7 +214,7 @@ class AgendaUiTest : PruebaUi() {
         // Tocar un chip abre la hoja de confirmación.
         p.tocar(etiqueta("agenda-franja-00000001-0000-4000-8000-000000000000"))
         p.nodo(etiqueta("agenda-hoja-texto"))
-        assertTrue(texto(etiqueta("agenda-hoja-texto")).startsWith("¿Confirmás la entrega el "))
+        assertTrue(texto(etiqueta("agenda-hoja-texto")).startsWith("¿Confirmás tu videollamada de comienzo el "))
         assertTrue(texto(etiqueta("agenda-hoja-texto")).endsWith("Dura alrededor de 1 hora."))
         foto("05-confirmacion")
         // Confirmar: sale por la cola y queda pendiente.
@@ -241,9 +244,11 @@ class AgendaUiTest : PruebaUi() {
         }
         bajarHasta(etiqueta("agenda-confirmada"))
         mostrar(etiqueta("agenda-confirmada"))
-        assertTrue(texto(etiqueta("agenda-confirmada-texto")).startsWith("Tu entrega: "))
-        assertTrue(p.existe(texto("¿Necesitás cambiarla? Escribinos por WhatsApp")))
-        // Al confirmar no hay botón para entrar (cambio de Mati): antes del día, solo la fecha y la hora.
+        // La tarjeta de la videollamada (2.3.0), la misma de Entreno: «Entrar» apagado con la cuenta, y sin WhatsApp.
+        assertTrue(p.existe(texto("Tu videollamada de comienzo")))
+        assertTrue(p.existe(texto("¿Necesitás cambiarla? Escribinos por el chat.")))
+        assertTrue(p.existe(etiqueta("videollamada-entrar-apagado")))
+        assertTrue(p.existe(texto(ReglasAgenda.TEXTO_DESDE_ACA)))
         assertFalse(p.existe(etiqueta("agenda-entrar")))
         assertFalse(p.existe(etiqueta("agenda-sala")))
         foto("07-confirmada")
@@ -259,8 +264,9 @@ class AgendaUiTest : PruebaUi() {
     }
 
     /**
-     * El día de la entrega: sin Mati en el Meet, el texto de espera y sin botón; la agenda se consulta cada 30 s y, cuando
-     * llega `sala_abierta_en`, aparece «Mati ya está en la videollamada» con «Entrar», que abre el link.
+     * El día de la videollamada, 25 min antes: sin Mati en el Meet, el texto del día, «Entrar» apagado y la cuenta; la
+     * agenda se consulta cada 30 s y, cuando llega `sala_abierta_en`, aparece «Mati ya está en la sala» con «Entrar a la
+     * videollamada» aunque falten más de 10 minutos, que abre el link.
      */
     @Test
     fun elBotonParaEntrarApareceCuandoMatiAbreLaSala() {
@@ -272,15 +278,17 @@ class AgendaUiTest : PruebaUi() {
             val e = abrir()
             abrirGuia()
             mostrar(etiqueta("agenda-confirmada"))
-            assertTrue(texto(etiqueta("agenda-sala")).startsWith("Tu entrega es hoy a las "))
-            assertTrue(texto(etiqueta("agenda-sala")).endsWith("Cuando Mati abra la videollamada se habilita el botón para entrar."))
+            assertTrue(texto(etiqueta("videollamada-hoy")).startsWith("Tu videollamada de comienzo es hoy a las "))
+            assertTrue(texto(etiqueta("videollamada-hoy")).endsWith("El botón para entrar se habilita 10 minutos antes."))
+            assertTrue(p.descripcion(etiqueta("videollamada-entrar-apagado")).startsWith("Entrar, todavía no. Se habilita en "))
             assertFalse(p.existe(etiqueta("agenda-entrar")))
             Telefono.captura("agenda-12-sin-sala-abierta-$modo")
             // Mati entra al Meet: el daemon carga `sala_abierta_en` y la consulta de cada 30 s lo trae.
             servidor.respuestas["entregas_app_agenda"] = agendaCon(reservaHoy(sala = true))
             p.nodo(etiqueta("agenda-entrar"), ms = 45_000)
             mostrar(etiqueta("agenda-confirmada"))
-            assertEquals("Mati ya está en la videollamada", texto(etiqueta("agenda-sala")))
+            assertEquals("Mati ya está en la sala", texto(etiqueta("agenda-sala")))
+            assertTrue(p.existe(texto(ReglasAgenda.TEXTO_ADMITE)))
             Telefono.captura("agenda-13-sala-abierta-$modo")
             val (monitor, links) = monitorDeLinks()
             try {
@@ -379,7 +387,7 @@ class AgendaUiTest : PruebaUi() {
         assertFalse(p.existe(etiqueta("agenda")))
         assertFalse(p.existe(etiqueta("agenda-contador")))
         assertFalse(p.existe(etiqueta("bloque-novedad")))
-        assertFalse(p.existe(textoQueContiene("Para ver antes de la entrega")))
+        assertFalse(p.existe(textoQueContiene(ReglasAgenda.ETIQUETA)))
     }
 
     @Test
@@ -392,18 +400,20 @@ class AgendaUiTest : PruebaUi() {
         )
         guardarCuenta()
         abrir()
-        p.nodo(etiqueta("entrega-ahora"))
-        assertTrue(p.existe(textoQueContiene("Cuando Mati abra la videollamada se habilita el botón para entrar.")))
-        assertFalse(p.existe(etiqueta("entrega-ahora-entrar")))
+        // La tarjeta fija arriba de Entreno (2.3.0): «Entrar» apagado con la cuenta regresiva.
+        p.nodo(etiqueta("videollamada"))
+        assertTrue(p.existe(etiqueta("videollamada-entrar-apagado")))
+        assertTrue(p.descripcion(etiqueta("videollamada-entrar-apagado")).startsWith("Entrar, todavía no. Se habilita en "))
+        assertFalse(p.existe(etiqueta("agenda-entrar")))
         Telefono.captura("agenda-11-entreno-sin-sala-claro")
         // Mati entra: la consulta de cada 30 s de la tarjeta lo trae.
         servidor.respuestas["entregas_app_agenda"] = agendaCon(reservaHoy(sala = true))
-        p.nodo(etiqueta("entrega-ahora-entrar"), ms = 45_000)
-        assertTrue(p.existe(textoQueContiene("Mati ya está en la videollamada")))
+        p.nodo(etiqueta("agenda-entrar"), ms = 45_000)
+        assertTrue(p.existe(texto("Mati ya está en la sala")))
         Telefono.captura("agenda-11-entreno-sala-abierta-claro")
         val (monitor, links) = monitorDeLinks()
         try {
-            p.tocar(etiqueta("entrega-ahora"))
+            p.tocar(etiqueta("agenda-entrar"))
             assertEquals(meet, p.esperar("el link") { links.firstOrNull() }.dataString)
         } finally {
             InstrumentationRegistry.getInstrumentation().removeMonitor(monitor)

@@ -38,6 +38,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // Solo la primera vez: al rotar la pantalla el intent es el mismo y la cuenta ya entró.
         if (savedInstanceState == null) abrirLink(intent)
+        // Solo en las builds de prueba: `adb shell am start … --ez elegirHorario true` prende la palanca de la videollamada
+        // para probar y sacar capturas (como `-elegirHorario YES` en iPhone). En la de la tienda no existe.
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0 && intent?.hasExtra("elegirHorario") == true) {
+            com.pumpteam.mypump.guia.Videollamada.forzada = intent.getBooleanExtra("elegirHorario", false)
+        }
         // Avisos: tocar uno con la app cerrada la abre en su pestaña (NOT-03, arranque en frío).
         if (savedInstanceState == null) abrirAviso(intent)
         lifecycle.addObserver(

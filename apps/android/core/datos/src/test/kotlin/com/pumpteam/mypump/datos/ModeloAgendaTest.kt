@@ -42,6 +42,7 @@ class ModeloAgendaTest {
         alcance: CoroutineScope,
         disco: Disco = Disco(carpetaTemporal("agenda"), "tok"),
         reloj: () -> Long = System::currentTimeMillis,
+        cambiarPermitido: () -> Boolean = { true },
         regla: suspend (String, ValorJson) -> Pair<Int, String>,
     ): Entorno {
         val cuerpos = mutableListOf<Pair<String, ValorJson>>()
@@ -50,7 +51,7 @@ class ModeloAgendaTest {
             regla(fn, c)
         }
         val cliente = ClienteRpc(transporte = t)
-        val esc = Escrituras(cliente, "tok")
+        val esc = Escrituras(cliente, "tok", cambiarPermitido = cambiarPermitido)
         val cola = Outbox(archivo = disco.archivo("outbox.json"), reintentoAutomatico = false, alcance = alcance) { esc.ejecutar(it) }
         val m = ModeloGuia(cliente, "tok", cola, disco, alcance, reloj = reloj).also {
             it.alDia()
@@ -472,5 +473,158 @@ class ModeloAgendaTest {
         val r = e.m.resumen.value!!
         assertEquals("2026-11-05T12:00:00-03:00", r.novedadEn)
         assertNotNull(r.reserva)
+    }
+
+    // ── Cambiar el horario (videollamada 2.3.0, palanca `elegir_horario`) ──
+
+    private val franjasLejos = """[{"id":"f1","inicio":"2099-11-12T10:00:00-03:00","fin":"2099-11-12T11:00:00-03:00"},
+        {"id":"f2","inicio":"2099-11-13T12:00:00-03:00","fin":"2099-11-13T13:00:00-03:00"}]"""
+    private fun reservaLejos(inicio: String = "2099-11-12T10:00:00-03:00", tipo: String = "revision") =
+        """{"id":"r1","inicio":"$inicio","fin":"${inicio.replace("T10:", "T11:").replace("T12:", "T13:")}","estado":"confirmada","meet_url":"https://meet.google.com/x","tipo":"$tipo"}"""
+
+    @Test
+    fun cambiarVaPorLaColaConLaReservaQueSeDejaYElTopeDelServidor() = enUnHilo { alcance ->
+        var agenda = """{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":$franjasLejos,"cambio":{"permitido":true,"restantes":1,"hasta":"2099-11-11T10:00:00-03:00"},"reserva":${reservaLejos()}}"""
+        val e = entorno(alcance) { fn, _ ->
+            when (fn) {
+                "entregas_app_agenda" -> 200 to agenda
+                "entregas_app_cambiar" -> 200 to """{"ok":true,"reserva":${reservaLejos("2099-11-13T12:00:00-03:00")}}"""
+                else -> 200 to "true"
+            }
+        }
+        e.agenda.refrescar()
+        assertTrue(e.agenda.puedeCambiar(), "con cambio permitido vienen las franjas")
+        assertEquals(2, e.agenda.agenda.value!!.franjas.size)
+        assertEquals(com.pumpteam.mypump.modelos.TipoVideollamada.REVISION, e.agenda.agenda.value!!.reserva!!.tipo)
+        // Lo que el servidor va a decir después del cambio: sin cambios restantes y sin franjas.
+        agenda = """{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":$franjasLejos,"cambio":{"permitido":false,"restantes":0},"reserva":${reservaLejos("2099-11-13T12:00:00-03:00")}}"""
+        val nueva = e.agenda.agenda.value!!.franjas.first { it.id == "f2" }
+        assertTrue(e.agenda.cambiar(nueva))
+        assertEquals(nueva, e.agenda.reservando.value)
+        // Un segundo toque no encola otro.
+        assertFalse(e.agenda.cambiar(nueva))
+        val ops = e.cola.operaciones().filter { it.kind == ModeloAgenda.KIND }
+        assertEquals(1, ops.size)
+        assertEquals("r1", ops.single().payload["cambia"]?.comoTexto)
+        e.cola.drenar()
+        asentar()
+        val pedidos = e.cuerposDe("entregas_app_cambiar")
+        assertEquals(1, pedidos.size)
+        assertEquals("r1", pedidos.single()["p_reserva"]?.comoTexto)
+        assertEquals("f2", pedidos.single()["p_franja"]?.comoTexto)
+        assertEquals(ops.single().payload["id"]?.comoTexto, pedidos.single()["p_id"]?.comoTexto)
+        assertTrue(e.cuerposDe("entregas_app_reservar").isEmpty(), "cambiar no reserva otra")
+        assertNull(e.agenda.reservando.value)
+        assertEquals(Instant.parse("2099-11-13T15:00:00Z"), e.agenda.agenda.value!!.reserva!!.inicio)
+        assertEquals(ReservaEntrega.Estado.CONFIRMADA, e.agenda.agenda.value!!.reserva!!.estado)
+        assertFalse(e.agenda.puedeCambiar())
+        assertTrue(e.agenda.agenda.value!!.franjas.isEmpty(), "sin cambios restantes: sin franjas")
+    }
+
+    @Test
+    fun elTopeOElPlazoDejanElAvisoDeEscribirPorElChat() = enUnHilo { alcance ->
+        val e = entorno(alcance) { fn, _ ->
+            when (fn) {
+                "entregas_app_agenda" -> 200 to """{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":$franjasLejos,"cambio":{"permitido":true},"reserva":${reservaLejos()}}"""
+                "entregas_app_cambiar" -> 200 to """{"ok":false,"motivo":"tope"}"""
+                else -> 200 to "true"
+            }
+        }
+        e.agenda.refrescar()
+        assertTrue(e.agenda.cambiar(e.agenda.agenda.value!!.franjas[1]))
+        e.cola.drenar()
+        asentar()
+        assertEquals(ReglasAgenda.TEXTO_SIN_CAMBIO, e.agenda.aviso.value)
+        assertEquals(Instant.parse("2099-11-12T13:00:00Z"), e.agenda.agenda.value!!.reserva!!.inicio, "la reserva queda como estaba")
+        assertNull(e.agenda.reservando.value)
+    }
+
+    @Test
+    fun unCambioEnLaColaConLaPalancaApagadaNoLlamaACambiarYQuedaComoPlazo() = enUnHilo { alcance ->
+        var palanca = true
+        val e = entorno(alcance, cambiarPermitido = { palanca }) { fn, _ ->
+            when (fn) {
+                "entregas_app_agenda" -> 200 to """{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":$franjasLejos,"cambio":{"permitido":true},"reserva":${reservaLejos()}}"""
+                "entregas_app_cambiar" -> 200 to """{"ok":true,"reserva":${reservaLejos("2099-11-13T12:00:00-03:00")}}"""
+                else -> 200 to "true"
+            }
+        }
+        e.agenda.refrescar()
+        assertTrue(e.agenda.cambiar(e.agenda.agenda.value!!.franjas[1]))
+        // La palanca se apagó (o se leyó apagada la última vez) antes de que la op saliera.
+        palanca = false
+        e.cola.drenar()
+        asentar()
+        assertTrue(e.cuerposDe("entregas_app_cambiar").isEmpty(), "con la palanca apagada no se cambia")
+        assertTrue(e.cola.operaciones().none { it.kind == ModeloAgenda.KIND }, "se resuelve, no queda en la cola")
+        assertEquals(ReglasAgenda.TEXTO_SIN_CAMBIO, e.agenda.aviso.value)
+        assertEquals(Instant.parse("2099-11-12T13:00:00Z"), e.agenda.agenda.value!!.reserva!!.inicio, "la reserva queda como estaba")
+        assertNull(e.agenda.reservando.value)
+    }
+
+    @Test
+    fun despuesDeReservarSeConsultaLaAgendaYAparececambiarHorario() = enUnHilo { alcance ->
+        var reservada = false
+        val e = entorno(alcance) { fn, _ ->
+            when (fn) {
+                "entregas_app_agenda" -> 200 to if (!reservada) {
+                    """{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":$franjasLejos,"reserva":null}"""
+                } else {
+                    """{"ok":true,"autorizada":true,"habilitada":true,"faltan":0,"franjas":$franjasLejos,"cambio":{"permitido":true,"restantes":1},"reserva":${reservaLejos()}}"""
+                }
+                "entregas_app_reservar" -> { reservada = true; 200 to """{"ok":true,"reserva":${reservaLejos()}}""" }
+                else -> 200 to "true"
+            }
+        }
+        e.agenda.refrescar()
+        assertFalse(e.agenda.puedeCambiar())
+        val antes = e.cuerposDe("entregas_app_agenda").size
+        assertTrue(e.agenda.reservar(e.agenda.agenda.value!!.franjas[0]))
+        e.cola.drenar()
+        // La consulta va por el cliente (otro dispatcher): hasta 2 s.
+        for (i in 0 until 200) {
+            if (e.agenda.puedeCambiar()) break
+            kotlinx.coroutines.delay(10)
+        }
+        assertTrue(e.cuerposDe("entregas_app_agenda").size > antes, "la agenda se consulta de nuevo enseguida")
+        assertTrue(e.agenda.puedeCambiar(), "«Cambiar horario» sin volver a la app")
+    }
+
+    @Test
+    fun laPalancaElegirHorarioEstaApagadaSinLaClave() {
+        assertFalse(PalancaRemota.desde(ValorJson.objeto()).elegirHorario)
+        assertFalse(PalancaRemota.desde(ValorJson.objeto("elegir_horario" to ValorJson.Texto("si"))).elegirHorario)
+        assertTrue(PalancaRemota.desde(ValorJson.objeto("elegir_horario" to ValorJson.Booleano(true))).elegirHorario)
+    }
+
+    @Test
+    fun sinPermisoDeCambioNoSeEncolaNada() = enUnHilo { alcance ->
+        val e = entorno(alcance) { fn, _ ->
+            if (fn == "entregas_app_agenda") 200 to """{"ok":true,"autorizada":true,"habilitada":true,"franjas":$franjasLejos,"reserva":${reservaLejos()}}""" else 200 to "true"
+        }
+        e.agenda.refrescar()
+        assertTrue(e.agenda.agenda.value!!.franjas.isEmpty(), "una 2.2.0: con la reserva vigente no van franjas")
+        assertFalse(e.agenda.cambiar(com.pumpteam.mypump.modelos.FranjaEntrega("f2", Instant.parse("2099-11-13T15:00:00Z"), Instant.parse("2099-11-13T16:00:00Z"))))
+        assertTrue(e.cola.operaciones().isEmpty())
+    }
+
+    @Test
+    fun sinElLinkTambienSeConsultaEnLaVentana() = enUnHilo { alcance ->
+        // 9:55 del día, confirmada sin `meet_url` todavía: «Estamos preparando la sala» y se consulta cada 30 s.
+        var ahora = Instant.parse("2026-11-12T12:55:00Z").toEpochMilli()
+        var consultas = 0
+        val t = TransporteProgramado { fn, _ ->
+            if (fn != "entregas_app_agenda") return@TransporteProgramado 200 to "true"
+            consultas++
+            val link = if (consultas >= 3) ""","meet_url":"https://meet.google.com/abc","sala_abierta_en":"2026-11-12T09:58:00-03:00"""" else ""
+            200 to """{"ok":true,"habilitada":true,"autorizada":true,"faltan":0,"reserva":${reserva("confirmada", link)}}"""
+        }
+        val m = ModeloAgenda(ClienteRpc(transporte = t), "tok", null, null, alcance, reloj = { ahora }, esperar = { ms -> ahora += ms })
+        m.refrescar()
+        assertEquals(ReglasAgenda.EstadoEntrar.Preparando, ReglasAgenda.estadoEntrar(m.agenda.value!!.reserva, Instant.ofEpochMilli(ahora)))
+        val trabajo = alcance.launch { m.seguir() }
+        kotlinx.coroutines.withTimeout(10_000) { while (consultas < 3) kotlinx.coroutines.delay(5) }
+        trabajo.cancel()
+        assertTrue(ReglasAgenda.puedeEntrar(m.agenda.value!!.reserva, Instant.ofEpochMilli(ahora)))
     }
 }

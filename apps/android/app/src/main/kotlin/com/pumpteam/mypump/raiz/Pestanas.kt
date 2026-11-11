@@ -191,7 +191,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                     val gimnasio by modelo.gimnasio.collectAsStateWithLifecycle()
                                     val gim = gimnasio
                                     if (navegacion.guia && g != null) {
-                                        GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guia = false })
+                                        GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guia = false }, elegirHorario = com.pumpteam.mypump.guia.Videollamada.elegirHorario(modelo))
                                     } else if (navegacion.gimnasio && gim != null) {
                                         GimnasioPantalla(gim, alVolver = { navegacion.gimnasio = false })
                                     } else {
@@ -209,7 +209,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
                                         val tec = tecnica
                                         if (navegacion.guiaEnMisDatos && g != null) {
-                                            GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false })
+                                            GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false }, elegirHorario = com.pumpteam.mypump.guia.Videollamada.elegirHorario(modelo))
                                         } else if (navegacion.gimnasioEnMisDatos && gim != null) {
                                             GimnasioPantalla(gim, alVolver = { navegacion.gimnasioEnMisDatos = false })
                                         } else if (navegacion.tecnicaEnMisDatos && tec != null) {

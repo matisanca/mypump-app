@@ -34,6 +34,9 @@ public struct PalancaRemota: Equatable, Sendable {
     public var meDuele = false
     /// «Lo compré / lo estoy tomando» (`suple_estado`). Sin la clave, apagado.
     public var supleEstado = false
+    /// Elegir y cambiar el horario de la videollamada en la pantalla nueva (`elegir_horario`, 2.3.0). Sin la clave,
+    /// apagada: la agenda de la guía queda como en la 2.2.0 y no se llama a `entregas_app_cambiar`.
+    public var elegirHorario = false
 
     public init() {}
 
@@ -53,6 +56,8 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveMetasPasos = "mypump-palanca-metas-pasos"
     /// El último valor leído de `chat_adjuntos`: prendida, sin red se puede mandar una foto y sale después.
     static let claveChatAdjuntos = "mypump-palanca-chat-adjuntos"
+    /// El último valor leído de `elegir_horario`: apagada, un cambio que quedó en la cola no sale.
+    static let claveElegirHorario = "mypump-palanca-elegir-horario"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
@@ -62,6 +67,11 @@ public struct PalancaRemota: Equatable, Sendable {
         if defaults.bool(forKey: claveDevolucion) { p.devolucionSemanal = true }
         if defaults.bool(forKey: claveMetasPasos) { p.metasPasos = true }
         if defaults.bool(forKey: claveChatAdjuntos) { p.chatAdjuntos = true }
+        if defaults.bool(forKey: claveElegirHorario) { p.elegirHorario = true }
+        #if DEBUG
+        // Pruebas de interfaz y capturas: `-elegirHorario YES` (lo mismo que mira la pantalla).
+        if let v = defaults.string(forKey: "elegirHorario") { p.elegirHorario = v == "YES" }
+        #endif
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
@@ -72,6 +82,7 @@ public struct PalancaRemota: Equatable, Sendable {
         defaults.set(devolucionSemanal, forKey: Self.claveDevolucion)
         defaults.set(metasPasos, forKey: Self.claveMetasPasos)
         defaults.set(chatAdjuntos, forKey: Self.claveChatAdjuntos)
+        defaults.set(elegirHorario, forKey: Self.claveElegirHorario)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
@@ -88,6 +99,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["chat_adjuntos"] { chatAdjuntos = b }
         if case .bool(let b)? = j["me_duele"] { meDuele = b }
         if case .bool(let b)? = j["suple_estado"] { supleEstado = b }
+        if case .bool(let b)? = j["elegir_horario"] { elegirHorario = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

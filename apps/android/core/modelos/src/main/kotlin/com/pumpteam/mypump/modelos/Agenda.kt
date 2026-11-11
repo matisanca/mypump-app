@@ -7,7 +7,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * La agenda de la entrega al final de «Tu guía» (`entregas_app_agenda`, propuesta `entregas_021_agenda`): si ya se puede
+ * La agenda de la videollamada al final de «Tu guía» (`entregas_app_agenda`, propuesta `entregas_021_agenda`): si ya se puede
  * agendar, las franjas libres del profesional y la reserva, si la hay. El servidor decide todo: la app no calcula franjas
  * ni habla con Google, solo pide, muestra y reserva.
  *
@@ -33,6 +33,12 @@ data class AgendaEntrega(
     val avisoMin: Int? = null,
     /** `textos` (spec §7): clave → texto que pisa el de la app (con `{hora}`, `{dia}`, `{duracion}`, `{faltan}`). */
     val textos: Map<String, String> = emptyMap(),
+    /** De comienzo o de revisión: la que se va a agendar (la reserva trae la suya). Sin el campo, de comienzo. */
+    val tipo: TipoVideollamada = TipoVideollamada.COMIENZO,
+    /** Si la reserva vigente se puede cambiar desde la app (videollamada 2.3.0). null: no (servidor viejo o sin reserva). */
+    val cambio: CambioAgenda? = null,
+    /** `entrar_desde_min` (1..60): desde cuántos minutos antes se habilita «Entrar». null: los 10 de la app. */
+    val entrarDesdeMin: Int? = null,
 ) {
     /**
      * Se pueden elegir franjas: lo que diga `habilitada` del servidor (spec §7: ya aplica `autorizada` y, si
@@ -51,6 +57,9 @@ data class AgendaEntrega(
             "reserva" to (reserva?.aValor() ?: ValorJson.Nulo),
             "aviso_min" to (avisoMin?.let { ValorJson.Numero(it.toDouble()) } ?: ValorJson.Nulo),
             "textos" to ValorJson.Objeto(LinkedHashMap(textos.mapValues { ValorJson.Texto(it.value) })),
+            "tipo" to ValorJson.Texto(tipo.valor),
+            "cambio" to (cambio?.aValor() ?: ValorJson.Nulo),
+            "entrar_desde_min" to (entrarDesdeMin?.let { ValorJson.Numero(it.toDouble()) } ?: ValorJson.Nulo),
         ),
     )
 
@@ -60,13 +69,16 @@ data class AgendaEntrega(
             val o = e as? JsonObject ?: return null
             if (o["ok"]?.let(Lector::booleanoCrudo) != true) return null
             val reserva = ReservaEntrega.desde(o["reserva"])
+            val cambio = CambioAgenda.desde(o["cambio"])
+            // Con una reserva vigente no hay nada que elegir, aunque el servidor mandara franjas de más. Con una confirmada
+            // que el servidor deja cambiar (`cambio.permitido`), sí: son los horarios libres para el cambio.
+            val paraCambio = reserva?.estado == ReservaEntrega.Estado.CONFIRMADA && cambio?.permitido == true
             return AgendaEntrega(
                 habilitada = o["habilitada"]?.let(Lector::booleanoCrudo) ?: false,
                 autorizada = o["autorizada"]?.let(Lector::booleanoCrudo) ?: false,
                 faltan = o.entero("faltan")?.takeIf { it >= 0 },
                 zona = o.cadena("zona")?.trim()?.ifEmpty { null },
-                // Con una reserva vigente no hay nada que elegir, aunque el servidor mandara franjas de más.
-                franjas = if (reserva?.vigente == true) emptyList()
+                franjas = if (reserva?.vigente == true && !paraCambio) emptyList()
                 else o.lista("franjas", FranjaEntrega::desde).distinctBy { it.id }.sortedBy { it.inicio },
                 reserva = reserva,
                 avisoMin = o.entero("aviso_min")?.takeIf { it in 0..24 * 60 },
@@ -74,6 +86,9 @@ data class AgendaEntrega(
                 textos = (o["textos"] as? JsonObject).orEmpty().mapNotNull { (k, v) ->
                     (v as? JsonPrimitive)?.takeIf { it.isString }?.content?.trim()?.ifEmpty { null }?.let { k to it }
                 }.toMap(),
+                tipo = TipoVideollamada.desde(o.cadena("tipo")),
+                cambio = cambio,
+                entrarDesdeMin = o.entero("entrar_desde_min")?.takeIf { it in 1..60 },
             )
         }
 
@@ -136,10 +151,12 @@ data class ReservaEntrega(
     val meetUrl: String?,
     val motivo: String?,
     /**
-     * `sala_abierta_en` (opcional, cambio de Mati del 6/11): el daemon lo carga cuando Mati ya entró al Meet. Hasta ahí no
-     * hay botón para entrar (salvo el respaldo de la hora de inicio, ver `ReglasAgenda.puedeEntrar`).
+     * `sala_abierta_en` (opcional): el daemon lo carga cuando Mati ya entró al Meet. Desde la 2.3.0 «Entrar» se habilita
+     * 10 minutos antes sin esto (Meet restringido); con esto, también antes y con «Mati ya está en la sala».
      */
     val salaAbiertaEn: Instant? = null,
+    /** De comienzo o de revisión (sin el campo, de comienzo). */
+    val tipo: TipoVideollamada = TipoVideollamada.COMIENZO,
 ) {
     enum class Estado(val valor: String) { PENDIENTE("pendiente"), CONFIRMADA("confirmada"), FALLO("fallo") }
 
@@ -154,6 +171,7 @@ data class ReservaEntrega(
         "meet_url" to (meetUrl?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
         "motivo" to (motivo?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
         "sala_abierta_en" to (salaAbiertaEn?.let { ValorJson.Texto(it.toString()) } ?: ValorJson.Nulo),
+        "tipo" to ValorJson.Texto(tipo.valor),
     )
 
     companion object {
@@ -172,9 +190,51 @@ data class ReservaEntrega(
                 meetUrl = o.cadena("meet_url")?.trim()?.takeIf { it.startsWith("https://", ignoreCase = true) },
                 motivo = o.texto("motivo")?.trim()?.ifEmpty { null },
                 salaAbiertaEn = AgendaEntrega.instante(o.cadena("sala_abierta_en")),
+                tipo = TipoVideollamada.desde(o.cadena("tipo")),
             )
         }
 
         fun desde(v: ValorJson?): ReservaEntrega? = v?.let { desde(it.aJson()) }
+    }
+}
+
+/**
+ * Qué videollamada es (videollamada 2.3.0). Al alumno nunca se le dice «entrega»: «de comienzo» o «de revisión». Sin el
+ * campo, o con uno que no se conoce, es la de comienzo (la única que existía).
+ */
+enum class TipoVideollamada(val valor: String) {
+    COMIENZO("comienzo"),
+    REVISION("revision"),
+    ;
+
+    companion object {
+        fun desde(s: String?): TipoVideollamada {
+            val t = s?.trim()?.lowercase() ?: return COMIENZO
+            return entries.firstOrNull { it.valor == t } ?: COMIENZO
+        }
+    }
+}
+
+/**
+ * Si la reserva se puede cambiar desde la app (`cambio` de `entregas_app_agenda`, CONTRATO_RPC de la videollamada). Lo decide
+ * el servidor: cuántos cambios le quedan ([restantes]) y hasta cuándo ([hasta]). Sin el objeto, no se puede.
+ */
+data class CambioAgenda(val permitido: Boolean, val restantes: Int? = null, val hasta: Instant? = null) {
+    fun aValor(): ValorJson = ValorJson.objeto(
+        "permitido" to ValorJson.Booleano(permitido),
+        "restantes" to (restantes?.let { ValorJson.Numero(it.toDouble()) } ?: ValorJson.Nulo),
+        "hasta" to (hasta?.let { ValorJson.Texto(it.toString()) } ?: ValorJson.Nulo),
+    )
+
+    companion object {
+        /** null si no es un objeto (un texto o un número no cuentan). */
+        fun desde(e: JsonElement?): CambioAgenda? {
+            val o = e as? JsonObject ?: return null
+            return CambioAgenda(
+                permitido = o["permitido"]?.let(Lector::booleanoCrudo) ?: false,
+                restantes = o.entero("restantes")?.coerceAtLeast(0),
+                hasta = AgendaEntrega.instante(o.cadena("hasta")),
+            )
+        }
     }
 }

@@ -158,6 +158,16 @@ public final class ModeloGuia {
         return rs.first { ReglasAgenda.puedeEntrar($0, ahora: ahora) } ?? rs.first
     }
 
+    /// La reserva de la tarjeta fija de Entreno (videollamada 2.3.0): desde que se agenda hasta que termina, la de la agenda
+    /// (la más nueva) o, si la guía no se abrió, la del resumen. Sin guía no queda nada.
+    public func reservaTarjeta(ahora: Date = Date()) -> ReservaAgenda? {
+        guard resumen?.ok != false, estado != .oculta else { return nil }
+        // La del resumen solo si la agenda todavía no se trajo: si la agenda ya dijo «sin reserva» o «fallo», la del
+        // resumen está vieja (una cancelada seguiría con «Entrar» y sus avisos).
+        let r = agenda.agenda != nil ? agenda.reserva : resumen?.reserva
+        return ReglasAgenda.paraTarjeta(r, ahora: ahora) ? r : nil
+    }
+
     public func quitarDeEntreno() { guardarQuitada(true) }
     public func volverAMostrarEnEntreno() { guardarQuitada(false) }
 

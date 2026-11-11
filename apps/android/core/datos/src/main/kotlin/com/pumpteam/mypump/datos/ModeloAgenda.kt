@@ -139,7 +139,9 @@ class ModeloAgenda(
         _desdeCache.value = false
         if (a.reserva?.estado == ReservaEntrega.Estado.FALLO && antes != ReservaEntrega.Estado.FALLO) {
             _aviso.value = ReglasAgenda.avisoFallo(a.reserva?.motivo)
-        } else if (a.reserva?.vigente == true) {
+        } else if (a.reserva?.vigente == true && (antes == null || antes == ReservaEntrega.Estado.FALLO)) {
+            // Recién quedó una reserva: el aviso de un intento anterior ya no va. Con la que ya estaba (un cambio que no se
+            // pudo, `tope` o `plazo`), el aviso queda.
             _aviso.value = null
         }
         if (a.reserva?.estado == ReservaEntrega.Estado.PENDIENTE && antes != ReservaEntrega.Estado.PENDIENTE) empezarASeguir()
@@ -199,9 +201,18 @@ class ModeloAgenda(
 
     private fun ahora(): Instant = Instant.ofEpochMilli(reloj())
 
-    /** Cuánto esperar para la próxima consulta de la sala: 30 s dentro de la franja, hasta 30 min antes si falta; null si no aplica. */
+    /** Desde cuántos minutos antes se habilita «Entrar» (el del servidor; null: los 10 de la app). */
+    val entrarDesdeMin: Int? get() = _agenda.value?.entrarDesdeMin
+
+    /** Se puede cambiar la reserva desde la app (lo dice el servidor; la palanca la mira la pantalla). */
+    fun puedeCambiar(): Boolean = ReglasAgenda.puedeCambiar(_agenda.value, ahora())
+
+    /**
+     * Cuánto esperar para la próxima consulta de la sala (el link si falta y `sala_abierta_en`): 30 s dentro de la ventana,
+     * hasta 30 min antes si falta; null si no aplica.
+     */
     private fun esperaSala(r: ReservaEntrega?): Long? {
-        if (r == null || r.estado != ReservaEntrega.Estado.CONFIRMADA || r.salaAbiertaEn != null) return null
+        if (r == null || r.estado != ReservaEntrega.Estado.CONFIRMADA || (r.salaAbiertaEn != null && r.meetUrl != null)) return null
         val i = r.inicio ?: return null
         val n = ahora()
         val avisoMin = _agenda.value?.avisoMin
@@ -265,6 +276,41 @@ class ModeloAgenda(
                 "id" to ValorJson.Texto(nuevoId()),
                 "inicio" to ValorJson.Texto(f.inicio.toString()),
                 "fin" to ValorJson.Texto(f.fin.toString()),
+            ),
+            CLAVE,
+        )
+        empezarASeguir()
+        return true
+    }
+
+    /**
+     * Cambiar la reserva confirmada a [f] (`entregas_app_cambiar`, palanca `elegir_horario`, videollamada 2.3.0). Va por la
+     * misma cola y el mismo carril que reservar, con `p_id` fijo y la reserva que se deja en `cambia`; el servidor libera la
+     * anterior solo si toma la nueva. Devuelve false si no se encoló (otra en curso, no se puede cambiar o no hay cola).
+     */
+    suspend fun cambiar(f: FranjaEntrega): Boolean {
+        inicial.join()
+        val a = _agenda.value ?: return false
+        val r = a.reserva ?: return false
+        if (_reservando.value != null || !ReglasAgenda.puedeCambiar(a, ahora())) return false
+        _aviso.value = null
+        if (plantillaDemo != null) {
+            val nueva = r.copy(inicio = f.inicio, fin = f.fin)
+            val c = a.cambio?.let { c -> c.copy(restantes = c.restantes?.let { maxOf(0, it - 1) }) }
+            _agenda.value = a.copy(reserva = nueva, cambio = c, franjas = a.franjas.filter { it.id != f.id })
+            return true
+        }
+        val cola = outbox ?: return false
+        val vieja = r.id ?: return false
+        _reservando.value = f
+        cola.encolar(
+            KIND,
+            ValorJson.objeto(
+                "franja" to ValorJson.Texto(f.id),
+                "id" to ValorJson.Texto(nuevoId()),
+                "inicio" to ValorJson.Texto(f.inicio.toString()),
+                "fin" to ValorJson.Texto(f.fin.toString()),
+                "cambia" to ValorJson.Texto(vieja),
             ),
             CLAVE,
         )
