@@ -139,7 +139,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     val inicio by modelo.fotosInicio.collectAsStateWithLifecycle()
     val fotosDeLaCuenta = fotos
     // Con `fotos_inicio` apagada no se mira nada de esa sección, tampoco lo que quedó en el teléfono.
-    val tuCambio = if (conCheckGuiado && fotosDeLaCuenta != null) recordarFuentesTuCambio(fotosDeLaCuenta, inicio?.takeIf { it.palancaRecordada }, pesoParaLasFotos) else null
+    val inicioHabilitado = inicio?.estado?.collectAsStateWithLifecycle()?.value != null
+    val tuCambio = if (conCheckGuiado && fotosDeLaCuenta != null) recordarFuentesTuCambio(fotosDeLaCuenta, inicio?.takeIf { inicioHabilitado }, pesoParaLasFotos) else null
 
     // Un aviso o el banner de las otras pestañas piden una sección: se va y se consume.
     val ancla = navegacion?.anclaRevision
