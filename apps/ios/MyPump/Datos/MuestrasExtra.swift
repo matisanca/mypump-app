@@ -50,6 +50,21 @@ enum DemoUI {
     /// `-historial muestra4` (prototipo de carga): 80 kg × 10, 10, 9 y 8, para contar los toques de hoy.
     static var cuatroSeries: Bool { valor("historial") == "muestra4" }
 
+    /// `-aumento prueba`: la demo con el aumento sugerido a la vista, para las capturas. La demo siempre está en la semana 1,
+    /// donde el plan nunca baja las reps, y la regla no se toca: se arranca como si ya estuviera sugerido.
+    @MainActor static func aplicarAumentoDePrueba(motor: ModeloEntreno, lugar: String, ejercicio: Ejercicio) {
+        #if DEBUG
+        // La carga llega con el historial, un momento después de abrir: se aplica la primera vez que la hay.
+        guard valor("aumento") == "prueba", motor.cargaSimple(lugar)?.carga != nil, abrioYa.insert("aumento-\(lugar)").inserted else { return }
+        motor.cambiarCarga(lugar) { c in
+            guard let desde = c.carga, let hasta = AumentoCarga.hasta(desde: desde, equipo: c.equipo) else { return }
+            var e = c.estado
+            e.aumento = .sugerido(desde: desde, hasta: hasta)
+            c = CargaSimple(ejercicio: ejercicio, semana: 1, ultimaVez: c.ultimaVez, equipo: c.equipo, estado: e)
+        }
+        #endif
+    }
+
     /// `-cardio prueba`: la demo con la cinta tal como la manda el plan (sin duración, `progresion: []`), como cardio al
     /// principio del día 1 y como calentamiento al principio del día 2 (reporte del 4-nov: pedía reps, kg y RIR).
     static var cardioDePrueba: Bool { valor("cardio") == "prueba" }

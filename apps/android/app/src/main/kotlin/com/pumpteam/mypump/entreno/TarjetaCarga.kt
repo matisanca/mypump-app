@@ -1,5 +1,23 @@
 package com.pumpteam.mypump.entreno
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import com.pumpteam.mypump.diseno.Archivo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,6 +73,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloEntreno
 import com.pumpteam.mypump.diseno.BotonMarca
@@ -92,14 +111,7 @@ private const val SELECCION_MS = 80L
 @Composable
 fun TarjetaCarga(motor: ModeloEntreno, v: VistaEntreno, lugar: String, t: ModeloEntreno.Tarjeta, enLista: Boolean = false) {
     val s = motor.cargaSimple(lugar) ?: return
-    val haptico = LocalHapticFeedback.current
-
-    // El háptico de éxito cada vez que se confirma una serie.
-    var confirmadasAntes by remember { mutableIntStateOf(s.confirmadas) }
-    LaunchedEffect(s.confirmadas) {
-        if (s.confirmadas > confirmadasAntes) haptico.performHapticFeedback(HapticFeedbackType.Confirm)
-        confirmadasAntes = s.confirmadas
-    }
+    // El háptico de éxito al confirmar lo da el panel, que es donde está el OK (acá se repetía).
 
     // La preparación va antes de las efectivas, fuera de su tarjeta. Nunca hereda la carga como serie.
     val preparacion = motor.preparacion(lugar)
@@ -146,27 +158,50 @@ fun TarjetaCarga(motor: ModeloEntreno, v: VistaEntreno, lugar: String, t: Modelo
 private fun BloqueCarga(motor: ModeloEntreno, lugar: String, s: CargaSimple) {
     val c = MyPump.colores
     val foco = LocalFocusManager.current
-    Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text("CARGA", style = Letras.ceja, color = c.textoSecundario, modifier = Modifier.weight(1f).semantics { heading() })
-            s.cargaUltimaVez?.let { Text("La vez pasada ${KgTexto.de(it)} kg", style = Letras.caption, color = c.textoSecundario) }
-        }
+    val haptico = LocalHapticFeedback.current
+    val letraGrande = LocalDensity.current.fontScale >= 1.3f
+    // Sube al aceptar el aumento: el número se enciende un momento.
+    var encendido by remember { mutableStateOf(false) }
+    LaunchedEffect(encendido) { if (encendido) { delay(900); encendido = false } }
+    Column(Modifier.animateContentSize(EstiloCarga.resorte()), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
         if (s.mismoPeso) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-                BotonRedondo(Iconos.Menos, "Bajar la carga", "carga-menos", habilitado = s.carga != null, lado = 48.dp) {
-                    foco.clearFocus()
-                    motor.cambiarCarga(lugar) { it.moverCarga(-1) }
+            val botones: @Composable () -> Unit = {
+                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs + 2.dp)) {
+                    BotonCircularCarga(Iconos.Menos, "Bajar la carga", "carga-menos", lado = 56.dp, tamanoIcono = 22.dp, habilitado = s.carga != null) {
+                        foco.clearFocus()
+                        motor.cambiarCarga(lugar) { it.moverCarga(-1) }
+                        haptico.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                    }
+                    BotonCircularCarga(Iconos.Mas, "Subir la carga", "carga-mas", lado = 56.dp, tamanoIcono = 22.dp, habilitado = s.carga != null) {
+                        foco.clearFocus()
+                        motor.cambiarCarga(lugar) { it.moverCarga(1) }
+                        haptico.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                    }
                 }
-                CampoCarga(motor, lugar, s, Modifier.weight(1f))
-                BotonRedondo(Iconos.Mas, "Subir la carga", "carga-mas", habilitado = s.carga != null, lado = 48.dp) {
-                    foco.clearFocus()
-                    motor.cambiarCarga(lugar) { it.moverCarga(1) }
+            }
+            val resumen: @Composable () -> Unit = {
+                Column {
+                    Text("CARGA", style = Letras.ceja, color = c.textoSecundario, modifier = Modifier.semantics { heading() })
+                    CampoCarga(motor, lugar, s, encendido)
+                    s.cargaUltimaVez?.let { Text("La vez pasada ${KgTexto.de(it)} kg", style = Letras.caption, color = c.textoSecundario) }
+                }
+            }
+            if (letraGrande) {
+                Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) { resumen(); botones() }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) { resumen() }
+                    botones()
                 }
             }
         } else {
+            Text("CARGA", style = Letras.ceja, color = c.textoSecundario, modifier = Modifier.semantics { heading() })
             Text("Cada serie lleva su peso: ajustalo en la lista.", style = Letras.subtitulo, color = c.textoSecundario)
         }
-        BannerAumento(motor, lugar, s)
+        BannerAumento(motor, lugar, s) {
+            haptico.performHapticFeedback(HapticFeedbackType.Confirm)
+            encendido = true
+        }
         if (s.hechasConOtraCarga > 0) BannerHechas(motor, lugar, s)
         if (s.ultimaVezMixta && s.mismoPeso && s.confirmadas == 0) {
             Text("La vez pasada una serie fue con otro peso. Si querés repetirlo, destildá abajo.", style = Letras.caption, color = c.textoSecundario)
@@ -174,8 +209,8 @@ private fun BloqueCarga(motor: ModeloEntreno, lugar: String, s: CargaSimple) {
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Mismo peso en todas las series",
-                style = Letras.subtitulo.copy(fontWeight = FontWeight.Medium),
-                color = c.texto,
+                style = Letras.subtitulo,
+                color = c.textoSecundario,
                 modifier = Modifier.weight(1f),
             )
             Interruptor(
@@ -237,7 +272,7 @@ internal fun CampoKilos(
             if (cambio) alCambiar(nuevo.text)
         },
         singleLine = true,
-        textStyle = estilo.copy(color = c.texto),
+        textStyle = if (estilo.color.isSpecified) estilo else estilo.copy(color = c.texto),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { foco.clearFocus() }),
         cursorBrush = SolidColor(c.marcaTexto),
@@ -246,60 +281,86 @@ internal fun CampoKilos(
     )
 }
 
+/** El kilo grande, alineado a la izquierda con el «kg» pegado. Achica la letra si el número es largo (122,5). */
 @Composable
-private fun CampoCarga(motor: ModeloEntreno, lugar: String, s: CargaSimple, modifier: Modifier) {
+private fun CampoCarga(motor: ModeloEntreno, lugar: String, s: CargaSimple, encendido: Boolean) {
     val c = MyPump.colores
-    CampoKilos(
-        valor = KgTexto.de(s.carga),
-        etiqueta = "Carga en kilos",
-        alCambiar = { texto -> motor.cambiarCarga(lugar) { it.fijarCarga(KgTexto.numero(texto)) } },
-        estilo = Numeros.grande.merge(Letras.cifras).copy(textAlign = TextAlign.End),
-        modifier = modifier.testTag("carga-valor"),
-    ) { _, campo ->
-        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Box(Modifier.widthIn(min = 40.dp, max = 150.dp), contentAlignment = Alignment.CenterEnd) {
-                if (s.carga == null) Text("—", style = Numeros.grande, color = c.textoTerciario, modifier = Modifier.clearAndSetSemantics {})
+    val texto = KgTexto.de(s.carga)
+    val tamano = when {
+        texto.length >= 5 -> 42.sp
+        texto.length == 4 -> 48.sp
+        else -> 54.sp
+    }
+    val color by animateColorAsState(if (encendido) c.marcaTexto else c.texto, label = "kilo-encendido")
+    val escala by animateFloatAsState(if (encendido) 1.06f else 1f, spring(dampingRatio = 0.55f), label = "kilo-escala")
+    val estilo = TextStyle(fontFamily = Archivo, fontWeight = FontWeight.Black, fontSize = tamano, lineHeight = tamano)
+    // El «kg» va afuera del campo: adentro, el ancho del campo (el del número) lo dejaba sin lugar.
+    Row(
+        Modifier.heightIn(min = 60.dp).graphicsLayer { scaleX = escala; scaleY = escala; transformOrigin = TransformOrigin(0f, 0.5f) },
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        CampoKilos(
+            valor = texto,
+            etiqueta = "Carga en kilos",
+            alCambiar = { t -> motor.cambiarCarga(lugar) { it.fijarCarga(KgTexto.numero(t)) } },
+            estilo = estilo.copy(color = color),
+            modifier = Modifier.width(IntrinsicSize.Min).widthIn(min = 56.dp).testTag("carga-valor"),   // con lugar para la raya si no hay carga
+        ) { _, campo ->
+            Box(contentAlignment = Alignment.CenterStart) {
+                if (s.carga == null) Text("—", style = estilo, color = c.textoTerciario, modifier = Modifier.clearAndSetSemantics {})
                 campo()
             }
-            Spacer(Modifier.width(6.dp))
-            Text("kg", style = MaterialTheme.typography.titleMedium, color = c.textoSecundario, modifier = Modifier.clearAndSetSemantics {})
         }
+        Spacer(Modifier.width(6.dp))
+        Text("kg", style = Numeros.chico.copy(fontSize = 20.sp), color = c.textoSecundario, maxLines = 1, softWrap = false, modifier = Modifier.padding(bottom = 8.dp).clearAndSetSemantics {})
     }
 }
 
 @Composable
-private fun BannerAumento(motor: ModeloEntreno, lugar: String, s: CargaSimple) {
+private fun BannerAumento(motor: ModeloEntreno, lugar: String, s: CargaSimple, alSubir: () -> Unit) {
     val c = MyPump.colores
+    val letraGrande = LocalDensity.current.fontScale >= 1.3f
     when (val a = s.aumento) {
         is CargaSimple.Aumento.Sugerido -> Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(Radio.control)).background(c.marcaSuave).padding(Espacio.s),
-            verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(c.marcaSuave).padding(Espacio.s),
+            verticalArrangement = Arrangement.spacedBy(Espacio.s),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Iconos.Tendencia, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(16.dp))
                 Text("Esta semana bajan las reps: toca subir", style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = c.marcaTexto)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-                BotonMarca(
-                    "Subir a ${KgTexto.de(a.hasta)} kg",
-                    alTocar = { motor.cambiarCarga(lugar) { it.aceptarAumento() } },
-                    modifier = Modifier.weight(1f).testTag("aumento-subir"),
+            val subir: @Composable (Modifier) -> Unit = { m ->
+                BotonConfirmar(
+                    alTocar = {
+                        motor.cambiarCarga(lugar) { it.aceptarAumento() }
+                        alSubir()
+                    },
                     compacto = true,
-                )
-                BotonSecundario(
-                    "Dejar ${KgTexto.de(a.desde)} kg",
-                    alTocar = { motor.cambiarCarga(lugar) { it.descartarAumento() } },
-                    modifier = Modifier.weight(1f).testTag("aumento-dejar"),
-                    compacto = true,
-                )
+                    modifier = m.testTag("aumento-subir"),
+                ) { tinta -> Text("Subir a ${KgTexto.de(a.hasta)} kg", style = Numeros.chico.copy(color = tinta, fontWeight = FontWeight.ExtraBold), maxLines = 1) }
+            }
+            val dejar: @Composable (Modifier) -> Unit = { m ->
+                Box(
+                    m.heightIn(min = 48.dp).clip(CircleShape).clickable(role = Role.Button) { motor.cambiarCarga(lugar) { it.descartarAumento() } }
+                        .padding(horizontal = Espacio.s).testTag("aumento-dejar"),
+                    contentAlignment = Alignment.Center,
+                ) { Text("Dejar ${KgTexto.de(a.desde)} kg", style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = c.texto, maxLines = 1) }
+            }
+            if (letraGrande) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { subir(Modifier.fillMaxWidth()); dejar(Modifier.fillMaxWidth()) }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                    subir(Modifier.weight(1f))
+                    dejar(Modifier)
+                }
             }
         }
         is CargaSimple.Aumento.Aceptado -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Iconos.Tilde, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(5.dp))
+            Icon(Iconos.TildeEnCirculo, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(Espacio.xs))
             Text(
                 if (s.confirmadas > 0) "Subiste a ${KgTexto.de(a.hasta)} kg en las que faltan" else "Subiste a ${KgTexto.de(a.hasta)} kg en todas las series",
-                style = Letras.caption,
+                style = Letras.caption.copy(fontWeight = FontWeight.Medium),
                 color = c.texto,
                 modifier = Modifier.weight(1f),
             )
@@ -346,12 +407,13 @@ private fun ListaSeries(motor: ModeloEntreno, lugar: String, t: ModeloEntreno.Ta
             // Abierta en la lista va más chica: arriba ya está el nombre del ejercicio, que es lo que manda.
             Text(
                 if (conPreparacion) "Series efectivas" else "Series",
-                style = if (enLista) MaterialTheme.typography.titleMedium else Letras.titulo3,
+                style = Numeros.chico.copy(fontSize = if (enLista) 17.sp else 20.sp, fontWeight = FontWeight.ExtraBold),
+                color = c.texto,
                 modifier = Modifier.weight(1f).semantics { heading() },
             )
             Text(
                 "${s.confirmadas} de ${s.series.size}",
-                style = Letras.subtitulo.copy(fontWeight = FontWeight.Medium).merge(Letras.cifras),
+                style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold).merge(Letras.cifras),
                 color = if (s.confirmadas == s.series.size) c.marcaTexto else c.textoSecundario,
                 modifier = Modifier.testTag("series-confirmadas"),
             )
@@ -365,7 +427,7 @@ private fun ListaSeries(motor: ModeloEntreno, lugar: String, t: ModeloEntreno.Ta
                 Text(Bonito.sinEmoji(cal), style = Letras.caption, color = c.textoSecundario, modifier = Modifier.testTag("pista-serie"))
             }
         }
-        s.series.indices.forEach { FilaCarga(motor, lugar, it, s) }
+        Column { s.series.indices.forEach { FilaCarga(motor, lugar, it, s) } }
     }
 }
 
@@ -377,54 +439,107 @@ private fun FilaCarga(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimpl
     val corrigiendo by motor.corrigiendo.collectAsStateWithLifecycle()
     val enCorreccion = corrigiendo?.lugar == lugar && corrigiendo?.indice == i
     val activa = s.activa == i && corrigiendo?.lugar != lugar
+    val resaltada = activa || h.confirmada
     val etiqueta = etiquetaFila(i, s)
+    // Con letra grande y peso por serie, los botones del kilo van abajo: al lado partían el número de reps.
+    val apilar = LocalDensity.current.fontScale >= 1.3f && !s.sinKg && !s.mismoPeso && !h.confirmada
     val base = Modifier
         .fillMaxWidth()
-        .heightIn(min = 44.dp)
-        .clip(RoundedCornerShape(10.dp))
-        .background(if (activa) c.marcaSuave.copy(alpha = c.marcaSuave.alpha * 0.6f) else Color.Transparent)
+        .heightIn(min = 56.dp)
+        .clip(RoundedCornerShape(12.dp))
+        .background(if (enCorreccion) c.marcaSuave else Color.Transparent)
+        .drawBehind { conector(i, s, c.marca, c.campo) }
         .testTag("fila-serie-${i + 1}")
     val semantica = when {
         h.confirmada -> base.clickable(role = Role.Button) { alcance.launch { motor.editarSerie(lugar, i) } }.clearAndSetSemantics { contentDescription = etiqueta }
         s.mismoPeso -> base.clearAndSetSemantics { contentDescription = etiqueta }
         else -> base   // con peso por serie, adentro están el campo y sus botones
     }
-    Row(
-        semantica.padding(horizontal = Espacio.xs),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
-    ) {
-        Box(
-            Modifier.size(28.dp).clip(CircleShape).background(if (h.confirmada) c.marca else if (activa) c.marcaSuave else c.campo).clearAndSetSemantics {},
-            contentAlignment = Alignment.Center,
-        ) {
-            if (h.confirmada) {
-                Icon(Iconos.Tilde, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(14.dp))
-            } else {
-                Text("${i + 1}", style = Letras.caption.copy(fontWeight = FontWeight.Bold).merge(Letras.cifras), color = if (activa) c.marcaTexto else c.textoSecundario)
+    Row(semantica, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+        Insignia(i, h.confirmada, activa)
+        val repsYKilos: @Composable () -> Unit = {
+            // Un solo «8 reps» para TalkBack, aunque sean dos textos.
+            Row(Modifier.semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    s.reps(i)?.toString() ?: "—",
+                    style = TextStyle(fontFamily = Archivo, fontWeight = if (resaltada) FontWeight.ExtraBold else FontWeight.SemiBold, fontSize = if (activa) 24.sp else 20.sp),
+                    color = if (resaltada) c.texto else c.textoSecundario,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                if (s.reps(i) != null) Text("reps", style = Letras.subtitulo, color = c.textoSecundario, maxLines = 1, modifier = Modifier.padding(bottom = 2.dp))
             }
         }
-        val fuerte = activa || h.confirmada
-        Text(
-            s.reps(i)?.let { "$it reps" } ?: "—",
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = if (fuerte) FontWeight.SemiBold else FontWeight.Normal).merge(Letras.cifras),
-            color = if (fuerte) c.texto else c.textoSecundario,
-        )
-        Spacer(Modifier.weight(1f))
-        if (!s.sinKg) {
-            if (!s.mismoPeso && !h.confirmada) {
+        if (apilar) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                repsYKilos()
                 KgPorSerie(motor, lugar, i, s)
+            }
+        } else {
+            repsYKilos()
+            Spacer(Modifier.weight(1f))
+            if (!s.sinKg) {
+                if (!s.mismoPeso && !h.confirmada) {
+                    KgPorSerie(motor, lugar, i, s)
+                } else {
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(
+                            KgTexto.de(h.kg).ifEmpty { "—" },
+                            style = Numeros.chico.copy(fontSize = 18.sp, fontWeight = if (resaltada) FontWeight.Bold else FontWeight.SemiBold).merge(Letras.cifras),
+                            color = if (resaltada) c.texto else c.textoSecundario,
+                            maxLines = 1,
+                        )
+                        if (h.kg != null) Text("kg", style = Letras.caption, color = c.textoSecundario, modifier = Modifier.padding(bottom = 1.dp))
+                    }
+                }
+            }
+            if (h.confirmada) {
+                Icon(Iconos.Lapiz, contentDescription = null, tint = if (enCorreccion) c.marcaTexto else c.textoTerciario, modifier = Modifier.padding(end = 4.dp).size(14.dp))
+            }
+        }
+    }
+}
+
+/** La insignia de la serie: hecha en verde con tilde, la de ahora con anillo, las que faltan apagadas. */
+@Composable
+private fun Insignia(i: Int, hecha: Boolean, activa: Boolean) {
+    val c = MyPump.colores
+    Box(
+        Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(if (hecha) c.marca else if (activa) c.marcaSuave else c.campo)
+            .then(if (activa) Modifier.border(2.dp, c.marca, CircleShape) else Modifier)
+            .clearAndSetSemantics {},
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedContent(hecha, transitionSpec = { scaleIn(initialScale = 0.3f) + fadeIn() togetherWith fadeOut() }, label = "insignia-$i") { h ->
+            if (h) {
+                Icon(Iconos.Tilde, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(16.dp))
             } else {
                 Text(
-                    h.kg?.let { "${KgTexto.de(it)} kg" } ?: "—",
-                    style = MaterialTheme.typography.bodyLarge.merge(Letras.cifras),
-                    color = if (h.confirmada) c.texto else c.textoSecundario,
+                    "${i + 1}",
+                    style = Numeros.chico.copy(fontSize = 14.sp, fontWeight = if (activa) FontWeight.ExtraBold else FontWeight.SemiBold),
+                    color = if (activa) c.marcaTexto else c.textoSecundario,
                 )
             }
         }
-        if (h.confirmada) {
-            Icon(Iconos.Lapiz, contentDescription = null, tint = if (enCorreccion) c.marcaTexto else c.textoSecundario, modifier = Modifier.size(15.dp))
-        }
+    }
+}
+
+/** El hilo entre series: se pinta de verde lo que ya se hizo. */
+private fun DrawScope.conector(i: Int, s: CargaSimple, verde: Color, gris: Color) {
+    val x = 16.dp.toPx()
+    val hueco = 20.dp.toPx()
+    val medio = size.height / 2
+    val ancho = 2.dp.toPx()
+    if (i > 0) {
+        val hecho = s.series[i - 1].confirmada && s.series[i].confirmada
+        drawLine(if (hecho) verde.copy(alpha = 0.6f) else gris, Offset(x, 0f), Offset(x, medio - hueco), ancho)
+    }
+    if (i + 1 < s.series.size) {
+        val hecho = s.series[i].confirmada && s.series[i + 1].confirmada
+        drawLine(if (hecho) verde.copy(alpha = 0.6f) else gris, Offset(x, medio + hueco), Offset(x, size.height), ancho)
     }
 }
 
@@ -441,26 +556,27 @@ private fun etiquetaFila(i: Int, s: CargaSimple): String {
 @Composable
 private fun KgPorSerie(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimple) {
     val c = MyPump.colores
+    // Crece con la letra: con letra grande un 82,5 no entraba en el ancho fijo.
+    val anchoKg = with(LocalDensity.current) { (66.dp * maxOf(1f, fontScale)) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        BotonRedondo(Iconos.Menos, "Bajar el peso de la serie ${i + 1}", "kg-menos-${i + 1}") { motor.cambiarCarga(lugar) { it.moverKg(i, -1) } }
+        BotonCircularCarga(Iconos.Menos, "Bajar el peso de la serie ${i + 1}", "kg-menos-${i + 1}", lado = 44.dp, tamanoIcono = 18.dp) { motor.cambiarCarga(lugar) { it.moverKg(i, -1) } }
         CampoKilos(
             valor = KgTexto.de(s.series[i].kg),
             etiqueta = "Peso de la serie ${i + 1} en kilos",
             alCambiar = { texto -> motor.cambiarCarga(lugar) { it.fijarKg(i, KgTexto.numero(texto)) } },
-            estilo = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center).merge(Letras.cifras),
-            modifier = Modifier.width(60.dp).testTag("kg-serie-${i + 1}"),
+            estilo = Numeros.chico.copy(fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center).merge(Letras.cifras),
+            modifier = Modifier.width(anchoKg).testTag("kg-serie-${i + 1}"),
         ) { enfocado, campo ->
             val forma = RoundedCornerShape(8.dp)
             Box(
                 Modifier
-                    .heightIn(min = 40.dp)
+                    .heightIn(min = 44.dp)
                     .clip(forma)
-                    .background(c.campo)
-                    .then(if (enfocado) Modifier.border(2.dp, c.marcaVivo, forma) else Modifier)
+                    .then(if (enfocado) Modifier.background(c.campo).border(2.dp, c.marcaVivo, forma) else Modifier)
                     .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center,
             ) { campo() }
         }
-        BotonRedondo(Iconos.Mas, "Subir el peso de la serie ${i + 1}", "kg-mas-${i + 1}") { motor.cambiarCarga(lugar) { it.moverKg(i, 1) } }
+        BotonCircularCarga(Iconos.Mas, "Subir el peso de la serie ${i + 1}", "kg-mas-${i + 1}", lado = 44.dp, tamanoIcono = 18.dp) { motor.cambiarCarga(lugar) { it.moverKg(i, 1) } }
     }
 }
