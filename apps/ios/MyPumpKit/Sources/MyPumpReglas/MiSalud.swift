@@ -96,6 +96,10 @@ public enum MiSalud {
     /// para hacer. Lleva a lo primero pendiente, en el mismo orden que la línea de la tarjeta de Revisión.
     public static let cejaInicio = "Mi salud"
 
+    /// El botón de la tarjeta de Entreno cuando lo primero es el control y lleva al bloque «Próximo control». Sin ese bloque
+    /// lleva a Estudios y dice «Ver mis estudios», como la tarjeta vieja.
+    public static let verMiControl = "Ver mi control"
+
     /// El bloque de lo primero pendiente (estudios, control, presión), o nil sin nada para hacer. Las mismas condiciones que
     /// `tarjeta`: el control cuenta con el bloque de control o con Estudios.
     public static func primerPendiente(_ p: Partes, pendientes: Pendientes) -> Bloque? {

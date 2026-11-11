@@ -62,4 +62,9 @@ struct MiSaludTests {
         #expect(MiSalud.masCosas(2) == "Y 1 cosa más")
         #expect(MiSalud.masCosas(3) == "Y 2 cosas más")
     }
+
+    @Test func botonDelControl() {
+        // El mismo texto en Android y la web: lleva al bloque «Próximo control».
+        #expect(MiSalud.verMiControl == "Ver mi control")
+    }
 }

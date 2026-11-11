@@ -176,8 +176,9 @@ struct TarjetaMiSaludInicio: View {
             guard let t = e?.tarjetaInicio else { return nil }
             return (t.boton, t.nueva ? "arrow.right" : "arrow.up.doc.fill")
         case .control:
-            guard let t = e?.tarjetaControl else { return (TextosControles.verMisEstudios, "arrow.right") }
-            return (t.boton, "arrow.right")
+            // Con el bloque «Próximo control» lleva ahí: «Ver mi control». Sin él, a Estudios: «Ver mis estudios».
+            if MiSaludUI.partes(app).control { return (MiSalud.verMiControl, "arrow.right") }
+            return (e?.tarjetaControl?.boton ?? TextosControles.verMisEstudios, "arrow.right")
         case .presion:
             switch MiSaludUI.presion(app)?.tarjeta {
             case .repetir: return (NP.repetir, "heart.text.square.fill")

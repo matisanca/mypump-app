@@ -117,7 +117,8 @@ final class ControlesUITests: XCTestCase {
         let texto = e("tarjeta-mi-salud-inicio-texto").label
         XCTAssertTrue(texto.contains("Tu próximo control de salud") || conEtiqueta("Y 1 cosa más").exists, texto)
         let boton = e("tarjeta-mi-salud-inicio-boton")
-        if texto.contains("Tu próximo control de salud") { XCTAssertTrue(boton.label.hasPrefix("Ver mis estudios"), boton.label) }
+        // Lleva al bloque «Próximo control»: «Ver mi control».
+        if texto.contains("Tu próximo control de salud") { XCTAssertTrue(boton.label.hasPrefix("Ver mi control"), boton.label) }
         traer("tarjeta-mi-salud-inicio-boton")
         XCTAssertGreaterThanOrEqual(boton.frame.height, 44)
         XCTAssertGreaterThan(boton.frame.width, app.frame.width * 0.6, "botón de ancho completo")
