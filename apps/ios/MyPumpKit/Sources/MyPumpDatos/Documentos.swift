@@ -6,6 +6,9 @@ import MyPumpReglas
 /// Documentos (contrato y consentimiento): `mypump_contrato_get(p_token)`, solo lectura y sin copia en el disco. Se
 /// trae al cargar la cuenta y al volver a primer plano (quien firmó en el navegador vuelve y ve «Firmado»).
 ///
+/// Detrás de la palanca `contrato_app` (`usarPalanca`): apagada, `cargar` no llama a nada y no queda ningún documento, así
+/// que ni la fila ni el aviso aparecen. Nace apagada.
+///
 /// - Al menos un documento: aparece la fila «Documentos» de Mis datos (y, con un contrato pendiente, el aviso de Entreno).
 /// - Cualquier error (sin red, token inválido, la función todavía no está en la base) es «sin documentos», en silencio:
 ///   ni la fila ni el aviso aparecen, y nada se rompe.
@@ -21,6 +24,8 @@ public final class ModeloDocumentos {
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
     @ObservationIgnored private var cargaEnCurso: Task<Void, Never>?
+    /// La palanca `contrato_app`. Apagada: ni una llamada y nada a la vista.
+    @ObservationIgnored public private(set) var prendida = false
 
     public init(cliente: ClienteRPC, token: String) {
         self.cliente = cliente; self.token = token
@@ -31,8 +36,20 @@ public final class ModeloDocumentos {
     /// Un contrato de coaching sin firmar: el aviso de la pantalla principal.
     public var contratoPendiente: Bool { TextosDocumentos.hayContratoPendiente(documentos) }
 
-    /// Trae los documentos. Si ya hay una carga en vuelo, espera esa.
+    /// Prende o apaga la palanca `contrato_app`. Apagada, lo que había se va de la pantalla.
+    public func usarPalanca(_ on: Bool) {
+        prendida = on
+        if !on { apagar() }
+    }
+
+    /// Nada a la vista (la palanca se apagó).
+    public func apagar() {
+        if !documentos.isEmpty { documentos = [] }
+    }
+
+    /// Trae los documentos. Si ya hay una carga en vuelo, espera esa. Con la palanca apagada no llama a nada.
     public func cargar() async {
+        guard prendida else { apagar(); return }
         if let t = cargaEnCurso { await t.value; return }
         let t = Task { await self.traer() }
         cargaEnCurso = t
@@ -48,6 +65,8 @@ public final class ModeloDocumentos {
         case .success(let j):
             nuevos = (try? JSONEncoder().encode(j)).flatMap { try? JSONDecoder().decode(RespuestaDocumentos.self, from: $0) }?.documentos ?? []
         }
+        // Se apagó mientras se esperaba la respuesta: no se muestra.
+        guard prendida else { apagar(); return }
         if nuevos != documentos { documentos = nuevos }
     }
 

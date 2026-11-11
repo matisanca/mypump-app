@@ -39,7 +39,45 @@ struct DocumentosModeloTests {
     let token = "tok_prueba_docs_123456"
 
     private func armar(_ s: ServidorDocumentos) -> ModeloDocumentos {
-        ModeloDocumentos(cliente: ClienteRPC(transporte: s), token: token)
+        let m = ModeloDocumentos(cliente: ClienteRPC(transporte: s), token: token)
+        m.usarPalanca(true)
+        return m
+    }
+
+    // MARK: Palanca `contrato_app`
+
+    @Test func laPalancaNaceApagadaYSoloValeTrue() {
+        #expect(!PalancaRemota.deFabrica.contratoApp)
+        #expect(!PalancaRemota(.objeto([:])).contratoApp)
+        #expect(!PalancaRemota(.objeto(["contrato_app": .texto("true")])).contratoApp)
+        #expect(!PalancaRemota(.objeto(["contrato_app": .numero(1)])).contratoApp)
+        #expect(PalancaRemota(.objeto(["contrato_app": .bool(true)])).contratoApp)
+    }
+
+    @Test func laPalancaSeRecuerdaParaCuandoLaConfigNoContesta() {
+        let d = UserDefaults(suiteName: "docs-\(UUID().uuidString)")!
+        #expect(!PalancaRemota.arranque(defaults: d).contratoApp, "sin nada recordado, apagada")
+        PalancaRemota(.objeto(["contrato_app": .bool(true)])).recordar(defaults: d)
+        #expect(PalancaRemota.arranque(defaults: d).contratoApp)
+        PalancaRemota(.objeto([:])).recordar(defaults: d)
+        #expect(!PalancaRemota.arranque(defaults: d).contratoApp, "sin la clave = apagada, y se recuerda apagada")
+    }
+
+    @Test func apagadaNoLlamaANadaNiMuestraNada() async {
+        let s = ServidorDocumentos()
+        s.rpc = (200, dos)
+        let m = ModeloDocumentos(cliente: ClienteRPC(transporte: s), token: token)
+        #expect(!m.prendida)
+        await m.cargar()
+        #expect(s.pedidos.isEmpty && !m.hay && !m.contratoPendiente)
+        // Prendida trae; apagada de nuevo, se va todo y no vuelve a llamar.
+        m.usarPalanca(true)
+        await m.cargar()
+        #expect(m.hay && m.contratoPendiente && s.pedidos.count == 1)
+        m.usarPalanca(false)
+        #expect(!m.hay && !m.contratoPendiente)
+        await m.cargar()
+        #expect(!m.hay && s.pedidos.count == 1)
     }
 
     @Test func traeLosDocumentosConElToken() async throws {
