@@ -54,8 +54,16 @@ class ColaAUiTest : PruebaUi() {
 
     /** El festejo, sin cerrar una sesión: lo que deja `HojaCerrarDia` cuando el cierre salió bien. */
     private fun festejar() {
-        p.enPrincipal { EstadoFestejo.mostrando = records }
-        p.nodo(etiqueta("hoja-festejo"))
+        // Recién abierta, la app todavía puede no saber que la función está prendida (la palanca y el estado llegan después
+        // de la primera pantalla) y suelta el festejo: se insiste hasta que lo sabe. En uso real el festejo sale al cerrar
+        // una sesión, mucho después.
+        p.esperar("aparece el festejo", ms = 40_000, enElPrincipal = false) {
+            if (!p.existe(etiqueta("hoja-festejo"))) {
+                p.enPrincipal { if (EstadoFestejo.mostrando == null) EstadoFestejo.mostrando = records }
+                Thread.sleep(1_500)
+            }
+            p.existe(etiqueta("hoja-festejo")).takeIf { it }
+        }
     }
 
     private fun abrirMisDatos() {
@@ -207,15 +215,14 @@ class ColaAUiTest : PruebaUi() {
         p.nodo(etiqueta("pestana-entreno"), ms = 40_000)
         // La lista previa de la demo (sola, o dentro de la tarjeta de la videollamada de muestra).
         p.esperar("la lista previa") { (p.existe(etiqueta("lista-previa")) || p.existe(etiqueta("lista-previa-dentro"))).takeIf { it } }
-        p.nodo(etiqueta("pump-del-dia"))
+        p.nodo(etiqueta("pump-racha"))   // el Pump del día con la racha del historial
         // El chat con Mati y su devolución.
         p.tocar(etiqueta("pestana-chat"))
         p.nodo(texto("Buenas, cómo arrancaste la semana?"))
         p.tocar(etiqueta("pestana-revision"))
         p.nodo(etiqueta("devolucion-seccion"))
         // El festejo de la demo no manda nada: lo dice.
-        p.enPrincipal { EstadoFestejo.mostrando = records }
-        p.nodo(etiqueta("hoja-festejo"))
+        festejar()
         p.tocar(etiqueta("festejo-contarle"))
         p.nodo(etiqueta("festejo-demo"))
         p.nodo(texto(ReglasWins.DEMO))
