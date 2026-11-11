@@ -128,7 +128,11 @@ struct RevisionView: View {
         }
         // El aviso pudo llegar antes de saber si la palanca está prendida o si el check ya salió: se resuelve al saberlo.
         .onChange(of: revision?.cargadaUnaVez) { _, _ in resolverApertura() }
-        .onChange(of: modelo.palanca.checkGuiado) { _, _ in resolverApertura() }
+        .onChange(of: modelo.palanca.checkGuiado) { _, prendida in
+            // Si se apaga con el paso a paso abierto, se cierra: no queda una pantalla vacía.
+            if !prendida { flujoGuiado = nil }
+            resolverApertura()
+        }
         .fullScreenCover(item: $flujoGuiado) { apertura in
             if let guiado {
                 CheckGuiadoFlujo(revision: guiado, fotos: modeloFotos, saludSemana: saludSemana, sincronizarSalud: sincronizarSalud,

@@ -265,7 +265,7 @@ class CheckGuiadoUiTest : PruebaUi() {
         esperarPaso(CheckGuiado.Paso.NOTA)
         p.tocar(etiqueta("cg-seguir"))
         esperarPaso(CheckGuiado.Paso.RESUMEN)
-        assertTrue("Hoy no me pesé" in p.textosBajo(etiqueta("cg-fila-peso")))
+        assertTrue("Sin cargar" in p.textosBajo(etiqueta("cg-fila-peso")))
         assertTrue("Nada de esto" in p.textosBajo(etiqueta("cg-fila-senales")))
         p.tocar(etiqueta("cg-enviar"))
         p.nodo(etiqueta("cg-listo"))

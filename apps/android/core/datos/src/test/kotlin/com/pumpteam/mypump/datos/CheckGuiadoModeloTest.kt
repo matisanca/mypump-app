@@ -261,7 +261,8 @@ class CheckGuiadoModeloTest {
         assertEquals(b, c.m.borradorGuiado.value)
         c.m.cargarRevision()
         assertEquals(b, c.m.borradorGuiado.value)
-        assertEquals(b, c.m.abrirGuiado())
+        // El peso del borrador no está cargado hoy (quedó de otro día o sin confirmar): no vuelve, para no mandarlo con la fecha de hoy.
+        assertEquals(b.copy(peso = ""), c.m.abrirGuiado())
         assertEquals(CheckGuiado.Estado.A_MEDIAS, CheckGuiado.estado(c.m.checkinEnviado, c.m.borradorGuiado.value, c.m.semana, faltanFotos = true))
 
         // Semana nueva: el borrador de la anterior no es de esta.

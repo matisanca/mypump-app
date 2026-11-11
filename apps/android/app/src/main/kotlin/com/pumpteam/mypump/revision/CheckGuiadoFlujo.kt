@@ -385,16 +385,15 @@ private fun BarraCheck(indice: Int, total: Int, conAtras: Boolean, alCerrar: () 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
             BotonBarraCheck("Salir", Iconos.Cerrar, alCerrar, Modifier.testTag("cg-cerrar"))
             if (conAtras) BotonBarraCheck("Atrás", null, alAtras, Modifier.testTag("cg-atras"))
-            Text(
-                "Paso ${indice + 1} de $total",
-                style = MaterialTheme.typography.bodyLarge.merge(Letras.cifras),
-                fontWeight = FontWeight.SemiBold,
-                color = c.textoSecundario,
-                textAlign = TextAlign.End,
-                maxLines = 1,
-                modifier = Modifier.weight(1f).testTag("cg-avance"),
-            )
         }
+        // En su propio renglón: con letra grande no compite con «Salir» y «Atrás».
+        Text(
+            "Paso ${indice + 1} de $total",
+            style = MaterialTheme.typography.bodyLarge.merge(Letras.cifras),
+            fontWeight = FontWeight.SemiBold,
+            color = c.textoSecundario,
+            modifier = Modifier.fillMaxWidth().testTag("cg-avance"),
+        )
         // Los segmentos repiten lo que ya dice el texto: para el lector de pantalla no existen.
         AvanceCheck(total, indice + 1, Modifier.fillMaxWidth())
     }
@@ -577,11 +576,11 @@ private fun PasoResumen(
     alIr: (Paso) -> Unit,
 ) {
     val c = MyPump.colores
-    val sinDato = "Sin contestar"
+    val sinDato = "Falta"
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
         Column(Modifier.fillMaxWidth().superficieTarjeta().testTag("cg-resumen")) {
             val kilos = PesoCorporal.leer(b.peso)
-            FilaResumen("Peso", if (kilos != null) "${PesoCorporal.kg(kilos)} kg" else if (b.peso.isBlank()) "Hoy no me pesé" else b.peso, "cg-fila-peso") { alIr(Paso.PESO) }
+            FilaResumen("Peso", if (kilos != null) "${PesoCorporal.kg(kilos)} kg" else if (b.peso.isBlank()) "Sin cargar" else b.peso, "cg-fila-peso") { alIr(Paso.PESO) }
             CheckinSemanal.metricas.forEachIndexed { i, m ->
                 HorizontalDivider(Modifier.padding(start = Espacio.m), color = c.separador, thickness = 0.5.dp)
                 val v = b.valores[m.clave] ?: 0
@@ -595,13 +594,14 @@ private fun PasoResumen(
             HorizontalDivider(Modifier.padding(start = Espacio.m), color = c.separador, thickness = 0.5.dp)
             val marcado = CheckGuiado.textoSenales(b.senales, b.catalogo)
             FilaResumen(
-                if (b.catalogo == CheckGuiado.Catalogo.CICLO) "Lo que notaste" else "Esta semana",
+                CheckGuiado.titulo(Paso.SENALES, b.catalogo),
                 marcado.ifEmpty { sinDato },
                 "cg-fila-senales",
                 falta = marcado.isEmpty(),
+                larga = true,
             ) { alIr(Paso.SENALES) }
             HorizontalDivider(Modifier.padding(start = Espacio.m), color = c.separador, thickness = 0.5.dp)
-            FilaResumen("Nota", b.nota.trim().ifEmpty { "Sin nota" }, "cg-fila-nota") { alIr(Paso.NOTA) }
+            FilaResumen("Nota", b.nota.trim().ifEmpty { "Sin nota" }, "cg-fila-nota", larga = b.nota.isNotBlank()) { alIr(Paso.NOTA) }
         }
         if (salud.isNotEmpty()) {
             Box(Modifier.fillMaxWidth().superficieTarjeta().padding(Espacio.m)) { SaludDelCheck(salud) }
@@ -609,9 +609,9 @@ private fun PasoResumen(
     }
 }
 
-/** Una fila del resumen: el nombre, lo contestado (hasta tres renglones) y la flecha si se puede tocar. */
+/** Una fila del resumen: el nombre, lo contestado (entero; lo largo va debajo del nombre) y la flecha si se puede tocar. */
 @Composable
-private fun FilaResumen(etiqueta: String, valor: String, id: String, falta: Boolean = false, alTocar: (() -> Unit)?) {
+private fun FilaResumen(etiqueta: String, valor: String, id: String, falta: Boolean = false, larga: Boolean = false, alTocar: (() -> Unit)?) {
     val c = MyPump.colores
     Row(
         Modifier
@@ -624,17 +624,22 @@ private fun FilaResumen(etiqueta: String, valor: String, id: String, falta: Bool
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
-        Text(etiqueta, style = MaterialTheme.typography.bodyLarge, color = c.textoSecundario)
-        Text(
-            valor,
-            style = MaterialTheme.typography.bodyLarge.merge(Letras.cifras),
-            fontWeight = FontWeight.SemiBold,
-            color = if (falta) c.alerta else c.texto,
-            textAlign = TextAlign.End,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+        if (larga) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(etiqueta, style = MaterialTheme.typography.bodyLarge, color = c.textoSecundario)
+                Text(valor, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = if (falta) c.alerta else c.texto)
+            }
+        } else {
+            Text(etiqueta, style = MaterialTheme.typography.bodyLarge, color = c.textoSecundario)
+            Text(
+                valor,
+                style = MaterialTheme.typography.bodyLarge.merge(Letras.cifras),
+                fontWeight = FontWeight.SemiBold,
+                color = if (falta) c.alerta else c.texto,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+            )
+        }
         if (alTocar != null) Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(16.dp))
     }
 }

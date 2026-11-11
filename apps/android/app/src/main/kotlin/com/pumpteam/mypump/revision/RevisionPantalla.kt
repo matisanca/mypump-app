@@ -118,11 +118,17 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     LaunchedEffect(ancla) {
         if (ancla == null) return@LaunchedEffect
         delay(300)
-        irA(ancla, secciones, desplazamiento, margen)
+        val abreElCheck = ancla == AnclaRevision.CHECK || ancla == AnclaRevision.AVISO || ancla == AnclaRevision.PENDIENTES
+        when (ancla) {
+            AnclaRevision.AVISO -> Unit
+            AnclaRevision.PENDIENTES ->
+                irA(if (conCheckGuiadoAhora) AnclaRevision.CHECK else AnclaRevision.FOTOS, secciones, desplazamiento, margen)
+            else -> irA(ancla, secciones, desplazamiento, margen)
+        }
         // Con el check guiado, el aviso y el banner llevan directo: además de mostrar la tarjeta, abren el check en el paso
         // que toca. Se espera (poco) a saber si ya se envió: enviado, solo se muestra la tarjeta.
         val r = revisionDeAhora
-        if (ancla == AnclaRevision.CHECK && conCheckGuiadoAhora && r != null) {
+        if (abreElCheck && conCheckGuiadoAhora && r != null) {
             withTimeoutOrNull(4_000) { r.revisionCargada.first { it } }
             if (conCheckGuiadoAhora && !r.checkinEnviado) r.abrirFlujoGuiado()
         }

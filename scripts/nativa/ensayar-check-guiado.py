@@ -120,6 +120,8 @@ def chequeos(cur, token, otro):
     da_22023(cur, "señales vacías", (token, hoy, json.dumps({"catalogo": "general", "senales": []})))
     da_22023(cur, "señales que no son lista", (token, hoy, json.dumps({"catalogo": "general", "senales": "dolor"})))
     da_22023(cur, "clave con texto libre", (token, hoy, json.dumps({"catalogo": "general", "senales": ["Me duele la rodilla"]})))
+    da_22023(cur, "clave fuera de la lista", (token, hoy, json.dumps({"catalogo": "general", "senales": ["cualquiercosa"]})))
+    da_22023(cur, "clave de ciclo en la lista general", (token, hoy, json.dumps({"catalogo": "general", "senales": ["acne"]})))
     da_22023(cur, "clave numérica", (token, hoy, json.dumps({"catalogo": "general", "senales": [3]})))
     da_22023(cur, "más de 12", (token, hoy, json.dumps({"catalogo": "general", "senales": [f"s{i}" for i in range(13)]})))
     da_22023(cur, "respuestas que no son objeto", (token, hoy, json.dumps(["dolor"])))

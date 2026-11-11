@@ -275,7 +275,7 @@ class ModeloRevision(
     fun abrirGuiado(): CheckGuiado.Borrador {
         val g = _guiado.value
         val deEstaSemana = g?.semana == semana
-        return CheckGuiado.abrir(
+        val b = CheckGuiado.abrir(
             guardado = _borradorGuiado.value,
             semana = semana,
             catalogo = catalogoGuiado,
@@ -283,6 +283,8 @@ class ModeloRevision(
             senalesEnviadas = if (deEstaSemana) g?.senales else null,
             catalogoEnviado = if (deEstaSemana) g?.catalogo else null,
         )
+        // El peso del borrador vale solo si es el de hoy: uno de otro día no se manda con la fecha de hoy.
+        return if (b.peso.isNotBlank() && PesoCorporal.leer(b.peso) != pesoDeHoy) b.copy(peso = "") else b
     }
 
     /** Guardado parcial: cada paso deja el borrador en el teléfono, así se retoma donde quedó. */

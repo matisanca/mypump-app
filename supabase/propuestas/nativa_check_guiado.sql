@@ -138,6 +138,12 @@ BEGIN
   END IF;
   SELECT COALESCE(array_agg(DISTINCT s ORDER BY s), '{}') INTO v_senales
     FROM jsonb_array_elements_text(p_respuestas->'senales') s;
+  -- Solo las claves de la lista del catálogo (las mismas que apps/shared/vectores/check_guiado.json).
+  IF NOT v_senales <@ (CASE v_catalogo
+       WHEN 'ciclo' THEN ARRAY['acne','retencion','pecho','cabeza','animo','libido','sueno','aplicacion','ninguno']
+       ELSE ARRAY['dolor','digestion','animo','enfermo','ninguno'] END) THEN
+    RAISE EXCEPTION 'señales inválidas' USING ERRCODE = '22023';
+  END IF;
   IF cardinality(v_senales) > 1 THEN v_senales := array_remove(v_senales, 'ninguno'); END IF;
   IF cardinality(v_senales) NOT BETWEEN 1 AND 12 THEN
     RAISE EXCEPTION 'señales inválidas' USING ERRCODE = '22023';

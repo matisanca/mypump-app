@@ -196,7 +196,9 @@ struct CheckGuiadoModeloTests {
         // Se cierra la app: al volver está donde quedó.
         let (c, _, _) = armar(s, disco: disco)
         #expect(c.borradorGuiado == b)
-        #expect(c.abrirGuiado() == b)
+        // El peso del borrador no está cargado hoy (quedó de otro día o sin confirmar): no vuelve, para no mandarlo con la fecha de hoy.
+        var sinPeso = b; sinPeso.peso = ""
+        #expect(c.abrirGuiado() == sinPeso)
         #expect(CheckGuiado.estado(enviado: c.checkinEnviado, borrador: c.borradorGuiado, semana: c.semana, faltanFotos: true) == .aMedias)
 
         // Semana nueva: el borrador de la anterior no es de esta.

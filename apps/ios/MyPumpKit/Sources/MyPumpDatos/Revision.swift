@@ -189,10 +189,19 @@ public final class ModeloRevision {
     /// El borrador con el que se abre el check guiado: el guardado de esta semana o uno nuevo con lo ya enviado.
     public func abrirGuiado() -> CheckGuiado.Borrador {
         let deEstaSemana = guiado?.semana == semana
-        return CheckGuiado.abrir(guardado: borradorGuiado, semana: semana, catalogo: catalogoGuiado,
-                                 enviado: checkinEnviado ? checkin.map { ($0.valores, $0.nota) } : nil,
-                                 senalesEnviadas: deEstaSemana ? guiado?.senales : nil,
-                                 catalogoEnviado: deEstaSemana ? guiado?.catalogo : nil)
+        var b = CheckGuiado.abrir(guardado: borradorGuiado, semana: semana, catalogo: catalogoGuiado,
+                                  enviado: checkinEnviado ? checkin.map { ($0.valores, $0.nota) } : nil,
+                                  senalesEnviadas: deEstaSemana ? guiado?.senales : nil,
+                                  catalogoEnviado: deEstaSemana ? guiado?.catalogo : nil)
+        // El peso del borrador vale solo si es el de hoy: uno de otro día no se manda con la fecha de hoy.
+        if !b.peso.isEmpty, PesoCorporal.leer(b.peso) != pesoDeHoy { b.peso = "" }
+        return b
+    }
+
+    /// El peso manual de hoy, si ya está cargado (el paso del peso lo trae puesto).
+    public var pesoDeHoy: Double? {
+        let hoy = diaDeHoy()
+        return salud.last(where: { $0.tipo == "peso_kg" && $0.fecha == hoy && $0.fuente == "manual" })?.valor
     }
 
     /// Guardado parcial: cada paso deja el borrador en el teléfono, así se retoma donde quedó.

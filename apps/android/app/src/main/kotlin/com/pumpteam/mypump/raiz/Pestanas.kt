@@ -439,7 +439,13 @@ fun BannerRevision(modelo: ModeloApp, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .superficieTarjeta(radio = Radio.control + 6.dp)
-            .clickable { navegacion?.irARevision(if (p.faltaCheck && !p.faltanFotos) AnclaRevision.CHECK else AnclaRevision.FOTOS) }
+            .clickable { navegacion?.irARevision(
+                    when {
+                        p.faltaCheck && p.faltanFotos -> AnclaRevision.PENDIENTES
+                        p.faltaCheck -> AnclaRevision.CHECK
+                        else -> AnclaRevision.FOTOS
+                    },
+                ) }
             .padding(Espacio.s)
             .testTag("banner-revision"),
         verticalAlignment = Alignment.CenterVertically,

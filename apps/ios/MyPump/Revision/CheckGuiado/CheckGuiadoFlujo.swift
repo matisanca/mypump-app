@@ -31,7 +31,7 @@ struct CheckGuiadoFlujo: View {
         var b = revision.abrirGuiado()
         let pasos = CheckGuiado.pasos(faltanFotos: (fotos?.posesDeLaSemana.count ?? 3) < 3)
         // El peso de hoy, si ya está cargado, viene puesto.
-        if b.peso.isEmpty, let hoy = revision.serieDePeso.last(where: { $0.fecha == revision.fecha }) { b.peso = PesoCorporal.kg(hoy.kg) }
+        if b.peso.isEmpty, let hoy = revision.pesoDeHoy { b.peso = PesoCorporal.kg(hoy) }
         _borrador = State(initialValue: b)
         _pasos = State(initialValue: pasos)
         _paso = State(initialValue: pasoInicial.flatMap { pasos.contains($0) ? $0 : nil } ?? CheckGuiado.retomar(b, pasos: pasos))
