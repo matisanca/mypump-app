@@ -69,7 +69,7 @@ class EstudiosReglasTest {
         assertNull(raro.proximo)
         // Un pendiente de estado desconocido es «pedido»; sin id no se puede usar y no va.
         assertEquals(listOf(PendienteEstudios("p1", "resonancia", "Resonancia", null, null, null, false, null, null)), raro.pendientes)
-        // Sin `vigente` y sin el día del servidor, no se la da por vencida.
+        // Sin un `vigente: false` del servidor, no se la da por vencida.
         assertEquals(listOf(OrdenEstudios("o1", "nuevo", "Estudio", null, d("2026-11-01"), true)), raro.ordenes)
         // Un estudio de estado desconocido es «Recibido», y sin un `true` de verdad no se abre.
         assertEquals(2, raro.estudios.size)
@@ -81,9 +81,15 @@ class EstudiosReglasTest {
         assertEquals(listOf("s2", null), raro.envios.map { it.id })
     }
 
-    @Test fun ordenSinVigenteSeCalculaConElDiaDelServidor() {
-        val e = EstadoEstudios.desde(ValorJson.parsear("""{"habilitado":true,"hoy":"2026-11-10","ordenes":[{"id":"a","vence":"2026-11-09"},{"id":"b","vence":"2026-11-10"}]}"""))!!
-        assertEquals(listOf(false, true), e.ordenes.map { it.vigente })
+    @Test fun laVigenciaDeUnaOrdenLaDiceElServidor() {
+        // El teléfono no la da por vencida por su cuenta: solo un `false` explícito la cierra (como iOS y la web).
+        val e = EstadoEstudios.desde(
+            ValorJson.parsear(
+                """{"habilitado":true,"hoy":"2026-11-10","ordenes":[{"id":"a","vence":"2026-11-09"},{"id":"b","vence":"2026-11-10"},
+                {"id":"c","vence":"2027-01-01","vigente":false},{"id":"d","vence":"2026-11-01","vigente":true},{"id":"e","vigente":"false"}]}""",
+            ),
+        )!!
+        assertEquals(listOf(true, true, false, true, true), e.ordenes.map { it.vigente })
     }
 
     @Test fun bloquesEnOrdenYSoloConContenido() {
@@ -176,8 +182,9 @@ class EstudiosReglasTest {
     @Test fun queHacerConCadaRespuestaDeLaSubida() {
         assertEquals(Estudios.Accion.OK, Estudios.clasificarSubida(200, true))
         assertEquals(Estudios.Accion.REINTENTAR, Estudios.clasificarSubida(200, false))
-        for (s in listOf(400, 403, 404, 409, 411, 413)) assertEquals(Estudios.Accion.DESCARTAR, Estudios.clasificarSubida(s, false), "$s")
-        for (s in listOf(408, 429, 500, 502, 503)) assertEquals(Estudios.Accion.REINTENTAR, Estudios.clasificarSubida(s, false), "$s")
+        // 408 no es distinto del resto de los 4xx (contrato: solo 429 y 5xx reintentan).
+        for (s in listOf(400, 403, 404, 408, 409, 411, 413, 415, 422)) assertEquals(Estudios.Accion.DESCARTAR, Estudios.clasificarSubida(s, false), "$s")
+        for (s in listOf(429, 500, 502, 503)) assertEquals(Estudios.Accion.REINTENTAR, Estudios.clasificarSubida(s, false), "$s")
     }
 
     @Test fun comoPrepararteYDondePorTipo() {

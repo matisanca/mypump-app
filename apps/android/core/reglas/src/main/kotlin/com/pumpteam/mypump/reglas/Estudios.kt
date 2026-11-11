@@ -71,10 +71,10 @@ data class EstadoEstudios(
                     )
                 },
                 ordenes = j["ordenes"].lista().mapNotNull { o ->
-                    val vence = o["vence"].dia()
                     OrdenEstudios(
-                        id = o["id"].texto() ?: return@mapNotNull null, tipo = o["tipo"].texto(), titulo = titulo(o), emitida = o["emitida"].dia(), vence = vence,
-                        vigente = (o["vigente"] as? ValorJson.Booleano)?.valor ?: (vence == null || hoy == null || !vence.isBefore(hoy)),
+                        id = o["id"].texto() ?: return@mapNotNull null, tipo = o["tipo"].texto(), titulo = titulo(o), emitida = o["emitida"].dia(), vence = o["vence"].dia(),
+                        // Lo decide el servidor: solo un `false` explícito la cierra (el teléfono no la da por vencida por su cuenta).
+                        vigente = o["vigente"] != ValorJson.Booleano(false),
                     )
                 },
                 estudios = j["estudios"].lista().filter { it is ValorJson.Objeto }.map { e ->
@@ -218,10 +218,10 @@ object Estudios {
 
     enum class Accion { OK, DESCARTAR, REINTENTAR }
 
-    /** 200 con `ok` (también `ya`): hecho. 429, 408 y 5xx: más tarde. Cualquier otro 4xx es definitivo para ese archivo. */
+    /** 200 con `ok` (también `ya`): hecho. 429 y 5xx: más tarde. Cualquier otro 4xx (también 408) es definitivo para ese archivo. */
     fun clasificarSubida(status: Int, ok: Boolean): Accion = when {
         status in 200..299 -> if (ok) Accion.OK else Accion.REINTENTAR
-        status == 429 || status == 408 || status >= 500 -> Accion.REINTENTAR
+        status == 429 || status >= 500 -> Accion.REINTENTAR
         status in 400..499 -> Accion.DESCARTAR
         else -> Accion.REINTENTAR
     }
