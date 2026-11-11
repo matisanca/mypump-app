@@ -1229,31 +1229,46 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .dz-pill{border:1px solid transparent;border-radius:14px;padding:4px 10px;background:color-mix(in oklab,var(--color-brand-subtle) 55%,transparent);color:var(--color-brand-text);font-size:16px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums}
 .dz-pill.is-cambiada{background:var(--color-brand-subtle);border-color:color-mix(in oklab,var(--color-brand-text) 35%,transparent)}
 .dz-food-kcal.is-cambiada{color:var(--color-brand-text)}
-.cs{display:flex;flex-direction:column;gap:var(--space-2)}
-.cs-carga{display:flex;flex-direction:column;gap:var(--space-2);padding:12px;border-radius:14px;background:var(--color-bg-tertiary)}
-.cs-carga-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+/* La carga de series (gemela de EstiloCarga.swift/.kt): un instrumento de gimnasio. Un solo foco por serie (el número
+   grande), pocas cajas, y el verde del logo reservado para lo que avanza. */
+.cs{display:flex;flex-direction:column;gap:var(--space-2);--cs-panel:#ffffff}
+[data-theme="dark"] .cs,[data-theme="dark"] .cs-panel{--cs-panel:#202223}
+.cs-carga{display:flex;flex-direction:column;gap:var(--space-2);padding:4px 0}
+.cs-carga-fila{display:flex;align-items:center;gap:var(--space-2)}
+.cs-carga-izq{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.cs-carga-bot{display:flex;gap:10px;flex:0 0 auto}
 .cs-ceja{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary)}
 .cs-tenue{font-size:13px;color:var(--color-text-muted)}
 .cs-nota{font-size:13px;color:var(--color-text-muted);line-height:1.35}
-.cs-carga-fila{display:flex;align-items:center;gap:var(--space-2)}
-.cs-redondo{width:48px;height:48px;flex:0 0 auto;border-radius:50%;border:0;background:var(--color-bg-primary);color:var(--color-text-primary);font-size:24px;font-weight:700;line-height:1;cursor:pointer;touch-action:manipulation}
+.cs-redondo{width:56px;height:56px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:var(--color-bg-tertiary);color:var(--color-text-primary);font-size:26px;font-weight:600;line-height:1;cursor:pointer;touch-action:manipulation;transition:transform .12s,opacity .12s;-webkit-tap-highlight-color:transparent}
+.cs-redondo:active:not(:disabled){transform:scale(.88);opacity:.75}
 .cs-redondo:disabled{opacity:.4;cursor:default}
-.cs-redondo.is-grande{width:56px;height:56px;background:var(--color-bg-tertiary)}
-.cs-carga-campo{flex:1;min-width:0;display:flex;align-items:baseline;justify-content:center;gap:6px;min-height:56px}
-.cs-carga-num{width:132px;max-width:100%;border:0;background:none;text-align:right;font-family:var(--font-num);font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--color-text-primary);padding:0}
-.cs-carga-num:focus{outline:none;box-shadow:0 2px 0 var(--color-brand)}
-.cs-carga-campo span{font-size:16px;font-weight:600;color:var(--color-text-muted)}
-.cs-aumento{padding:10px;border-radius:12px;background:var(--color-brand-subtle);display:flex;flex-direction:column;gap:8px}
-.cs-aumento-t{font-size:14px;font-weight:600;color:var(--color-brand-text)}
-.cs-aumento-b{display:flex;gap:8px}
-.cs-btn-marca,.cs-btn-sec{flex:1;min-height:44px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;touch-action:manipulation}
-.cs-btn-marca{border:0;background:var(--color-brand);color:var(--color-on-brand)}
-.cs-btn-sec{border:1px solid var(--color-border);background:var(--color-bg-primary);color:var(--color-text-primary)}
+.cs-redondo.is-grande{width:60px;height:60px;font-size:28px}
+.cs-carga-campo{display:flex;align-items:flex-end;gap:6px;min-height:60px;cursor:text;transform-origin:0 50%;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
+.cs-carga-num{width:calc(var(--cs-len,2) * 1ch + 4px);min-width:2ch;max-width:100%;border:0;background:none;text-align:left;font-family:var(--font-num);font-size:54px;line-height:1;font-weight:800;color:var(--color-text-primary);padding:0;border-radius:6px;transition:color .3s}
+.cs-carga-num.is-l4{font-size:48px}
+.cs-carga-num.is-l5{font-size:42px}
+.cs-carga-num::placeholder{color:var(--color-text-muted)}
+.cs-carga-num:focus{outline:none;box-shadow:0 3px 0 var(--color-brand)}
+.cs-carga-campo span{font-family:var(--font-num);font-size:20px;font-weight:700;color:var(--color-text-secondary);padding-bottom:6px}
+.cs-carga-campo.is-encendido{animation:cs-encender .9s ease-out}
+.cs-carga-campo.is-encendido .cs-carga-num{animation:cs-verde .9s ease-out}
+@keyframes cs-encender{0%{transform:scale(1)}25%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes cs-verde{0%,60%{color:var(--color-brand-text)}100%{color:var(--color-text-primary)}}
+.cs-aumento{padding:12px;border-radius:20px;background:var(--color-brand-subtle);display:flex;flex-direction:column;gap:10px}
+.cs-aumento-t{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--color-brand-text)}
+.cs-aumento-t svg{width:16px;height:16px;flex:0 0 auto}
+.cs-aumento-b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cs-btn-marca{flex:1 1 160px;min-height:48px;padding:0 14px;border:0;border-radius:999px;background:var(--color-brand) linear-gradient(to bottom,rgba(255,255,255,.10),transparent 50%);color:var(--color-on-brand);font-family:var(--font-num);font-size:16px;font-weight:800;cursor:pointer;touch-action:manipulation;transition:transform .12s}
+.cs-btn-marca:active{transform:scale(.965)}
+.cs-btn-sec{flex:0 0 auto;min-height:48px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--color-text-primary);font-size:15px;font-weight:600;cursor:pointer;touch-action:manipulation}
 .cs-banners{display:flex;flex-direction:column;gap:6px}
 .cs-banners:empty{display:none}
-.cs-linea{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:13px}
+.cs-linea{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;flex-wrap:wrap}
+.cs-linea .cs-hecho{display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.cs-linea .cs-hecho i{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand);font-style:normal;font-size:11px;font-weight:800}
 .cs-link{border:0;background:none;padding:6px 0;color:var(--color-brand-text);font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation}
-.cs-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;font-size:14px;font-weight:500;cursor:pointer}
+.cs-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;font-size:14px;font-weight:500;color:var(--color-text-secondary);cursor:pointer}
 .cs-toggle input{position:absolute;opacity:0;width:1px;height:1px}
 .cs-toggle i{position:relative;width:46px;height:28px;flex:0 0 auto;border-radius:14px;background:var(--color-border-strong);transition:background .15s}
 .cs-toggle i::after{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
@@ -1261,50 +1276,90 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .cs-toggle input:checked+i::after{transform:translateX(18px)}
 .cs-toggle input:focus-visible+i{outline:2px solid var(--color-brand);outline-offset:2px}
 .cs-pista:empty{display:none}
-.cs-filas{display:flex;flex-direction:column;gap:2px}
-.cs-fila{display:flex;align-items:center;gap:var(--space-2);width:100%;min-height:44px;padding:4px 8px;border:0;border-radius:10px;background:none;color:var(--color-text-muted);font-size:16px;text-align:left;font-variant-numeric:tabular-nums}
-.cs-fila.is-activa{background:var(--color-brand-subtle);color:var(--color-text-primary);font-weight:600}
-.cs-fila.is-hecha{color:var(--color-text-primary);font-weight:600;cursor:pointer}
-.cs-fila.is-corrigiendo{background:var(--color-bg-tertiary)}
-.cs-punto{width:28px;height:28px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--color-bg-tertiary);font-size:13px;font-weight:700;color:var(--color-text-muted)}
-.cs-punto.is-activa{background:var(--color-brand-subtle);color:var(--color-brand-text)}
-.cs-punto.is-hecha{background:var(--color-brand);color:var(--color-on-brand)}
-.cs-fila-reps{flex:1;min-width:0}
-.cs-fila-kg{font-weight:500}
-.cs-lapiz{display:inline-flex;color:var(--color-text-muted)}
+/* Las series: una insignia por serie unida por un hilo que se pinta de verde con lo hecho. */
+.cs-filas{display:flex;flex-direction:column}
+.cs-fila{position:relative;display:flex;align-items:center;gap:var(--space-2);width:100%;min-height:56px;padding:4px 4px 4px 0;border:0;border-radius:12px;background:none;color:var(--color-text-secondary);font-size:16px;text-align:left;font-family:inherit}
+.cs-fila::before,.cs-fila::after{content:"";position:absolute;left:15px;width:2px;background:var(--color-bg-tertiary);pointer-events:none}
+.cs-fila::before{top:0;height:calc(50% - 20px)}
+.cs-fila::after{bottom:0;height:calc(50% - 20px)}
+.cs-fila.sin-arriba::before,.cs-fila.sin-abajo::after{display:none}
+.cs-fila.ok-arriba::before,.cs-fila.ok-abajo::after{background:color-mix(in oklab,var(--color-brand) 60%,transparent)}
+.cs-fila.is-hecha{color:var(--color-text-primary);cursor:pointer}
+.cs-fila.is-activa{color:var(--color-text-primary)}
+.cs-fila.is-corrigiendo{background:var(--color-brand-subtle)}
+.cs-punto{width:32px;height:32px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--color-bg-tertiary);font-family:var(--font-num);font-size:14px;font-weight:600;color:var(--color-text-secondary)}
+.cs-punto.is-activa{background:var(--color-brand-subtle);box-shadow:inset 0 0 0 2px var(--color-brand);color:var(--color-brand-text);font-weight:800}
+.cs-punto.is-hecha{background:var(--color-brand);color:var(--color-on-brand);animation:cs-pop .35s cubic-bezier(.3,1.6,.5,1)}
+.cs-punto svg{width:16px;height:16px}
+@keyframes cs-pop{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+.cs-fila-reps{flex:1;min-width:0;display:flex;align-items:baseline;gap:4px;white-space:nowrap}
+.cs-fila-reps b{font-family:var(--font-num);font-size:20px;font-weight:600}
+.cs-fila.is-hecha .cs-fila-reps b,.cs-fila.is-activa .cs-fila-reps b{font-weight:800;color:var(--color-text-primary)}
+.cs-fila.is-activa .cs-fila-reps b{font-size:24px}
+.cs-fila-reps span{font-size:14px;color:var(--color-text-secondary)}
+.cs-fila-kg{display:inline-flex;align-items:baseline;gap:3px;font-family:var(--font-num);font-size:18px;font-weight:600;white-space:nowrap}
+.cs-fila-kg small{font-family:var(--font-sans);font-size:12px;color:var(--color-text-secondary)}
+.cs-fila.is-hecha .cs-fila-kg,.cs-fila.is-activa .cs-fila-kg{font-weight:700;color:var(--color-text-primary)}
+.cs-lapiz{display:inline-flex;color:var(--color-text-muted);padding-right:4px}
 .cs-lapiz svg{width:14px;height:14px}
 .cs-kg-serie{display:inline-flex;align-items:center;gap:4px}
-.cs-mini{width:40px;height:40px;border:0;border-radius:50%;background:var(--color-bg-tertiary);color:var(--color-text-primary);font-size:20px;font-weight:700;line-height:1;cursor:pointer;touch-action:manipulation}
+.cs-mini{width:44px;height:44px;flex:0 0 auto;border:0;border-radius:50%;background:var(--color-bg-tertiary);color:var(--color-text-primary);font-size:20px;font-weight:600;line-height:1;cursor:pointer;touch-action:manipulation;transition:transform .12s}
+.cs-mini:active:not(:disabled){transform:scale(.88)}
 .cs-mini:disabled{opacity:.4}
-.cs-kg-input{width:64px;height:40px;border:0;border-radius:8px;background:var(--color-bg-tertiary);text-align:center;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
-.cs-kg-input.is-grande{width:96px;height:44px;font-size:20px}
-.cs-panel{position:fixed;left:0;right:0;margin-inline:auto;width:100%;max-width:480px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:40;background:color-mix(in oklab,var(--color-bg-primary) 96%,transparent);backdrop-filter:saturate(140%) blur(12px);-webkit-backdrop-filter:saturate(140%) blur(12px);border-top:1px solid var(--color-border);box-shadow:0 -6px 18px rgba(0,0,0,.08)}
-.cs-p-inner{display:flex;flex-direction:column;gap:6px;padding:10px 16px 4px}
-.cs-p-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:30px;font-size:15px}
-.cs-record{color:var(--color-warning)}
-.cs-descanso{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-text-muted)}
-.cs-descanso .is-listo{color:var(--color-brand-text)}
-.cs-descanso .cs-link{font-size:13px;padding:2px 0}
+.cs-kg-input{width:66px;height:44px;border:0;border-radius:10px;background:none;text-align:center;font-family:var(--font-num);font-size:19px;font-weight:800;color:var(--color-text-primary)}
+.cs-kg-input:focus{outline:none;background:var(--color-bg-tertiary);box-shadow:inset 0 0 0 2px var(--color-brand)}
+.cs-kg-input.is-grande{width:96px;font-size:26px}
+/* El panel: flota sobre la lista con las esquinas de arriba redondeadas. */
+.cs-panel{position:fixed;left:0;right:0;margin-inline:auto;width:100%;max-width:480px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:40;background:var(--cs-panel,#fff);border:1px solid var(--color-border);border-bottom:0;border-radius:28px 28px 0 0;box-shadow:0 -8px 28px rgba(0,0,0,.12)}
+[data-theme="dark"] .cs-panel{box-shadow:none}
+.cs-p-inner{display:flex;flex-direction:column;gap:8px;padding:14px 16px 10px}
+.cs-progreso{display:flex;gap:4px}
+.cs-progreso i{flex:1;height:4px;border-radius:2px;background:var(--color-bg-tertiary);transition:background .3s}
+.cs-progreso i.is-hecha{background:var(--color-brand)}
+.cs-progreso i.is-actual{background:color-mix(in oklab,var(--color-brand) 36%,transparent)}
+.cs-p-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;font-size:15px}
+.cs-p-top b{font-family:var(--font-num);font-weight:800}
+.cs-record{color:var(--color-record)}
+.cs-descanso{display:inline-flex;align-items:center;gap:10px;font-size:14px;font-weight:700;font-family:var(--font-num);color:var(--color-text-primary)}
+.cs-descanso [data-t]:not(:empty){padding:4px 12px;border-radius:999px;background:var(--color-bg-tertiary)}
+.cs-descanso .is-listo{color:var(--color-brand-text);background:var(--color-brand-subtle)!important}
+.cs-descanso .cs-link{font-size:14px;padding:2px 0;font-family:var(--font-sans)}
 .cs-dial{display:flex;align-items:center;gap:var(--space-2)}
 .cs-rueda{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ns-resize;border-radius:12px}
 .cs-rueda:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
-.cs-rueda-num{display:flex;flex-direction:column;align-items:center;-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.35),#000 24%,#000 76%,rgba(0,0,0,.35));mask-image:linear-gradient(to bottom,rgba(0,0,0,.35),#000 24%,#000 76%,rgba(0,0,0,.35))}
-.cs-n{font-family:var(--font-num);font-size:52px;line-height:60px;font-weight:700;font-variant-numeric:tabular-nums}
-.cs-fantasma{height:20px;line-height:20px;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-text-muted)}
-.cs-dif{position:absolute;right:4px;top:50%;transform:translateY(-70%);padding:3px 8px;border-radius:999px;background:var(--color-bg-tertiary);color:var(--color-text-secondary);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.cs-tambor{position:relative;width:100%;height:122px;overflow:hidden;perspective:400px;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(to bottom,transparent,#000 22%,#000 78%,transparent)}
+.cs-tn{position:absolute;left:0;right:0;top:50%;height:0;display:flex;align-items:center;justify-content:center;will-change:transform,opacity}
+.cs-tn::before,.cs-tn::after{content:"";position:absolute;top:-1.25px;width:12px;height:2.5px;border-radius:2px;background:var(--color-text-secondary);opacity:var(--cs-raya,0)}
+.cs-tn::before{left:14px}
+.cs-tn::after{right:14px}
+.cs-tn b{display:block;font-family:var(--font-num);font-size:76px;line-height:1;font-weight:800;color:var(--color-text-primary);transform-origin:50% 50%}
+.cs-tn.is-vecino b{color:var(--color-text-muted)}
+.cs-ref-fila{display:flex;align-items:center;justify-content:center;gap:6px;min-height:24px}
+.cs-ref{font-size:13px;color:var(--color-text-secondary);white-space:nowrap}
+.cs-dif{padding:2px 8px;border-radius:999px;background:var(--color-bg-tertiary);color:var(--color-text-secondary);font-family:var(--font-num);font-size:13px;font-weight:800;animation:cs-pop .25s ease-out}
 .cs-dif.is-mas{background:var(--color-brand-subtle);color:var(--color-brand-text)}
 .cs-dif[hidden]{display:none}
-.cs-ref{font-size:12px;color:var(--color-text-muted);white-space:nowrap}
-.cs-ok{width:100%;min-height:52px;border:0;border-radius:14px;background:var(--color-brand);color:var(--color-on-brand);display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;touch-action:manipulation}
-.cs-ok b{font-weight:800}
-.cs-ok:disabled{opacity:.45;cursor:default}
-.cs-ok.is-guardia{background:var(--color-warning);color:#1a1200}
+@media (max-height:700px){.cs-tambor{height:104px}.cs-tn b{font-size:64px}.cs-ok{min-height:54px!important}.cs-redondo.is-grande{width:56px;height:56px}}
+.cs-ok{position:relative;overflow:hidden;width:100%;min-height:60px;border:0;border-radius:999px;background:var(--color-brand) linear-gradient(to bottom,rgba(255,255,255,.10),transparent 50%);color:var(--color-on-brand);display:flex;align-items:center;justify-content:center;gap:10px;padding:6px 20px;font-family:var(--font-num);font-size:20px;font-weight:700;cursor:pointer;touch-action:manipulation;transition:background-color .25s,transform .12s;-webkit-tap-highlight-color:transparent}
+.cs-ok:active:not(:disabled){transform:scale(.965)}
+.cs-ok b{font-weight:800;font-size:24px}
+.cs-ok:disabled{background:var(--color-bg-tertiary);color:var(--color-text-secondary);cursor:default}
+.cs-ok.is-guardia{background-color:var(--color-alerta);color:#fff;font-family:var(--font-sans);font-size:17px;font-weight:700}
+[data-theme="dark"] .cs-ok.is-guardia{color:var(--color-on-brand)}
+.cs-sello{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--color-brand);color:var(--color-on-brand);pointer-events:none;animation:cs-sello .62s ease-out forwards}
+.cs-sello svg{width:30px;height:30px;animation:cs-pop .3s cubic-bezier(.3,1.6,.5,1)}
+@keyframes cs-sello{0%,70%{opacity:1}100%{opacity:0}}
 .cs-aviso{font-size:12px;color:var(--color-danger);text-align:center}
 .cs-corr-kg{display:flex;align-items:center;justify-content:center;gap:var(--space-2)}
-.cs-deshacer{display:flex;align-items:center;justify-content:center;gap:6px;min-height:28px;font-size:13px;color:var(--color-text-muted)}
-.cs-deshacer .cs-link{font-size:13px;padding:2px 4px}
-.cs-terminado{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 0;color:var(--color-text-muted);font-size:13px}
-.cs-terminado b{font-size:16px;color:var(--color-brand-text)}
+/* Deshacer: una cápsula de vidrio que flota arriba del panel. */
+.cs-deshacer{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 8px 4px 14px;border-radius:999px;white-space:nowrap;font-size:14px;font-weight:600;color:var(--color-text-primary);background:color-mix(in oklab,var(--cs-panel) 82%,transparent);backdrop-filter:saturate(160%) blur(16px);-webkit-backdrop-filter:saturate(160%) blur(16px);border:1px solid var(--color-border);box-shadow:0 6px 20px rgba(0,0,0,.14);animation:cs-subir .3s cubic-bezier(.3,1.3,.5,1)}
+.cs-deshacer i{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand);font-style:normal;font-size:11px;font-weight:800}
+.cs-deshacer .cs-link{font-size:14px;padding:8px 6px}
+@keyframes cs-subir{0%{opacity:0;transform:translate(-50%,10px)}100%{opacity:1;transform:translate(-50%,0)}}
+.cs-terminado{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 0;color:var(--color-text-muted);font-size:13px}
+.cs-terminado i{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand);font-style:normal;font-size:22px;font-weight:800}
+.cs-terminado b{font-family:var(--font-num);font-size:17px;color:var(--color-text-primary)}
+@media (prefers-reduced-motion:reduce){.cs-punto.is-hecha,.cs-dif,.cs-deshacer,.cs-sello svg,.cs-carga-campo.is-encendido{animation:none}.cs-sello{animation-name:cs-sello}}
 body.cs-con-panel .rest-bar{display:none}
 body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--space-4))}
 /* Entreno como la app 2.0.3: métricas de la pauta, preparación (E1), título de series con la leyenda del RIR y récord (E3) */
@@ -4554,6 +4609,9 @@ let _csAviso = null;           // lo que no se pudo registrar, en el panel
 let _csTeclado = false;
 let _csGuardiaTimer = null;
 const _CS_DESHACER_MS = 6000;
+let _csSelloHasta = 0;
+let _csArrastrando = false;         // el tilde del OK, un momento después de registrar
+let _csEncendido = null;       // {exId, hasta}: el kilo se enciende al aceptar el aumento
 const _csKey = () => `mypump_cargas_${TOKEN || 'anon'}_${RUTINA_ID || 'demo'}`;
 const _csKeyOK = () => `mypump_ok_demorado_${TOKEN || 'anon'}`;
 
@@ -4646,14 +4704,14 @@ function _csBannersHtml(ex, s) {
   const a = s.aumento;
   if (a.tipo === CS.MANO.SUG) {
     h += `<div class="cs-aumento">
-      <div class="cs-aumento-t">Esta semana bajan las reps: toca subir</div>
+      <div class="cs-aumento-t">${ICONS.trend}<span>Esta semana bajan las reps: toca subir</span></div>
       <div class="cs-aumento-b">
         <button class="cs-btn-marca" data-cs-a="aumento-subir" data-ex="${id}">Subir a ${_csKg(a.hasta)} kg</button>
         <button class="cs-btn-sec" data-cs-a="aumento-dejar" data-ex="${id}">Dejar ${_csKg(a.desde)} kg</button>
       </div>
     </div>`;
   } else if (a.tipo === CS.MANO.ACE) {
-    h += `<div class="cs-linea"><span>✓ ${s.confirmadas > 0 ? `Subiste a ${_csKg(a.hasta)} kg en las que faltan` : `Subiste a ${_csKg(a.hasta)} kg en todas las series`}</span>
+    h += `<div class="cs-linea"><span class="cs-hecho"><i aria-hidden="true">✓</i>${s.confirmadas > 0 ? `Subiste a ${_csKg(a.hasta)} kg en las que faltan` : `Subiste a ${_csKg(a.hasta)} kg en todas las series`}</span>
       ${s.confirmadas === 0 ? `<button class="cs-link" data-cs-a="aumento-volver" data-ex="${id}">Volver a ${_csKg(a.desde)}</button>` : ''}</div>`;
   }
   const n = s.hechasConOtraCarga;
@@ -4666,15 +4724,23 @@ function _csBannersHtml(ex, s) {
   }
   return h;
 }
+function _csLargoKg(t) { return t.length >= 5 ? ' is-l5' : t.length === 4 ? ' is-l4' : ''; }
 function _csCargaHtml(ex, s) {
   const id = ex.id;
+  const t = _csKg(s.carga);
+  const encendido = _csEncendido && _csEncendido.exId === id && Date.now() < _csEncendido.hasta;
   return `<div class="cs-carga">
-    <div class="cs-carga-top"><span class="cs-ceja">Carga</span>${s.cargaUltimaVez != null ? `<span class="cs-tenue">La vez pasada ${_csKg(s.cargaUltimaVez)} kg</span>` : ''}</div>
     ${s.mismoPeso ? `<div class="cs-carga-fila">
-      <button class="cs-redondo" data-cs-a="carga-menos" data-ex="${id}" aria-label="Bajar la carga"${s.carga == null ? ' disabled' : ''}>−</button>
-      <label class="cs-carga-campo"><input class="cs-carga-num" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Carga en kilos" value="${_csKg(s.carga)}" data-cs-carga="${id}"><span>kg</span></label>
-      <button class="cs-redondo" data-cs-a="carga-mas" data-ex="${id}" aria-label="Subir la carga"${s.carga == null ? ' disabled' : ''}>+</button>
-    </div>` : `<div class="cs-nota">Cada serie lleva su peso: ajustalo en la lista.</div>`}
+      <div class="cs-carga-izq">
+        <span class="cs-ceja">Carga</span>
+        <label class="cs-carga-campo${encendido ? ' is-encendido' : ''}"><input class="cs-carga-num${_csLargoKg(t)}" style="--cs-len:${t.length ? t.length : 2}" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Carga en kilos" value="${t}" data-cs-carga="${id}"><span aria-hidden="true">kg</span></label>
+        ${s.cargaUltimaVez != null ? `<span class="cs-tenue">La vez pasada ${_csKg(s.cargaUltimaVez)} kg</span>` : ''}
+      </div>
+      <div class="cs-carga-bot">
+        <button class="cs-redondo" data-cs-a="carga-menos" data-ex="${id}" aria-label="Bajar la carga"${s.carga == null ? ' disabled' : ''}>−</button>
+        <button class="cs-redondo" data-cs-a="carga-mas" data-ex="${id}" aria-label="Subir la carga"${s.carga == null ? ' disabled' : ''}>+</button>
+      </div>
+    </div>` : `<span class="cs-ceja">Carga</span><div class="cs-nota">Cada serie lleva su peso: ajustalo en la lista.</div>`}
     <div class="cs-banners">${_csBannersHtml(ex, s)}</div>
     <label class="cs-toggle"><span>Mismo peso en todas las series</span><input type="checkbox" role="switch" data-cs-mismo="${id}"${s.mismoPeso ? ' checked' : ''}><i></i></label>
   </div>`;
@@ -4684,20 +4750,25 @@ function _csFilasHtml(ex, s) {
   return s.series.map((h, i) => {
     const activa = s.activa === i && corr == null;
     const reps = s.reps(i);
-    const izq = `<span class="cs-punto${h.confirmada ? ' is-hecha' : (activa ? ' is-activa' : '')}">${h.confirmada ? '✓' : i + 1}</span>
-      <span class="cs-fila-reps">${reps != null ? `${reps} reps` : '—'}</span>`;
+    const izq = `<span class="cs-punto${h.confirmada ? ' is-hecha' : (activa ? ' is-activa' : '')}" aria-hidden="true">${h.confirmada ? ICONS.check : i + 1}</span>
+      <span class="cs-fila-reps">${reps != null ? `<b>${reps}</b><span>reps</span>` : '<b>—</b>'}</span>`;
+    // El hilo entre insignias: verde entre dos hechas.
+    const n = s.series.length;
+    const hilo = (i === 0 ? ' sin-arriba' : (s.series[i - 1].confirmada && h.confirmada ? ' ok-arriba' : ''))
+      + (i === n - 1 ? ' sin-abajo' : (h.confirmada && s.series[i + 1].confirmada ? ' ok-abajo' : ''));
+    const kgFila = (cls) => `<span class="cs-fila-kg${cls}">${h.kg != null ? `${_csKg(h.kg)}<small>kg</small>` : '—'}</span>`;
     if (h.confirmada) {
-      return `<button class="cs-fila is-hecha${corr === i ? ' is-corrigiendo' : ''}" data-cs-a="corregir" data-ex="${ex.id}" data-i="${i}" aria-label="Serie ${i + 1}, hecha: ${reps || 0} repeticiones${s.sinKg ? '' : `, ${_csKg(h.kg)} kilos`}. Tocá para corregirla">
-        ${izq}${s.sinKg ? '<span class="cs-fila-kg"></span>' : `<span class="cs-fila-kg">${h.kg != null ? `${_csKg(h.kg)} kg` : '—'}</span>`}<span class="cs-lapiz">${ICONS.edit}</span></button>`;
+      return `<button class="cs-fila is-hecha${hilo}${corr === i ? ' is-corrigiendo' : ''}" data-cs-a="corregir" data-ex="${ex.id}" data-i="${i}" aria-label="Serie ${i + 1}, hecha: ${reps || 0} repeticiones${s.sinKg ? '' : `, ${_csKg(h.kg)} kilos`}. Tocá para corregirla">
+        ${izq}${s.sinKg ? '<span class="cs-fila-kg"></span>' : kgFila('')}<span class="cs-lapiz">${ICONS.edit}</span></button>`;
     }
     const kg = s.sinKg ? '' : (s.mismoPeso
-      ? `<span class="cs-fila-kg cs-tenue">${h.kg != null ? `${_csKg(h.kg)} kg` : '—'}</span>`
+      ? kgFila('')
       : `<span class="cs-kg-serie">
           <button class="cs-mini" data-cs-a="kg-menos" data-ex="${ex.id}" data-i="${i}" aria-label="Bajar el peso de la serie ${i + 1}"${h.kg == null ? ' disabled' : ''}>−</button>
           <input class="cs-kg-input" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Peso de la serie ${i + 1} en kilos" value="${_csKg(h.kg)}" data-cs-kg="${ex.id}|${i}">
           <button class="cs-mini" data-cs-a="kg-mas" data-ex="${ex.id}" data-i="${i}" aria-label="Subir el peso de la serie ${i + 1}"${h.kg == null ? ' disabled' : ''}>+</button>
         </span>`);
-    return `<div class="cs-fila${activa ? ' is-activa' : ''}">${izq}${kg}</div>`;
+    return `<div class="cs-fila${hilo}${activa ? ' is-activa' : ''}">${izq}${kg}</div>`;
   }).join('');
 }
 function _csPistaCalibracion(ex, s) {
@@ -4764,20 +4835,64 @@ function _csTextoRef(s, i) {
   return s.pideElegirReps ? 'Marcá las que hiciste' : null;
 }
 function _csDialHtml() {
+  const filas = [-2, -1, 0, 1, 2].map(k => `<div class="cs-tn${k ? ' is-vecino' : ''}" data-k="${k}"><b></b></div>`).join('');
   return `<div class="cs-dial">
     <button class="cs-redondo is-grande" data-cs-a="reps-menos" aria-label="Restar una repetición">−</button>
     <div class="cs-rueda" data-cs-dial tabindex="0" role="slider" aria-label="Repeticiones" aria-valuemin="1" aria-valuemax="${CS.REPS_MAX}">
-      <div class="cs-rueda-num"><span class="cs-fantasma" data-cs-ant></span><span class="cs-n" data-cs-n></span><span class="cs-fantasma" data-cs-sig></span></div>
-      <span class="cs-dif" data-cs-dif hidden></span>
-      <div class="cs-ref" data-cs-ref></div>
+      <div class="cs-tambor" aria-hidden="true" data-cs-tambor>${filas}</div>
+      <div class="cs-ref-fila"><span class="cs-ref" data-cs-ref></span><span class="cs-dif" data-cs-dif hidden></span></div>
     </div>
     <button class="cs-redondo is-grande" data-cs-a="reps-mas" aria-label="Sumar una repetición">+</button>
   </div>`;
 }
+// El tambor: cinco números que ruedan. `_csRodar.off` es cuánto se corrió el tambor respecto del número actual, en escalones
+// (positivo: el número de ahora está más abajo). Al tocar − o + arranca en ±1 y vuelve a 0; con el dedo sigue al dedo.
+const _csRodar = { off: 0, reps: null, raf: 0 };
+const _csSinMovimiento = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return false; } };
+function _csDibujarTambor() {
+  const t = document.querySelector('#panelCarga [data-cs-tambor]');
+  if (!t) return;
+  const reps = _csRodar.reps;
+  const grande = t.clientHeight >= 120;
+  const tam = grande ? 76 : 64, paso = tam * 0.58;
+  t.querySelectorAll('.cs-tn').forEach(f => {
+    const k = Number(f.dataset.k);
+    const v = reps != null ? reps + k : null;
+    const b = f.firstChild;
+    const fuera = v == null ? k !== 0 : (v < 1 || v > CS.REPS_MAX);
+    b.textContent = fuera ? '' : (v == null ? '—' : v);
+    const d = k + _csRodar.off;
+    const a = Math.abs(d);
+    const escala = Math.max(0.3, 1 - 0.6 * Math.min(a, 1) - 0.1 * Math.max(a - 1, 0));
+    f.style.transform = `translateY(${d * paso}px) rotateX(${-d * 20}deg)`;
+    f.style.opacity = String(Math.max(0, 1 - 0.35 * Math.min(a, 1) - 0.45 * Math.max(a - 1, 0)));
+    b.style.transform = `scale(${escala})`;
+    f.classList.toggle('is-vecino', a > 0.5);
+    f.style.setProperty('--cs-raya', String(Math.pow(1 - Math.min(a / 2.5, 1), 1.2) * 0.6));
+  });
+}
+function _csRodarA(off) {
+  cancelAnimationFrame(_csRodar.raf);
+  _csRodar.off = off;
+  _csDibujarTambor();
+  if (_csSinMovimiento()) { _csRodar.off = 0; _csDibujarTambor(); return; }
+  let antes = performance.now();
+  const paso = (ahora) => {
+    const dt = Math.min(48, ahora - antes); antes = ahora;
+    _csRodar.off *= Math.exp(-dt / 55);
+    if (Math.abs(_csRodar.off) < 0.004) _csRodar.off = 0;
+    _csDibujarTambor();
+    if (_csRodar.off !== 0) _csRodar.raf = requestAnimationFrame(paso);
+  };
+  _csRodar.raf = requestAnimationFrame(paso);
+}
 function _csFilaDeshacerHtml() {
-  return `<div class="cs-deshacer">${_csFoto
-    ? `<span>Serie ${_csFoto.idx + 1} anotada.</span><button class="cs-link" data-cs-a="deshacer">Deshacer</button>`
-    : '<span aria-hidden="true">&nbsp;</span>'}</div>`;
+  return _csFoto
+    ? `<div class="cs-deshacer"><i aria-hidden="true">✓</i><span>Serie ${_csFoto.idx + 1} anotada.</span><button class="cs-link" data-cs-a="deshacer">Deshacer</button></div>`
+    : '';
+}
+function _csProgresoHtml(s, actual) {
+  return `<div class="cs-progreso" aria-hidden="true">${s.series.map((h, i) => `<i class="${h.confirmada ? 'is-hecha' : (i === actual ? 'is-actual' : '')}"></i>`).join('')}</div>`;
 }
 function _csAvisoHtml() {
   return _csAviso ? `<div class="cs-aviso">${escapeHtml(_csAviso)}</div>` : '';
@@ -4799,7 +4914,7 @@ function csPintarPanel() {
   host.dataset.ex = exId;
   if (_csCorr && _csCorr.exId === exId && _csCorr.idx < s.series.length) {
     const c = _csCorr;
-    cuerpo = `<div class="cs-p-top"><b>Corrigiendo la serie ${c.idx + 1}</b><button class="cs-link" data-cs-a="corr-cancelar">Cancelar</button></div>
+    cuerpo = `${_csProgresoHtml(s, null)}<div class="cs-p-top"><b>Corrigiendo la serie ${c.idx + 1}</b><button class="cs-link" data-cs-a="corr-cancelar">Cancelar</button></div>
       ${_csDialHtml()}
       ${s.sinKg ? '' : `<div class="cs-corr-kg">
         <button class="cs-mini" data-cs-a="corr-kg-menos" aria-label="Bajar el peso">−</button>
@@ -4809,7 +4924,7 @@ function csPintarPanel() {
       ${_csAvisoHtml()}
       <button class="cs-ok" data-cs-a="corr-guardar">Guardar corrección</button>`;
   } else if (s.activa != null && !_CS_TERMINALES.has(getExStatus(exId))) {
-    cuerpo = `<div class="cs-p-top">
+    cuerpo = `${_csProgresoHtml(s, s.activa)}<div class="cs-p-top">
         ${_avisoRecord && _avisoRecord.exId === exId ? `<b class="cs-record">${escapeHtml(_avisoRecord.texto)}</b>` : `<b>Serie ${s.activa + 1} de ${s.series.length}</b>`}
         <div class="cs-descanso" id="csDescanso"><span data-t></span><button class="cs-link" data-cs-a="saltar-descanso" hidden>Saltar</button></div>
       </div>
@@ -4817,9 +4932,10 @@ function csPintarPanel() {
       <button class="cs-ok" data-cs-a="ok"></button>
       <div data-cs-aviso>${_csAvisoHtml()}</div>`;
   } else {
-    cuerpo = `<div class="cs-terminado"><b>✓ Ejercicio completo</b><span>Tocá una serie si querés corregirla.</span></div>`;
+    cuerpo = `<div class="cs-terminado"><i aria-hidden="true">✓</i><b>Ejercicio completo</b><span>Tocá una serie si querés corregirla.</span></div>`;
   }
-  host.innerHTML = `<div class="cs-p-inner">${cuerpo}${_csFilaDeshacerHtml()}</div>`;
+  host.innerHTML = `<div class="cs-p-inner">${cuerpo}</div>${_csFilaDeshacerHtml()}`;
+  _csRodar.reps = null;   // tambor nuevo: arranca quieto en el número
   _csPatchPanel();
   _csPintarDescanso();
   _csMedirPanel(true);
@@ -4845,7 +4961,9 @@ function _csPatchPanel() {
   const e = _csEtiquetaOK(s, i);
   ok.classList.toggle('is-guardia', !!e.guardia);
   ok.disabled = !s.puedeConfirmar(i);
-  ok.innerHTML = e.ok ? `<b>OK</b><span>${escapeHtml(e.t)}</span>` : escapeHtml(e.t);
+  const quedaSello = Date.now() < _csSelloHasta;
+  ok.innerHTML = (e.ok ? `<b>OK</b><span>${escapeHtml(e.t)}</span>` : escapeHtml(e.t))
+    + (quedaSello ? `<span class="cs-sello" aria-hidden="true" style="animation-duration:${_csSelloHasta - Date.now()}ms">${ICONS.check}</span>` : '');
   const reps = s.reps(i) || 0;
   ok.setAttribute('aria-label', e.guardia ? '¿Ya hiciste la serie? Tocá de nuevo para registrarla'
     : !s.puedeConfirmar(i) ? 'Falta completar la serie'
@@ -4853,14 +4971,15 @@ function _csPatchPanel() {
 }
 function _csPintarNumero(host, reps, dif, ref) {
   const q = (x) => host.querySelector(x);
-  const n = q('[data-cs-n]'); if (!n) return;
-  n.textContent = reps != null ? reps : '—';
-  q('[data-cs-ant]').textContent = reps != null && reps > 1 ? reps - 1 : ' ';
-  q('[data-cs-sig]').textContent = reps != null ? reps + 1 : ' ';
+  if (!q('[data-cs-tambor]')) return;
+  const antes = _csRodar.reps;
+  _csRodar.reps = reps;
+  if (antes != null && reps != null && reps !== antes && !_csArrastrando) _csRodarA(reps - antes);
+  else _csDibujarTambor();
   const d = q('[data-cs-dif]');
   d.hidden = dif == null;
   if (dif != null) { d.textContent = dif > 0 ? `+${dif}` : `−${-dif}`; d.classList.toggle('is-mas', dif > 0); }
-  q('[data-cs-ref]').textContent = ref || ' ';
+  q('[data-cs-ref]').textContent = ref || ' ';
   const dial = q('[data-cs-dial]');
   if (reps != null) dial.setAttribute('aria-valuenow', reps);
   dial.setAttribute('aria-valuetext', [reps != null ? `${reps}` : '—', ref].filter(Boolean).join(', '));
@@ -4891,6 +5010,8 @@ function _csAjustarReps(d) {
   if (!s || s.activa == null) return;
   const i = s.activa;
   _csCambiar(exId, c => c.ajustarReps(i, d));
+  // Al caer justo en lo de la vez pasada (o en lo del plan), el pulso es más largo: se siente sin mirar.
+  try { const n = _csDe(exId); if (n && n.reps(i) === n.base(i).reps && navigator.vibrate) navigator.vibrate(18); } catch (_) {}
   _csGuardia.limpiar();
   const av = host.querySelector('[data-cs-aviso]'); if (av) av.innerHTML = '';
   _csPatchPanel();
@@ -4940,6 +5061,7 @@ async function csOK(exId, idx) {
       return;
     }
     _csCambiar(exId, c => c.anotarOK(ahora));
+    _csSelloHasta = Date.now() + 620;
     _csAbrirVentana(foto);
     renderTrain();
   } finally {
@@ -5072,7 +5194,7 @@ function _csAccion(a, b) {
   switch (a) {
     case 'carga-menos': return _csTrasCarga(exId, c => c.moverCarga(-1));
     case 'carga-mas': return _csTrasCarga(exId, c => c.moverCarga(1));
-    case 'aumento-subir': return _csTrasCarga(exId, c => c.aceptarAumento());
+    case 'aumento-subir': _csEncendido = { exId, hasta: Date.now() + 900 }; _csVibrar(); return _csTrasCarga(exId, c => c.aceptarAumento());
     case 'aumento-dejar': return _csTrasCarga(exId, c => c.descartarAumento());
     case 'aumento-volver': return _csTrasCarga(exId, c => c.deshacerAumento());
     case 'aplicar-hechas': return csAplicarAHechas(exId);
@@ -5115,6 +5237,9 @@ function _csEventos() {
     const c = e.target.closest('[data-cs-carga]');
     if (c) {
       const id = c.getAttribute('data-cs-carga');
+      c.style.setProperty('--cs-len', String(c.value.length || 2));   // vacío: lugar para la raya
+      c.classList.toggle('is-l4', c.value.length === 4);
+      c.classList.toggle('is-l5', c.value.length >= 5);
       _csCambiar(id, s => s.fijarCarga(_csNumeroKg(c.value)));
       _csRepintarParcial(id);
       _csPatchPanel();
@@ -5159,18 +5284,28 @@ function _csEventos() {
   // El dial: arrastrar hacia arriba suma y hacia abajo resta, un escalón cada 26 px. Con mouse, también la rueda; con teclado, las flechas.
   const ESCALON = 26;
   let arrastre = null;
+  const soltarTambor = () => { _csArrastrando = false; if (_csRodar.off) _csRodarA(_csRodar.off); };
   panel.addEventListener('pointerdown', (e) => {
     const d = e.target.closest('[data-cs-dial]');
     if (!d || (e.pointerType === 'mouse' && e.button !== 0)) return;
     arrastre = { y: e.clientY, aplicados: 0, d };
+    _csArrastrando = true;
+    cancelAnimationFrame(_csRodar.raf);
     try { d.setPointerCapture(e.pointerId); } catch (_) {}
   });
   panel.addEventListener('pointermove', (e) => {
     if (!arrastre) return;
-    const pasos = Math.trunc(-(e.clientY - arrastre.y) / ESCALON);
+    const exacto = -(e.clientY - arrastre.y) / ESCALON;
+    const pasos = Math.trunc(exacto);
     if (pasos !== arrastre.aplicados) { _csAjustarReps(pasos - arrastre.aplicados); arrastre.aplicados = pasos; }
+    // Lo que falta para el próximo escalón mueve el tambor con el dedo; en las puntas, con resistencia.
+    let resto = exacto - pasos;
+    const r = _csRodar.reps;
+    if (r != null && ((r <= 1 && resto < 0) || (r >= CS.REPS_MAX && resto > 0))) resto *= 0.22;
+    _csRodar.off = -resto;
+    _csDibujarTambor();
   });
-  const soltar = () => { arrastre = null; };
+  const soltar = () => { if (arrastre) soltarTambor(); arrastre = null; };
   panel.addEventListener('pointerup', soltar);
   panel.addEventListener('pointercancel', soltar);
   let rueda = 0;
