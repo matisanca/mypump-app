@@ -187,7 +187,7 @@ struct RevisionView: View {
     private var notaSemanal: some View {
         Text(SemanaRevision.explicacion)
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.apoyo)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityIdentifier("nota-revision-semanal")

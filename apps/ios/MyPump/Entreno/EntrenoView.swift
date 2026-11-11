@@ -208,6 +208,8 @@ private struct ListaEntreno: View {
                 if let g = GuiaUI.modelo { TarjetaEntregaAhora(modelo: g) }
                 if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
                 TarjetaGimnasio()
+                // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
+                if motor.dias.count > 1 { SelectorDias(motor: motor) }
                 cabecera
                 if deEjemplo {
                     AvisoProgresion(icono: "exclamationmark.triangle.fill",
@@ -228,8 +230,6 @@ private struct ListaEntreno: View {
                     Button("Entendido") { motor.leerRelojPerdidas() }
                         .font(.subheadline.weight(.semibold))
                 }
-                // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
-                if motor.dias.count > 1 { SelectorDias(motor: motor) }
                 if motor.vacio {
                     diaVacio
                 } else {
@@ -289,35 +289,45 @@ private struct ListaEntreno: View {
         let d = motor.dia.dia
         let total = motor.totalEjercicios, hechos = motor.hechos
         let cerrado = motor.dia.diaFinalizado || motor.hecho(d)
-        return VStack(alignment: .leading, spacing: Espacio.s) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Día \(motor.numero(d)) · Semana \(motor.semanaMostrada) de \(motor.totalMostrado)").textoCeja()
-                Text(titulo)
-                    .font(.tituloDia)
-                    // Con letra de accesibilidad el nombre del día baja de renglón en vez de cortarse.
-                    .lineLimit(tamañoLetra.isAccessibilitySize ? 3 : 1)
-                    .minimumScaleFactor(tamañoLetra.isAccessibilitySize ? 1 : 0.6)
-                    .accessibilityAddTraits(.isHeader)
-            }
-            // El avance del día con los segmentos de la carga: un ejercicio, un segmento.
-            VStack(alignment: .leading, spacing: 6) {
-                AvanceSegmentos(total: total, hechos: hechos, alto: 6)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    if cerrado {
-                        Label("Día cerrado esta semana", systemImage: "checkmark.seal.fill")
-                            .labelStyle(EtiquetaCompacta())
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.marcaTexto)
-                    } else {
-                        Text("\(hechos)").font(.numeroChico).contentTransition(.numericText())
-                        Text(total == 1 ? "de 1 ejercicio" : "de \(total) ejercicios")
-                            .font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+        // PROPUESTA: el día en una sola tarjeta oscura, como el panel de carga: nombre, cómo voy y el botón (o el reloj).
+        return Heroe {
+            VStack(alignment: .leading, spacing: Espacio.m) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Día \(motor.numero(d)) · Semana \(motor.semanaMostrada) de \(motor.totalMostrado)").textoCeja()
+                    Text(titulo)
+                        .font(.tituloDia)
+                        // Con letra de accesibilidad el nombre del día baja de renglón en vez de cortarse.
+                        .lineLimit(tamañoLetra.isAccessibilitySize ? 3 : 1)
+                        .minimumScaleFactor(tamañoLetra.isAccessibilitySize ? 1 : 0.6)
+                        .foregroundStyle(.primary)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                VStack(alignment: .leading, spacing: Espacio.s) {
+                    HStack(alignment: .top, spacing: Espacio.s) {
+                        DatoHeroe(valor: "\(hechos)/\(total)", rotulo: "Hechos")
+                        TimelineView(.periodic(from: .now, by: 30)) { _ in
+                            DatoHeroe(valor: motor.minutos.map { "\($0) min" } ?? "—", rotulo: "Tiempo")
+                        }
+                        DatoHeroe(valor: "\(total - hechos) ej", rotulo: "Restan")
+                    }
+                    AvanceSegmentos(total: total, hechos: hechos, alto: 6)
+                }
+                .animation(.snappy, value: hechos)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(hechos) de \(total) ejercicios hechos")
+                if cerrado {
+                    Label("Día cerrado esta semana", systemImage: "checkmark.seal.fill")
+                        .labelStyle(EtiquetaCompacta())
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.marcaTexto)
+                }
+                // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre).
+                if !motor.vacio && !motor.todoHecho {
+                    TimelineView(.periodic(from: .now, by: 1)) { _ in
+                        cronometro(motor.cronometro())
                     }
                 }
             }
-            .animation(.snappy, value: hechos)
-            .accessibilityElement()
-            .accessibilityLabel("\(hechos) de \(total) ejercicios hechos")
         }
         .padding(.top, Espacio.xs)
         .onGeometryChange(for: Bool.self) { $0.frame(in: .scrollView).maxY < 8 } action: { tituloEnBarra = $0 }
@@ -327,13 +337,6 @@ private struct ListaEntreno: View {
 
     @ViewBuilder
     private var cuerpo: some View {
-        // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre): ni su lugar en la pila.
-        if !motor.todoHecho {
-            TimelineView(.periodic(from: .now, by: 1)) { _ in
-                cronometro(motor.cronometro())
-            }
-        }
-
         let banner = motor.banner
         if banner.cambian > 0 {
             AvisoProgresion(icono: "chart.line.uptrend.xyaxis",
@@ -403,7 +406,6 @@ private struct ListaEntreno: View {
                 Button("Empezar de nuevo") { motor.reiniciarCronometro() }
                     .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
             }
-            .tarjeta()
         case nil:
             EmptyView()
         }
@@ -448,24 +450,13 @@ private struct ListaEntreno: View {
     /// El pie mientras se entrena: hechos, tiempo y lo que resta, y cerrar (habilitado con la sesión iniciada).
     private var resumenSesion: some View {
         let restan = motor.totalEjercicios - motor.hechos
-        return VStack(spacing: Espacio.m) {
-            HStack(spacing: 0) {
-                celda("Hechos", "\(motor.hechos)/\(motor.totalEjercicios)")
-                Divider().frame(height: 36)
-                TimelineView(.periodic(from: .now, by: 30)) { _ in
-                    celda("Tiempo", motor.minutos.map { "\($0) min" } ?? "—")
-                }
-                Divider().frame(height: 36)
-                celda("Restan", "\(restan) ej")
-            }
-            Button { cerrando = true } label: {
-                Label("Cerrar sesión de hoy", systemImage: "flag.checkered")
-            }
-            .buttonStyle(BotonSecundario())
-            .disabled(!motor.cierreHabilitado)
-            .accessibilityIdentifier("cerrar-sesion")
+        _ = restan
+        return Button { cerrando = true } label: {
+            Label("Cerrar sesión de hoy", systemImage: "flag.checkered")
         }
-        .tarjeta()
+        .buttonStyle(BotonSecundario())
+        .disabled(!motor.cierreHabilitado)
+        .accessibilityIdentifier("cerrar-sesion")
     }
 
     private func celda(_ titulo: String, _ valor: String) -> some View {
@@ -572,7 +563,7 @@ private struct CronometroSesion: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("En curso").textoCeja()
                 Text(texto)
-                    .font(.numeroMediano)
+                    .font(Archivo.fuente(44, peso: 800, relativoA: .largeTitle))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                 if let detalle {
@@ -583,7 +574,6 @@ private struct CronometroSesion: View {
             Button("Cerrar", systemImage: "flag.checkered", action: cerrar)
                 .buttonStyle(BotonSecundario(compacto: true))
         }
-        .tarjeta()
         .accessibilityElement(children: .contain)
     }
 }
@@ -640,7 +630,7 @@ struct SelectorDias: View {
                         .overlay { Capsule().strokeBorder(Color.marca, lineWidth: 2) }
                         .matchedGeometryEffect(id: "seleccion", in: ns)
                 } else {
-                    Capsule().fill(Color.campo)
+                    Capsule().fill(Color.tarjeta).overlay { Capsule().strokeBorder(Color.borde, lineWidth: 1) }
                 }
             }
             .overlay(alignment: .topTrailing) {

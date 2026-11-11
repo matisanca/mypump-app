@@ -18,7 +18,7 @@ struct RecuperacionTarjeta: View {
 
     private var fila: some View {
         Button(action: abrir) {
-            FilaDestino(simbolo: "battery.75percent", color: .exito, titulo: "Recuperación", detalle: resumen) {
+            FilaDestino(simbolo: "battery.75percent", color: .marcaTexto, titulo: "Recuperación", detalle: resumen) {
                 if let modelo, case .conScore(let c) = modelo.cardRecuperacion {
                     Text("\(c.fila.score ?? 0)").font(Letra.dato)
                         .foregroundStyle(CardRecuperacionView.color(c.banda, apagado: c.confianza?.apagado == true))
@@ -131,7 +131,7 @@ struct ProgresoTarjeta: View {
     private var fila: some View {
         Button(action: abrir) {
             FilaDestino(simbolo: linea?.record == true ? "trophy.fill" : "chart.line.uptrend.xyaxis",
-                        color: linea?.record == true ? .oro : .marca, titulo: "Tu progreso",
+                        color: linea?.record == true ? .record : .marcaTexto, titulo: "Tu progreso",
                         detalle: linea?.texto ?? "Tu fuerza y tus récords, ejercicio por ejercicio.") { EmptyView() }
         }
         .buttonStyle(FilaPresionable())

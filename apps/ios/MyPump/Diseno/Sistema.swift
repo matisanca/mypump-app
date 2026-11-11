@@ -92,14 +92,15 @@ struct AvanceSegmentos: View {
             if total > 12 {
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.campo)
-                        Capsule().fill(Color.marca).frame(width: g.size.width * CGFloat(hechos) / CGFloat(max(total, 1)))
+                        Capsule().fill(Color.riel)
+                        Capsule().fill(Color.avance).frame(width: g.size.width * CGFloat(hechos) / CGFloat(max(total, 1)))
                     }
                 }
             } else {
                 HStack(spacing: 4) {
                     ForEach(0..<max(total, 1), id: \.self) { i in
-                        Capsule().fill(i < hechos ? Color.marca : (i == hechos ? Color.marca.opacity(0.36) : Color.campo))
+                        // Sin verdes a medias: un verde translúcido sobre negro se ensucia (queda oliva). Hecho o no hecho.
+                        Capsule().fill(i < hechos ? Color.avance : Color.riel)
                     }
                 }
             }
@@ -120,7 +121,7 @@ struct NotaDiscreta: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Espacio.xs) {
             Image(systemName: icono).font(.footnote.weight(.semibold)).foregroundStyle(tono).frame(width: 20)
-            texto.font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            texto.font(.footnote).foregroundStyle(Color.apoyo).fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 4)
@@ -139,11 +140,11 @@ struct FilaDestino<Dato: View>: View {
 
     var body: some View {
         HStack(spacing: Espacio.s) {
-            IconoAzulejo(simbolo, color: color)
+            AzulejoSuave(simbolo, tinta: color)
             VStack(alignment: .leading, spacing: 2) {
                 Text(titulo).font(.headline).foregroundStyle(.primary)
                 if let detalle {
-                    Text(detalle).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(detalle).font(.subheadline).foregroundStyle(Color.apoyo).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .multilineTextAlignment(.leading)
@@ -176,7 +177,7 @@ struct EncabezadoAvance: View {
                         .font(.subheadline.weight(.semibold)).foregroundStyle(Color.marcaTexto)
                 } else {
                     (Text("\(hechos)").font(Letra.dato).foregroundStyle(.primary)
-                        + Text(" de \(total)").font(.subheadline.weight(.medium)).foregroundStyle(.secondary))
+                        + Text(" de \(total)").font(.subheadline.weight(.medium)).foregroundStyle(Color.apoyo))
                 }
             }
             AvanceSegmentos(total: total, hechos: hechos)
@@ -184,5 +185,85 @@ struct EncabezadoAvance: View {
         .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
         .accessibilityValue("\(hechos) de \(total)")
+    }
+}
+
+extension Color {
+    /// La superficie de la tarjeta principal de cada pestaña: casi negra en claro (el negro del logo) y, en oscuro, el
+    /// escalón del panel de carga. Adentro todo se pinta como en modo oscuro.
+    static let superficieHeroe = Color(claro: UIColor(hex: 0x17181A), oscuro: UIColor(hex: 0x202223))
+    /// El riel de una barra o de un segmento sin hacer. Gris neutro que se distingue del fondo en claro y en oscuro
+    /// (el `campo` del sistema casi no se ve sobre negro) y deja al verde lleno con más de 3:1 contra él.
+    /// El verde de un avance (segmentos y barras): en claro, el hondo, que da 3,9:1 contra el riel (el del logo, 2,9:1).
+    static let avance = Color(claro: UIColor(hex: 0x157A28), oscuro: UIColor(hex: 0x5BBE62))
+    /// Texto de apoyo que informa (notas, la línea de una fila). El gris secundario del sistema da 3,4:1 sobre blanco y
+    /// no llega a AA; este da 6:1. En oscuro, el del sistema (7:1).
+    static let apoyo = Color(claro: UIColor(hex: 0x636369), oscuro: UIColor.secondaryLabel.resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark)))
+    static let riel = Color(claro: UIColor(white: 0, alpha: 0.10), oscuro: UIColor(white: 1, alpha: 0.14))
+}
+
+/// La tarjeta principal de una pestaña: el número, el avance y la acción del día en un solo bloque oscuro, como el panel
+/// de carga. Es la firma visual de la app: una por pantalla, arriba. Adentro rige el modo oscuro (blanco sobre casi negro,
+/// 17:1; el verde #5BBE62 con texto casi negro, 8:1), así se ve igual en claro y en oscuro.
+struct Heroe<Contenido: View>: View {
+    /// Una marca de agua grande en la esquina (el número del día), decorativa.
+    var marca: String?
+    @ViewBuilder var contenido: Contenido
+    @Environment(\.colorScheme) private var esquema
+
+    var body: some View {
+        let forma = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        contenido
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(alignment: .topTrailing) {
+                if let marca {
+                    Text(marca)
+                        .font(Archivo.fija(120, peso: 900))
+                        .foregroundStyle(.white.opacity(0.045))
+                        .offset(x: -10, y: -46)
+                        .accessibilityHidden(true)
+                }
+            }
+            .background(Color.superficieHeroe, in: forma)
+            .clipShape(forma)
+            .overlay { forma.strokeBorder(.white.opacity(0.08), lineWidth: 1) }
+            .shadow(color: .black.opacity(esquema == .dark ? 0 : 0.22), radius: 20, x: 0, y: 10)
+            .environment(\.colorScheme, .dark)
+    }
+}
+
+/// Un dato de la tarjeta principal: el número en Archivo y su rótulo debajo.
+struct DatoHeroe: View {
+    let valor: String
+    let rotulo: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(valor).font(Letra.dato).monospacedDigit().contentTransition(.numericText()).lineLimit(1).minimumScaleFactor(0.6)
+            Text(rotulo).font(.caption2.weight(.semibold)).tracking(0.6).textCase(.uppercase).foregroundStyle(.secondary)
+                .lineLimit(1).minimumScaleFactor(0.6)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Azulejo teñido: el ícono en el verde de texto sobre el verde suave. Reemplaza al azulejo de relleno vivo con ícono
+/// blanco, que en oscuro no llega a contraste (blanco sobre #5BBE62, 2,3:1; sobre #30D158, 2,0:1).
+struct AzulejoSuave: View {
+    let simbolo: String
+    var tinta: Color = .marcaTexto
+    @ScaledMetric(relativeTo: .body) private var lado: CGFloat = 34
+
+    init(_ simbolo: String, tinta: Color = .marcaTexto) { self.simbolo = simbolo; self.tinta = tinta }
+
+    var body: some View {
+        Image(systemName: simbolo)
+            .font(.system(size: lado * 0.47, weight: .semibold))
+            .foregroundStyle(tinta)
+            .frame(width: lado, height: lado)
+            .background(tinta == .marcaTexto ? Color.marcaSuave : tinta.opacity(0.16), in: .rect(cornerRadius: lado * 0.3, style: .continuous))
+            .accessibilityHidden(true)
     }
 }

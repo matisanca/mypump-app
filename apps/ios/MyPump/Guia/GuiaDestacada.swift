@@ -33,7 +33,28 @@ struct TarjetaGuiaDestacada: View {
     // PROPUESTA: la novedad (el cliente ya conoce la guía) va en una fila verde, primera y con su botón, pero sin correr el
     // entrenamiento una pantalla hacia abajo. La primera vez («Empezá por acá») y la letra de accesibilidad siguen grandes.
     var body: some View {
-        if let n = modelo.avanceNovedad, !tamañoLetra.isAccessibilitySize { compacta(n) } else { grande }
+        if let n = modelo.avanceNovedad, Self.vaEnFila(novedad: n, guia: modelo.avanceTarjeta, novedadEn: modelo.novedadEn),
+           !tamañoLetra.isAccessibilitySize { compacta(n) } else { grande }
+    }
+
+    /// Cuántos días va grande una novedad antes de pasar a la fila.
+    static let diasGrande = 7
+
+    /// La tarjeta va GRANDE siempre que haya riesgo de que la pasen por alto, y en fila solo cuando se cumplen las dos:
+    /// · ya terminó la guía de base (lo único sin ver es la tanda nueva), y
+    /// · la novedad lleva más de 7 días publicada (`novedad_en`, la fecha del servidor: vale igual en todos sus teléfonos
+    ///   y no se reinicia al reinstalar).
+    /// Sin fecha legible, grande. La primera vez («Empezá por acá») nunca pasa por acá: es siempre grande.
+    static func vaEnFila(novedad n: ReglasGuia.Avance, guia a: ReglasGuia.Avance, novedadEn: String?, ahora: Date = .now) -> Bool {
+        let baseCompleta = (a.total - a.vistos) <= (n.total - n.vistos)
+        #if DEBUG
+        // `-guiaNovedadDias 10`: las capturas de la fila sin esperar una semana.
+        if let dias = UserDefaults.standard.string(forKey: "guiaNovedadDias").flatMap(Int.init) {
+            return dias > diasGrande
+        }
+        #endif
+        guard baseCompleta, let s = novedadEn, let desde = ReglasGuia.instante(s) else { return false }
+        return ahora.timeIntervalSince(desde) > Double(diasGrande) * 86_400
     }
 
     private func compacta(_ n: ReglasGuia.Avance) -> some View {

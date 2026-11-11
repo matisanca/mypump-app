@@ -200,7 +200,7 @@ private struct MarcoPose: View {
         }
         .background(Color.campo.opacity(0.5), in: forma)
         .overlay {
-            forma.strokeBorder(estado.lista ? Color.marcaVivo.opacity(0.6) : Color.secondary.opacity(0.35),
+            forma.strokeBorder(estado.lista ? Color.marcaVivo : Color.secondary.opacity(0.7),
                                style: StrokeStyle(lineWidth: 1.5, dash: estado.lista ? [] : [6, 5]))
         }
         .contentShape(forma)
