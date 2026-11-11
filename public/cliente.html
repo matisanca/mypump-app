@@ -11423,6 +11423,8 @@ function _bienvenidaGuia() {
     const r = document.getElementById('scene-train');
     if (r && window.MyPumpGuia && _guiaHost.dataset.montado) { r.insertBefore(_guiaHost, r.firstChild); _bienvenidaGuia(); }
     if (r && window.GimnasioUI) window.GimnasioUI.montarTarjeta(r, _guiaHost);
+    // «Fotos de inicio»: arriba de todo también acá, mientras falte alguna (lo primero que se ve al abrir).
+    if (r && window.FotosInicioUI) window.FotosInicioUI.montarTarjeta(r, true);
   };
   // «Fotos de inicio»: la tarjeta va arriba de todo en Revisión (solo con la sección habilitada).
   const _rr = renderRevision;
@@ -11481,6 +11483,8 @@ function _aplicarSceneDeURL() {
   try {
     const s = new URLSearchParams(location.search).get('scene');
     if (!s) return;
+    // El aviso «subí tus fotos de inicio»: Revisión con la pantalla abierta (si la sección está habilitada).
+    if (s === 'fotos_inicio') { setScene('revision'); if (window.FotosInicioUI) window.FotosInicioUI.abrirPorAviso(); return; }
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
     if (validas.indexOf(s) !== -1 && s !== 'gimnasio' && s !== 'tecnica' && s !== 'fotosinicio') setScene(s);   // al gimnasio y a las fotos de inicio se entra por la tarjeta o Mis datos
   } catch (e) {}

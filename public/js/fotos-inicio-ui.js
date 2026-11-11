@@ -309,29 +309,48 @@
     firmarLoQueSeVe(m);
   }
 
-  /* La tarjeta, arriba de todo en Revisión. renderRevision rehace todo: se vuelve a poner. */
-  function montarTarjeta(root) {
-    let host = document.getElementById('fiHost');
+  /* La tarjeta, arriba de todo en Revisión (siempre) y en Entreno, lo primero que se ve al abrir, mientras falte alguna
+     foto (regla de Mati: fácil de encontrar). Las dos pantallas se rehacen enteras: se vuelve a poner. */
+  function montarTarjeta(root, enEntreno) {
+    const idHost = enEntreno ? 'fiHostEntreno' : 'fiHost';
+    let host = document.getElementById(idHost);
     const m = ui.modelo;
-    if (!root || !m || !m.estado) { if (host) host.remove(); return; }
+    if (!root || !m || !m.estado || (enEntreno && !m.faltan.length)) { if (host) host.remove(); return; }
     if (!host) {
       host = document.createElement('div');
-      host.id = 'fiHost';
+      host.id = idHost;
       host.addEventListener('click', () => abrir('revision'));
     }
     const n = m.cuenta3;
-    const html = `<button type="button" class="fi-tarjeta${m.listas ? ' is-lista' : ''}" id="fiTarjeta" data-test="fotos-inicio-tarjeta">
+    const html = `<button type="button" class="fi-tarjeta${m.listas ? ' is-lista' : ''}" id="${enEntreno ? 'fiTarjetaEntreno' : 'fiTarjeta'}" data-test="fotos-inicio-tarjeta${enEntreno ? '-entreno' : ''}">
       <span class="fi-tarjeta-ic">${m.listas ? IC.ok : IC.camara}</span>
       <span class="fi-tarjeta-txt"><strong>${e(T.tarjetaTitulo)}</strong><span>${e(m.listas ? T.tarjetaLista : T.tarjetaBajada)}</span>
         ${m.listas ? '' : `<span class="fi-tarjeta-cuenta">${e(T.cuenta(n))}</span>`}</span>
-      ${m.listas ? `<span class="md-chev">${IC.chev}</span>` : `<span class="fi-tarjeta-cta">${e(n ? T.tarjetaSeguir : T.tarjetaEmpezar)}</span>`}</button>`;
+      ${m.listas ? `<span class="md-chev">${IC.chev}</span>` : `<span class="fi-tarjeta-cta">${IC.camara}${e(n ? T.tarjetaSeguir : T.tarjetaEmpezar)}</span>`}</button>`;
     if (host.dataset.h !== html) { host.innerHTML = html; host.dataset.h = html; }
     if (root.firstChild !== host) root.insertBefore(host, root.firstChild);
+  }
+
+  /* El aviso «subí tus fotos de inicio» (destino `fotos_inicio` del push, `?scene=fotos_inicio`): abre la pantalla en la
+     pose que falta. Si el estado todavía no llegó, la abre apenas llega (hasta 20 s); con la sección no habilitada, queda
+     en Revisión. */
+  function abrirPorAviso() {
+    ui.avisoHasta = Date.now() + 20000;
+    atenderAviso();
+  }
+  function atenderAviso() {
+    if (!ui.avisoHasta) return;
+    if (Date.now() > ui.avisoHasta) { ui.avisoHasta = 0; return; }
+    if (!ui.op || !ui.modelo || !ui.modelo.estado) return;
+    ui.avisoHasta = 0;
+    abrir('revision');
   }
 
   function pintar() {
     if (!ui.op) return;
     montarTarjeta(document.getElementById('scene-revision'));
+    montarTarjeta(document.getElementById('scene-train'), true);
+    atenderAviso();
     const ve = !!(ui.modelo && ui.modelo.estado);
     if (ve !== ui.entrada) { ui.entrada = ve; ui.op.alCambiarEntrada(); }
     if (escenaActiva()) renderEscena();
@@ -493,7 +512,7 @@
   }
 
   raiz.FotosInicioUI = {
-    configurar, aplicarPalanca, montarTarjeta, abrir, renderEscena, titulo,
+    configurar, aplicarPalanca, montarTarjeta, abrir, abrirPorAviso, renderEscena, titulo,
     entradaVisible: () => !!(ui.modelo && ui.modelo.estado),
     get origen() { return ui.origen; },
     get _modelo() { return ui.modelo; },
