@@ -34,7 +34,7 @@ final class ColaAUITests: XCTestCase {
     private func esperar(_ s: TimeInterval) { RunLoop.current.run(until: Date().addingTimeInterval(s)) }
     /// Revisión con la cuenta de muestra ocupa el hilo principal un rato largo al abrir (peor con la máquina cargada): si se
     /// le pregunta antes, XCTest corta a los 30 s con «main thread busy».
-    private func esperarQuieta() { esperar(70) }
+    private func esperarQuieta() { esperar(100) }
     private func foto(_ nombre: String) {
         esperar(0.8)
         let s = XCUIScreen.main.screenshot()
@@ -186,7 +186,7 @@ final class ColaAUITests: XCTestCase {
         noAparece("festejo-titulo", 6, "Apagada no se festeja")
         XCTAssertFalse(e("lista-previa").exists, "Apagada no hay lista previa")
         cuenta("apagado", ["-pestana", "revision", "-abrir", "misdatos"])
-        esperarQuieta(80)
+        esperarQuieta()
         XCTAssertTrue(app.switches["tema-oscuro"].waitForExistence(timeout: 150), "No abrió Mis datos")
         XCTAssertFalse(app.switches["logros-interruptor"].exists, "Apagada y sin permiso no hay sección Logros")
     }
