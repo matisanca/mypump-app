@@ -343,6 +343,7 @@ struct DietaView: View {
             .onTapGesture { if marca != nil { withAnimation(.snappy) { alternarPlegada(c.id, plegada: plegada) } } }
             .accessibilityHint(marca != nil ? (plegada ? "Tocá para ver el detalle" : "Tocá para plegarla") : "")
             .accessibilityAddTraits(marca != nil ? .isButton : [])
+            .accessibilityIdentifier("encabezado-\(c.id)")
             if !plegada {
                 if c.opciones.count > 1 {
                     let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))

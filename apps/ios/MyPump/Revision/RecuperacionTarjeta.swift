@@ -35,7 +35,8 @@ struct RecuperacionTarjeta: View {
     private var resumen: String {
         guard let modelo else { return "Con tu cuenta, acá vas a ver tu recuperación de cada día." }
         switch modelo.cardRecuperacion {
-        case .conScore(let c): return [c.bandaTexto, Self.linea(c)].compactMap { $0 }.joined(separator: " · ")
+        // Con la confianza, como Android: en la fila el número apagado solo no lo dice (ni a VoiceOver).
+        case .conScore(let c): return [c.bandaTexto, c.confianza?.etiqueta, Self.linea(c)].compactMap { $0 }.joined(separator: " · ")
         case .oculto: return "Ocultaste el número de recuperación. Tocá para ver tus datos de salud."
         case .calibrando(let dias, _, _, _): return "Aprendiendo tu normal: \(dias) de 14 días"
         case .conectadoSinScore(let caso, _): return caso.frase

@@ -125,7 +125,11 @@ struct MisDatosView: View {
                     .accessibilityIdentifier("mis-datos-guia")
                 }
                 if let est = modelo.estudios, est.habilitado {
-                    FilaEstudiosMisDatos(modelo: est) { verEstudios = true }
+                    // Con el punto de «Novedad», la fila lleva directo a lo nuevo (como el aviso y la tarjeta de Entreno).
+                    FilaEstudiosMisDatos(modelo: est) {
+                        if est.hayNovedad { enfocarEstudios += 1 }
+                        verEstudios = true
+                    }
                 }
                 if let t = modelo.tecnica, t.habilitado || verTecnica {
                     Button { verTecnica = true } label: {
