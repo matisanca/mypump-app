@@ -787,7 +787,7 @@
   async function aplicarPalanca(valor, controles) {
     if (!ui.op) return;
     // Llegó otra lectura mientras se arma el modelo: se aplica apenas termina (no se pierde).
-    if (ui.arrancando) { ui.pendiente = [valor, controles]; return; }
+    if (ui.arrancando) { ui.palancaPendiente = [valor, controles]; return; }
     try { localStorage.removeItem(FLAG); } catch (_) {}      // lo que recordaban las versiones anteriores
     if (valor === null) return;
     if (valor !== true) {
@@ -818,8 +818,8 @@
       ui.modelo = null;
     } finally {
       ui.arrancando = false;
-      const p = ui.pendiente; ui.pendiente = null;
-      if (p) aplicarPalanca(p[0], p[1]);
+      const p = ui.palancaPendiente; ui.palancaPendiente = null;
+      if (Array.isArray(p)) aplicarPalanca(p[0], p[1]);
     }
   }
 
