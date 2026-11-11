@@ -105,12 +105,12 @@ BEGIN
       RETURN TRUE;
     END IF;
     -- Cada práctica distinta se descuenta UNA vez. Las más largas primero: «testosterona total y libre» antes que «testosterona total».
-    -- Una práctica de dos letras («GH») vale, pero solo como palabra entera.
+    -- De dos letras vale solo una lista cerrada (hoy «gh»), como palabra entera: «mg» o «ui» como práctica blanquearían «250 mg».
     FOR p IN SELECT y FROM (SELECT DISTINCT regexp_replace(mypump_estudios_plano(x), '\s+', ' ', 'g') AS y
                               FROM jsonb_array_elements_text(p_practicas) x WHERE length(btrim(x)) >= 2) d
               ORDER BY length(y) DESC, y LOOP
       IF length(p) < 3 THEN
-        IF p ~ '^[a-z0-9]{2}$' THEN v := regexp_replace(v, '\m' || p || '\M', ' | '); END IF;
+        IF p IN ('gh') THEN v := regexp_replace(v, '\m' || p || '\M', ' | '); END IF;
       ELSE
         i := position(p IN v);
         IF i > 0 THEN v := overlay(v PLACING ' | ' FROM i FOR length(p)); END IF;
@@ -118,7 +118,7 @@ BEGIN
     END LOOP;
   END IF;
   -- La resistencia a la insulina es un diagnóstico, no una indicación.
-  v := regexp_replace(v, '(resistencia a la insulina|insulino ?resistencia)', ' ', 'g');
+  v := regexp_replace(v, '(resistencia a la insulina|insulino ?r?resistencia)', ' ', 'g');
   -- Pasada compacta: una palabra partida por el renglón («testoste-» / «rona») o con espacios entre letras.
   c := regexp_replace(v, '[^a-z0-9|]', '', 'g');
   RETURN v ~ k_sust
