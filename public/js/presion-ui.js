@@ -569,7 +569,9 @@
     let host = document.getElementById('presion-tarjeta');
     const soloConAlgo = !!(ui.op && ui.op.soloConAlgo && ui.op.soloConAlgo());
     const t = ui.modelo && ui.modelo.estado ? ui.modelo.tarjeta : null;
-    const html = soloConAlgo && t && t.estado === 'hoyListo' ? '' : tarjetaHtml(ui.modelo);
+    // Simplificar (11/11, web_230): en Entreno va una sola tarjeta «Mi salud» (la pinta la página) en lugar de esta.
+    const sinTarjeta = !!(ui.op && ui.op.sinTarjetaInicio && ui.op.sinTarjetaInicio());
+    const html = sinTarjeta || (soloConAlgo && t && t.estado === 'hoyListo') ? '' : tarjetaHtml(ui.modelo);
     if (!root || !html) { if (host) host.remove(); return; }
     if (!host) {
       host = document.createElement('section');
@@ -902,6 +904,11 @@
     /* Para «Mi salud»: la tarjeta de hoy (null si no hay) y su HTML con otro id de botón. */
     tarjeta: () => (ui.modelo && ui.modelo.estado ? ui.modelo.tarjeta || null : null),
     tarjetaHtml: (idBoton) => tarjetaHtml(ui.modelo, idBoton),
+    /* El texto del botón de la tarjeta («Repetir», «Empezar», «La toma de hoy»), o null si no pide nada. */
+    botonTarjeta: () => {
+      const t = ui.modelo && ui.modelo.estado ? ui.modelo.tarjeta : null;
+      return !t ? null : t.estado === 'repetir' ? N.repetir : t.estado === 'preparar' ? N.empezar : t.estado === 'toma' ? N.tomaDeHoy : null;
+    },
     get _modelo() { return ui.modelo; },
     get _ui() { return ui; },
     _accion: (nombre, b) => ACCIONES[nombre] && ACCIONES[nombre](b || { dataset: {} }),

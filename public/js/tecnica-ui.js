@@ -273,6 +273,7 @@
     if (!ui.op) return;
     const ve = !!(ui.modelo && ui.modelo.visibleEntrada);
     if (ve !== ui.entrada) { ui.entrada = ve; ui.op.alCambiarEntrada(); }
+    if (ui.op.alCambiar) { try { ui.op.alCambiar(); } catch (_) {} }   // «Mi gimnasio y mi técnica» (web_230)
     if (escenaActiva()) renderEscena();
   }
 
@@ -316,7 +317,28 @@
     apilar({ t: 'grabar' });
   }
 
-  function cerrar() { if (ui.op) ui.op.irA(ui.origen === 'train' ? 'train' : 'misdatos'); }
+  /* Simplificar (11/11, web_230): desde «Mi gimnasio y mi técnica» se vuelve ahí. */
+  function cerrar() { if (ui.op) ui.op.irA(ui.origen === 'train' || ui.origen === 'dondeentreno' ? ui.origen : 'misdatos'); }
+
+  /* «Mandar mi técnica» desde «Mi gimnasio y mi técnica»: directo a elegir el ejercicio, salvo que no se pueda mandar
+     (ahí la lista dice por qué). «‹ Cerrar» vuelve ahí. */
+  function mandarDesde(origen) {
+    if (!ui.modelo || !ui.modelo.estado) return;
+    ui.modelo.limpiarAviso();
+    preparar(origen || 'dondeentreno');
+    if (ui.modelo.bloqueo) return;
+    ui.directo = true;
+    apilar({ t: 'elegir' });
+  }
+
+  /* Una respuesta (o un envío) directo, a un toque desde «Mi gimnasio y mi técnica»: «‹ Cerrar» vuelve ahí. */
+  function abrirEnvio(id, origen) {
+    if (!ui.modelo || !ui.modelo.estado || !ui.modelo.envio(id)) return;
+    ui.modelo.limpiarAviso();
+    preparar(origen || 'dondeentreno');
+    ui.directo = true;
+    apilar({ t: 'detalle', id });
+  }
   function apilar(d) { ui.pila.push(d); ui.error = null; renderEscena(); window.scrollTo(0, 0); }
 
   function seekA(t) {
@@ -479,7 +501,11 @@
   }
 
   raiz.TecnicaUI = {
-    configurar, aplicarPalanca, abrir, abrirConEjercicio, renderEscena,
+    configurar, aplicarPalanca, abrir, abrirConEjercicio, abrirEnvio, mandarDesde, renderEscena,
+    /* Para «Mi gimnasio y mi técnica»: lo mandado, con el texto de cada fila (el de la lista de siempre). */
+    envios: () => (ui.modelo && ui.modelo.estado ? ui.modelo.envios.map((s) => ({
+      id: s.id, nombre: s.ejercicioNombre || T.titulo, detalle: detalleFila(s), estado: s.estado, devolucion: s.devolucion, publicadoEn: s.publicadoEn,
+    })) : []),
     titulo: () => T.titulo,
     entradaVisible: () => !!(ui.modelo && ui.modelo.visibleEntrada),
     get origen() { return ui.origen; },

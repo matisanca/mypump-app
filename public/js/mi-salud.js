@@ -83,7 +83,22 @@
   /* La tarjeta de presión de Entreno, solo cuando pide algo («La de hoy ya está» queda en Mi salud). */
   const presionPideAlgo = (t) => !!t && (t.estado === 'repetir' || t.estado === 'preparar' || t.estado === 'toma');
 
-  const API = { T, BLOQUES, TOPE, bloques, lista, pendientes, tarjeta, destino, presionPideAlgo };
+  /* Entreno (simplificar, OK de Mati del 11/11): en lugar de las tres tarjetas de presión, estudios y control, UNA sola
+     «Mi salud», y solo con algo para hacer. Debajo de la línea, cuando hay más de una cosa: «Y 1 cosa más» / «Y N cosas
+     más». Igual que MiSalud.masCosas de iPhone y Android. */
+  function masCosas(n) {
+    const c = Number(n) || 0;
+    if (c <= 1) return null;
+    return c === 2 ? 'Y 1 cosa más' : `Y ${c - 1} cosas más`;
+  }
+  /* La tarjeta de Entreno: null sin nada para hacer. `primero` es el bloque al que lleva el toque. */
+  function tarjetaInicio(e) {
+    const t = tarjeta(e);
+    if (!t || !t.numero) return null;
+    return { linea: t.linea, numero: t.numero, primero: t.primero, mas: masCosas(t.numero) };
+  }
+
+  const API = { T, BLOQUES, TOPE, bloques, lista, pendientes, tarjeta, destino, presionPideAlgo, masCosas, tarjetaInicio };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.MiSalud = API;
 })(typeof window !== 'undefined' ? window : globalThis);

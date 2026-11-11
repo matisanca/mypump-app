@@ -745,6 +745,19 @@
     tarjetaEnEntreno: (r, quitada, ahora) => R.hayGuia(r) && !quitada && R.mostrarTarjeta(r, ahora),
     filaEnMisDatos: (r, quitada, ahora) => !!(r && r.ok) && !R.tarjetaEnEntreno(r, quitada, ahora),
     puedeVolverAMostrar: (r, quitada, ahora) => !!quitada && R.tarjetaEnEntreno(r, false, ahora),
+
+    // ── «Tu inicio con Mati» (simplificar, OK de Mati del 11/11; va con la palanca web_230) ──
+    // Con todo visto, «Tu guía» queda como una fila discreta dentro de «Tu inicio con Mati» durante estos días desde que
+    // se terminó; después sale de Entreno y queda en Mis datos («Ver mi guía»). Igual que ReglasGuia de iPhone y Android.
+    DIAS_FILA_COMPLETA: 7,
+    // La guía está terminada: todo visto y sin una tanda nueva sin ver. `novedad`: el avance de lo nuevo, o null.
+    completa: (a, novedad) => !novedad && !!a && R.completo(a),
+    // La fila discreta sigue: sin fecha (todavía no se anotó) o dentro de los 7 días. `completaEn`, `ahora`: Date.
+    filaInicioVigente(completaEn, ahora) {
+      if (!(completaEn instanceof Date) || isNaN(completaEn.getTime())) return true;
+      const t = ahora instanceof Date && !isNaN(ahora.getTime()) ? ahora.getTime() : Date.now();
+      return t - completaEn.getTime() < R.DIAS_FILA_COMPLETA * 86400000;
+    },
   };
 
   // Cuándo guarda el avance un video que se está reproduciendo (AvanceVideo):

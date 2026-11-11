@@ -424,7 +424,9 @@
     let host = document.getElementById('gimHost');
     const m = ui.modelo;
     // Con el gimnasio ya cargado la tarjeta no va, pero el botón de casa sí: nadie queda a tres toques.
-    const casa = m ? botonCasa() : '';
+    // Simplificar (11/11, web_230): el botón de casa pasa adentro de «Mi gimnasio y mi técnica» (a 2 toques desde Entreno).
+    const casaEnHub = !!(ui.op && ui.op.casaEnHub && ui.op.casaEnHub());
+    const casa = m && !casaEnHub ? botonCasa() : '';
     if (!root || !m || (!m.tarjetaVisible && !casa)) { if (host) host.remove(); return; }
     if (!host) {
       host = document.createElement('div');
@@ -443,6 +445,7 @@
     montarTarjeta(document.getElementById('scene-train'), document.getElementById('guiaHost'));
     const ve = !!(ui.modelo && ui.modelo.entradaVisible);
     if (ve !== ui.entrada) { ui.entrada = ve; ui.op.alCambiarEntrada(); }
+    if (ui.op.alCambiar) { try { ui.op.alCambiar(); } catch (_) {} }   // «Mi gimnasio y mi técnica» (web_230)
     if (escenaActiva()) renderEscena();
   }
 
@@ -457,7 +460,8 @@
     ui.op.irA('gimnasio');
     ui.modelo.refrescar().then(() => ui.modelo && ui.modelo.drenarEnFondo()).catch(() => {});
   }
-  function cerrar() { if (ui.op) ui.op.irA(ui.origen === 'misdatos' ? 'misdatos' : 'train'); }
+  /* Simplificar (11/11, web_230): desde «Mi gimnasio y mi técnica» se vuelve ahí. */
+  function cerrar() { if (ui.op) ui.op.irA(ui.origen === 'misdatos' || ui.origen === 'dondeentreno' ? ui.origen : 'train'); }
   function apilar(d) { ui.pila.push(d); ui.error = null; ui.firmaUrls = ''; renderEscena(); window.scrollTo(0, 0); }
 
   async function empezar(modo) {
@@ -631,6 +635,19 @@
   raiz.GimnasioUI = {
     configurar, aplicarPalanca, montarTarjeta, abrir, renderEscena, titulo,
     entradaVisible: () => !!(ui.modelo && ui.modelo.entradaVisible),
+    /* Para «Mi gimnasio y mi técnica»: la línea de la tarjeta (lo que falta, o casa) y el texto del botón de casa. */
+    detalle: () => {
+      const m = ui.modelo;
+      if (!m || !m.estado) return null;
+      if (m.tarjetaVisible) return detalleTarjeta(m);
+      return raiz.CasaUI ? raiz.CasaUI.detalleTarjeta() : null;   // con el gimnasio ya cargado, solo lo de casa (si hay)
+    },
+    /* Va en «Mi gimnasio y mi técnica» con el gimnasio ya cargado o con «Entreno en casa» habilitado (como el iPhone). */
+    enHub: () => {
+      const m = ui.modelo, c = raiz.CasaUI && raiz.CasaUI._modelo;
+      return !!(m && m.estado) && (!!m.entradaVisible || !!(c && c.estado && c.interruptor));
+    },
+    textoCasa: () => (raiz.CasaUI && raiz.CasaUI.botonTarjeta ? raiz.CasaUI.botonTarjeta() : null),
     get origen() { return ui.origen; },
     get _modelo() { return ui.modelo; },
   };

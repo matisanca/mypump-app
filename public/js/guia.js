@@ -79,6 +79,9 @@
     return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
   }
 
+  // Lo del sistema 2.3.0 de la web va con la palanca `web_230` (la define cliente.html; sin ella, la guía de siempre).
+  function w230() { return typeof window.web230 === 'function' && window.web230(); }
+
   function esDemo() {
     try { return new URLSearchParams(location.search).get('demo') === '1'; } catch (_) { return false; }
   }
@@ -807,6 +810,11 @@
       const qe = Number(almacen.leer(this.k('quitada_en'), NaN));
       this.quitadaEn = this.quitada && isFinite(qe) && qe > 0 ? new Date(qe) : null;
       this.bienvenidaVista = !!almacen.leer(this.k('bienvenida'), false);
+      // «Tu inicio con Mati» (simplificar, 11/11): cuándo detectó este navegador la guía terminada por primera vez. El
+      // servidor no manda esa fecha (entregas_app_resumen trae solo total y vistos) y no se agrega SQL: queda acá, por
+      // cliente, como guia_completa_en.json en iPhone y Android. Un video nuevo de Mati la borra.
+      const ce = Number(almacen.leer(this.k('completa_en'), NaN));
+      this.completaEn = isFinite(ce) && ce > 0 ? new Date(ce) : null;
       const tv = !!almacen.leer(this.k('tarjeta_vista'), false);
       this.primeraSesionTarjeta = !tv;
       this._tarjetaVista = tv;
@@ -835,9 +843,39 @@
     // con una novedad posterior, la tarjeta vuelve.
     get quitadaVigente() { return R.quitadaVigente(this.quitada, this.quitadaEn, this.novedadEn); }
     get mostrarTarjeta() { return R.tarjetaEnEntreno(this.resumen, this.quitadaVigente); }
-    get mostrarFila() { return R.filaEnMisDatos(this.resumen, this.quitadaVigente); }
-    get puedeQuitar() { return this.mostrarTarjeta; }
-    get puedeVolverAMostrar() { return R.puedeVolverAMostrar(this.resumen, this.quitadaVigente); }
+    // 2.3.0 (web_230): «Ver mi guía» en Mis datos con `ok: true` y la guía fuera de Entreno (por la fecha, porque la quitó
+    // o porque ya pasaron los 7 días de la fila de «Tu inicio con Mati»). Mis datos es su lugar fijo: nunca se oculta.
+    get mostrarFila() {
+      if (!w230()) return R.filaEnMisDatos(this.resumen, this.quitadaVigente);
+      return !!(this.resumen && this.resumen.ok) && !this.tarjetaDestacada && !this.filaEnInicio();
+    }
+    // «Quitar de Entreno» y «Volver a mostrar», solo si la guía se ve (o se vería) en Entreno.
+    get puedeQuitar() { return w230() ? (this.tarjetaDestacada || this.filaEnInicio()) : this.mostrarTarjeta; }
+    get puedeVolverAMostrar() {
+      if (!R.puedeVolverAMostrar(this.resumen, this.quitadaVigente)) return false;
+      if (!w230()) return true;
+      return !R.completa(this.avanceTarjeta, this.avanceNovedad) || R.filaInicioVigente(this.completaEn, new Date());
+    }
+
+    // ── «Tu inicio con Mati» (simplificar, 11/11; web_230) ──
+    // Anota la fecha la primera vez que la guía está terminada y la borra si vuelve a faltar algo (un video nuevo de
+    // Mati): al verlo, los 7 días cuentan de nuevo. Sin resumen con guía todavía no se sabe nada y no se toca.
+    anotarCompleta(ahora) {
+      if (!R.hayGuia(this.resumen)) return;
+      const c = R.completa(this.avanceTarjeta, this.avanceNovedad);
+      if (c && !this.completaEn) {
+        this.completaEn = ahora instanceof Date ? ahora : new Date();
+        almacen.guardar(this.k('completa_en'), this.completaEn.getTime());
+      } else if (!c && this.completaEn) {
+        this.completaEn = null;
+        almacen.borrar(this.k('completa_en'));
+      }
+    }
+    // La fila discreta «Tu guía» dentro de «Tu inicio con Mati»: con la tarjeta en Entreno, todo visto y dentro de los
+    // 7 días desde que se terminó.
+    filaEnInicio(ahora) {
+      return this.mostrarTarjeta && !this.tarjetaDestacada && R.filaInicioVigente(this.completaEn, ahora || new Date());
+    }
     get avanceTarjeta() {
       const r = this.resumen || {};
       return { total: r.total || 0, vistos: r.vistos || 0, minutosRestantes: r.minutosRestantes || 0 };
@@ -1267,6 +1305,7 @@
     candado: svg('<rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/>'),
     playCirculo: svg('<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 8.5v7l5.6-3.5z" fill="currentColor"/>'),
     globo: svg('<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5S9.5 6.1 12 3.5z" fill="none" stroke="currentColor" stroke-width="1.8"/>'),
+    bandera: svg('<path d="M5 21V4.5M5 4.5h11.5l-2.2 4 2.2 4H5" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>'),
     video: svg('<rect x="3" y="6.5" width="12.5" height="11" rx="2.2" fill="currentColor"/><path d="M15.5 10.5l5-3v9l-5-3z" fill="currentColor"/>'),
   };
 
@@ -1530,6 +1569,15 @@
 .vl-tarjeta *,.vl-pantalla *{box-sizing:border-box}
 .vl-tarjeta button,.vl-pantalla button{font-family:inherit;-webkit-tap-highlight-color:transparent}
 .vl-tarjeta :focus-visible,.vl-pantalla :focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
+.ini-mati{display:flex;flex-direction:column;gap:12px;padding:12px;margin:0 0 .75rem;border-radius:calc(var(--radius-lg) + 4px);background:var(--color-bg-primary);border:1.5px solid color-mix(in srgb,var(--color-brand) 45%,transparent);box-shadow:var(--shadow-sm);font-family:var(--font-sans);color:var(--color-text-primary)}
+.ini-mati *{box-sizing:border-box}
+.ini-cab{display:flex;align-items:center;gap:10px;padding:4px 4px 0}
+.ini-ic{flex:0 0 34px;width:34px;height:34px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand,#fff);display:flex;align-items:center;justify-content:center}
+.ini-ic svg{width:17px;height:17px}
+.ini-tit{margin:0;font-family:var(--font-display);font-size:22px;font-weight:750;line-height:1.2;overflow-wrap:anywhere}
+.ini-mati .vl-tarjeta{margin:0;box-shadow:none}
+.ini-mati .gu-compacta{box-shadow:none;border:1px solid var(--color-border)}
+.ini-mati .lp-sola{margin:0}
 .vl-tarjeta{display:flex;flex-direction:column;gap:.875rem;padding:1.25rem;margin:0 0 .75rem;border-radius:var(--radius-lg);background:var(--color-bg-primary);border:1.5px solid color-mix(in srgb,var(--color-brand) 45%,transparent);box-shadow:var(--shadow-sm);overflow-wrap:break-word}
 .vl-tarjeta.vl-activa{background:#17852b;border-color:transparent;color:#fff;box-shadow:0 .5rem 1rem rgba(23,133,43,.35)}
 [data-theme="dark"] .vl-tarjeta.vl-activa{background:#157a28;box-shadow:0 .5rem 1rem rgba(21,122,40,.35)}
@@ -2935,7 +2983,40 @@
   // 2.3.0: la videollamada fija arriba, desde que se agenda hasta que termina
   // (aunque la tarjeta de la guía esté oculta). Antes, «Tu guía».
   function htmlTarjeta(m) {
+    if (w230()) return htmlInicioConMati(m);
     return htmlVideollamadaEntreno(m) + htmlTarjetaGuia(m);
+  }
+
+  // «Tu inicio con Mati» (simplificar, OK de Mati del 11/11; web_230): la guía, la videollamada de comienzo y «Antes de
+  // la videollamada» eran tres tarjetas del mismo camino que podían salir juntas arriba de Entreno. Ahora van en una sola,
+  // en este orden (como TarjetaInicioConMati de iPhone y Android):
+  // · la guía GRANDE con su avance mientras falte ver algo (o haya un video nuevo de Mati): es lo primero;
+  // · la videollamada de comienzo (con la lista previa adentro) o «Elegí tu horario» (palanca `elegir_horario`). Cuando
+  //   ya se puede entrar, va arriba de todo: ese día lo urgente es entrar;
+  // · la lista previa sola, sin videollamada (palanca `lista_previa`, la pinta la página con ponerListaSola);
+  // · con todo visto, una fila discreta «Tu guía» durante 7 días desde que se terminó; después la guía queda en Mis datos.
+  // Una videollamada de REVISIÓN no es parte del inicio: va con su tarjeta propia, arriba, como antes.
+  let _listaSola = null;
+  function listaSola() {
+    if (typeof _listaSola !== 'function') return '';
+    try { const x = _listaSola(); return typeof x === 'string' ? x : ''; } catch (_) { return ''; }
+  }
+  const INICIO_TITULO = 'Tu inicio con Mati';
+  function htmlInicioConMati(m) {
+    const ahora = new Date();
+    const r = m.reservaTarjeta(ahora);
+    const deRevision = !!r && r.tipo === 'revision';
+    const afuera = deRevision ? htmlVideollamada(m, r, ahora, true) : '';
+    const llamada = deRevision ? '' : htmlVideollamadaEntreno(m);
+    const grande = m.tarjetaDestacada ? htmlTarjetaGuia(m) : '';
+    const fila = m.filaEnInicio(ahora) ? htmlTarjetaGuia(m) : '';
+    // La lista sola, solo sin ninguna videollamada en la tarjeta (con la de comienzo va adentro; con la de revisión, no va).
+    const lista = !r ? listaSola() : '';
+    if (!grande && !fila && !llamada && !lista) return afuera;
+    const primero = !!llamada && !!r && RA.estadoEntrar(r, ahora, m.agenda.entrarDesdeMin).tipo === 'habilitado';
+    return `${afuera}<section class="ini-mati" id="inicio-con-mati" aria-labelledby="iniMatiTit">
+      <div class="ini-cab"><span class="ini-ic" aria-hidden="true">${I.bandera}</span><h2 class="ini-tit" id="iniMatiTit">${INICIO_TITULO}</h2></div>
+      ${primero ? llamada + grande : grande + llamada}${lista}${fila}</section>`;
   }
 
   function htmlTarjetaGuia(m) {
@@ -2994,6 +3075,7 @@
     } else {
       m.agenda.dejarDeVigilar(reg);
     }
+    if (!esDemo() && w230()) m.anotarCompleta();
     const html = esDemo() ? '' : htmlTarjeta(m);
     if (reg.previo === html) return !!html;
     reg.previo = html;
@@ -3275,6 +3357,12 @@
       repintarTarjetas();
     },
     repintarTarjetas() { repintarTarjetas(); },
+    // 2.3.0 (web_230): la lista previa sola (sin videollamada) va dentro de «Tu inicio con Mati». `fn` devuelve su HTML
+    // ya escapado, o ''. Con null, se saca.
+    ponerListaSola(fn) {
+      _listaSola = typeof fn === 'function' ? fn : null;
+      repintarTarjetas();
+    },
 
     // La bienvenida de la primera vez: con la tarjeta en Entreno, sin ningún
     // video visto y una sola vez por cliente. `opciones.nombre`: el nombre de
@@ -3291,7 +3379,12 @@
 
     // Para la fila «Ver mi guía» de Mis datos (con el resumen ya cargado).
     quitada(token) { return tokenValido(token) ? modelo(token).quitadaVigente : false; },
-    mostrarFila(token) { return tokenValido(token) && !esDemo() ? modelo(token).mostrarFila : false; },
+    mostrarFila(token) {
+      if (!tokenValido(token) || esDemo()) return false;
+      const m = modelo(token);
+      if (w230()) m.anotarCompleta();
+      return m.mostrarFila;
+    },
     puedeVolverAMostrar(token) { return tokenValido(token) && !esDemo() ? modelo(token).puedeVolverAMostrar : false; },
     quitar(token) { if (tokenValido(token)) modelo(token).ponerQuitada(true); },
     volverAMostrar(token) {

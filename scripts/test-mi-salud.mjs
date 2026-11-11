@@ -118,7 +118,7 @@ caso('Estudios y Presión: los ganchos que usa «Mi salud», sin cambiar nada co
   assert.match(eu, /const incrustada = \(\) => !!\(ui\.op && ui\.op\.incrustada && ui\.op\.incrustada\(\)\);/);
   assert.match(eu, /incrustada\(\) \? '' : controlHtml\(pc\)/);
   const pu = leer('js/presion-ui.js');
-  assert.match(pu, /soloConAlgo && t && t\.estado === 'hoyListo' \? '' : tarjetaHtml\(ui\.modelo\)/);
+  assert.match(pu, /sinTarjeta \|\| \(soloConAlgo && t && t\.estado === 'hoyListo'\) \? '' : tarjetaHtml\(ui\.modelo\)/);
   assert.match(pu, /origen === 'train' \|\| origen === 'misalud' \? origen : 'misdatos'/);
 });
 

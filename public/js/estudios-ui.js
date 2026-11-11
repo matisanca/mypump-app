@@ -441,9 +441,12 @@
   // ── El aviso de arriba en la pantalla principal ──
   /* Mismo lugar y patrón que la novedad destacada de la guía: tarjeta verde con un botón blanco grande. Toda la tarjeta
      lleva a Estudios, a la tarjeta en cuestión. Quien la pinta de nuevo (renderTrain rehace todo) la vuelve a poner. */
+  /* Simplificar (11/11, web_230): en Entreno va una sola tarjeta «Mi salud» (la pinta la página) en lugar de esta y la
+     del control. */
+  const sinTarjetaInicio = () => !!(ui.op && ui.op.sinTarjetaInicio && ui.op.sinTarjetaInicio());
   function montarTarjeta(root) {
     let host = document.getElementById('estHost');
-    const a = ui.modelo && ui.modelo.estado ? ui.modelo.tarjetaInicio : null;
+    const a = ui.modelo && ui.modelo.estado && !sinTarjetaInicio() ? ui.modelo.tarjetaInicio : null;
     if (!root || !a) { if (host) host.remove(); return; }
     if (!host) {
       host = document.createElement('div');
@@ -463,7 +466,7 @@
   function montarControl(root) {
     let host = document.getElementById('ctlHost');
     const C = raiz.Controles;
-    const a = C && ui.modelo && ui.modelo.estado ? ui.modelo.tarjetaControl : null;
+    const a = C && ui.modelo && ui.modelo.estado && !sinTarjetaInicio() ? ui.modelo.tarjetaControl : null;
     if (!root || !a) { if (host) host.remove(); return; }
     if (!host) {
       host = document.createElement('div');

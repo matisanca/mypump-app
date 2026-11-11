@@ -8,6 +8,9 @@
   const T = {
     ceja: 'Novedades de tu plan',
     entradaMisDatos: 'Novedades de tu plan',
+    // Simplificar (11/11, web_230): el bloque de Revisión, debajo de la devolución (antes la lista estaba en Mis datos).
+    ultimoCambio: 'Lo último que cambió en tu plan',
+    verTodo: 'Ver todo',
     vacio: 'Cuando Mati cambie tu rutina, tu dieta o tu suplementación, lo vas a ver acá.',
     listo: 'Listo',
     ver: 'Ver',
@@ -209,6 +212,8 @@
   global.NovedadesUI = {
     T, cuando, muestra, configurar, aplicarPalanca, usarMuestra, observar, mostrarPendiente, montarTarjeta, abrirHoja, abrirLista, cerrar,
     entradaVisible: () => !!(ui.prendida && ui.modelo),
+    /* La más nueva (para Revisión), o null si no hay ninguna. */
+    ultima: () => (ui.prendida && ui.modelo && ui.modelo.lista.length ? ui.modelo.lista[0] : null),
     prendida: () => ui.prendida,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
