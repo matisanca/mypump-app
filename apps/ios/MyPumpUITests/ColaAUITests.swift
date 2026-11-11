@@ -325,11 +325,11 @@ final class ColaAUITests: XCTestCase {
         demo(["-pestana", "entreno", "-abrir", "ejercicio", "-descanso", "no"])
         app.fijarCarga("95")
         app.darOK()
-        let atras = app.navigationBars.buttons.element(boundBy: 0)
+        let atras = app.navigationBars.buttons.firstMatch
         XCTAssertTrue(atras.waitForExistence(timeout: 10))
-        atras.tap()
-        let cerrar = app.buttons.matching(NSPredicate(format: "label == 'Terminar el entrenamiento de hoy'")).firstMatch
-        for _ in 0..<14 where !(cerrar.exists && cerrar.isHittable) { app.swipeUp() }
+        app.volverALaLista()
+        XCTAssertTrue(app.navigationBars["Remo con barra"].waitForNonExistence(timeout: 10), "No volvió a la lista")
+        let cerrar = app.bajarHastaCerrarSesion()
         XCTAssertTrue(cerrar.isHittable, "No está «Terminar el entrenamiento de hoy»")
         cerrar.tap()
         XCTAssertTrue(app.buttons["confirmar-cierre"].waitForExistence(timeout: 30))

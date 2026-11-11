@@ -44,15 +44,16 @@ final class SuplementacionUITests: XCTestCase {
         XCTAssertTrue(sale.isHittable, "No se ve «Dejás de tomar»")
         XCTAssertTrue(sale.label.contains("Multivitamínico"))
 
-        // Salud, desde la tarjeta Recuperación de arriba de Revisión (en la demo, sin datos de salud).
+        // Salud, desde la tarjeta Recuperación de arriba de Revisión (en la demo, sin score: «Con tu cuenta»). Desde la cola A
+        // la demo trae historial de salud (peso y pasos), así que el check puede mostrar «Tu salud, últimos 7 días».
         app.pestana("Revisión").tap()
         let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "Falta la tarjeta Recuperación en Revisión")
         XCTAssertTrue(tarjeta.label.contains("Con tu cuenta"), "La tarjeta de la demo dice otra cosa: \(tarjeta.label)")
-        XCTAssertFalse(app.descendants(matching: .any)["salud-semana-check"].exists, "La demo no tiene salud que resumir")
         let progreso = app.buttons["tarjeta-progreso-revision"]
         XCTAssertTrue(progreso.exists, "Falta la tarjeta Tu progreso")
-        XCTAssertTrue(progreso.label.contains("Tu fuerza y tus récords"), "La demo no tiene historial: \(progreso.label)")
+        // La demo con historial (cola A) ya trae récords de la semana.
+        XCTAssertTrue(progreso.label.contains("Tu progreso"), "La tarjeta de progreso dice otra cosa: \(progreso.label)")
         tarjeta.tap()
         XCTAssertTrue(app.descendants(matching: .any)["segmento-salud"].waitForExistence(timeout: 5), "No abrió Salud")
         captura("suplementacion-salud-desde-revision")

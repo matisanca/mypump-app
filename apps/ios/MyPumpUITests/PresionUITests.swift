@@ -57,6 +57,17 @@ final class PresionUITests: XCTestCase {
         if n > 0 { RunLoop.current.run(until: Date().addingTimeInterval(1.5)) }
         tocar(id)
     }
+    /// El «No» de una pregunta previa. Con la letra más grande el toque puede caer mientras la lista todavía se mueve: se
+    /// mira que quedó elegido y, si no, se vuelve a tocar.
+    private func elegirNo(_ pregunta: String) {
+        let id = "\(pregunta)-no"
+        tocarArriba(id)
+        for _ in 0..<2 where !e(id).isSelected {
+            RunLoop.current.run(until: Date().addingTimeInterval(1))
+            tocar(id)
+        }
+        XCTAssertTrue(e(id).isSelected, "No quedó elegido \(id)")
+    }
     private func escribir(_ id: String, _ texto: String) {
         tocarArriba(id)
         e(id).typeText(texto)
@@ -85,7 +96,7 @@ final class PresionUITests: XCTestCase {
         tocar("presion-cuando-seguir")
         esperar("presion-como")
         tocar("presion-empezar")
-        for k in ["cafeina", "fumo", "comida", "ejercicio"] { tocarArriba("presion-previa-\(k)-no") }
+        for k in ["cafeina", "fumo", "comida", "ejercicio"] { elegirNo("presion-previa-\(k)") }
         tocar("presion-previa-seguir")
         esperar("presion-reposo")
         if !esperando { tocar("presion-saltear") }
@@ -404,7 +415,7 @@ final class PresionUITests: XCTestCase {
         tocar("presion-empezar")
         esperar("presion-previa-cafeina")
         foto("previa")
-        for k in ["cafeina", "fumo", "comida", "ejercicio"] { tocarArriba("presion-previa-\(k)-no") }
+        for k in ["cafeina", "fumo", "comida", "ejercicio"] { elegirNo("presion-previa-\(k)") }
         tocar("presion-previa-seguir")
         esperar("presion-reposo")
         foto("reposo")

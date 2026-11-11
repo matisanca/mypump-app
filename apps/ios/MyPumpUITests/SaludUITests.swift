@@ -132,12 +132,12 @@ final class SaludUITests: XCTestCase {
         let demo = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Ver demo'")).firstMatch
         if demo.waitForExistence(timeout: 3) { app.terminate(); app.launch(); if demo.waitForExistence(timeout: 3) { demo.tap() } }
         // Con las series confirmadas, se vuelve a la lista y se cierra.
-        let atras = app.navigationBars.buttons.element(boundBy: 0)
+        let atras = app.navigationBars.buttons.firstMatch
         XCTAssertTrue(atras.waitForExistence(timeout: 30), "No abrió el ejercicio")
         sleep(2)
-        atras.tap()
-        let cerrar = app.buttons.matching(NSPredicate(format: "label == 'Terminar el entrenamiento de hoy'")).firstMatch
-        for _ in 0..<12 where !(cerrar.exists && cerrar.isHittable) { app.swipeUp() }
+        app.volverALaLista()
+        XCTAssertTrue(app.navigationBars["Remo con barra"].waitForNonExistence(timeout: 10), "No volvió a la lista")
+        let cerrar = app.bajarHastaCerrarSesion()
         XCTAssertTrue(cerrar.isHittable, "No está «Terminar el entrenamiento de hoy»")
         cerrar.tap()
         let hoy = app.otherElements["volumen-hoy"].firstMatch

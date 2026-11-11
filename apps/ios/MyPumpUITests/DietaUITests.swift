@@ -320,6 +320,14 @@ final class DietaUITests: XCTestCase {
         app.launchArguments += ["-mypump-theme", "dark"]
         app.launch()
         _ = primeraComida()
+        // U4: la comida marcada se ve plegada («La comiste»); tocando el título se abre con «Comí» marcado.
+        let encabezado = app.descendants(matching: .any)["encabezado-\(comidaId)"].firstMatch
+        // `primeraComida` pudo bajar hasta la próxima comida abierta: se busca para arriba y, si no, para abajo.
+        for _ in 0..<8 where !encabezado.exists { app.swipeDown() }
+        for _ in 0..<15 where !encabezado.exists { app.swipeUp() }
+        XCTAssertTrue(encabezado.waitForExistence(timeout: 10), "Sin el título de la comida")
+        XCTAssertEqual(encabezado.value as? String, "La comiste", "«Comí» no sobrevivió a reabrir la app")
+        encabezado.tap()
         let comi = app.buttons["comi-\(comidaId)"]
         for _ in 0..<15 where !comi.exists { app.swipeUp() }
         esperar(comi, seleccionado: true, "«Comí» no sobrevivió a reabrir la app")

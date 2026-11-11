@@ -99,7 +99,8 @@ final class RecuperacionConfianzaUITests: XCTestCase {
         app.launch()
         let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Revisión")
-        let conScore = NSPredicate(format: "label CONTAINS 'de 100'")
+        // Desde el upgrade del iPhone es una fila de «Cómo vengo»: el número solo (41 en el doble «baja»), sin «de 100».
+        let conScore = NSPredicate(format: "label MATCHES %@", "(?s).*\\b41\\b.*")
         expectation(for: conScore, evaluatedWith: tarjeta)
         waitForExpectations(timeout: 15)
         XCTAssertTrue(tarjeta.label.contains("Confianza baja"), "Falta la confianza: \(tarjeta.label)")

@@ -36,8 +36,10 @@ final class DevolucionUITests: XCTestCase {
         let rec = e("tarjeta-recuperacion-revision")
         if rec.exists { XCTAssertLessThan(e("devolucion-tarjeta").frame.minY, rec.frame.minY) }
         // Nunca un aviso de IA ni un tercero.
-        for prohibido in ["IA", "inteligencia", "tu coach", "tu entrenador", "automático"] {
-            XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] %@", prohibido)).firstMatch.exists, prohibido)
+        // «IA» como palabra y en mayúsculas: sin distinguir mayúsculas, «ia» está en «historial», «diario» o «media».
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "(?s).*\\bIA\\b.*")).firstMatch.exists, "IA")
+        for prohibido in ["inteligencia", "tu coach", "tu entrenador", "automático"] {
+            XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", prohibido)).firstMatch.exists, prohibido)
         }
         foto("claro-dos")
         XCTAssertTrue(e("devolucion-historial").exists)
@@ -54,7 +56,10 @@ final class DevolucionUITests: XCTestCase {
 
     func testLetraGrande() {
         lanzar("una", letraGrande: true)
-        XCTAssertTrue(e("devolucion-tarjeta").waitForExistence(timeout: 60))
+        // Con letra de accesibilidad el encabezado se apila y SwiftUI no expone el contenedor «devolucion-tarjeta» (sus
+        // partes cuelgan de «devolucion-seccion»): se espera el texto del mensaje.
+        XCTAssertTrue(e("devolucion-texto").waitForExistence(timeout: 60))
+        XCTAssertTrue(e("devolucion-seccion").exists)
         XCTAssertFalse(e("devolucion-historial").exists)
         foto("grande-una")
     }

@@ -4,6 +4,31 @@ import XCTest
 @MainActor
 extension XCUIApplication {
     var okSerie: XCUIElement { buttons["ok-serie"] }
+
+    /// Vuelve a la lista del día. En iOS 26 el botón se llama "BackButton" y el primero de la barra es otro; en 17 y 18
+    /// es el primero.
+    func volverALaLista() {
+        let volver = navigationBars.buttons["BackButton"]
+        (volver.exists ? volver : navigationBars.buttons.element(boundBy: 0)).tap()
+    }
+
+    /// Baja la lista del día hasta el fondo, donde queda «Terminar el entrenamiento de hoy». Con una serie pendiente el panel
+    /// de carga tapa la mitad de abajo y el botón puede estar detrás aunque XCUI lo dé por tocable: recién al fondo de la
+    /// lista (el contenido termina por encima del panel) queda a la vista. Arrastres cortos que se sostienen al final (sin
+    /// inercia, para leer la posición quieta): un `swipeUp` desde el centro podía caer en una tarjeta y abrir el ejercicio.
+    func bajarHastaCerrarSesion(intentos: Int = 16) -> XCUIElement {
+        let cerrar = buttons["cerrar-sesion"].firstMatch
+        var antes = CGRect.null
+        for _ in 0..<intentos {
+            coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .press(forDuration: 0.05, thenDragTo: coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)),
+                       withVelocity: .default, thenHoldForDuration: 0.2)
+            let ahora = cerrar.exists ? cerrar.frame : .null
+            if !ahora.isNull && ahora == antes { break }
+            antes = ahora
+        }
+        return cerrar
+    }
     var cargaValor: XCUIElement { textFields["carga-valor"] }
 
     /// Escribe la carga única y baja el teclado: con el teclado arriba el panel se esconde.

@@ -638,6 +638,10 @@ final class ServidorChatUI: Transporte, @unchecked Sendable {
             try? await Task.sleep(for: .seconds(1.5))
             (status, cuerpo) = rechazar ? (429, Data(#"{"ok":false,"error":"muchos adjuntos por hoy"}"#.utf8))
                 : (200, Data(#"{"ok":true,"ya":false,"comentario_id":"\#(UUID().uuidString.lowercased())","created_at":"\#(FechaISO.texto(Date()))"}"#.utf8))
+        } else if ruta.hasSuffix("mypump_get_cliente_info") {
+            // Ante un rechazo definitivo la cola pregunta si el token sigue vivo (`Escrituras.cayo`): con «[]» lo daría por
+            // caído y estacionaría el adjunto en vez de decir por qué no salió.
+            (status, cuerpo) = (200, Data(#"[{"nombre":"Prueba"}]"#.utf8))
         } else if ruta.hasSuffix("/chat/urls") {
             let filas = [(Self.idFoto, "foto", "image/jpeg"), (Self.idAudio, "audio", "audio/mp4")]
                 .map { #"{"id":"\#($0.0)","tipo":"\#($0.1)","mime":"\#($0.2)","url":"https://adjuntos.invalid/\#($0.0)"}"# }
