@@ -65,8 +65,10 @@ def test_documento_argentino_y_pasaporte():
 def test_casillas_obligatorias():
     assert reglas.validar_casillas("servicio_ar", "AR", {"electronico": True}) == ["lei_acepto"]
     assert reglas.validar_casillas("consentimiento_ar", "AR", {"electronico": True, "lei_acepto": True}) == ["datos_salud"]
-    assert "inicio_en_desistimiento" in reglas.casillas_de("servicio_ext", "ES")
-    assert "inicio_en_desistimiento" not in reglas.casillas_de("servicio_ext", "OTRO")
+    assert reglas.casillas_de("servicio_ext", "ES")["inicio_anticipado"] is False  # optativa, en toda variante del exterior
+    assert reglas.casillas_de("servicio_ext", "OTRO")["inicio_anticipado"] is False
+    # desde la plantilla v7 el exterior no se emite sin plan, objetivo y precio (Anexo I)
+    assert reglas.faltantes("servicio_ext", reglas.campos_de_alta("servicio_ext", {"nombre": "A", "apellido": "B", "plan": "P"})) == ["cObjetivo", "cPrecio"]
     assert reglas.validar_casillas("servicio_ext", "ES", {"electronico": True, "lei_acepto": True}) == []
 
 
@@ -137,7 +139,7 @@ def test_las_plantillas_reales_vigentes():
     import hashlib
     import cargar_plantillas as cp
     carpeta = os.environ.get("PUMP_FIRMA_FUENTES", "")
-    vigentes = {"servicio_ar": ("A_v11.md", "a83186488e6b4642267ee5065c71bb62"), "servicio_ext": ("E_v6.md", "41b57e9097eb3e30cf8833a0a9ef09f1")}
+    vigentes = {"servicio_ar": ("A_v12.md", "ad36ae0b5ef1e4af596816e1f934f516"), "servicio_ext": ("E_v7.md", "90fedc101c356a8f43844712a6f96471")}
     if not all(os.path.exists(os.path.join(carpeta, a)) for a, _ in vigentes.values()):
         pytest.skip("sin las fuentes privadas")
     for tipo, (archivo, md5) in vigentes.items():
@@ -145,7 +147,7 @@ def test_las_plantillas_reales_vigentes():
         assert hashlib.md5(md.encode()).hexdigest() == md5, archivo
         assert cp.texto_retirado(tipo, md) == [], archivo
         assert "videollamadas" not in md.lower() and "sesiones de coaching" not in md.lower(), archivo
-    for tipo, viejas in {"servicio_ar": ("A_v8.md", "A_v9.md", "A_v10.md"), "servicio_ext": ("E_v3.md", "E_v4.md", "E_v5.md")}.items():
+    for tipo, viejas in {"servicio_ar": ("A_v8.md", "A_v9.md", "A_v10.md", "A_v11.md"), "servicio_ext": ("E_v3.md", "E_v4.md", "E_v5.md", "E_v6.md")}.items():
         for archivo in viejas:
             ruta = os.path.join(carpeta, archivo)
             if os.path.exists(ruta):

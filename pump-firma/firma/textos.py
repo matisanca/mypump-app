@@ -13,8 +13,7 @@ CASILLAS = {
         "consentimiento_ar": "Leí este documento completo, incluido el Anexo, lo comprendo y decido atenderme con el Dr. Sancari en estas condiciones.",
     },
     "datos_salud": "Doy mi consentimiento expreso para que el Dr. Sancari trate mis datos de salud con el único fin de atenderme, y para que queden en mi historia clínica.",
-    # El texto de «inicio_anticipado» es el párrafo de la casilla del propio contrato (cláusula 10.2): sale de la plantilla.
-    "inicio_en_desistimiento": "Pido expresamente que el servicio empiece antes de que terminen los 14 días de desistimiento. Sé que, si desisto con el servicio ya empezado, pago la parte proporcional de lo prestado hasta ese momento, y que cuando el servicio esté completamente ejecutado pierdo el derecho de desistimiento.",
+    # El texto de «inicio_anticipado» es el párrafo de la casilla del propio contrato (Argentina y exterior): sale de la plantilla.
 }
 
 AVISO_MEDIO = ("Cómo funciona esta firma. Vas a leer el documento, confirmar tus datos, validar un código que te mandamos a "

@@ -18,7 +18,7 @@ PAISES_NO_ARGENTINA = [
 
 CAMPOS_TEXTO = {
     "servicio_ar": ("cNombre1", "cNombre2", "cDni1", "cDni2", "cDomic", "cPais", "cPlan", "cObjetivo", "cPrecio"),
-    "servicio_ext": ("cNombre1", "cNombre2", "cDni1", "cDni2", "cDomic", "cPais"),
+    "servicio_ext": ("cNombre1", "cNombre2", "cDni1", "cDni2", "cDomic", "cPais", "cPlan", "cObjetivo", "cPrecio"),
     "consentimiento_ar": ("mNombre", "mNombre2", "mDni", "mDni2", "mDomic"),
 }
 CAMPOS_FECHA = {
@@ -30,7 +30,8 @@ CAMPO_FIRMA = {"servicio_ar": "cFirma", "servicio_ext": "cFirma", "consentimient
 # Lo que el closer tiene que haber cargado para que el documento nazca. El DNI puede faltar: lo escribe el firmante.
 OBLIGATORIOS = {
     "servicio_ar": ("cNombre1", "cPlan", "cObjetivo", "cPrecio"),
-    "servicio_ext": ("cNombre1",),
+    # desde la plantilla v7 el exterior también lleva Anexo I (plan, objetivo, precio): sin eso no se emite
+    "servicio_ext": ("cNombre1", "cPlan", "cObjetivo", "cPrecio"),
     "consentimiento_ar": ("mNombre",),
 }
 
@@ -123,7 +124,7 @@ def campos_de_alta(tipo: str, alta: dict) -> dict:
         return {"mNombre": nombre, "mNombre2": nombre, "mDni": dni, "mDni2": dni, "mDomic": domic}
     c = {"cNombre1": nombre, "cNombre2": nombre, "cDni1": dni, "cDni2": dni, "cDomic": domic,
          "cPais": limpiar_texto(alta.get("pais", ""), 80)}
-    if tipo == "servicio_ar":
+    if tipo in ("servicio_ar", "servicio_ext"):
         c["cPlan"] = limpiar_texto(alta.get("plan", ""), 200)
         c["cObjetivo"] = limpiar_texto(alta.get("objetivo", ""), 300)
         c["cPrecio"] = limpiar_parrafo(alta.get("precio", ""), 1500)
@@ -220,10 +221,11 @@ def resolver_identidad(tipo: str, variante: str, campos: dict, escrito: dict) ->
 # queda en el evento y en la constancia.
 CASILLAS = {
     "servicio_ar": {"electronico": True, "lei_acepto": True, "inicio_anticipado": False},
-    "servicio_ext": {"electronico": True, "lei_acepto": True},
+    "servicio_ext": {"electronico": True, "lei_acepto": True, "inicio_anticipado": False},
     "consentimiento_ar": {"electronico": True, "lei_acepto": True, "datos_salud": True},
 }
-CASILLAS_ES = {"inicio_en_desistimiento": False}
+# La casilla de inicio anticipado del exterior sale de la plantilla (como la de Argentina) y queda en el contrato firmado.
+CASILLAS_ES = {}
 
 
 def casillas_de(tipo: str, variante: str) -> dict:

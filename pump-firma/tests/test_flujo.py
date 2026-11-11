@@ -314,9 +314,9 @@ def test_espana_boton_aviso_y_casilla(srv, alta, smtp, firmar_todo):
     t = token_de_url(r["documentos"][0]["url"])
     v = srv.ver(t, IP, UA)
     assert "obligación de pago" in v["boton"] and v["aviso_es"] and "desist" in str(v["aviso_es"]).lower()
-    assert [c["clave"] for c in v["casillas"]] == ["electronico", "lei_acepto", "inicio_en_desistimiento"]
+    assert [c["clave"] for c in v["casillas"]] == ["electronico", "lei_acepto", "inicio_anticipado"]
     assert v["documento_rotulo"] == "Documento"
-    d, t, r = firmar_todo(a, "servicio_ext", casillas=dict(CASILLAS_OK, inicio_en_desistimiento=True))
+    d, t, r = firmar_todo(a, "servicio_ext", casillas=dict(CASILLAS_OK, inicio_anticipado=True))
     assert r["estado"] == "firmado"
     assert srv.estado(email=a["email"])["bloquea_agenda"] is False  # exterior: alcanza con el contrato
     b = srv.ver(t, IP, UA)
@@ -327,7 +327,7 @@ def test_otro_pais_sin_boton_de_espana(srv, alta):
     r = srv.crear(alta(residente=False, pais="México"), IP, UA)
     v = srv.ver(token_de_url(r["documentos"][0]["url"]), IP, UA)
     assert v["aviso_es"] is None and "obligación de pago" not in v["boton"]
-    assert [c["clave"] for c in v["casillas"]] == ["electronico", "lei_acepto"]
+    assert [c["clave"] for c in v["casillas"]] == ["electronico", "lei_acepto", "inicio_anticipado"]  # optativa, del propio contrato
 
 
 def test_revocar_consentimiento(srv, alta, smtp, bot, firmar_todo, admin):

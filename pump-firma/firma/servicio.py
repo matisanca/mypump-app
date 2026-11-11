@@ -78,7 +78,7 @@ class Servicio:
             return None
 
     def _valores_base(self, tipo, campos) -> render.Valores:
-        # El del exterior lleva la firma del prestador impresa, como en la plantilla vigente (v6).
+        # El del exterior lleva la firma del prestador impresa, como en la plantilla vigente (v7).
         return render.Valores(tipo, campos, firma_prestador_png=self._firma_prestador() if tipo == "servicio_ext" else None)
 
     def _texto_casilla(self, tipo, clave, pagina) -> str:
