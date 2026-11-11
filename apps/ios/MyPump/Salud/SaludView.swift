@@ -72,11 +72,14 @@ struct SaludView: View {
     @ViewBuilder private var recuperacion: some View {
         if let salud {
             VStack(alignment: .leading, spacing: Espacio.l) {
+                PumpDelDiaSiCorresponde(enSalud: true)
                 CardRecuperacionView(modelo: salud)
                 CardSaludView(modelo: salud)
                 // Oura y WHOOP según lo que ofrezca el servidor (sin relojes para ofrecer, no ocupa lugar).
                 MiRelojView(modelo: salud)
             }
+        } else if MetasUI.shared.muestra {
+            PumpDelDiaSiCorresponde(enSalud: true)
         } else {
             ContentUnavailableView {
                 Label("Sin datos de salud en la demo", systemImage: "heart.text.square")

@@ -267,6 +267,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
             com.pumpteam.mypump.novedades.HojaDeNovedadesDe(modelo, navegacion)
             // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
             DialogoPreguntas(vm.preguntasEntreno)
+            // «Pump lleno» (2.3.0): la celebración del día, arriba de las pestañas.
+            com.pumpteam.mypump.metas.CelebracionPumpRaiz(modelo)
             // Salud: el diagnóstico que pidió un link con `?diag=health` (SAL-13), arriba de todo.
             DiagnosticoSaludDesdeLink(modelo)
         }

@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import UserNotifications
 import MyPumpDatos
+import MyPumpReglas
 
 /// Notificaciones: la local del domingo (`AvisoDomingo`: llega como un mensaje de Mati y no se configura; id 1002, como
 /// la Capacitor: reprogramar la pisa y borra las viejas 1001/1003/1004 que siguen agendadas en los teléfonos que
@@ -59,6 +60,18 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         let pedido = UNNotificationRequest(identifier: AvisoDomingo.id, content: c,
                                            trigger: UNCalendarNotificationTrigger(dateMatching: cuando, repeats: false))
         try? await centro.add(pedido)
+    }
+
+    /// «Pump lleno» con la app en segundo plano (2.3.0): un aviso local ahora mismo, solo si los avisos ya estaban
+    /// permitidos (nunca se piden por esto). Tocarlo abre Entreno, donde está el «Pump del día».
+    func avisarPumpLleno(meta: Int) async {
+        guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { return }
+        let c = UNMutableNotificationContent()
+        c.title = PumpDelDia.lleno
+        c.body = PumpDelDia.celebracion(meta: meta)
+        c.sound = .default
+        c.userInfo = ["destino": "train"]
+        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "pump-lleno", content: c, trigger: nil))
     }
 
     /// Se completó (o se cargó) la semana de revisión: el aviso se vuelve a armar, solo con una cuenta de verdad y si ya

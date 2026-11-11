@@ -165,6 +165,8 @@ struct Raiz: View {
                 }
             }
         }
+        // «Pump lleno» (2.3.0): la celebración del día, arriba de todo (también de la barra de pestañas).
+        .celebracionPump()
         .environment(navegacion)
         // Dieta se abre siempre en hoy: salir de la pestaña deja de mirar el día anterior (la cámara o una hoja no cuentan).
         .onChange(of: navegacion.pestaña) { anterior, _ in

@@ -23,11 +23,20 @@ public struct EstructuraDieta: Decodable, Sendable, Equatable {
     public var macrosTarget: Macros?
     public var comidas: [Comida]
     public var tiposDia: [TipoDia]
+    /// Las metas del plan (2.3.0): `meta_pasos_dia` y `ritmo_peso_kg_semana`, tal como vinieron (número o nada). El tipo
+    /// entero y el rango los mira `MetasPlan`: acá un texto u otra cosa ya cuenta como que no vino.
+    public var metaPasosDia: Double?
+    public var ritmoPesoKgSemana: Double?
 
-    enum CodingKeys: String, CodingKey { case macrosTarget = "macros_target", comidas, tiposDia = "tipos_dia" }
+    enum CodingKeys: String, CodingKey {
+        case macrosTarget = "macros_target", comidas, tiposDia = "tipos_dia"
+        case metaPasosDia = "meta_pasos_dia", ritmoPesoKgSemana = "ritmo_peso_kg_semana"
+    }
 
-    public init(macrosTarget: Macros? = nil, comidas: [Comida] = [], tiposDia: [TipoDia] = []) {
+    public init(macrosTarget: Macros? = nil, comidas: [Comida] = [], tiposDia: [TipoDia] = [],
+                metaPasosDia: Double? = nil, ritmoPesoKgSemana: Double? = nil) {
         self.macrosTarget = macrosTarget; self.comidas = comidas; self.tiposDia = tiposDia
+        self.metaPasosDia = metaPasosDia; self.ritmoPesoKgSemana = ritmoPesoKgSemana
     }
 
     public init(from decoder: Decoder) throws {
@@ -35,6 +44,8 @@ public struct EstructuraDieta: Decodable, Sendable, Equatable {
         macrosTarget = try? c.decodeIfPresent(Macros.self, forKey: .macrosTarget)
         comidas = c.lista(Comida.self, .comidas)
         tiposDia = c.lista(TipoDia.self, .tiposDia)
+        metaPasosDia = try? c.decodeIfPresent(Double.self, forKey: .metaPasosDia)
+        ritmoPesoKgSemana = try? c.decodeIfPresent(Double.self, forKey: .ritmoPesoKgSemana)
     }
 }
 

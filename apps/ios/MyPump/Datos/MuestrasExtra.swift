@@ -15,6 +15,7 @@ import MyPumpDatos
 ///     simctl launch … -demo lleno                          (el check lleno, con -bocetos)
 ///     simctl launch … -series 2                            (el ejercicio abierto con 2 series ya confirmadas)
 ///     simctl launch … -descanso no                         (sin el descanso de muestra)
+///     simctl launch … -metas muestra -pasos 7420           (el «Pump del día» de muestra; -pasosLuego 10240 lo llena)
 enum DemoUI {
     enum Estado: String { case cargando, vacio, error }
 
@@ -68,6 +69,13 @@ enum DemoUI {
     /// `-cardio prueba`: la demo con la cinta tal como la manda el plan (sin duración, `progresion: []`), como cardio al
     /// principio del día 1 y como calentamiento al principio del día 2 (reporte del 4-nov: pedía reps, kg y RIR).
     static var cardioDePrueba: Bool { valor("cardio") == "prueba" }
+
+    /// `-metas muestra` (con la demo o los bocetos): el «Pump del día» con la meta de 10.000 pasos, una racha y la semana de
+    /// muestra, y el ritmo de peso. `-pasos 7420` fija los de hoy; `-pasosLuego 10240` los sube a los 5 s (el video de la
+    /// celebración). `-metas sinsalud`: la meta sin Salud conectada.
+    static var metas: String? { valor("metas") }
+    static var pasosHoy: Double? { valor("pasos").flatMap(Double.init) }
+    static var pasosLuego: Double? { valor("pasosLuego").flatMap(Double.init) }
 
     static func conCintaDePrueba(_ rutina: Data) -> Data {
         guard var raiz = (try? JSONSerialization.jsonObject(with: rutina)) as? [String: Any],

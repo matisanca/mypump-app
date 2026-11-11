@@ -129,6 +129,8 @@ public final class ModeloApp {
     public private(set) var suplementacion: ModeloSuplementacion?
     /// «Novedades de tu plan» (2.3.0): existe con cuenta; solo compara y muestra con la palanca `novedades_plan` prendida.
     public private(set) var novedades: ModeloNovedades?
+    /// «Pump del día» (2.3.0): las fechas ya celebradas de esta cuenta (`metas.json` en su disco; en la demo, en memoria).
+    public internal(set) var registroMetas = PumpDelDia.Registro()
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet {
@@ -256,6 +258,7 @@ public final class ModeloApp {
         borrarCodigosDelDisco()
         token = nil
         disco = nil
+        registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
@@ -333,6 +336,7 @@ public final class ModeloApp {
         token = nil
         disco = nil
         cacheCodigos = nil
+        registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
@@ -377,6 +381,7 @@ public final class ModeloApp {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
         cacheCodigos = nil
+        registroMetas = disco.leer(PumpDelDia.Registro.self, "metas.json") ?? PumpDelDia.Registro()
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones, carpetaAudios: disco.url("audios"))
