@@ -193,7 +193,8 @@ final class ColaBUITests: XCTestCase {
 
     private func casa() {
         lanzar("pedido")
-        tocar("gimnasio-tarjeta")
+        // El botón de la tarjeta de Entreno lleva directo al interruptor.
+        tocar("casa-tarjeta")
         esperar("gimnasio-zona-poleas")
         esperar("casa-interruptor")
         XCTAssertEqual(valorInterruptor(), "0")
@@ -256,6 +257,24 @@ final class ColaBUITests: XCTestCase {
         esperar("casa-recibido")
         XCTAssertFalse(e("casa-interruptor").isEnabled)
         XCTAssertEqual(valorInterruptor(), "1")
+    }
+
+    /// Con el gimnasio ya cargado no hay tarjeta, pero el botón de casa sigue en Entreno: dos toques hasta el interruptor.
+    func testCasaConGimnasioCargadoQuedaADosToques() {
+        lanzar("gimnasioListo")
+        esperar("casa-tarjeta")
+        noEsta("gimnasio-tarjeta", 2)
+        foto("casa-6-boton-con-gimnasio")
+        tocar("casa-tarjeta")
+        esperar("casa-interruptor")
+        XCTAssertEqual(valorInterruptor(), "0")
+    }
+
+    /// Entrenando en casa (o con la carga en revisión) el botón no hace falta.
+    func testCasaVigenteNoOfreceElBoton() {
+        lanzar("casaVigente")
+        esperar("recorrido-tarjeta")
+        noEsta("casa-tarjeta", 4)
     }
 
     // MARK: Capturas en oscuro y con letra grande

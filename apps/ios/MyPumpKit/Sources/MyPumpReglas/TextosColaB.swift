@@ -66,5 +66,6 @@ public enum TextosColaB {
         Compras.boton, Compras.ayuda, Compras.abrirTienda, Compras.pie, Compras.cerrar,
         Casa.interruptor, Casa.interruptorBajada, Casa.fijo, Casa.errorCambiar, Casa.listaTitulo, Casa.listaTexto, Casa.kilos,
         Casa.sinEquipo, Casa.nota, Casa.enviar, Casa.enviando, Casa.errorEnviar, Casa.sinDatos, Casa.vigenteTitulo,
+        Casa.vigenteSinEquipo, Casa.cambiar, Casa.tarjeta,
     ] + MyPumpReglas.Recorrido.preguntas.map(\.texto)
 }

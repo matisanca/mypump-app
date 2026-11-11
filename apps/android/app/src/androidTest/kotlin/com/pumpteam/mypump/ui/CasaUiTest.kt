@@ -97,6 +97,36 @@ class CasaUiTest : PruebaUi() {
         p.nodo(etiqueta("casa-lista"))
     }
 
+    /** Con el gimnasio ya cargado no hay tarjeta, pero el botón de casa sigue en Entreno: dos toques hasta el interruptor. */
+    @Test
+    fun conElGimnasioCargadoElBotonDeCasaQuedaADosToques() {
+        lanzar("casaConGimnasioVigente")
+        p.nodo(etiqueta("casa-tarjeta"))
+        assertFalse("con el gimnasio cargado la tarjeta no va", p.existe(etiqueta("gimnasio-tarjeta")))
+        p.tocar(etiqueta("casa-tarjeta"))
+        p.nodo(etiqueta("casa-interruptor"))
+        assertFalse(p.prendido(etiqueta("casa-interruptor")))
+    }
+
+    /** Entrenando en casa el botón no hace falta. */
+    @Test
+    fun sinBotonEntrenandoEnCasaNiConLaPalancaApagada() {
+        lanzar("casaVigente")
+        p.nodo(etiqueta("pestana-entreno"))
+        p.quieto(2000)
+        assertFalse("entrenando en casa", p.existe(etiqueta("casa-tarjeta")))
+    }
+
+    @Test
+    fun conLaPalancaApagadaYElGimnasioCargadoNoHayBoton() {
+        val d = lanzar("listo")
+        p.nodo(etiqueta("pestana-entreno"))
+        p.quieto(2000)
+        assertFalse(p.existe(etiqueta("casa-tarjeta")))
+        assertFalse(p.existe(etiqueta("gimnasio-tarjeta")))
+        assertEquals("apagada no se llama nada de casa", emptyList<String>(), d.llamadasCasa)
+    }
+
     @Test
     fun conLaPalancaApagadaNoHayInterruptorNiLlamadas() {
         val d = lanzar("vacio")
