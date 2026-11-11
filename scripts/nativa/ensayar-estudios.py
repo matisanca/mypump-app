@@ -140,7 +140,7 @@ def main():
         g = uno(cur, "SELECT mypump_estudios_get(%s)", (tok,))
         chequear("un pendiente y un próximo control", len(g["pendientes"]) == 1 and g["proximo_control"] == {
             "tipo": "laboratorio", "titulo": "Análisis de laboratorio", "desde": "2030-03-01", "hasta": "2030-03-10"}, g)
-        chequear("el pendiente no trae prácticas ni notas", set(g["pendientes"][0]) == {"id", "tipo", "titulo", "detalle", "desde", "hasta", "estado", "hecho_fecha", "orden_id"})
+        chequear("el pendiente no trae prácticas ni notas", set(g["pendientes"][0]) == {"id", "tipo", "titulo", "detalle", "desde", "hasta", "estado", "hecho_fecha", "orden_id", "nuevo"})
         chequear("«ya me lo hice» de otro → no_encontrado",
                  uno(cur, "SELECT mypump_estudios_hecho(%s, %s, mypump_estudios_hoy())", (otro, ped_lab)) in (None, {"ok": False, "error": "no_habilitado"}))
         chequear("«ya me lo hice»", uno(cur, "SELECT mypump_estudios_hecho(%s, %s, mypump_estudios_hoy())", (tok, ped_lab)).get("estado") == "hecho")
@@ -253,7 +253,7 @@ def main():
         chequear("publicar sin nombre → error", falla_con(cur, "SELECT mypump_ordenes_app_publicar(%s, ' ')", (orden,)) == "22023")
         chequear("publicar", uno(cur, "SELECT mypump_ordenes_app_publicar(%s, 'Mati')", (orden,)) == "ok")
         g = uno(cur, "SELECT mypump_estudios_get(%s)", (tok,))
-        chequear("se ve, sin texto ni path", len(g["ordenes"]) == 1 and set(g["ordenes"][0]) == {"id", "tipo", "titulo", "emitida", "vence", "vigente"}, g["ordenes"])
+        chequear("se ve, sin texto ni path", len(g["ordenes"]) == 1 and set(g["ordenes"][0]) == {"id", "tipo", "titulo", "emitida", "vence", "vigente", "nuevo"}, g["ordenes"])
         chequear("se firma para su dueño", uno(cur, firmar_o, (CUENTA, orden))["resultado"] == "ok")
         chequear("no para otro", uno(cur, firmar_o, (OTRA, orden))["resultado"] in ("no_encontrado", "no_habilitado"))
         chequear("ensuciar el texto de una visible → lo frena el CHECK",
@@ -271,12 +271,32 @@ def main():
         chequear("sacar de la vista", uno(cur, "SELECT mypump_ordenes_app_bloquear(%s, 'Sistema base', 'orden corregida')", (orden,)) == "ok")
         chequear("ya no se firma", uno(cur, firmar_o, (CUENTA, orden))["resultado"] == "no_encontrado")
 
+        print("▸ Novedades y aviso")
+        g = uno(cur, "SELECT mypump_estudios_get((SELECT access_token FROM mypump_clientes WHERE cliente_id = %s))", (CUENTA,))
+        cola = "SELECT count(*) FROM mypump_push_cola WHERE cliente_id = %s AND dedupe_key LIKE 'estudios:%%'"
+        chequear("con la palanca de avisos apagada no se encoló nada", uno(cur, cola, (CUENTA,)) == 0)
+        cur.execute("UPDATE mypump_app_config SET valor = 'true' WHERE clave = 'estudios_avisos'")
+        r = uno(cur, pedir, (CUENTA, "ecografia", "revision", "nov-1", "2030-02-10", None, None, "[]"))
+        chequear("pedido nuevo encola UN aviso", uno(cur, cola, (CUENTA,)) == 1)
+        uno(cur, pedir, (CUENTA, "ecografia", "revision", "nov-1", "2030-02-11", None, None, "[]"))
+        chequear("repetir el pedido no avisa de nuevo", uno(cur, cola, (CUENTA,)) == 1)
+        fila = uno(cur, "SELECT jsonb_build_object('t', titulo, 'c', cuerpo, 'd', destino) FROM mypump_push_cola WHERE cliente_id = %s AND dedupe_key LIKE 'estudios:%%'", (CUENTA,))
+        chequear("el aviso es el texto fijo con destino estudios", fila == {"t": "Mati", "c": "Tenés un estudio nuevo para hacer", "d": "estudios"}, fila)
+        g = uno(cur, "SELECT mypump_estudios_get((SELECT access_token FROM mypump_clientes WHERE cliente_id = %s))", (CUENTA,))
+        nuevos = [x["id"] for x in g["pendientes"] if x.get("nuevo")]
+        chequear("la pantalla trae la novedad", g["novedades"] >= 1 and r["id"] in nuevos, g.get("novedades"))
+        v = uno(cur, "SELECT mypump_estudios_novedades_vistas((SELECT access_token FROM mypump_clientes WHERE cliente_id = %s), %s::uuid[])", (OTRA, nuevos))
+        chequear("otra cuenta no puede marcarla vista", (v or {}).get("marcadas", 0) == 0, v)
+        v = uno(cur, "SELECT mypump_estudios_novedades_vistas((SELECT access_token FROM mypump_clientes WHERE cliente_id = %s), %s::uuid[])", (CUENTA, nuevos))
+        g = uno(cur, "SELECT mypump_estudios_get((SELECT access_token FROM mypump_clientes WHERE cliente_id = %s))", (CUENTA,))
+        chequear("vista: deja de ser novedad", v["marcadas"] == len(nuevos) and not [x for x in g["pendientes"] if x.get("nuevo")], v)
+
         print("▸ Permisos")
         cur.execute("""SELECT p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')', has_function_privilege('anon', p.oid, 'EXECUTE'),
                               p.prosecdef
                          FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                         WHERE n.nspname = 'public' AND (p.proname LIKE 'mypump_estudios%' OR p.proname LIKE 'mypump_ordenes%')""")
-        publicas = {"mypump_estudios_get", "mypump_estudios_envio_nuevo", "mypump_estudios_enviar", "mypump_estudios_hecho"}
+        publicas = {"mypump_estudios_get", "mypump_estudios_envio_nuevo", "mypump_estudios_enviar", "mypump_estudios_hecho", "mypump_estudios_novedades_vistas"}
         for firma, anon, _definer in cur.fetchall():
             nombre = firma.split("(")[0]
             chequear(f"anon {'puede' if nombre in publicas else 'no puede'} {nombre}", anon is (nombre in publicas))

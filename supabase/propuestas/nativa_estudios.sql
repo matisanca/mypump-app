@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS mypump_ordenes_app (
   control1_ok      BOOLEAN     NOT NULL DEFAULT FALSE,
   control1_detalle JSONB       NOT NULL DEFAULT '[]'::JSONB,
   estado           TEXT        NOT NULL DEFAULT 'a_revisar' CHECK (estado IN ('a_revisar','visible','bloqueada','reemplazada')),
+  visto_alumno_en  TIMESTAMPTZ,                                            -- novedad: NULL = el alumno todavía no la vio
   motivo_bloqueo   TEXT        CHECK (char_length(motivo_bloqueo) <= 400),
   publicado_por    TEXT        CHECK (char_length(publicado_por) <= 120),
   publicado_en     TIMESTAMPTZ,
@@ -209,6 +210,7 @@ CREATE TABLE IF NOT EXISTS mypump_estudios_pedidos (
   fecha_desde      DATE,                                                   -- «no antes de»
   fecha_limite     DATE        NOT NULL,
   estado           TEXT        NOT NULL DEFAULT 'pedido' CHECK (estado IN ('pedido','hecho','recibido','anulado')),
+  visto_alumno_en  TIMESTAMPTZ,                                            -- novedad: NULL = el alumno todavía no lo vio
   hecho_fecha      DATE,
   hecho_en         TIMESTAMPTZ,
   estudio_id       UUID        REFERENCES mypump_estudios (id) ON DELETE SET NULL,
@@ -278,7 +280,8 @@ ALTER TABLE mypump_estudios_archivos ENABLE ROW LEVEL SECURITY;
 INSERT INTO mypump_app_config (clave, valor, nota) VALUES
   ('estudios_app', 'false'::JSONB, 'Estudios y órdenes. true = abierto a mypump_estudios_habilitados'),
   ('estudios_para_todos', 'false'::JSONB, 'Estudios y órdenes. true = abierto a todos, sin mirar mypump_estudios_habilitados'),
-  ('ordenes_app_auto', 'false'::JSONB, 'Órdenes en la app. false = cada papel espera el OK; true = visible si pasan los dos controles')
+  ('ordenes_app_auto', 'false'::JSONB, 'Órdenes en la app. false = cada papel espera el OK; true = visible si pasan los dos controles'),
+  ('estudios_avisos', 'false'::JSONB, 'Estudios en la app. true = un pedido o una orden nueva manda el aviso al teléfono (texto fijo)')
 ON CONFLICT (clave) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION mypump_estudios_habilitado(p_cliente_id TEXT)
@@ -322,6 +325,12 @@ BEGIN
     'habilitado', TRUE,
     'hoy', v_hoy,
     'topes', jsonb_build_object('archivos_por_envio', 20, 'mb_por_archivo', 20),
+    -- Cuántas cosas nuevas tiene sin ver (pedidos a la vista + órdenes vigentes): el puntito y la tarjeta de arriba.
+    'novedades', (SELECT count(*) FROM mypump_estudios_pedidos p
+                   WHERE p.cliente_id = v_cliente_id AND p.estado = 'pedido' AND p.visto_alumno_en IS NULL
+                     AND NOT (p.origen = 'control' AND p.fecha_desde > v_hoy))
+               + (SELECT count(*) FROM mypump_ordenes_app o
+                   WHERE o.cliente_id = v_cliente_id AND o.estado = 'visible' AND o.vence_en >= v_hoy AND o.visto_alumno_en IS NULL),
     -- El control que viene: todavía no se puede hacer. Sin motivo.
     'proximo_control', (
       SELECT jsonb_build_object('tipo', p.tipo, 'titulo', mypump_estudios_titulo(p.tipo), 'desde', p.fecha_desde, 'hasta', p.fecha_limite)
@@ -332,6 +341,7 @@ BEGIN
       SELECT jsonb_agg(jsonb_build_object(
                'id', p.id, 'tipo', p.tipo, 'titulo', mypump_estudios_titulo(p.tipo), 'detalle', p.detalle_alumno,
                'desde', p.fecha_desde, 'hasta', p.fecha_limite, 'estado', p.estado, 'hecho_fecha', p.hecho_fecha,
+               'nuevo', p.visto_alumno_en IS NULL AND p.estado = 'pedido',
                'orden_id', (SELECT o.id FROM mypump_ordenes_app o WHERE o.id = p.orden_app_id AND o.cliente_id = v_cliente_id
                              AND o.estado = 'visible' AND o.vence_en >= v_hoy))
              ORDER BY p.fecha_limite, p.id)
@@ -342,7 +352,8 @@ BEGIN
       SELECT jsonb_agg(jsonb_build_object(
                'id', o.id, 'tipo', o.tipo, 'titulo', mypump_estudios_titulo(o.tipo),
                'emitida', (o.emitida_en AT TIME ZONE 'America/Argentina/Buenos_Aires')::DATE,
-               'vence', o.vence_en, 'vigente', o.vence_en >= v_hoy)
+               'vence', o.vence_en, 'vigente', o.vence_en >= v_hoy,
+               'nuevo', o.visto_alumno_en IS NULL AND o.vence_en >= v_hoy)
              ORDER BY o.emitida_en DESC, o.id)
         FROM mypump_ordenes_app o
        WHERE o.cliente_id = v_cliente_id AND o.estado = 'visible' AND o.vence_en >= v_hoy - 30), '[]'::JSONB),
@@ -439,6 +450,54 @@ END;
 $$;
 
 -- «Ya me lo hice»: no cierra nada, solo le avisa a Mati que falta el resultado. `p_fecha` NULL lo deshace.
+-- El alumno vio estas tarjetas (pedidos u órdenes, mezclados): dejan de ser novedad. Solo las suyas; lo demás se ignora.
+CREATE OR REPLACE FUNCTION mypump_estudios_novedades_vistas(p_token TEXT, p_ids UUID[])
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_cliente_id TEXT;
+  v_a INTEGER := 0;
+  v_b INTEGER := 0;
+BEGIN
+  v_cliente_id := mypump_get_cliente_id_from_token(p_token);
+  IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
+  IF NOT mypump_estudios_habilitado(v_cliente_id) THEN RETURN jsonb_build_object('ok', FALSE, 'error', 'no_habilitado'); END IF;
+  IF p_ids IS NULL OR cardinality(p_ids) = 0 OR cardinality(p_ids) > 100 THEN RETURN jsonb_build_object('ok', TRUE, 'marcadas', 0); END IF;
+  UPDATE mypump_estudios_pedidos SET visto_alumno_en = NOW()
+   WHERE cliente_id = v_cliente_id AND id = ANY (p_ids) AND visto_alumno_en IS NULL;
+  GET DIAGNOSTICS v_a = ROW_COUNT;
+  UPDATE mypump_ordenes_app SET visto_alumno_en = NOW()
+   WHERE cliente_id = v_cliente_id AND id = ANY (p_ids) AND visto_alumno_en IS NULL AND estado = 'visible';
+  GET DIAGNOSTICS v_b = ROW_COUNT;
+  RETURN jsonb_build_object('ok', TRUE, 'marcadas', v_a + v_b);
+END;
+$$;
+
+-- El aviso al teléfono de una novedad. Texto fijo de lista cerrada: nunca dice qué estudio ni por qué.
+-- No sale con la palanca `estudios_avisos` apagada ni a una cuenta que no tiene la sección. Una vez por pedido u orden.
+CREATE OR REPLACE FUNCTION mypump_estudios_avisar(p_cliente_id TEXT, p_clase TEXT, p_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF p_clase NOT IN ('pedido', 'orden') OR p_id IS NULL THEN RETURN FALSE; END IF;
+  IF NOT COALESCE((SELECT valor = 'true'::JSONB FROM mypump_app_config WHERE clave = 'estudios_avisos'), FALSE) THEN RETURN FALSE; END IF;
+  IF NOT mypump_estudios_habilitado(p_cliente_id) THEN RETURN FALSE; END IF;
+  RETURN mypump_encolar_push(p_cliente_id, 'Mati',
+           CASE p_clase WHEN 'orden' THEN 'Tenés una orden nueva' ELSE 'Tenés un estudio nuevo para hacer' END,
+           'estudios', 'estudios:' || p_clase || ':' || p_id::TEXT) IS NOT NULL;
+END;
+$$;
+REVOKE ALL ON FUNCTION mypump_estudios_avisar(TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_estudios_avisar(TEXT, TEXT, UUID) TO service_role;
+REVOKE ALL ON FUNCTION mypump_estudios_novedades_vistas(TEXT, UUID[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION mypump_estudios_novedades_vistas(TEXT, UUID[]) TO anon, authenticated, service_role;
+
 CREATE OR REPLACE FUNCTION mypump_estudios_hecho(p_token TEXT, p_pedido_id UUID, p_fecha DATE)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -742,6 +801,11 @@ BEGIN
     WHERE mypump_estudios_pedidos.estado IN ('pedido','hecho')
   RETURNING * INTO v_fila;
   IF v_fila.id IS NULL THEN RETURN jsonb_build_object('ok', TRUE, 'ya_cerrado', TRUE); END IF;
+  -- Aviso al teléfono: solo si ya está a la vista (no un control futuro) y no viene con una orden (esa avisa al publicarse).
+  IF v_fila.estado = 'pedido' AND v_fila.visto_alumno_en IS NULL AND v_fila.orden_app_id IS NULL
+     AND NOT (v_fila.origen = 'control' AND v_fila.fecha_desde > mypump_estudios_hoy()) THEN
+    PERFORM mypump_estudios_avisar(p_cliente_id, 'pedido', v_fila.id);
+  END IF;
   RETURN jsonb_build_object('ok', TRUE, 'id', v_fila.id, 'estado', v_fila.estado);
 END;
 $$;
@@ -828,6 +892,7 @@ BEGIN
     UPDATE mypump_ordenes_app SET estado = 'reemplazada', actualizado_en = NOW()
      WHERE documento_id = p_reemplaza AND cliente_id = p_cliente_id AND estado IN ('a_revisar','visible');
   END IF;
+  IF v_estado = 'visible' THEN PERFORM mypump_estudios_avisar(p_cliente_id, 'orden', v_fila.id); END IF;
   RETURN jsonb_build_object('ok', TRUE, 'ya', FALSE, 'id', v_fila.id, 'estado', v_fila.estado, 'control2_ok', v_control2);
 END;
 $$;
@@ -852,6 +917,7 @@ BEGIN
     RETURN 'bloqueada';
   END IF;
   UPDATE mypump_ordenes_app SET estado = 'visible', publicado_por = left(btrim(p_por), 120), publicado_en = NOW(), actualizado_en = NOW() WHERE id = p_id;
+  PERFORM mypump_estudios_avisar(v_fila.cliente_id, 'orden', p_id);
   RETURN 'ok';
 END;
 $$;
