@@ -24,6 +24,8 @@ public struct PalancaRemota: Equatable, Sendable {
     public var tecnicaVideo = false
     /// «Novedades de tu plan» (`novedades_plan`). Sin la clave, apagada: no se guarda ni se muestra nada.
     public var novedadesPlan = false
+    /// Devolución de Mati en Revisión (`devolucion_semanal`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo.
+    public var devolucionSemanal = false
 
     public init() {}
 
@@ -37,12 +39,15 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveTecnicaVideo = "mypump-palanca-tecnica-video"
     /// El último valor leído de `novedades_plan`: lo ya detectado se puede ver sin red.
     static let claveNovedadesPlan = "mypump-palanca-novedades-plan"
+    /// El último valor leído de `devolucion_semanal`: prendida, sin red se sigue viendo la última devolución guardada.
+    static let claveDevolucion = "mypump-palanca-devolucion-semanal"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
         if defaults.bool(forKey: claveGimnasioFotos) { p.gimnasioFotos = true }
         if defaults.bool(forKey: claveTecnicaVideo) { p.tecnicaVideo = true }
         if defaults.bool(forKey: claveNovedadesPlan) { p.novedadesPlan = true }
+        if defaults.bool(forKey: claveDevolucion) { p.devolucionSemanal = true }
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
@@ -50,6 +55,7 @@ public struct PalancaRemota: Equatable, Sendable {
         defaults.set(gimnasioFotos, forKey: Self.claveGimnasioFotos)
         defaults.set(tecnicaVideo, forKey: Self.claveTecnicaVideo)
         defaults.set(novedadesPlan, forKey: Self.claveNovedadesPlan)
+        defaults.set(devolucionSemanal, forKey: Self.claveDevolucion)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
@@ -61,6 +67,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["gimnasio_fotos"] { gimnasioFotos = b }
         if case .bool(let b)? = j["tecnica_video"] { tecnicaVideo = b }
         if case .bool(let b)? = j["novedades_plan"] { novedadesPlan = b }
+        if case .bool(let b)? = j["devolucion_semanal"] { devolucionSemanal = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

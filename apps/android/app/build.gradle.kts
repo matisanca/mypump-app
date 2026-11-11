@@ -221,6 +221,7 @@ android {
         // El doble del servidor del gimnasio (el mismo de las pruebas JVM de :core:datos). Nunca entra en la app.
         getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleGimnasio/kotlin"))
         getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleTecnica/kotlin"))
+        getByName("androidTest").kotlin.srcDir(rootProject.file("core/datos/src/dobleDevolucion/kotlin"))
     }
 
     packaging {

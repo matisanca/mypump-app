@@ -252,6 +252,9 @@ class ModeloApp(
     /** Técnica por video: existe con cuenta, pero solo llama al servidor con la palanca `tecnica_video` prendida. */
     private val _tecnica = MutableStateFlow<ModeloTecnica?>(null)
     val tecnica: StateFlow<ModeloTecnica?> = _tecnica.asStateFlow()
+    /** Devolución de Mati: existe con cuenta, pero solo llama al servidor con la palanca `devolucion_semanal` prendida. */
+    private val _devolucion = MutableStateFlow<ModeloDevolucion?>(null)
+    val devolucion: StateFlow<ModeloDevolucion?> = _devolucion.asStateFlow()
 
     /** Progreso: se carga al abrir la pestaña (como la web). */
     private val _progreso = MutableStateFlow<ModeloProgreso?>(null)
@@ -522,6 +525,7 @@ class ModeloApp(
         _fotos.value = null
         _gimnasio.value = null
         _tecnica.value = null
+        _devolucion.value = null
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
@@ -567,6 +571,7 @@ class ModeloApp(
         _fotos.value = ModeloFotos(cliente, t, d)
         _gimnasio.value = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _tecnica.value = ModeloTecnica(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
+        _devolucion.value = ModeloDevolucion(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
@@ -815,6 +820,7 @@ class ModeloApp(
             _palanca.value = it
             _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
             _tecnica.value?.recordarPalanca(it.tecnicaVideo)
+            _devolucion.value?.recordarPalanca(it.devolucionSemanal)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -897,6 +903,7 @@ class ModeloApp(
         }
         sincronizarGimnasio()
         sincronizarTecnica()
+        sincronizarDevolucion()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         anotarCargaCompleta()
@@ -926,6 +933,12 @@ class ModeloApp(
         } else {
             x.apagar()
         }
+    }
+
+    /** Solo lectura. Apagada, se borra lo guardado: no queda nada en pantalla. */
+    private suspend fun sincronizarDevolucion() {
+        val x = _devolucion.value ?: return
+        if (x.palancaRecordada) x.refrescar() else x.apagar()
     }
 
     /** Con la palanca apagada no se llama a nada: la app es la de siempre. */
@@ -989,6 +1002,7 @@ class ModeloApp(
         if (toca(Relectura.GIMNASIO)) {
             sincronizarGimnasio()
             sincronizarTecnica()
+            sincronizarDevolucion()
         }
         if (toca(Relectura.GUIA)) _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).

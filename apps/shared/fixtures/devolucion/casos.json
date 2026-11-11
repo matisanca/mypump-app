@@ -1,0 +1,321 @@
+[
+ {
+  "nombre": "token caído",
+  "hoy": "2026-11-12",
+  "respuesta": null,
+  "esperado": null
+ },
+ {
+  "nombre": "palanca apagada",
+  "hoy": "2026-11-12",
+  "respuesta": {
+   "habilitado": false
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "habilitado sin nada",
+  "hoy": "2026-11-12",
+  "respuesta": {
+   "habilitado": true,
+   "devoluciones": []
+  },
+  "esperado": {
+   "ultima": null,
+   "anteriores": []
+  }
+ },
+ {
+  "nombre": "una sola, recién publicada",
+  "hoy": "2026-11-12",
+  "respuesta": {
+   "habilitado": true,
+   "devoluciones": [
+    {
+     "id": "a",
+     "semana_lunes": "2026-11-09",
+     "texto": "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\nEn sentadilla subiste dos kilos y mantuviste las repeticiones.\nEsta semana enfocate en llegar a los pasos todos los días.\nSeguí así que vas muy bien.",
+     "publicado_en": "2026-11-12T14:05:00Z"
+    }
+   ]
+  },
+  "esperado": {
+   "ultima": {
+    "id": "a",
+    "etiqueta": "Semana del 9 de noviembre",
+    "lineas": [
+     "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.",
+     "En sentadilla subiste dos kilos y mantuviste las repeticiones.",
+     "Esta semana enfocate en llegar a los pasos todos los días.",
+     "Seguí así que vas muy bien."
+    ],
+    "nueva": true
+   },
+   "anteriores": []
+  }
+ },
+ {
+  "nombre": "historial desordenado y líneas en blanco",
+  "hoy": "2026-11-20",
+  "respuesta": {
+   "habilitado": true,
+   "devoluciones": [
+    {
+     "id": "b",
+     "semana_lunes": "2026-11-02",
+     "texto": "Semana firme, entrenaste las cinco veces.\nLa dieta la cumpliste casi entera, bien ahí.\n\nPara esta, sumá una fruta en la merienda.",
+     "publicado_en": "2026-11-05T13:00:00Z"
+    },
+    {
+     "id": "a",
+     "semana_lunes": "2026-11-09",
+     "texto": "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\nEn sentadilla subiste dos kilos y mantuviste las repeticiones.\nEsta semana enfocate en llegar a los pasos todos los días.\nSeguí así que vas muy bien.",
+     "publicado_en": "2026-11-12T14:05:00Z"
+    },
+    {
+     "id": "c",
+     "semana_lunes": "2026-10-26",
+     "texto": "Volviste después de una semana floja y se nota la intención.\nEl press inclinado subió una repetición en cada serie.\nEnfocate en dormir un poco más.",
+     "publicado_en": "2026-10-29T15:00:00Z"
+    }
+   ]
+  },
+  "esperado": {
+   "ultima": {
+    "id": "a",
+    "etiqueta": "Semana del 9 de noviembre",
+    "lineas": [
+     "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.",
+     "En sentadilla subiste dos kilos y mantuviste las repeticiones.",
+     "Esta semana enfocate en llegar a los pasos todos los días.",
+     "Seguí así que vas muy bien."
+    ],
+    "nueva": false
+   },
+   "anteriores": [
+    {
+     "id": "b",
+     "etiqueta": "Semana del 2 de noviembre",
+     "lineas": [
+      "Semana firme, entrenaste las cinco veces.",
+      "La dieta la cumpliste casi entera, bien ahí.",
+      "Para esta, sumá una fruta en la merienda."
+     ]
+    },
+    {
+     "id": "c",
+     "etiqueta": "Semana del 26 de octubre",
+     "lineas": [
+      "Volviste después de una semana floja y se nota la intención.",
+      "El press inclinado subió una repetición en cada serie.",
+      "Enfocate en dormir un poco más."
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "otro año dice el año",
+  "hoy": "2027-01-08",
+  "respuesta": {
+   "habilitado": true,
+   "devoluciones": [
+    {
+     "id": "x",
+     "semana_lunes": "2027-01-04",
+     "texto": "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\nEn sentadilla subiste dos kilos y mantuviste las repeticiones.\nEsta semana enfocate en llegar a los pasos todos los días.\nSeguí así que vas muy bien.",
+     "publicado_en": "2027-01-07T13:00:00Z"
+    },
+    {
+     "id": "y",
+     "semana_lunes": "2026-12-28",
+     "texto": "Volviste después de una semana floja y se nota la intención.\nEl press inclinado subió una repetición en cada serie.\nEnfocate en dormir un poco más.",
+     "publicado_en": "2026-12-31T13:00:00Z"
+    }
+   ]
+  },
+  "esperado": {
+   "ultima": {
+    "id": "x",
+    "etiqueta": "Semana del 4 de enero",
+    "lineas": [
+     "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.",
+     "En sentadilla subiste dos kilos y mantuviste las repeticiones.",
+     "Esta semana enfocate en llegar a los pasos todos los días.",
+     "Seguí así que vas muy bien."
+    ],
+    "nueva": true
+   },
+   "anteriores": [
+    {
+     "id": "y",
+     "etiqueta": "Semana del 28 de diciembre de 2026",
+     "lineas": [
+      "Volviste después de una semana floja y se nota la intención.",
+      "El press inclinado subió una repetición en cada serie.",
+      "Enfocate en dormir un poco más."
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "descarta lo roto",
+  "hoy": "2026-11-12",
+  "respuesta": {
+   "habilitado": true,
+   "devoluciones": [
+    {
+     "id": "",
+     "semana_lunes": "2026-11-09",
+     "texto": "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\nEn sentadilla subiste dos kilos y mantuviste las repeticiones.\nEsta semana enfocate en llegar a los pasos todos los días.\nSeguí así que vas muy bien."
+    },
+    {
+     "id": "s",
+     "semana_lunes": "no-es-fecha",
+     "texto": "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\nEn sentadilla subiste dos kilos y mantuviste las repeticiones.\nEsta semana enfocate en llegar a los pasos todos los días.\nSeguí así que vas muy bien."
+    },
+    {
+     "id": "t",
+     "semana_lunes": "2026-11-09",
+     "texto": "   \n  "
+    },
+    {
+     "id": "u",
+     "semana_lunes": "2026-11-02",
+     "texto": 7
+    },
+    "basura",
+    {
+     "id": "ok",
+     "semana_lunes": "2026-11-02",
+     "texto": "Volviste después de una semana floja y se nota la intención.\nEl press inclinado subió una repetición en cada serie.\nEnfocate en dormir un poco más.",
+     "publicado_en": null
+    }
+   ]
+  },
+  "esperado": {
+   "ultima": {
+    "id": "ok",
+    "etiqueta": "Semana del 2 de noviembre",
+    "lineas": [
+     "Volviste después de una semana floja y se nota la intención.",
+     "El press inclinado subió una repetición en cada serie.",
+     "Enfocate en dormir un poco más."
+    ],
+    "nueva": false
+   },
+   "anteriores": []
+  }
+ },
+ {
+  "nombre": "repetida la misma semana: queda la primera",
+  "hoy": "2026-11-12",
+  "respuesta": {
+   "habilitado": true,
+   "devoluciones": [
+    {
+     "id": "a",
+     "semana_lunes": "2026-11-09",
+     "texto": "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\nEn sentadilla subiste dos kilos y mantuviste las repeticiones.\nEsta semana enfocate en llegar a los pasos todos los días.\nSeguí así que vas muy bien.",
+     "publicado_en": "2026-11-12T14:05:00Z"
+    },
+    {
+     "id": "a2",
+     "semana_lunes": "2026-11-09",
+     "texto": "Volviste después de una semana floja y se nota la intención.\nEl press inclinado subió una repetición en cada serie.\nEnfocate en dormir un poco más.",
+     "publicado_en": "2026-11-12T14:00:00Z"
+    }
+   ]
+  },
+  "esperado": {
+   "ultima": {
+    "id": "a",
+    "etiqueta": "Semana del 9 de noviembre",
+    "lineas": [
+     "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.",
+     "En sentadilla subiste dos kilos y mantuviste las repeticiones.",
+     "Esta semana enfocate en llegar a los pasos todos los días.",
+     "Seguí así que vas muy bien."
+    ],
+    "nueva": true
+   },
+   "anteriores": []
+  }
+ },
+ {
+  "nombre": "campos de más se ignoran",
+  "hoy": "2026-11-12",
+  "respuesta": {
+   "habilitado": true,
+   "extra": 1,
+   "devoluciones": [
+    {
+     "id": "a",
+     "semana_lunes": "2026-11-09",
+     "texto": "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\nEn sentadilla subiste dos kilos y mantuviste las repeticiones.\nEsta semana enfocate en llegar a los pasos todos los días.\nSeguí así que vas muy bien.",
+     "publicado_en": "2026-11-10T14:05:00Z",
+     "estado": "otro"
+    }
+   ]
+  },
+  "esperado": {
+   "ultima": {
+    "id": "a",
+    "etiqueta": "Semana del 9 de noviembre",
+    "lineas": [
+     "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.",
+     "En sentadilla subiste dos kilos y mantuviste las repeticiones.",
+     "Esta semana enfocate en llegar a los pasos todos los días.",
+     "Seguí así que vas muy bien."
+    ],
+    "nueva": true
+   },
+   "anteriores": []
+  }
+ },
+ {
+  "nombre": "nueva hasta 3 días",
+  "hoy": "2026-11-16",
+  "respuesta": {
+   "habilitado": true,
+   "devoluciones": [
+    {
+     "id": "a",
+     "semana_lunes": "2026-11-09",
+     "texto": "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\nEn sentadilla subiste dos kilos y mantuviste las repeticiones.\nEsta semana enfocate en llegar a los pasos todos los días.\nSeguí así que vas muy bien.",
+     "publicado_en": "2026-11-12T14:05:00Z"
+    }
+   ]
+  },
+  "esperado": {
+   "ultima": {
+    "id": "a",
+    "etiqueta": "Semana del 9 de noviembre",
+    "lineas": [
+     "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.",
+     "En sentadilla subiste dos kilos y mantuviste las repeticiones.",
+     "Esta semana enfocate en llegar a los pasos todos los días.",
+     "Seguí así que vas muy bien."
+    ],
+    "nueva": false
+   },
+   "anteriores": []
+  }
+ },
+ {
+  "nombre": "sin habilitado es apagado",
+  "hoy": "2026-11-12",
+  "respuesta": {
+   "devoluciones": [
+    {
+     "id": "a",
+     "semana_lunes": "2026-11-09",
+     "texto": "Muy buena semana, cumpliste las cuatro sesiones y el peso bajó medio kilo.\nEn sentadilla subiste dos kilos y mantuviste las repeticiones.\nEsta semana enfocate en llegar a los pasos todos los días.\nSeguí así que vas muy bien.",
+     "publicado_en": null
+    }
+   ]
+  },
+  "esperado": null
+ }
+]

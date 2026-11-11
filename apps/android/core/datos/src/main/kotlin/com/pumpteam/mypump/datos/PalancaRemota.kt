@@ -24,6 +24,8 @@ data class PalancaRemota(
     val tecnicaVideo: Boolean = false,
     /** «Novedades de tu plan» (`novedades_plan`). Sin la clave, apagada: no se guarda ni se muestra nada. */
     val novedadesPlan: Boolean = false,
+    /** Devolución de Mati en Revisión (`devolucion_semanal`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. */
+    val devolucionSemanal: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -39,6 +41,7 @@ data class PalancaRemota(
             gimnasioFotos = (j["gimnasio_fotos"] as? ValorJson.Booleano)?.valor ?: false,
             tecnicaVideo = (j["tecnica_video"] as? ValorJson.Booleano)?.valor ?: false,
             novedadesPlan = (j["novedades_plan"] as? ValorJson.Booleano)?.valor ?: false,
+            devolucionSemanal = (j["devolucion_semanal"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

@@ -35,6 +35,8 @@ enum Proveedor {
             if d.bool(forKey: "sinRed") { transporte = SinRed() }
             // `-gimnasioDePrueba <escenario>`: el servidor del gimnasio de mentira y lo demás de las muestras (ver `GimnasioDePrueba`).
             else if let caso = d.string(forKey: "gimnasioDePrueba") { transporte = GimnasioDePrueba(doble: .escenario(caso), sinRutina: d.bool(forKey: "gimnasioSinRutina")) }
+            // `-devolucionDePrueba <escenario>`: la devolución de mentira y lo demás de las muestras (ver `DobleDevolucion`).
+            else if let caso = d.string(forKey: "devolucionDePrueba") { transporte = DevolucionDePrueba(doble: .escenario(caso)) }
             else if let caso = d.string(forKey: "tecnicaDePrueba") { transporte = TecnicaDePrueba(doble: .escenario(caso)) }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
             else if let caso = d.string(forKey: "recuperacionDePrueba") { transporte = RecuperacionDePrueba(caso: caso) }
@@ -73,6 +75,20 @@ private struct TecnicaDePrueba: Transporte {
         let ruta = pedido.url?.path ?? ""
         let f = ruta.components(separatedBy: "/").last ?? ""
         if ruta.contains("/tecnica/") || f.hasPrefix("mypump_tecnica") || f == "mypump_get_app_config" { return try await doble.enviar(pedido) }
+        var cuerpo = Data("[]".utf8)
+        if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
+           let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }
+        return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
+/// `-devolucionDePrueba`: la devolución y la palanca las contesta el doble (sin red); la cuenta y el plan, las muestras.
+private struct DevolucionDePrueba: Transporte {
+    let doble: DobleDevolucion
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let f = pedido.url?.lastPathComponent ?? ""
+        if f.hasPrefix("mypump_devolucion") || f == "mypump_get_app_config" { return try await doble.enviar(pedido) }
         var cuerpo = Data("[]".utf8)
         if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
            let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }
