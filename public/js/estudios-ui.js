@@ -238,12 +238,12 @@
 
   function pLista(m) {
     const s = m.estado, b = E.bloques(s), pc = s.proximoControl;
-    const cuando = pc ? E.fechaControl(pc.desde, pc.hasta) : null;
+    const cuando = pc ? (pc.cuando || E.fechaControl(pc.desde, pc.hasta)) : null;
     return `${avisoHtml(m)}
       ${m.errorDeCarga ? `<div class="est-banda" id="estErrorCarga" role="alert"><span>${e(T.errorDeCarga)}</span>${pildora(T.probarDeNuevo, 'recargar')}</div>` : ''}
       ${errorHtml()}
       ${pc ? `<div class="est-tarjeta est-control" id="estControl"><span class="est-control-ic">${IC.calendario}</span>
-        <span class="est-fila-txt"><span class="est-ceja">${e(T.proximoControl)}</span><strong>${e(pc.titulo)}</strong>${cuando ? `<small>${e(cuando)}</small>` : ''}</span></div>` : ''}
+        <span class="est-fila-txt"><span class="est-ceja">${e(T.proximoControl)}</span><strong>${e(pc.titulo)}</strong>${cuando ? `<small id="estControlCuando">${e(cuando)}</small>` : ''}${pc.nota ? `<small class="est-control-nota" id="estControlNota">${e(pc.nota)}</small>` : ''}</span></div>` : ''}
       ${b.pendientes ? h2(T.teFaltaHacer, 'estFalta') + s.pendientes.map((p, i) => pendienteHtml(p, s.hoy, i)).join('') : ''}
       ${colaHtml(m)}
       <button type="button" class="btn-primary est-principal" data-est="subir" id="estSubir">${IC.subir}<span>${e(T.subirEstudio)}</span></button>
@@ -443,6 +443,32 @@
     if (root.firstChild !== host) root.insertBefore(host, root.firstChild);
   }
 
+  /* «Tu próximo control de salud» (`controles_app`): desde `avisar_desde` y mientras siga programado, debajo de la de
+     Estudios (o primera, si no hay). Mismo patrón verde con el botón blanco grande «Ver mis estudios»: un toque a Estudios. */
+  function montarControl(root) {
+    let host = document.getElementById('ctlHost');
+    const C = raiz.Controles;
+    const a = C && ui.modelo && ui.modelo.estado ? ui.modelo.tarjetaControl : null;
+    if (!root || !a) { if (host) host.remove(); return; }
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'ctlHost';
+      host.addEventListener('click', () => abrir({ desde: 'train' }));
+    }
+    const html = `<div class="est-aviso est-aviso-control" role="group" aria-label="${e(a.titulo)}">
+      <div class="est-aviso-fila"><span class="est-aviso-ic" aria-hidden="true">${svg('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>', 26)}</span>
+        <div class="est-aviso-txt"><span class="est-aviso-ceja">${e(C.T.cejaInicio)}</span><strong class="est-aviso-tit" id="ctlTitulo">${e(a.titulo)}</strong>
+        <strong class="est-aviso-cuando" id="ctlCuando">${e(a.cuando)}</strong></div></div>
+      <p class="est-aviso-nota" id="ctlNota">${e(a.nota)}</p>
+      <button type="button" class="est-aviso-btn" id="ctlBoton">${e(a.boton)}</button></div>`;
+    if (host.dataset.h !== html) { host.innerHTML = html; host.dataset.h = html; }
+    // Justo debajo de la de Estudios si está; si no, primera. Solo se mueve si no está ya ahí (no titila).
+    const est = document.getElementById('estHost');
+    const conEst = !!est && est.parentNode === root;
+    const enSuLugar = conEst ? est.nextSibling === host : root.firstChild === host;
+    if (!enSuLugar) root.insertBefore(host, conEst ? est.nextSibling : root.firstChild);
+  }
+
   /* Destino `estudios` (el clic del aviso o `?scene=estudios`), también al abrir en frío: quien llama ya dejó a la vista
      la pantalla de caída (Mis datos). En cuanto se sabe que la cuenta tiene la sección, se abre en la tarjeta nueva. Si
      la palanca está apagada, la cuenta no la tiene, el `get` no contesta a tiempo o el alumno ya se fue a otra pantalla,
@@ -465,6 +491,7 @@
     const m = ui.modelo;
     const a = m && m.estado ? m.tarjetaInicio : null;
     montarTarjeta(document.getElementById('scene-train'));
+    montarControl(document.getElementById('scene-train'));
     const firma = m && m.estado ? `1|${m.pendientes}|${m.novedad ? 1 : 0}|${a ? a.titulo : ''}` : '';
     if (firma !== ui.firmaEntrada) { ui.firmaEntrada = firma; ui.op.alCambiarEntrada(); }
     cumplirDestino();
@@ -757,8 +784,10 @@
   /* valor: true o false si el servidor contestó en esta carga de la página; null si no se pudo preguntar.
      Sin una lectura fresca no se arranca nada ni se recuerda la anterior: un apagado de emergencia vale aunque la
      lectura falle. Lo que ya estaba andando en memoria (una subida en curso) sigue hasta que el servidor diga que no. */
-  async function aplicarPalanca(valor) {
-    if (!ui.op || ui.arrancando) return;
+  async function aplicarPalanca(valor, controles) {
+    if (!ui.op) return;
+    // Llegó otra lectura mientras se arma el modelo: se aplica apenas termina (no se pierde).
+    if (ui.arrancando) { ui.palancaPendiente = [valor, controles]; return; }
     try { localStorage.removeItem(FLAG); } catch (_) {}      // lo que recordaban las versiones anteriores
     if (valor === null) return;
     if (valor !== true) {
@@ -767,10 +796,17 @@
       if (ui.modelo) { ui.modelo.cerrar(); ui.modelo = null; pintar(); }
       return;
     }
-    if (ui.modelo) return;
+    if (ui.modelo) {
+      // `controles_app` cambió en esta carga: apagada, se va en el momento; prendida, la trae el próximo `get`.
+      const antes = ui.modelo.palancaControles;
+      ui.modelo.usarPalancaControles(controles === true);
+      if (!antes && controles === true) ui.modelo.refrescar().catch(() => {});
+      else pintar();
+      return;
+    }
     ui.arrancando = true;
     try {
-      const m = new raiz.EstudiosCola.ModeloEstudios({ rpc: ui.op.rpc, token: ui.op.token, visionUrl: ui.op.visionUrl });
+      const m = new raiz.EstudiosCola.ModeloEstudios({ rpc: ui.op.rpc, token: ui.op.token, visionUrl: ui.op.visionUrl, controles: controles === true });
       await m.refrescar();
       m.alCambiar = pintar;
       ui.modelo = m;
@@ -782,11 +818,15 @@
       ui.modelo = null;
     } finally {
       ui.arrancando = false;
+      const p = ui.palancaPendiente; ui.palancaPendiente = null;
+      if (Array.isArray(p)) aplicarPalanca(p[0], p[1]);
     }
   }
 
   raiz.EstudiosUI = {
-    configurar, aplicarPalanca, abrir, renderEscena, montarTarjeta, destino,
+    configurar, aplicarPalanca, abrir, renderEscena, montarTarjeta, montarControl, destino,
+    /* «Tu recorrido»: los controles de salud como hitos con fecha ([] si no hay o con la palanca apagada). */
+    hitosControl: () => (ui.modelo && ui.modelo.estado ? ui.modelo.hitosControl : []),
     get origen() { return ui.origen; },
     /* Hay algo sin ver: el punto de la pestaña y de la fila de Mis datos. */
     novedad: () => !!(ui.modelo && ui.modelo.estado && ui.modelo.novedad),
