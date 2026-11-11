@@ -11,6 +11,7 @@
 --      · Revocar siempre anda, también con la palanca apagada, y retira lo que todavía no salió (`pendiente`, `aprobado`).
 --      · Un logro solo pasa a `enviado` desde `aprobado`: no hay camino de `pendiente` a `enviado`.
 --      · Si el permiso se revocó, la Mini ya no lo ve en la cola y marcarlo lo deja `retirado`.
+--      · Lo de un alumno dado de baja (token inactivo) tampoco sale en la cola, y marcarlo lo deja `retirado`.
 --      · Lo que guarda la app se arma campo por campo (nunca el JSON que mandó), con topes de tamaño y de cantidad.
 --      · El `cliente_id` sale del token. Las tablas no las lee ni anon ni authenticated; las funciones de la Mini,
 --        solo service_role.
@@ -95,7 +96,10 @@ LANGUAGE sql
 IMMUTABLE
 SET search_path = public, pg_temp
 AS $$
-  SELECT CASE WHEN jsonb_typeof(p) = 'number' AND (p #>> '{}')::NUMERIC BETWEEN p_min AND p_max THEN (p #>> '{}')::NUMERIC END;
+  -- CASE anidado: el cast solo se evalúa si es un número (el orden de un AND no está garantizado).
+  SELECT CASE WHEN jsonb_typeof(p) = 'number' THEN
+           CASE WHEN (p #>> '{}')::NUMERIC BETWEEN p_min AND p_max THEN (p #>> '{}')::NUMERIC END
+         END;
 $$;
 
 -- Lo que la app necesita saber al abrir: si la función está prendida y si este alumno tiene el permiso dado.
@@ -213,13 +217,21 @@ BEGIN
   IF (SELECT count(*) FROM mypump_wins WHERE cliente_id = v_cid AND creado_en > NOW() - INTERVAL '24 hours') >= 30 THEN
     RETURN jsonb_build_object('ok', TRUE, 'guardado', FALSE, 'motivo', 'tope');
   END IF;
-  -- Otro logro del mismo ejercicio y día: si todavía no lo miró nadie, queda la marca nueva; si no, se deja como está.
+  -- Otro logro del mismo ejercicio y día:
+  --   · pendiente con otra marca: queda la marca nueva (y `actualizado_en` cambia: un OK en curso ya no vale);
+  --   · pendiente con la misma marca: no se toca nada (un reintento con otro id no le corta el OK a Mati);
+  --   · retirado porque sacó el permiso y lo volvió a dar: vuelve a pendiente con el permiso nuevo;
+  --   · aprobado, enviado o descartado: se deja como está.
   INSERT INTO mypump_wins (id, cliente_id, permiso_id, tipo, clave, dia, datos)
   VALUES (p_id, v_cid, v_permiso, p_tipo, v_clave, p_dia, v_datos)
   ON CONFLICT ON CONSTRAINT wins_uno_por_dia DO UPDATE
-     SET datos = EXCLUDED.datos, permiso_id = EXCLUDED.permiso_id, actualizado_en = clock_timestamp()
-   WHERE mypump_wins.estado = 'pendiente';
-  RETURN jsonb_build_object('ok', TRUE, 'guardado', TRUE, 'ya', FALSE);
+     SET datos = EXCLUDED.datos, permiso_id = EXCLUDED.permiso_id, estado = 'pendiente', motivo = NULL,
+         decidido_en = NULL, actualizado_en = clock_timestamp()
+   WHERE (mypump_wins.estado = 'pendiente' AND (mypump_wins.datos <> EXCLUDED.datos OR mypump_wins.permiso_id <> EXCLUDED.permiso_id))
+      OR (mypump_wins.estado = 'retirado' AND mypump_wins.motivo = 'el alumno sacó el permiso');
+  RETURN jsonb_build_object('ok', TRUE, 'guardado',
+           EXISTS (SELECT 1 FROM mypump_wins WHERE cliente_id = v_cid AND tipo = p_tipo AND clave = v_clave AND dia = p_dia AND estado = 'pendiente'),
+           'ya', FALSE);
 END;
 $$;
 
@@ -238,6 +250,8 @@ AS $$
       FROM mypump_wins w
       JOIN mypump_wins_permisos p ON p.id = w.permiso_id AND p.revocado_en IS NULL
      WHERE w.estado IN ('pendiente', 'aprobado') AND mypump_wins_palanca()
+       -- Un alumno dado de baja ya no puede sacar el permiso desde la app: lo suyo no sale.
+       AND EXISTS (SELECT 1 FROM mypump_clientes c WHERE c.cliente_id = w.cliente_id AND c.access_token_active)
      ORDER BY w.creado_en
      LIMIT LEAST(GREATEST(COALESCE(p_limite, 50), 1), 200)
   ) x;
@@ -264,6 +278,10 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM mypump_wins_permisos WHERE id = v.permiso_id AND revocado_en IS NULL) THEN
       UPDATE mypump_wins SET estado = 'retirado', motivo = 'el alumno sacó el permiso', actualizado_en = NOW() WHERE id = p_id;
       RETURN jsonb_build_object('ok', FALSE, 'motivo', 'sin_permiso');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM mypump_clientes c WHERE c.cliente_id = v.cliente_id AND c.access_token_active) THEN
+      UPDATE mypump_wins SET estado = 'retirado', motivo = 'el alumno ya no está activo', actualizado_en = clock_timestamp() WHERE id = p_id;
+      RETURN jsonb_build_object('ok', FALSE, 'motivo', 'inactivo');
     END IF;
     IF p_actualizado_en IS NULL OR p_actualizado_en <> v.actualizado_en THEN RETURN jsonb_build_object('ok', FALSE, 'motivo', 'cambio'); END IF;
     IF (p_estado = 'aprobado' AND v.estado <> 'pendiente') OR (p_estado = 'enviado' AND v.estado <> 'aprobado') THEN
