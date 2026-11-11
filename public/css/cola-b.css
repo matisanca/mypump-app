@@ -104,3 +104,7 @@
 .casa-nota-l{margin-top:var(--space-2);font-size:16px;line-height:1.3;font-weight:600;color:var(--color-text-primary)}
 .gim .casa-error{font-size:15px;font-weight:600}
 .casa-eq{font-size:16px}
+
+/* «¿Entrenás en casa? Tocá acá», debajo de la tarjeta «Tu gimnasio» de Entreno: grande y con texto. */
+.casa-tarjeta-btn{all:unset;box-sizing:border-box;display:block;width:100%;min-height:52px;padding:var(--space-3) var(--space-4);margin:calc(var(--space-2) * -1) 0 var(--space-3);text-align:center;font-weight:600;font-size:1rem;line-height:1.3;color:var(--color-brand-text);background:var(--color-brand-subtle);border-radius:var(--radius-lg);cursor:pointer}
+.casa-tarjeta-btn:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}

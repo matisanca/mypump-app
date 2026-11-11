@@ -88,6 +88,13 @@
     return m && m.estado && m.pantalla === 'lista' ? T.listaTitulo : null;
   }
 
+  /** El botón de la tarjeta de Entreno que lleva al interruptor: mientras no entrene en casa y se pueda cambiar. */
+  function botonTarjeta() {
+    const m = ui.modelo;
+    const i = m && m.estado ? m.interruptor : null;
+    return i && !i.prendido && !i.bloqueado ? T.tarjeta : null;
+  }
+
   // ── Toques ──
   const ACCIONES = {
     interruptor(b) { return ui.modelo.mover(b.getAttribute('aria-checked') !== 'true'); },
@@ -148,5 +155,5 @@
     enganchar();
   }
 
-  raiz.CasaUI = { configurar, aplicarConfig, conGimnasio, piezas, detalleTarjeta, get _modelo() { return ui.modelo; } };
+  raiz.CasaUI = { configurar, aplicarConfig, conGimnasio, piezas, detalleTarjeta, botonTarjeta, get _modelo() { return ui.modelo; } };
 })(window);

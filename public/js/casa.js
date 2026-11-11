@@ -21,6 +21,7 @@
     interruptorBloqueado: 'Ya lo recibimos. Lo vas a poder cambiar cuando esté listo.',
     errorCambiar: 'No se pudo cambiar. Probá de nuevo.',
     listaTitulo: '¿Qué tenés en casa?',
+    tarjeta: '¿Entrenás en casa? Tocá acá',
     listaTexto: 'Marcá todo lo que tengas. Con eso Mati arma tu rutina.',
     kilos: 'Hasta cuántos kilos (opcional)',
     kilosInvalidos: 'Poné un número entre 1 y 400',
