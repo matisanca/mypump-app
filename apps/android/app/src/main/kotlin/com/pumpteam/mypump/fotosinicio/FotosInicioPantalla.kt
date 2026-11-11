@@ -648,7 +648,8 @@ private fun BotonFotoInicio(pose: String, texto: String, etiqueta: String, prima
                     preparando = true
                     alcance.launch {
                         val jpeg = withContext(Dispatchers.Default) {
-                            ReduccionFoto.jpeg(FotoSinteticaFotosInicio.jpeg(dePrueba), FotosInicio.MAX_PX, FotosInicio.CALIDAD)
+                            // El escenario al tocar, no el de la última composición: la prueba lo cambia entre una foto y otra.
+                            ReduccionFoto.jpeg(FotoSinteticaFotosInicio.jpeg(Entorno.fotosInicioDePrueba ?: dePrueba), FotosInicio.MAX_PX, FotosInicio.CALIDAD)
                         }
                         preparar(jpeg, null)
                     }

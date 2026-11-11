@@ -520,8 +520,9 @@ private fun FilaEnvio(s: EnvioRecibido) {
         Modifier
             .fillMaxWidth()
             .padding(horizontal = Espacio.m, vertical = Espacio.s)
-            .clearAndSetSemantics { contentDescription = Estudios.envioCompleto(s) }
-            .testTag("estudios-envio"),
+            // La etiqueta antes: `clearAndSetSemantics` borra la semántica de lo que viene después.
+            .testTag("estudios-envio")
+            .clearAndSetSemantics { contentDescription = Estudios.envioCompleto(s) },
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(Estudios.tituloEnvio(s), style = MaterialTheme.typography.titleMedium, color = c.texto)
