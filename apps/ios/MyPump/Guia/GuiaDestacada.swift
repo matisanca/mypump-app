@@ -30,7 +30,78 @@ struct TarjetaGuiaDestacada: View {
     @ScaledMetric(relativeTo: .title2) private var ladoIcono: CGFloat = 52
     @Environment(\.dynamicTypeSize) private var tamañoLetra
 
+    // PROPUESTA: la novedad (el cliente ya conoce la guía) va en una fila verde, primera y con su botón, pero sin correr el
+    // entrenamiento una pantalla hacia abajo. La primera vez («Empezá por acá») y la letra de accesibilidad siguen grandes.
     var body: some View {
+        if let n = modelo.avanceNovedad, Self.vaEnFila(novedad: n, guia: modelo.avanceTarjeta, novedadEn: modelo.novedadEn),
+           !tamañoLetra.isAccessibilitySize { compacta(n) } else { grande }
+    }
+
+    /// Cuántos días va grande una novedad antes de pasar a la fila.
+    static let diasGrande = 7
+
+    /// La tarjeta va GRANDE siempre que haya riesgo de que la pasen por alto, y en fila solo cuando se cumplen las dos:
+    /// · ya terminó la guía de base (lo único sin ver es la tanda nueva), y
+    /// · la novedad lleva más de 7 días publicada (`novedad_en`, la fecha del servidor: vale igual en todos sus teléfonos
+    ///   y no se reinicia al reinstalar).
+    /// Sin fecha legible, grande. La primera vez («Empezá por acá») nunca pasa por acá: es siempre grande.
+    static func vaEnFila(novedad n: ReglasGuia.Avance, guia a: ReglasGuia.Avance, novedadEn: String?, ahora: Date = .now) -> Bool {
+        let baseCompleta = (a.total - a.vistos) <= (n.total - n.vistos)
+        #if DEBUG
+        // `-guiaNovedadDias 10`: las capturas de la fila sin esperar una semana.
+        if let dias = UserDefaults.standard.string(forKey: "guiaNovedadDias").flatMap(Int.init) {
+            return dias > diasGrande
+        }
+        #endif
+        guard baseCompleta, let s = novedadEn, let desde = ReglasGuia.instante(s) else { return false }
+        return ahora.timeIntervalSince(desde) > Double(diasGrande) * 86_400
+    }
+
+    private func compacta(_ n: ReglasGuia.Avance) -> some View {
+        let linea = ReglasGuia.textoTarjetaNovedad(n)
+        return HStack(spacing: Espacio.s) {
+            IconoPlayGuia(lado: 40, relleno: .white.opacity(0.2), simbolo: .white, halo: .white, pulso: false)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Novedad en tu guía")
+                    .textCase(.uppercase).font(.caption2.weight(.heavy)).tracking(0.8).opacity(0.85)
+                    .accessibilityIdentifier("guia-tarjeta-ceja")
+                Text(linea).font(.subheadline.weight(.semibold)).lineLimit(2)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Novedad en tu guía, \(linea)")
+            .accessibilityIdentifier("guia-tarjeta-texto")
+            Spacer(minLength: Espacio.xs)
+            Button(action: abrir) {
+                Text("Ver").font(.subheadline.weight(.bold)).foregroundStyle(Color.guiaSobreBlanco)
+                    .padding(.horizontal, 18).frame(minHeight: 40)
+                    .background(.white, in: .capsule)
+                    .frame(minHeight: 44).contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Ver lo nuevo")
+            .accessibilityHint("Abre los videos de Mati")
+            .accessibilityIdentifier("guia-tarjeta")
+            if let ocultar {
+                Button(action: ocultar) {
+                    Image(systemName: "xmark").font(.footnote.weight(.bold)).opacity(0.85)
+                        .frame(width: 32, height: 44).contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Ocultar")
+                .accessibilityHint("La guía queda en Mis datos")
+                .accessibilityIdentifier("guia-ocultar")
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.leading, Espacio.s).padding(.trailing, 6).padding(.vertical, Espacio.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.guiaDestacada, in: .rect(cornerRadius: 22, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("guia-destacada")
+        .onAppear { modelo.marcarTarjetaVista() }
+    }
+
+    @ViewBuilder private var grande: some View {
         // 2.2.0: con novedad sin ver, «NOVEDAD EN TU GUÍA» con el avance de lo nuevo; si no, la de la 2.1.0.
         let novedad = modelo.avanceNovedad
         let a = novedad ?? modelo.avanceTarjeta

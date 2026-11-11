@@ -93,7 +93,7 @@ struct BotonCircularCarga: ButtonStyle {
     }
 }
 
-/// El avance del ejercicio, un segmento por serie: hechas en verde, la de ahora a medio llenar y el resto apagadas.
+/// El avance del ejercicio, un segmento por serie: hechas en verde lleno y el resto en el riel gris.
 struct ProgresoSeries: View {
     let total: Int
     let hechas: Int
@@ -103,7 +103,8 @@ struct ProgresoSeries: View {
         HStack(spacing: 4) {
             ForEach(0..<max(total, 1), id: \.self) { i in
                 Capsule()
-                    .fill(i < hechas ? Color.marca : (i == actual ? Color.marca.opacity(0.36) : Color.campo))
+                    // En oscuro el verde va lleno o no va: sin segmento «a medias» (al 36 % daba 1,9:1 y quedaba oliva).
+                    .fill(i < hechas ? Color.avance : Color.riel)
                     .frame(height: 4)
             }
         }

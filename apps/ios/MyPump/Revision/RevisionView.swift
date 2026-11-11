@@ -72,6 +72,8 @@ struct RevisionView: View {
                             .anchoLectura(Ancho.doble)
                         } else {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
+                                // La explicación de la semana va pegada al título: es contexto de toda la pantalla.
+                                notaSemanal
                                 TarjetaFotosInicio()
                                 devolucion   // lo que Mati le dejó va primero, con la semana a medias o no
                                 // Check guiado: la tarjeta va arriba, para que nadie tenga que buscarla.
@@ -81,12 +83,10 @@ struct RevisionView: View {
                                     // fotos y el check quedaban fuera de la primera pantalla de un iPhone común.
                                     diaDeRevision; avisoPlan; fotos
                                     if guiado == nil { check }
-                                    notaSemanal
-                                    VStack(spacing: Espacio.m) { recuperacion; progreso }
+                                    comoVengo
                                 } else {
-                                    // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
-                                    VStack(spacing: Espacio.m) { recuperacion; progreso }
-                                    diaDeRevision; avisoPlan; notaSemanal; fotos
+                                    comoVengo
+                                    diaDeRevision; avisoPlan; fotos
                                     if guiado == nil { check }
                                 }
                             }
@@ -221,6 +221,28 @@ struct RevisionView: View {
         RecuperacionTarjeta(modelo: modelo.conMuestras ? nil : modelo.salud) { navegacion?.irASalud(.recuperacion) }
             .id("recuperacion")
     }
+    /// Las dos de Salud son una sola cosa («cómo vengo»): una tarjeta de dos filas con azulejo suave.
+    private var comoVengo: some View {
+        VStack(spacing: 0) {
+            recuperacionFila
+            Divider().padding(.leading, 58)
+            progresoFila
+        }
+        .clipShape(.rect(cornerRadius: Radio.tarjeta, style: .continuous))
+        .superficieTarjeta()
+    }
+    private var recuperacionFila: some View {
+        RecuperacionTarjeta(modelo: modelo.conMuestras ? nil : modelo.salud, enFila: true) { navegacion?.irASalud(.recuperacion) }
+            .id("recuperacion")
+    }
+    private var progresoFila: some View {
+        ProgresoTarjeta(linea: lineaProgreso, enFila: true) { navegacion?.irASalud(.fuerza) }
+            .id("progreso")
+            .task {
+                guard let p = modelo.conMuestras ? nil : modelo.progreso, p.tarjetas.isEmpty || p.estado == .sinRed else { return }
+                await modelo.cargarProgreso()
+            }
+    }
     /// Lo que era la pestaña Progreso, en una línea; tocarla abre Salud en Fuerza.
     private var progreso: some View {
         ProgresoTarjeta(linea: lineaProgreso) { navegacion?.irASalud(.fuerza) }
@@ -251,8 +273,8 @@ struct RevisionView: View {
     }
     private var notaSemanal: some View {
         Text(SemanaRevision.explicacion)
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .font(.footnote)
+            .foregroundStyle(Color.apoyo)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityIdentifier("nota-revision-semanal")

@@ -24,14 +24,12 @@ struct AccesoView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 tarjetaLink
-                Button {
-                    entrarEnDemo()
-                } label: {
-                    (Text("¿Querés ver cómo funciona? ").foregroundStyle(.secondary) + Text("Ver demo").fontWeight(.semibold).foregroundStyle(Color.marcaTexto))
-                        .font(.subheadline)
+                VStack(spacing: Espacio.xs) {
+                    Text("¿Querés ver cómo funciona?").font(.subheadline).foregroundStyle(.secondary)
+                    Button("Ver demo") { entrarEnDemo() }
+                        .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
+                        .accessibilityIdentifier("ver-demo")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("ver-demo")
                 Spacer(minLength: 12)
                 Link("Política de privacidad", destination: URL(string: "https://app.mypumpteam.com/privacidad.html")!)
                     .font(.footnote)
@@ -50,7 +48,7 @@ struct AccesoView: View {
 
     private var tarjetaLink: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Entrá con tu link").font(.title3.weight(.semibold))
+            Text("Entrá con tu link").font(Archivo.fuente(24, peso: 800, relativoA: .title2))
             Text("Abrí el link que te pasó Mati por WhatsApp. Si no se abre solo, copialo y pegalo acá.")
                 .font(.subheadline).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -63,9 +61,9 @@ struct AccesoView: View {
                     .submitLabel(.go)
                     .focused($enfocado)
                     .onSubmit { Task { await entrar(texto) } }
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 48)
-                    .background(Color(uiColor: .tertiarySystemFill), in: .rect(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 52)
+                    .background(Color(uiColor: .tertiarySystemFill), in: .rect(cornerRadius: Radio.control, style: .continuous))
                     .accessibilityIdentifier("campo-link")
                 PasteButton(payloadType: String.self) { pegados in
                     guard let t = pegados.first else { return }
@@ -75,9 +73,9 @@ struct AccesoView: View {
                     }
                 }
                 .labelStyle(.iconOnly)
-                .buttonBorderShape(.roundedRectangle(radius: 12))
-                .tint(Color.marcaTexto)
-                .frame(minHeight: 48)
+                .buttonBorderShape(.roundedRectangle(radius: Radio.control))
+                .tint(Color.marca)
+                .frame(minHeight: 52)
             }
             if let error {
                 Label(error, systemImage: "exclamationmark.circle.fill")
@@ -85,14 +83,14 @@ struct AccesoView: View {
                     .foregroundStyle(Color.peligro)
                     .transition(.opacity)
             }
+            // Sin link, el botón espera en gris pleno (no un verde lavado, que parece roto); con link, es el de avanzar.
             Button {
                 Task { await entrar(texto) }
             } label: {
                 if entrando { ProgressView().tint(Color.sobreMarca) } else { Text("Entrar") }
             }
-            .buttonStyle(BotonMarca(ocupado: entrando))
+            .buttonStyle(BotonAccion())
             .disabled(texto.trimmingCharacters(in: .whitespaces).isEmpty || entrando)
-            .opacity(texto.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
             .accessibilityIdentifier("entrar")
         }
         .padding(20)

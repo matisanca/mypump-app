@@ -48,14 +48,19 @@ struct CheckGuiadoFlujo: View {
                 pantallaListo
             } else {
                 cabecera
+                // En el paso de la lista larga (señales) la pregunta queda fija arriba: al deslizar las opciones no se va,
+                // tampoco con letra grande. (Antes la pantalla podía abrir ya desplazada, directo en la primera opción.)
+                if preguntaFija {
+                    tituloDelPaso
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, Espacio.xs)
+                        .frame(maxWidth: Ancho.lectura, alignment: .leading)
+                        .frame(maxWidth: .infinity)
+                }
                 ScrollView {
                     VStack(alignment: .leading, spacing: Espacio.l) {
                         VStack(alignment: .leading, spacing: Espacio.xs) {
-                            Text(CheckGuiado.titulo(paso, catalogo: catalogo))
-                                .font(.tituloCheck)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .accessibilityAddTraits(.isHeader)
-                                .accessibilityIdentifier("cg-titulo")
+                            if !preguntaFija { tituloDelPaso }
                             Text(CheckGuiado.apoyo(paso, catalogo: catalogo))
                                 .font(.body)
                                 .foregroundStyle(Color.apoyoCheck)
@@ -70,6 +75,8 @@ struct CheckGuiadoFlujo: View {
                     .frame(maxWidth: .infinity)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                // Cada paso arranca arriba: sin esto la lista heredaba el desplazamiento del paso anterior.
+                .id(paso)
                 pie
             }
         }
@@ -81,6 +88,17 @@ struct CheckGuiadoFlujo: View {
         // Semana nueva con el check abierto: lo contestado era de la semana anterior.
         .onChange(of: revision.semana) { _, _ in cerrar() }
         .sensoryFeedback(.success, trigger: envios)
+    }
+
+    private var preguntaFija: Bool { paso == .senales }
+
+    private var tituloDelPaso: some View {
+        Text(CheckGuiado.titulo(paso, catalogo: catalogo))
+            .font(.tituloCheck)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("cg-titulo")
     }
 
     private func guardar() {

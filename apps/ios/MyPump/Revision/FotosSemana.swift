@@ -28,11 +28,9 @@ struct FotosSemana: View {
     private var avisoFotos: some View {
         VStack(alignment: .leading, spacing: Espacio.xs) {
             Text(FotosProgreso.avisoTitulo).font(.headline)
-            Text(FotosProgreso.avisoCuerpo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            Text(FotosProgreso.avisoCuerpo).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Espacio.s)
-        .background(Color.marcaSuave, in: .rect(cornerRadius: Radio.control, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("aviso-fotos")
     }
@@ -69,19 +67,12 @@ struct FotosSemana: View {
     private var completa: some View {
         let semanas = FotosProgreso.semanas(fotos)
         let racha = FotosProgreso.racha(fotos)
+        // Los tres marcos primero (es lo que se toca); la guía para sacarlas, debajo y sin caja verde. «Mismo lugar, misma
+        // luz» se dice UNA sola vez (decisión de Mati, 10/11): en la guía cuando está, y si no en la línea de privacidad.
+        let conGuia = FotosProgreso.mostrarAviso(cargadas: modelo?.cargadas ?? true, posesDeLaSemana: hechas)
         return VStack(alignment: .leading, spacing: Espacio.s) {
-            EncabezadoSeccion(titulo: "Fotos de la semana", detalle: hechas.count == 3 ? "Completas" : "\(hechas.count)/3")
+            EncabezadoAvance(titulo: "Fotos de la semana", hechos: hechas.count, total: 3, completo: "Completas")
             VStack(alignment: .leading, spacing: Espacio.m) {
-                if FotosProgreso.mostrarAviso(cargadas: modelo?.cargadas ?? true, posesDeLaSemana: hechas) { avisoFotos }
-                Label {
-                    Text("Mismo lugar, misma luz, en ayunas. Las ve \(Text("solo Mati").bold()): no se publican ni salen de la app.")
-                } icon: {
-                    Image(systemName: "lock.fill").foregroundStyle(Color.marcaTexto)
-                }
-                .labelStyle(EtiquetaCompacta())
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
                 marcos
                 mensajeDeSubida
 
@@ -102,6 +93,16 @@ struct FotosSemana: View {
                     }
                 }
 
+                if conGuia { avisoFotos }
+                Label {
+                    Text("\(conGuia ? "En ayunas" : "Mismo lugar, misma luz, en ayunas"). Las ve \(Text("solo Mati").bold()): no se publican ni salen de la app.")
+                } icon: {
+                    Image(systemName: "lock.fill").foregroundStyle(Color.marcaTexto)
+                }
+                .labelStyle(EtiquetaCompacta())
+                .font(.footnote)
+                .foregroundStyle(Color.apoyo)
+
                 if racha >= 2 {
                     Label("\(racha) semanas seguidas registradas", systemImage: "flame.fill")
                         .labelStyle(IconoTeñido(color: .alerta))
@@ -109,7 +110,7 @@ struct FotosSemana: View {
                 }
 
                 if semanas.isEmpty {
-                    Text("Con la primera foto arranca tu historial. Mismo lugar y misma luz cada semana: así la comparación muestra tu cambio y no el del ambiente.")
+                    Text("Con la primera foto arranca tu historial.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -238,7 +239,7 @@ private struct MarcoPose: View {
         }
         .background(Color.campo.opacity(0.5), in: forma)
         .overlay {
-            forma.strokeBorder(estado.lista ? Color.marcaVivo.opacity(0.6) : Color.secondary.opacity(0.35),
+            forma.strokeBorder(estado.lista ? Color.marcaVivo : Color.secondary.opacity(0.7),
                                style: StrokeStyle(lineWidth: 1.5, dash: estado.lista ? [] : [6, 5]))
         }
         .contentShape(forma)
