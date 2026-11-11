@@ -130,6 +130,8 @@ class ModeloCasa(
     }
 
     private fun aplicar(e: EstadoCasa) {
+        // La palanca se pudo apagar mientras el pedido estaba en camino: lo que vuelve no se muestra.
+        if (!palancaRecordada) return
         _estado.value = e
         val id = e.abierta?.id
         if (_borrador.value.gimnasioId != id) guardar(BorradorCasa(gimnasioId = id))

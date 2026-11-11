@@ -130,13 +130,15 @@ private fun observar(m: ModeloGimnasio): Vista {
 fun TarjetaGimnasioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     val g by modelo.gimnasio.collectAsStateWithLifecycle()
     val m = g ?: return
-    observar(m)
+    val v = observar(m)
     // Con un borrador de casa la tarjeta no habla de zonas ni de fotos.
     val casa by modelo.casa.collectAsStateWithLifecycle()
     val estadoCasa = casa?.estado?.collectAsStateWithLifecycle()?.value
     // «¿Entrenás en casa? Tocá acá»: mientras no entrene en casa y se pueda cambiar, un botón grande que lleva al interruptor.
     // Va también con el gimnasio ya cargado (sin la tarjeta): nadie queda a tres toques.
-    val ofrecerCasa = estadoCasa?.let { Casa.interruptor(it) }?.let { !it.prendido && it.sePuedeMover } == true
+    // Como iPhone: con la palanca `casa` y el estado del gimnasio (sin él, Mi gimnasio se abriría vacío).
+    val ofrecerCasa = casa?.palancaRecordada == true && v.estado != null &&
+        estadoCasa?.let { Casa.interruptor(it) }?.let { !it.prendido && it.sePuedeMover } == true
     if (!m.tarjetaVisible && !ofrecerCasa) return
     val c = MyPump.colores
     val navegacion = LocalNavegacion.current

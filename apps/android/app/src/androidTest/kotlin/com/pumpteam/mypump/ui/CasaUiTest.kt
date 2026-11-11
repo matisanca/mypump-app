@@ -108,11 +108,12 @@ class CasaUiTest : PruebaUi() {
         assertFalse(p.prendido(etiqueta("casa-interruptor")))
     }
 
-    /** Entrenando en casa el botón no hace falta. */
+    /** Entrenando en casa el botón no hace falta (y lo de casa sí llegó: no pasa por no haber cargado). */
     @Test
-    fun sinBotonEntrenandoEnCasaNiConLaPalancaApagada() {
-        lanzar("casaVigente")
+    fun entrenandoEnCasaNoHayBoton() {
+        val d = lanzar("casaVigente")
         p.nodo(etiqueta("pestana-entreno"))
+        p.esperar("casa y el gimnasio pedidos") { (d.llamadasCasa.isNotEmpty() && d.llamadasGimnasio.isNotEmpty()).takeIf { it } }
         p.quieto(2000)
         assertFalse("entrenando en casa", p.existe(etiqueta("casa-tarjeta")))
     }
@@ -121,6 +122,7 @@ class CasaUiTest : PruebaUi() {
     fun conLaPalancaApagadaYElGimnasioCargadoNoHayBoton() {
         val d = lanzar("listo")
         p.nodo(etiqueta("pestana-entreno"))
+        p.esperar("el gimnasio pedido") { d.llamadasGimnasio.isNotEmpty().takeIf { it } }
         p.quieto(2000)
         assertFalse(p.existe(etiqueta("casa-tarjeta")))
         assertFalse(p.existe(etiqueta("gimnasio-tarjeta")))
