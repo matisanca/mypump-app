@@ -60,6 +60,8 @@ firmas.set('mypump_tecnica_get', new Set(['p_token']));
 firmas.set('mypump_devolucion_get', new Set(['p_token']));
 firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ejercicio_nombre', 'p_nota']));
 firmas.set('mypump_tecnica_cancelar', new Set(['p_token', 'p_id']));
+// Fotos y audios en el chat: propuesta sin aplicar (supabase/propuestas/nativa_chat_adjuntos.sql, rama nativa-chat-adjuntos).
+firmas.set('mypump_chat_adjuntos_estado', new Set(['p_token']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.
