@@ -137,8 +137,11 @@ fun TarjetaGimnasioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     if (!m.tarjetaVisible) return
     val c = MyPump.colores
     val navegacion = LocalNavegacion.current
+    // «¿Entrenás en casa? Tocá acá»: mientras no entrene en casa y se pueda cambiar, un botón grande que lleva al interruptor.
+    val ofrecerCasa = estadoCasa?.let { Casa.interruptor(it) }?.let { !it.prendido && it.sePuedeMover } == true
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
     Row(
-        modifier
+        Modifier
             .fillMaxWidth()
             .superficieTarjeta()
             .clip(RoundedCornerShape(Radio.tarjeta))
@@ -159,6 +162,10 @@ fun TarjetaGimnasioDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
             )
         }
         Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
+    }
+    if (ofrecerCasa) {
+        BotonSecundario(Casa.Textos.TARJETA, alTocar = { navegacion?.gimnasio = true }, modifier = Modifier.fillMaxWidth().testTag("casa-tarjeta"), tono = c.marcaTexto)
+    }
     }
 }
 

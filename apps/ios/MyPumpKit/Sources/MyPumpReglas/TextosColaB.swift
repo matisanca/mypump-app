@@ -55,6 +55,7 @@ public enum TextosColaB {
         public static let vigenteTitulo = "Entrenás en casa"
         public static let vigenteSinEquipo = "Sin equipo: entrenás con tu cuerpo."
         public static let cambiar = "Cambió lo que tengo en casa"
+        public static let tarjeta = "¿Entrenás en casa? Tocá acá"
     }
 
     /// Todos, para la prueba de palabras vedadas.

@@ -169,6 +169,7 @@ object Casa {
         const val YA_RECIBIDO = "Ya lo recibimos. Lo vas a poder cambiar cuando esté listo."
         const val ERROR_CAMBIAR = "No se pudo cambiar. Probá de nuevo."
         const val LISTA_TITULO = "¿Qué tenés en casa?"
+        const val TARJETA = "¿Entrenás en casa? Tocá acá"
         const val LISTA_TEXTO = "Marcá todo lo que tengas. Con eso Mati arma tu rutina."
         const val KILOS = "Hasta cuántos kilos (opcional)"
         const val SIN_EQUIPO = "No tengo nada de esto"
@@ -183,7 +184,7 @@ object Casa {
 
         val todos = listOf(
             INTERRUPTOR, INTERRUPTOR_AYUDA, YA_RECIBIDO, ERROR_CAMBIAR, LISTA_TITULO, LISTA_TEXTO, KILOS, SIN_EQUIPO, NOTA, ENVIAR, ERROR_ENVIAR,
-            SIN_DATOS, VIGENTE_TITULO, VIGENTE_SIN_EQUIPO, CAMBIAR,
+            SIN_DATOS, VIGENTE_TITULO, VIGENTE_SIN_EQUIPO, CAMBIAR, TARJETA,
         )
     }
 }
