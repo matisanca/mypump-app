@@ -1,5 +1,6 @@
 import Foundation
 import MyPumpModelos
+import MyPumpReglas
 
 /// Una escritura pendiente. Mismo formato que la cola de la web (`mypump_outbox_<TOKEN>`), así las ops que trae la
 /// migración del almacenamiento viejo entran tal cual.
@@ -184,7 +185,9 @@ public actor Outbox {
 
     /// El carril propio (`pasadaAudios`): los audios de la guía y la reserva de la entrega (2.2.0), que tampoco tiene que
     /// frenar ni esperar a las demás.
-    static func esAudio(_ op: Operacion) -> Bool { op.kind == ModeloAudioDuda.kind || op.kind == ModeloAgenda.kind }
+    static func esAudio(_ op: Operacion) -> Bool {
+        op.kind == ModeloAudioDuda.kind || op.kind == ModeloAgenda.kind || op.kind == ModeloChat.kindAdjunto
+    }
 
     /// Lo que dijo la palanca remota (`migracion_ops_legadas`): con false, las ops de la migración quedan en la cola sin
     /// mandarse; al volver a true salen en la próxima pasada.
@@ -414,7 +417,9 @@ public actor Outbox {
             case .respuesta(.failure(let e)) where e.clase != .permanente:
                 algunaFallo = true
                 rachaSinRed += 1
-            case .respuesta(.failure(let e)) where e.codigo == "KIND_DESCONOCIDO" || e.codigo == Escrituras.codigoAudioId:
+            case .respuesta(.failure(let e)) where e.codigo == "KIND_DESCONOCIDO" || e.codigo == Escrituras.codigoAudioId
+                || ReglasChatAdjuntos.codigosDirectos.contains(e.codigo ?? ""):
+                // Lo que no va a entrar nunca así (y el tope del día de los adjuntos del chat): directo a «no salió».
                 abandonadas.append(op)
                 motivoDirecto[op.id] = e.codigo
                 resueltas.insert(op.id)
@@ -559,7 +564,9 @@ public actor Outbox {
                 // Red, transitorio o tiempo de espera: sin gastar intento, y los demás audios siguen.
                 espera = true; sinRed.append(op); audiosSinRed.insert(op.id)
                 continue
-            case .respuesta(.failure(let e)) where e.codigo == "KIND_DESCONOCIDO" || e.codigo == Escrituras.codigoAudioId:
+            case .respuesta(.failure(let e)) where e.codigo == "KIND_DESCONOCIDO" || e.codigo == Escrituras.codigoAudioId
+                || ReglasChatAdjuntos.codigosDirectos.contains(e.codigo ?? ""):
+                // Lo que no va a entrar nunca así (y el tope del día de los adjuntos del chat): directo a «no salió».
                 abandonadas.append(op)
                 motivoDirecto[op.id] = e.codigo
                 resueltas.insert(op.id)
@@ -642,9 +649,11 @@ public actor Outbox {
     /// (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
     /// Los ajustes de porciones tampoco: valen en el teléfono aunque no hayan subido (son para que Mati los vea). Ni el avance
     /// de «Tu guía», que sale cada 10 s mientras corre un video: lo visto ya quedó en el teléfono.
-    /// Los audios de la guía tampoco: su fila dice «Mandando» o «No se pudo mandar».
+    /// Los audios de la guía tampoco: su fila dice «Mandando» o «No se pudo mandar». Ni las fotos y audios del chat: su
+    /// burbuja dice «Enviando…» o «No salió».
     public static let silenciosas: Set<String> = [SustitucionesServidor.kindGuardar, SustitucionesServidor.kindBorrar, ModeloApp.kindAjustes,
-                                                    ModeloGuia.kindAvance, ModeloAudioDuda.kind, ModeloAgenda.kind]
+                                                    ModeloGuia.kindAvance, ModeloAudioDuda.kind, ModeloAgenda.kind,
+                                                    ModeloChat.kindAdjunto]
 
     /// Kinds que se anotan como `intentada` antes de salir: el chat, que antes de reintentar mira si ya había llegado, y el
     /// audio, que solo en un reintento toma un 403 o 409 de Storage como «quizás ya subió».

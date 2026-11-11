@@ -239,6 +239,30 @@ public struct Comentario: Decodable, Sendable, Equatable {
     }
 }
 
+/// La foto o el audio de un mensaje del chat: `{id, tipo, duracion_s?, borrado?}`. Sin path ni texto interno: la URL se
+/// pide firmada a mini-vision (`/chat/urls`) y vence en una hora.
+public struct AdjuntoChat: Codable, Sendable, Equatable, Hashable {
+    public enum Tipo: String, Codable, Sendable { case foto, audio }
+    public let id: String
+    public let tipo: Tipo
+    public let duracion: Double?
+    /// La retención borró el archivo: la burbuja lo dice en vez de intentar traerlo.
+    public let borrado: Bool
+
+    public init(id: String, tipo: Tipo, duracion: Double? = nil, borrado: Bool = false) {
+        self.id = id.lowercased(); self.tipo = tipo; self.duracion = duracion; self.borrado = borrado
+    }
+
+    enum CodingKeys: String, CodingKey { case id, tipo, duracion = "duracion_s", borrado }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        guard let id = c.texto(.id), let t = c.texto(.tipo), let tipo = Tipo(rawValue: t) else {
+            throw DecodingError.dataCorruptedError(forKey: .tipo, in: c, debugDescription: "adjunto sin id o con un tipo que no se conoce")
+        }
+        self.init(id: id, tipo: tipo, duracion: c.decimal(.duracion), borrado: c.booleano(.borrado) ?? false)
+    }
+}
+
 /// `get_chat` y `chat_nuevos` (este último sin `leido_por_cliente`).
 public struct MensajeChat: Decodable, Sendable, Equatable {
     public let id: String
@@ -246,11 +270,15 @@ public struct MensajeChat: Decodable, Sendable, Equatable {
     public let contenido: String
     public let leidoPorCliente: Bool?
     public let createdAt: String
-    enum CodingKeys: String, CodingKey { case id, autor, contenido, leidoPorCliente = "leido_por_cliente", createdAt = "created_at" }
+    /// La foto o el audio del mensaje (`nativa_chat_adjuntos`). nil en lo de texto y mientras la base no tenga la columna.
+    public let adjunto: AdjuntoChat?
+    enum CodingKeys: String, CodingKey { case id, autor, contenido, leidoPorCliente = "leido_por_cliente", createdAt = "created_at", adjunto }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = c.texto(.id) ?? ""; autor = c.texto(.autor) ?? ""; contenido = c.texto(.contenido) ?? ""
         leidoPorCliente = c.booleano(.leidoPorCliente); createdAt = c.texto(.createdAt) ?? ""
+        // Un adjunto con una forma que no se entiende (un tipo nuevo) se ignora: queda la burbuja con el texto.
+        adjunto = (try? c.decodeIfPresent(AdjuntoChat.self, forKey: .adjunto)) ?? nil
     }
     public var esDelCoach: Bool { autor == "coach" }
 }

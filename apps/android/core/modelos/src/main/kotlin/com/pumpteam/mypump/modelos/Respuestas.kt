@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.modelos
 
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 // Filas que devuelven las RPC de lectura (ver docs/NATIVA_CONTRATO.md §2). Las fechas quedan como texto ISO: las
 // interpreta la capa de reglas con calendario gregoriano.
@@ -245,7 +246,15 @@ data class Comentario(
 }
 
 /** `get_chat` y `chat_nuevos` (este último sin `leido_por_cliente`). */
-data class MensajeChat(val id: String, val autor: String, val contenido: String, val leidoPorCliente: Boolean?, val createdAt: String) {
+data class MensajeChat(
+    val id: String,
+    val autor: String,
+    val contenido: String,
+    val leidoPorCliente: Boolean?,
+    val createdAt: String,
+    /** La foto o el audio del mensaje (`nativa_chat_adjuntos`). null en lo de texto y mientras la base no tenga la columna. */
+    val adjunto: AdjuntoChat? = null,
+) {
     val esDelCoach: Boolean get() = autor == "coach"
 
     companion object {
@@ -254,7 +263,33 @@ data class MensajeChat(val id: String, val autor: String, val contenido: String,
             return MensajeChat(
                 id = o.texto("id") ?: "", autor = o.texto("autor") ?: "", contenido = o.texto("contenido") ?: "",
                 leidoPorCliente = o.booleano("leido_por_cliente"), createdAt = o.texto("created_at") ?: "",
+                // Un adjunto con una forma que no se entiende (un tipo nuevo) se ignora: queda la burbuja con el texto.
+                adjunto = (o["adjunto"] as? JsonObject)?.let(AdjuntoChat::desde),
             )
+        }
+    }
+}
+
+/**
+ * La foto o el audio de un mensaje del chat: `{id, tipo, duracion_s?, borrado?}`. Sin path ni texto interno: la URL se
+ * pide firmada a mini-vision (`/chat/urls`) y vence en una hora. Gemelo de `AdjuntoChat` de iOS.
+ */
+data class AdjuntoChat(val id: String, val tipo: Tipo, val duracion: Double? = null, val borrado: Boolean = false) {
+    enum class Tipo(val valor: String) {
+        FOTO("foto"), AUDIO("audio");
+
+        companion object {
+            fun de(s: String?): Tipo? = entries.firstOrNull { it.valor == s }
+        }
+    }
+
+    companion object {
+        fun crear(id: String, tipo: Tipo, duracion: Double? = null, borrado: Boolean = false) = AdjuntoChat(id.lowercase(), tipo, duracion, borrado)
+
+        fun desde(o: JsonObject): AdjuntoChat? {
+            val id = o.texto("id")?.takeIf { it.isNotEmpty() } ?: return null
+            val tipo = Tipo.de(o.texto("tipo")) ?: return null
+            return crear(id, tipo, o.decimal("duracion_s")?.takeIf { it.isFinite() }, o.booleano("borrado") ?: false)
         }
     }
 }

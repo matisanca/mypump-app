@@ -28,6 +28,8 @@ public struct PalancaRemota: Equatable, Sendable {
     public var devolucionSemanal = false
     /// Metas de pasos y ritmo de peso, con el «Pump del día» (`metas_pasos`). Sin la clave, apagadas: no se ve nada nuevo.
     public var metasPasos = false
+    /// Fotos y audios en el chat (`chat_adjuntos`). Sin la clave, apagado. Prendida, igual decide el servidor por cliente.
+    public var chatAdjuntos = false
 
     public init() {}
 
@@ -45,6 +47,8 @@ public struct PalancaRemota: Equatable, Sendable {
     static let claveDevolucion = "mypump-palanca-devolucion-semanal"
     /// El último valor leído de `metas_pasos`: sin red al arrancar, el «Pump del día» no aparece y desaparece.
     static let claveMetasPasos = "mypump-palanca-metas-pasos"
+    /// El último valor leído de `chat_adjuntos`: prendida, sin red se puede mandar una foto y sale después.
+    static let claveChatAdjuntos = "mypump-palanca-chat-adjuntos"
     public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
         var p = deFabrica
         if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
@@ -53,6 +57,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if defaults.bool(forKey: claveNovedadesPlan) { p.novedadesPlan = true }
         if defaults.bool(forKey: claveDevolucion) { p.devolucionSemanal = true }
         if defaults.bool(forKey: claveMetasPasos) { p.metasPasos = true }
+        if defaults.bool(forKey: claveChatAdjuntos) { p.chatAdjuntos = true }
         return p
     }
     public func recordar(defaults: UserDefaults = .standard) {
@@ -62,6 +67,7 @@ public struct PalancaRemota: Equatable, Sendable {
         defaults.set(novedadesPlan, forKey: Self.claveNovedadesPlan)
         defaults.set(devolucionSemanal, forKey: Self.claveDevolucion)
         defaults.set(metasPasos, forKey: Self.claveMetasPasos)
+        defaults.set(chatAdjuntos, forKey: Self.claveChatAdjuntos)
     }
 
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
@@ -75,6 +81,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["novedades_plan"] { novedadesPlan = b }
         if case .bool(let b)? = j["devolucion_semanal"] { devolucionSemanal = b }
         if case .bool(let b)? = j["metas_pasos"] { metasPasos = b }
+        if case .bool(let b)? = j["chat_adjuntos"] { chatAdjuntos = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

@@ -240,6 +240,8 @@ class Escrituras(
             )
             // La reserva de la entrega (2.2.0, `entregas_021_agenda`): idempotente por `p_id`, el uuid fijo del payload.
             ModeloAgenda.KIND -> ResultadoOp.Respuesta(reservar(p))
+            // Una foto o un audio del chat (2.3.0, `nativa_chat_adjuntos`): sube a mini-vision, idempotente por el id.
+            KIND_ADJUNTO_CHAT -> ResultadoOp.Respuesta(EnvioAdjuntoChat(cliente, token).ejecutar(p))
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo n.º 2).
             else -> ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "KIND_DESCONOCIDO", op.kind)))
         }
@@ -295,7 +297,8 @@ class Escrituras(
         val filas = r.valorONull() ?: return null
         val limite = despuesDe?.let(FechaIso::ms)
         return filas.firstOrNull { f ->
-            f.autor == "cliente" && f.contenido == contenido &&
+            // Una foto o un audio («Foto», «Audio de 0:42») no es el texto que se está reintentando.
+            f.autor == "cliente" && f.adjunto == null && f.contenido == contenido &&
                 if (limite != null) FechaIso.ms(f.createdAt) > limite else FechaIso.ms(f.createdAt) >= desde - 60_000
         }?.id
     }

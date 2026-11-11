@@ -164,6 +164,9 @@ class ModeloApp(
 
     /** La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido). */
     private val _palanca = MutableStateFlow(PalancaRemota.deFabrica)
+
+    /** La palanca se leyó en esta cuenta (si no, los adjuntos del chat quedan como la última vez que se supo). */
+    @Volatile private var palancaLeidaEnSesion = false
     val palanca: StateFlow<PalancaRemota> = _palanca.asStateFlow()
 
     /** «Pump del día» (2.3.0): las fechas ya celebradas de esta cuenta (`metas.json` en su disco; en la demo, en memoria). */
@@ -607,9 +610,12 @@ class ModeloApp(
         }
         outbox = cola
         _chat.value?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
-        val chat = ModeloChat(cliente, t, cola, alcance)
+        val chat = ModeloChat(cliente, t, cola, alcance, carpetaAdjuntos = d.archivo(CARPETA_ADJUNTOS_CHAT))
         _chat.value = chat
+        palancaLeidaEnSesion = false
         if (enPrimerPlano) chat.empezarSondeo()
+        // Las fotos y audios del chat que quedaron en la cola (la app cerrada sin señal) vuelven a su burbuja.
+        alcance.launch { chat.cargarAdjuntosDeLaCola() }
         _revision.value = ModeloRevision(cliente, t, cola, alcance, d)
         _fotos.value = ModeloFotos(cliente, t, d)
         _gimnasio.value = ModeloGimnasio(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
@@ -657,6 +663,7 @@ class ModeloApp(
             val contenido = g.op.payload["contenido"]?.comoTexto ?: continue
             g.respuesta.comoTexto?.let { id -> _chat.value?.confirmar(contenido, id) }
         }
+        _chat.value?.alGuardarAdjuntos(ops)
     }
 
     /**
@@ -673,6 +680,7 @@ class ModeloApp(
             if (op.kind != "chat") continue
             op.payload["contenido"]?.comoTexto?.let { _chat.value?.marcarFallido(it) }
         }
+        _chat.value?.let { c -> alcance.launch { c.alAbandonarAdjuntos(ops) } }
     }
 
     // ── Carga ──
@@ -861,6 +869,7 @@ class ModeloApp(
         if (!vigente()) return
         palancaLeida?.let {
             _palanca.value = it
+            palancaLeidaEnSesion = true
             _gimnasio.value?.recordarPalanca(it.gimnasioFotos)
             _tecnica.value?.recordarPalanca(it.tecnicaVideo)
             _devolucion.value?.recordarPalanca(it.devolucionSemanal)
@@ -947,6 +956,7 @@ class ModeloApp(
         sincronizarGimnasio()
         sincronizarTecnica()
         sincronizarDevolucion()
+        _chat.value?.consultarAdjuntos(if (palancaLeidaEnSesion) _palanca.value.chatAdjuntos else null)
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         anotarCargaCompleta()
@@ -1046,6 +1056,7 @@ class ModeloApp(
             sincronizarGimnasio()
             sincronizarTecnica()
             sincronizarDevolucion()
+            _chat.value?.consultarAdjuntos(if (palancaLeidaEnSesion) _palanca.value.chatAdjuntos else null)
         }
         if (toca(Relectura.GUIA)) _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).

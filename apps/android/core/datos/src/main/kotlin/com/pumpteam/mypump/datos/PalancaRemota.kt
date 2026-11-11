@@ -28,6 +28,8 @@ data class PalancaRemota(
     val devolucionSemanal: Boolean = false,
     /** Metas de pasos y ritmo de peso, con el «Pump del día» (`metas_pasos`). Sin la clave, apagadas: no se ve nada nuevo. */
     val metasPasos: Boolean = false,
+    /** Fotos y audios en el chat (`chat_adjuntos`). Sin la clave, apagado. Prendida, igual decide el servidor por cliente. */
+    val chatAdjuntos: Boolean = false,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -45,6 +47,7 @@ data class PalancaRemota(
             novedadesPlan = (j["novedades_plan"] as? ValorJson.Booleano)?.valor ?: false,
             devolucionSemanal = (j["devolucion_semanal"] as? ValorJson.Booleano)?.valor ?: false,
             metasPasos = (j["metas_pasos"] as? ValorJson.Booleano)?.valor ?: false,
+            chatAdjuntos = (j["chat_adjuntos"] as? ValorJson.Booleano)?.valor ?: false,
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

@@ -1,9 +1,12 @@
 package com.pumpteam.mypump.datos
 
+import com.pumpteam.mypump.modelos.AdjuntoChat
 import com.pumpteam.mypump.modelos.MensajeChat
 import com.pumpteam.mypump.modelos.TextoJs
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.reglas.ReglasChatAdjuntos
 import com.pumpteam.mypump.reglas.SemanticaJs
+import java.io.File
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -32,11 +35,17 @@ data class BurbujaChat(
     val pendiente: Boolean = false,
     /** `_fallo`: la cola se rindió con este mensaje; se ofrece reintentar (el texto nunca se pierde). */
     val fallo: Boolean = false,
+    /** La foto o el audio (null en un mensaje de texto). En una optimista, el id es el que va a tener en el servidor. */
+    val adjunto: AdjuntoChat? = null,
+    /** Por qué no salió un adjunto (el código con que lo dejó la cola): cambia el texto y si se ofrece «Reintentar». */
+    val motivoFallo: String? = null,
+    /** Un adjunto que mini-vision confirmó y todavía no trajo el sondeo: no mueve el cursor (se perdería lo de Mati de antes). */
+    val confirmado: Boolean = false,
 ) {
     val esDelCoach: Boolean get() = autor == "coach"
 
     companion object {
-        fun de(m: MensajeChat) = BurbujaChat(m.id, m.autor, m.contenido, m.leidoPorCliente, m.createdAt)
+        fun de(m: MensajeChat) = BurbujaChat(m.id, m.autor, m.contenido, m.leidoPorCliente, m.createdAt, adjunto = m.adjunto)
     }
 }
 
@@ -61,20 +70,29 @@ data class HiloChat(
         // Una fila que ya estaba puede venir con su "leído" (get_chat lo trae; chat_nuevos no): se actualiza, si no al
         // recargar el badge quedaba en 0 con el mensaje sin leer.
         for (f in filas) {
-            val l = f.leidoPorCliente ?: continue
             if (f.id !in vistos) continue
             val i = lista.indexOfFirst { it.id == f.id }
-            if (i >= 0) lista[i] = lista[i].copy(leidoPorCliente = l)
+            if (i < 0) continue
+            f.leidoPorCliente?.let { lista[i] = lista[i].copy(leidoPorCliente = it) }
+            // La retención borró el archivo después: la burbuja lo tiene que decir.
+            f.adjunto?.let { lista[i] = lista[i].copy(adjunto = it) }
+            if (lista[i].confirmado) lista[i] = lista[i].copy(confirmado = false, createdAt = f.createdAt)
         }
         for (f in filas) {
             if (f.id in vistos) continue
-            if (f.autor == "cliente") lista.removeAll { it.pendiente && it.autor == "cliente" && it.contenido == f.contenido }
+            val a = f.adjunto
+            if (a != null) {
+                // Una foto o un audio: su optimista es la del mismo id (dos «Foto» seguidas son dos mensajes distintos).
+                lista.removeAll { it.pendiente && it.adjunto?.id == a.id }
+            } else if (f.autor == "cliente") {
+                lista.removeAll { it.pendiente && it.adjunto == null && it.autor == "cliente" && it.contenido == f.contenido }
+            }
             vistos += f.id
             lista += BurbujaChat.de(f)
             entraron += 1
         }
         val ordenados = ordenar(lista)
-        return Mezcla(copy(mensajes = ordenados, cursor = ordenados.lastOrNull { !it.pendiente }?.createdAt ?: cursor), entraron)
+        return Mezcla(copy(mensajes = ordenados, cursor = ordenados.lastOrNull { !it.pendiente && !it.confirmado }?.createdAt ?: cursor), entraron)
     }
 
     fun agregarPendiente(b: BurbujaChat): HiloChat = copy(mensajes = ordenar(mensajes + b))
@@ -87,16 +105,61 @@ data class HiloChat(
      */
     fun confirmar(contenido: String, id: String): HiloChat {
         if (mensajes.none { it.id == id && !it.pendiente }) return this
-        val i = mensajes.indexOfFirst { it.pendiente && !it.fallo && it.autor == "cliente" && it.contenido == contenido }
+        val i = mensajes.indexOfFirst { it.pendiente && !it.fallo && it.adjunto == null && it.autor == "cliente" && it.contenido == contenido }
         if (i < 0) return this
         return copy(mensajes = mensajes.toMutableList().also { it.removeAt(i) })
     }
 
     fun marcarFallido(contenido: String): HiloChat {
-        val i = mensajes.indexOfFirst { it.pendiente && !it.fallo && it.contenido == contenido }
+        val i = mensajes.indexOfFirst { it.pendiente && !it.fallo && it.adjunto == null && it.contenido == contenido }
         if (i < 0) return this
         return copy(mensajes = mensajes.toMutableList().also { it[i] = it[i].copy(fallo = true) })
     }
+
+    // Fotos y audios (el id del adjunto los identifica, no el texto)
+
+    /**
+     * El servidor guardó el adjunto como la fila [comentarioId]: la optimista pasa a ser esa fila ya (sin esperar al sondeo),
+     * con la hora del servidor. Si la fila ya había llegado por el sondeo, solo se saca la optimista.
+     */
+    fun confirmarAdjunto(id: String, comentarioId: String, createdAt: String?): HiloChat {
+        val i = mensajes.indexOfFirst { it.pendiente && it.adjunto?.id == id }
+        if (i < 0) return this
+        val lista = mensajes.toMutableList()
+        if (comentarioId.isEmpty() || mensajes.any { it.id == comentarioId }) {
+            lista.removeAt(i)
+            return copy(mensajes = lista)
+        }
+        val b = lista[i]
+        lista[i] = b.copy(id = comentarioId, createdAt = createdAt ?: b.createdAt, pendiente = false, fallo = false, motivoFallo = null, confirmado = true)
+        return copy(mensajes = ordenar(lista))
+    }
+
+    fun marcarAdjuntoFallido(id: String, motivo: String?): HiloChat {
+        val i = mensajes.indexOfFirst { it.pendiente && it.adjunto?.id == id }
+        if (i < 0) return this
+        return copy(mensajes = mensajes.toMutableList().also { it[i] = it[i].copy(fallo = true, motivoFallo = motivo) })
+    }
+
+    /** «Reintentar»: vuelve a «enviando…». [nuevoId]: sale con otro id (el anterior era de otro mensaje). */
+    fun desmarcarAdjunto(id: String, nuevoId: String? = null): HiloChat {
+        val i = mensajes.indexOfFirst { it.pendiente && it.adjunto?.id == id }
+        if (i < 0) return this
+        val b = mensajes[i]
+        val a = b.adjunto!!
+        val nueva = if (nuevoId == null) b.copy(fallo = false, motivoFallo = null)
+        else b.copy(id = "adj_$nuevoId", fallo = false, motivoFallo = null, adjunto = AdjuntoChat(nuevoId, a.tipo, a.duracion))
+        return copy(mensajes = mensajes.toMutableList().also { it[i] = nueva })
+    }
+
+    /** «Borrar» en uno que no salió. */
+    fun quitarAdjuntoPendiente(id: String): HiloChat = copy(mensajes = mensajes.filterNot { it.pendiente && it.adjunto?.id == id })
+
+    /** ¿Ya hay una burbuja (optimista o real) de ese adjunto? */
+    fun tieneAdjunto(id: String): Boolean = mensajes.any { it.adjunto?.id == id }
+
+    /** Los adjuntos reales del hilo que todavía se pueden ver (para pedir sus URLs firmadas). */
+    val adjuntosReales: List<AdjuntoChat> get() = mensajes.mapNotNull { if (it.pendiente) null else it.adjunto }.filter { !it.borrado }
 
     /** El hilo sin la marca de fallo en esa burbuja, y la burbuja (para reencolarla). */
     fun desmarcarFallido(id: String): Pair<HiloChat, BurbujaChat?> {
@@ -155,11 +218,13 @@ object FechaIso {
  * la anon key es la misma para todos los clientes (CHA-06). Sin token es la demo ([demo]).
  */
 class ModeloChat(
-    private val cliente: ClienteRpc,
+    internal val cliente: ClienteRpc,
     /** null es la demo. */
-    private val token: String?,
-    private val outbox: Outbox?,
-    private val alcance: CoroutineScope,
+    internal val token: String?,
+    internal val outbox: Outbox?,
+    internal val alcance: CoroutineScope,
+    /** La carpeta `chat-adjuntos/` de la cuenta. null (la demo, los tests viejos): sin fotos ni audios (`ChatAdjuntos.kt`). */
+    internal val carpetaAdjuntos: File? = null,
 ) {
     /**
      * La demo (`chatEsDemo` de la web, ACC-07): el hilo vacío para escribirle a Mati, y nada se carga, se manda, se sondea
@@ -168,7 +233,7 @@ class ModeloChat(
     val demo: Boolean = token == null
 
     // En la demo no hay nada más para traer (sin "Ver mensajes anteriores").
-    private val _hilo = MutableStateFlow(HiloChat(hayMas = !demo))
+    internal val _hilo = MutableStateFlow(HiloChat(hayMas = !demo))
     val hilo: StateFlow<HiloChat> = _hilo.asStateFlow()
 
     /** Badge del tab: lo del coach que llegó con el chat cerrado. */
@@ -212,6 +277,31 @@ class ModeloChat(
             field = v
             if (v != antes && sondeo != null) empezarSondeo()
         }
+
+    // Fotos y audios (`ChatAdjuntos.kt`)
+
+    /** Se ven el clip y el micrófono: la palanca `chat_adjuntos` y el servidor (por cliente) dicen que sí. */
+    internal val _adjuntosActivos = MutableStateFlow(false)
+    val adjuntosActivos: StateFlow<Boolean> = _adjuntosActivos.asStateFlow()
+
+    /** El tope de un audio que dice el servidor (nunca más que [ReglasChatAdjuntos.AUDIO_MAXIMO]). */
+    @Volatile var audioMaximo = ReglasChatAdjuntos.AUDIO_MAXIMO
+        internal set
+
+    /** Los archivos que ya están en el teléfono (lo que se mandó desde acá y lo que se bajó), por id del adjunto. */
+    internal val _archivos = MutableStateFlow<Map<String, File>>(emptyMap())
+    val archivos: StateFlow<Map<String, File>> = _archivos.asStateFlow()
+
+    /** Los que no se pudieron bajar (la burbuja ofrece probar de nuevo). */
+    internal val _sinBajar = MutableStateFlow<Set<String>>(emptySet())
+    val sinBajar: StateFlow<Set<String>> = _sinBajar.asStateFlow()
+
+    /** Un aviso corto para TalkBack y la pantalla («Por hoy llegaste al máximo…»); el número cambia con cada uno. */
+    internal val _anuncio = MutableStateFlow<Pair<Int, String>?>(null)
+    val anuncio: StateFlow<Pair<Int, String>?> = _anuncio.asStateFlow()
+
+    internal val firmas = java.util.concurrent.ConcurrentHashMap<String, FirmaAdjunto>()
+    internal val bajando = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<File?>>()
 
     private var sondeo: Job? = null
     internal val sondeoEnCurso: Job? get() = sondeo
