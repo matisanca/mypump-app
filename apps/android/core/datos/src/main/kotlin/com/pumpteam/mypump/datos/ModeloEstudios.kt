@@ -389,6 +389,8 @@ class ModeloEstudios(
             is Resultado.Ok -> _controles.value = EstadoControles.desde(r.valor)
             is Resultado.Falla -> if (r.error.funcionInexistente || r.error.status == 404 || r.error.clase == ErrorRpc.Clase.PERMANENTE) _controles.value = null
         }
+        // Si se apagó justo entre el chequeo y la escritura (otro hilo), no queda nada viejo a la vista.
+        if (vuelta != vueltaControles.get() || !palancaControles || _palanca.value != true) _controles.value = null
     }
 
     private fun componer() {
