@@ -118,12 +118,19 @@ def main():
                      "uso de anabólicos", "tamoxifeno", "cada 7 días", "terapia de reemplazo hormonal", "T38.7", "hipogonadismo inducido",
                      "ANABÓLICOS", "última aplicación", "hipoandrogenismo", "dihidrotestosterona", "enclomifeno", "testoste-\nrona",
                      "testos\u00adterona", "andro\u0301genos", "inyeccio\u0301n", "cipionato", "1 cc", "c/7 días", "cada 3,5 dias", "x semana",
-                     "t e s t o s t e r o n a", "flebotomía", "constancia"]:
+                     "t e s t o s t e r o n a", "flebotomía", "constancia", "trenbolona", "Sustanon", "deca", "winstrol", "anavar", "masteron",
+                     "dbol", "clomid", "nolvadex", "arimidex", "cipio", "testo", "GH", "hormona de crecimiento", "BPC-157", "particulares",
+                     "2 veces a la semana", "1 por día", "E29.1 y E78.5", "Diagnóstico: a. Diagnóstico: b"]:
             chequear(f"«{malo}» frena", uno(cur, prohibido, ("Laboratorio. " + malo + ". Sin cobertura", "[]")) is True)
         for bueno in ["Hemograma completo. Sin cobertura. E78.5", "Ecocardiograma Doppler color. OSDE 210", "por tratamiento hormonal en curso",
                       "Ferritina, hierro sérico, transferrina y saturación", "Vitamina D (25-OH), vitamina B12 y ácido fólico"]:
             chequear(f"«{bueno[:30]}…» pasa", uno(cur, prohibido, (bueno, "[]")) is False)
 
+        chequear("un solo diagnóstico con B12 entre las prácticas pasa",
+                 uno(cur, prohibido, ("Laboratorio. Vitamina B12, hemograma. Diagnóstico: E29.1. Sin cobertura", "[]")) is False)
+        chequear("GH como práctica del papel pasa; suelta en el texto no",
+                 uno(cur, prohibido, ("Laboratorio. GH basal, hemograma. Sin cobertura", json.dumps(["GH basal"]))) is False
+                 and uno(cur, prohibido, ("Laboratorio. GH basal, hemograma. Usa GH. Sin cobertura", json.dumps(["GH basal"]))) is True)
         print("▸ Pedidos")
         pedir = ("SELECT mypump_estudios_pedir(%s, %s, %s, %s, %s::date, 'ensayo', %s::date, %s, %s::jsonb)")
         r = uno(cur, pedir, (CUENTA, "laboratorio", "orden", "ord-1", "2030-01-10", None, None, json.dumps(["Hemograma completo"])))

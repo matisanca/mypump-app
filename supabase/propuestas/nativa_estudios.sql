@@ -82,21 +82,25 @@ DECLARE
   k_sust CONSTANT TEXT := '(testosteron|androgen|anabol|esteroid|ergogenic|exogen|nandrolon|trembolon|boldenon|oxandrolon|estanozolol|'
            || 'stanozolol|metenolon|primobolan|drostanolon|mesterolon|proviron|oximetolon|metandrostenolon|dianabol|'
            || 'tamoxifen|clomifen|anastrozol|letrozol|exemestan|cabergolin|gonadotrof|gonadotrop|somatropin|somatotropin|'
-           || 'semaglutid|tirzepatid|retatrutid|clenbuterol|aromatasa|enantato|cipionato|propionato|undecanoato|decanoato)';
+           || 'semaglutid|tirzepatid|retatrutid|clenbuterol|aromatasa|enantato|cipionato|propionato|undecanoato|decanoato|'
+           || 'trenbolon|sustanon|winstrol|anavar|masteron|clomid|nolvadex|arimidex)';
   -- Las mismas, sin las raíces cortas que aparecen al pegar palabras («Ana Bolaños», «sexo género»): para la pasada compacta.
   k_sust_c CONSTANT TEXT := '(testosteron|androgen|esteroid|nandrolon|trembolon|boldenon|oxandrolon|estanozolol|stanozolol|metenolon|'
            || 'primobolan|drostanolon|mesterolon|oximetolon|metandrostenolon|dianabol|tamoxifen|clomifen|anastrozol|letrozol|'
-           || 'exemestan|cabergolin|gonadotrof|gonadotrop|somatropin|somatotropin|semaglutid|tirzepatid|retatrutid|clenbuterol)';
-  k_pal CONSTANT TEXT := '\m(aas|trt|trh|pct|serm|sarm|sarms|hcg|hgh|rp|receta|recetas|recetario|particular|ciclo|ciclos|posciclo|postciclo|dosis|'
+           || 'exemestan|cabergolin|gonadotrof|gonadotrop|somatropin|somatotropin|semaglutid|tirzepatid|retatrutid|clenbuterol|'
+           || 'trenbolon|sustanon|winstrol|anavar|masteron|clomid|nolvadex|arimidex)';
+  k_pal CONSTANT TEXT := '\m(aas|trt|trh|pct|serm|sarm|sarms|hcg|hgh|gh|deca|dbol|cipio|testo|bpc|diagnosticos|rp|receta|recetas|recetario|particular|particulares|ciclo|ciclos|posciclo|postciclo|dosis|'
            || 'dopaje|doping|vial|viales|ampolla|ampollas|peptido|peptidos|intramuscular|subcutanea|inyeccion|inyecciones|inyectable|'
            || 'inyectables|aplicacion|aplicaciones|comprimido|comprimidos|capsula|capsulas|posologia|semanal|semanales|quincenal|'
            || 'flebotomia|sangria|derivacion|constancia|certificado|justificacion|culturismo|fisicoculturismo|gimnasio|suplemento|suplementos)\M';
-  k_dosis CONSTANT TEXT := '([0-9] ?(mg|mcg|ml|ui|cc|unidades)\M|(cada|c/) ?[0-9]+([.,][0-9]+)? ?(dias|horas|semanas|hs)|(x|por) semana)';
+  k_dosis CONSTANT TEXT := '([0-9] ?(mg|mcg|ml|ui|cc|unidades)\M|(cada|c/) ?[0-9]+([.,][0-9]+)? ?(dias|horas|semanas|hs)|(x|por) semana'
+           || '|[0-9] ?(vez|veces)\M|[0-9] ?(por|x|al|a la) (dia|semana|mes)\M)';
 BEGIN
   IF jsonb_typeof(p_practicas) = 'array' THEN
     -- Una «práctica» no puede traer dosis ni palabras de la lista: no se blanquea sola.
     IF EXISTS (SELECT 1 FROM jsonb_array_elements_text(p_practicas) x
-                WHERE regexp_replace(mypump_estudios_plano(x), '\s+', ' ', 'g') ~ k_pal
+                -- (GH y hCG sí pueden ser el nombre de una determinación de laboratorio)
+                WHERE regexp_replace(regexp_replace(mypump_estudios_plano(x), '\s+', ' ', 'g'), '\m(gh|hgh|hcg)\M', '', 'g') ~ k_pal
                    OR regexp_replace(mypump_estudios_plano(x), '\s+', ' ', 'g') ~ k_dosis) THEN
       RETURN TRUE;
     END IF;
@@ -116,7 +120,11 @@ BEGIN
       OR v ~ '\m(terapia|reemplazo) (de reemplazo )?hormonal'
       OR v ~ '(inducid[oa]|secundari[oa] a|supresion del eje|bloqueo del eje|reduccion de danos)'
       OR v ~ k_dosis
-      OR v ~ '\m(t38|y42|f55|f1[0-9]|z72)\.?[0-9]?\M';
+      OR v ~ 'hormona de(l)? crecimiento'
+      OR v ~ '\m(t38|y42|f55|f1[0-9]|z72)\.?[0-9]?\M'
+      -- Un papel por diagnóstico: más de un código (por categoría; «B12» no es un código) o la etiqueta repetida frena.
+      OR (SELECT count(DISTINCT m[1]) FROM regexp_matches(v, '\m([a-z][0-9]{2})(\.[0-9]{1,2})?\M', 'g') m WHERE m[1] <> 'b12') > 1
+      OR (length(v) - length(replace(v, 'diagnostico', ''))) / 11 > 1;
 END;
 $$;
 
@@ -235,6 +243,7 @@ CREATE TABLE IF NOT EXISTS mypump_estudios_envios (
   procesado_en     TIMESTAMPTZ,
   lote             TEXT        CHECK (char_length(lote) <= 40),
   intentos         INTEGER     NOT NULL DEFAULT 0,
+  error_avisado_en TIMESTAMPTZ,                                            -- el bot ya le avisó a Mati que quedó en error
   no_antes_de      TIMESTAMPTZ,                                            -- espera entre intentos de lectura
   resumen          JSONB,                                                  -- interno: guardados, frenados, lectura parcial
   error_detalle    TEXT        CHECK (char_length(error_detalle) <= 600),
@@ -668,6 +677,35 @@ BEGIN
 END;
 $$;
 
+-- Envíos que quedaron en `error` y todavía no se le avisaron a Mati. Los marca como avisados: cada uno sale una vez.
+CREATE OR REPLACE FUNCTION mypump_estudios_errores_nuevos()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v JSONB;
+BEGIN
+  WITH m AS (
+    UPDATE mypump_estudios_envios SET error_avisado_en = NOW()
+     WHERE estado = 'error' AND error_avisado_en IS NULL
+    RETURNING id, cliente_id, intentos, error_detalle,
+              (SELECT count(*) FROM mypump_estudios_archivos a WHERE a.envio_id = mypump_estudios_envios.id) AS archivos)
+  SELECT COALESCE(jsonb_agg(to_jsonb(m)), '[]'::JSONB) INTO v FROM m;
+  RETURN v;
+END;
+$$;
+
+-- De estas huellas, cuáles ya son una hoja guardada de ese alumno (para no duplicar al releer un envío tras una caída).
+CREATE OR REPLACE FUNCTION mypump_estudios_shas_guardados(p_cliente_id TEXT, p_shas TEXT[])
+RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT COALESCE(jsonb_agg(DISTINCT h.sha256), '[]'::JSONB) FROM mypump_estudios_hojas h
+   WHERE h.cliente_id = p_cliente_id AND h.sha256 = ANY (COALESCE(p_shas, '{}'));
+$$;
+REVOKE ALL ON FUNCTION mypump_estudios_errores_nuevos(), mypump_estudios_shas_guardados(TEXT, TEXT[]) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_estudios_errores_nuevos(), mypump_estudios_shas_guardados(TEXT, TEXT[]) TO service_role;
+
 -- El gancho del guardado del bot: un archivo quedó en la ficha. Vale para WhatsApp y para la app.
 -- Devuelve qué pasó con los pedidos, para el resumen que recibe Mati. NULL si la ficha no tiene cuenta en la app.
 CREATE OR REPLACE FUNCTION mypump_estudios_registrar(
@@ -943,10 +981,9 @@ RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_
   SELECT COALESCE(jsonb_agg(jsonb_build_object('id', x.id, 'path', x.path)), '[]'::JSONB) FROM (
     SELECT a.id, a.path FROM mypump_estudios_archivos a JOIN mypump_estudios_envios s ON s.id = a.envio_id
      WHERE a.borrado_en IS NULL
-       -- Solo envíos que entraron ENTEROS a la ficha: de uno parcial o frenado, la entrada es la única copia.
+       -- Solo archivos que de verdad quedaron en la ficha: tiene que existir una hoja de ese alumno con los mismos bytes.
        AND ((s.estado = 'procesado' AND s.procesado_en < NOW() - make_interval(days => GREATEST(p_dias, 7))
-             AND COALESCE((s.resumen->>'guardados')::INTEGER, 0) > 0
-             AND COALESCE((s.resumen->>'guardados')::INTEGER, 0) >= COALESCE((s.resumen->>'archivos')::INTEGER, 0))
+             AND EXISTS (SELECT 1 FROM mypump_estudios_hojas h WHERE h.cliente_id = a.cliente_id AND h.sha256 = a.sha256))
             OR (s.estado = 'borrador' AND s.actualizado_en < NOW() - INTERVAL '7 days'))
      ORDER BY a.creado_en LIMIT LEAST(GREATEST(p_limite, 1), 200)) x;
 $$;
