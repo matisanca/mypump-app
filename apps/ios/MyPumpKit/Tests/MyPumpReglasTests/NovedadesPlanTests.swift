@@ -37,6 +37,15 @@ struct NovedadesPlanTests {
         try JSONDecoder().decode([Caso].self, from: Data(contentsOf: archivo))
     }
 
+    /// «Sin dosis»: la misma tabla que Android y la web (`apps/shared/fixtures/novedades/sin_dosis.json`).
+    @Test func sinDosisDaLoMismoQueLaReferencia() throws {
+        struct Par: Decodable { let entrada: String; let salida: String }
+        let u = Self.archivo.deletingLastPathComponent().appendingPathComponent("sin_dosis.json")
+        let pares = try JSONDecoder().decode([Par].self, from: Data(contentsOf: u))
+        #expect(pares.count >= 40)
+        for p in pares { #expect(NovedadesPlan.sinDosis(p.entrada) == p.salida, "«\(p.entrada)»") }
+    }
+
     @Test func losCasosCompartidos() throws {
         let cs = try Self.casos()
         #expect(cs.count >= 30)

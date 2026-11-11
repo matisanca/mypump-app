@@ -69,6 +69,13 @@ public final class ModeloNovedades {
         disco?.guardar(lista, Self.archivoLista)
     }
 
+    /// Con la palanca apagada el plan «ya visto» no sirve más: si se quedara, al volver a prenderla se compararía contra
+    /// una base de hace semanas y saldría un resumen enorme. Sin base, la próxima vez se parte de la copia de la última
+    /// carga. Las novedades ya guardadas no se tocan.
+    public func olvidarBase() {
+        disco?.borrar(Self.archivoBase)
+    }
+
     // MARK: - Base
 
     /// Un área como se guarda: `hay` false = el servidor dijo que no hay; sin la clave = no se sabe.

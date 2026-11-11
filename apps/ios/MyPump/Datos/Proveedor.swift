@@ -35,6 +35,9 @@ enum Proveedor {
             if d.bool(forKey: "sinRed") { transporte = SinRed() }
             // `-gimnasioDePrueba <escenario>`: el servidor del gimnasio de mentira y lo demás de las muestras (ver `GimnasioDePrueba`).
             else if let caso = d.string(forKey: "gimnasioDePrueba") { transporte = GimnasioDePrueba(doble: .escenario(caso), sinRutina: d.bool(forKey: "gimnasioSinRutina")) }
+            // `-colaBDePrueba <escenario>`: «Tu recorrido», «Dónde comprarlo» y «Entreno en casa» contra el servidor de
+            // mentira (ver `DobleColaB.escenario`), con datos inventados; lo demás, de las muestras.
+            else if let caso = d.string(forKey: "colaBDePrueba") { transporte = ColaBDePrueba(doble: .escenario(caso)) }
             else if let caso = d.string(forKey: "tecnicaDePrueba") { transporte = TecnicaDePrueba(doble: .escenario(caso)) }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
             else if let caso = d.string(forKey: "recuperacionDePrueba") { transporte = RecuperacionDePrueba(caso: caso) }
@@ -73,6 +76,25 @@ private struct TecnicaDePrueba: Transporte {
         let ruta = pedido.url?.path ?? ""
         let f = ruta.components(separatedBy: "/").last ?? ""
         if ruta.contains("/tecnica/") || f.hasPrefix("mypump_tecnica") || f == "mypump_get_app_config" { return try await doble.enviar(pedido) }
+        var cuerpo = Data("[]".utf8)
+        if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
+           let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }
+        return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
+/// `-colaBDePrueba`: la cola B de la 2.3.0 (y Mi gimnasio y la suplementación, de las que depende) la contesta el doble;
+/// la cuenta y el plan salen de las muestras. Sin red y sin datos de nadie.
+private struct ColaBDePrueba: Transporte {
+    let doble: DobleColaB
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = pedido.url?.path ?? ""
+        let f = ruta.components(separatedBy: "/").last ?? ""
+        let suyas = ["mypump_gimnasio", "mypump_fin_plan", "mypump_compras", "mypump_casa"]
+        if ruta.contains("/gimnasio/") || suyas.contains(where: f.hasPrefix) || f == "mypump_get_app_config" || f == "mypump_suplementacion" {
+            return try await doble.enviar(pedido)
+        }
         var cuerpo = Data("[]".utf8)
         if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
            let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? Data(contentsOf: u) { cuerpo = d }

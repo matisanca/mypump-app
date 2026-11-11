@@ -332,6 +332,8 @@ private struct HojaDeNovedades: ViewModifier {
     let navegacion: Navegacion
     @State private var ui = NovedadesUI.compartido
     @State private var modelo = Proveedor.modelo
+    /// Cambia para volver a esperar cuando justo se abrió otra hoja.
+    @State private var reintento = 0
 
     private var pendiente: NovedadPlan? {
         guard modelo.palanca.novedadesPlan || modelo.esDemo, modelo.fase == .listo else { return nil }
@@ -351,15 +353,19 @@ private struct HojaDeNovedades: ViewModifier {
                 ui.abierta = nil
                 ui.yaPedida = []
             }
-            .task(id: "\(pendiente?.id ?? "")-\(otraHoja)") {
+            .task(id: "\(pendiente?.id ?? "")-\(otraHoja)-\(reintento)") {
                 guard let p = pendiente, !ui.yaPedida.contains(p.id) else { return }
-                while (otraHoja || OnboardingPermisos.pendiente) && !modelo.esDemo {
+                // `otraHoja` solo sabe de las hojas de la raíz. Una hoja de una pantalla (Tu gimnasio, cerrar el día, la
+                // técnica) tapaba la novedad: SwiftUI no la presentaba y quedaba pedida sin verse. UIKit sí lo sabe.
+                while ((otraHoja || OnboardingPermisos.pendiente) && !modelo.esDemo) || RecorridoUI.compartido.abierta || HojasAbiertas.hay {
                     try? await Task.sleep(for: .seconds(1))
                     if Task.isCancelled { return }
                 }
                 // Que se vea la app un momento antes de la hoja.
                 try? await Task.sleep(for: .milliseconds(1200))
                 guard !Task.isCancelled, !otraHoja, ui.abierta == nil, pendiente?.id == p.id else { return }
+                // En ese momento se abrió otra: se vuelve a esperar en la próxima vuelta (no queda como ya pedida).
+                guard !RecorridoUI.compartido.abierta, !HojasAbiertas.hay else { reintento += 1; return }
                 ui.yaPedida.insert(p.id)
                 ui.abierta = p
             }

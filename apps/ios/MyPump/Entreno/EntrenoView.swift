@@ -38,6 +38,7 @@ struct EntrenoView: View {
                     }
                 case .sinRutina:
                     ScrollView {
+                        TarjetaRecorrido().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         TarjetaGimnasio().padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
@@ -206,6 +207,8 @@ private struct ListaEntreno: View {
                 // el aviso de Revisión.
                 // 2.2.0: el link de la entrega, desde 30 min antes hasta el fin (aunque la tarjeta de la guía esté oculta).
                 if let g = GuiaUI.modelo { TarjetaEntregaAhora(modelo: g) }
+                // «Tu recorrido con Mati» (2.3.0): arriba de todo, solo debajo de la videollamada que está por empezar.
+                TarjetaRecorrido()
                 if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
                 TarjetaGimnasio()
                 TarjetaNovedadPlan()

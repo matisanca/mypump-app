@@ -89,6 +89,8 @@ struct MisDatosView: View {
             }
 
             Section("Tu información") {
+                // «Tu recorrido con Mati» (palanca `fin_plan`), mientras se vea: abre la misma hoja que la tarjeta.
+                FilaRecorridoMisDatos()
                 // «Novedades de tu plan» (palanca `novedades_plan`): el lugar fijo, primero.
                 if let nov = modelo.novedades, modelo.palanca.novedadesPlan || modelo.esDemo {
                     NavigationLink { NovedadesListaView(modelo: nov) } label: {

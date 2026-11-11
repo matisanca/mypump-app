@@ -437,7 +437,7 @@ public enum NovedadesPlan {
         func activos(_ s: SuplementacionGuia?) -> [(String, ItemSuplemento)] {
             var vistos = Set<String>()
             return (s?.items ?? []).compactMap { it in
-                let k = clave(it.nombre)
+                let k = clave(sinDosis(it.nombre))
                 guard !k.isEmpty, clave(it.estado ?? "") != "sale", vistos.insert(k).inserted else { return nil }
                 return (k, it)
             }
@@ -451,11 +451,11 @@ public enum NovedadesPlan {
         let v = activos(antes)
         let kv = Set(v.map(\.0)), kn = Set(n.map(\.0))
         var lineas: [String] = []
-        for (k, it) in n where !kv.contains(k) { lineas.append("Se suma \(limpio(it.nombre))") }
-        for (k, it) in v where !kn.contains(k) { lineas.append("Dejás de tomar \(limpio(it.nombre))") }
+        for (k, it) in n where !kv.contains(k) { lineas.append("Se suma \(sinDosis(it.nombre))") }
+        for (k, it) in v where !kn.contains(k) { lineas.append("Dejás de tomar \(sinDosis(it.nombre))") }
         for (k, it) in n {
             guard let (_, b) = v.first(where: { $0.0 == k }) else { continue }
-            if firma(it) != firma(b) { lineas.append("Cambia cómo tomás \(limpio(it.nombre))") }
+            if firma(it) != firma(b) { lineas.append("Cambia cómo tomás \(sinDosis(it.nombre))") }
         }
         guard !lineas.isEmpty else { return nil }
         return ParteNovedad(area: "suplementacion", titular: "Mati actualizó tu suplementación", grande: false, lineas: recortar(lineas))
@@ -466,7 +466,100 @@ public enum NovedadesPlan {
     static func firma(_ it: ItemSuplemento) -> String {
         let tomas = it.tomas.map { "\(clave($0.momento ?? ""))=\(clave($0.cantidad ?? ""))" }.joined(separator: ";")
         let dias = it.dias.map(clave).sorted().joined(separator: ",")
-        return [clave(it.cantidad ?? ""), clave(it.momento ?? ""), tomas, dias, it.opcional ? "1" : "0"].joined(separator: "|")
+        // Si el nombre trae la dosis («Creatina 5 g»), cuenta para saber si cambió, pero tampoco se muestra.
+        let entero = clave(it.nombre)
+        let enElNombre = entero != clave(sinDosis(it.nombre)) ? entero : ""
+        return [clave(it.cantidad ?? ""), clave(it.momento ?? ""), tomas, dias, it.opcional ? "1" : "0", enElNombre].joined(separator: "|")
+    }
+
+    // MARK: - Sin dosis
+
+    static let unidadesDosis: Set<String> = [
+        "mg", "mcg", "ug", "µg", "g", "gr", "grs", "kg", "ml", "l", "ui", "iu", "%", "cap", "caps", "capsula", "capsulas", "comprimido",
+        "comprimidos", "comp", "tableta", "tabletas", "tab", "tabs", "pastilla", "pastillas", "gota", "gotas", "scoop", "scoops", "cucharada",
+        "cucharadas", "cucharadita", "cucharaditas", "sobre", "sobres", "unidad", "unidades",
+    ]
+    static let tiemposDosis: Set<String> = ["dia", "toma", "noche", "semana", "comida", "mañana"]
+    static let enlacesDosis: Set<String> = ["por", "x", "al", "/", "c/"]
+    static let sueltosDosis: Set<String> = ["x", "-", "–", "—", ":", "·"]
+
+    /// El nombre de un suplemento sin la dosis que a veces trae pegada («Creatina 5 g» → «Creatina»): en Novedades nunca se
+    /// muestra una dosis. Recorre palabra por palabra, sin expresiones regulares, para dar lo mismo en las tres plataformas
+    /// (referencia: `scripts/nativa/novedades-sin-dosis.py`; prueba compartida: `fixtures/novedades/sin_dosis.json`).
+    public static func sinDosis(_ nombre: String) -> String {
+        let digitos = Set<Character>("0123456789")
+        let numericos = Set<Character>("0123456789.,")
+        func norm(_ t: String) -> String {
+            var n = Substring(clave(t))
+            while let c = n.first, c == "(" || c == "[" { n = n.dropFirst() }
+            while let c = n.last, ").,;:]".contains(c) { n = n.dropLast() }
+            return String(n)
+        }
+        // (número, resto). El número: dígitos con . o , y a lo sumo un rango «3-5» o «3/5».
+        func partir(_ n: String) -> (String, String) {
+            let cs = Array(n)
+            guard let p = cs.first, digitos.contains(p) else { return ("", n) }
+            var i = 0
+            while i < cs.count, numericos.contains(cs[i]) { i += 1 }
+            if i + 1 < cs.count, cs[i] == "-" || cs[i] == "/", digitos.contains(cs[i + 1]) {
+                i += 1
+                while i < cs.count, numericos.contains(cs[i]) { i += 1 }
+            }
+            return (String(cs[..<i]), String(cs[i...]))
+        }
+        func unidad(_ r: String) -> Bool {
+            var u = r.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? ""
+            while u.hasSuffix(".") { u.removeLast() }
+            return unidadesDosis.contains(u)
+        }
+        func esNumero(_ n: String) -> Bool { let (p, r) = partir(n); return !p.isEmpty && r.isEmpty }
+        func cuenta(_ xs: [String], _ c: Character) -> Int { xs.reduce(0) { $0 + $1.filter { $0 == c }.count } }
+
+        let ts = limpio(nombre).split(separator: " ").map(String.init)
+        var out: [String] = []
+        var i = 0
+        var cerrar = 0
+        while i < ts.count {
+            var t = ts[i]
+            let n = norm(t)
+            let (p, r) = partir(n)
+            var quita = 0
+            if !p.isEmpty {
+                if !r.isEmpty, unidad(r) || r == "x" { quita = 1 }
+                else if r.isEmpty, i + 1 < ts.count, !norm(ts[i + 1]).isEmpty, unidad(norm(ts[i + 1])) { quita = 2 }
+            } else if n.count > 1, n.first == "x", n.dropFirst().allSatisfy({ digitos.contains($0) }) {
+                quita = 1
+            }
+            if quita == 0 {
+                if cerrar > 0, t.hasSuffix(")") { t.removeLast(); cerrar -= 1 }
+                if !t.isEmpty { out.append(t) }
+                i += 1
+                continue
+            }
+            var ido = Array(ts[i..<(i + quita)])
+            i += quita
+            if i + 1 < ts.count, enlacesDosis.contains(norm(ts[i])), tiemposDosis.contains(norm(ts[i + 1])) {
+                ido += ts[i..<(i + 2)]; i += 2
+            } else if i < ts.count, norm(ts[i]).hasPrefix("/"), tiemposDosis.contains(String(norm(ts[i]).dropFirst())) {
+                ido.append(ts[i]); i += 1
+            } else if i + 1 < ts.count, norm(ts[i]) == "x", esNumero(norm(ts[i + 1])) {
+                ido += ts[i..<(i + 2)]; i += 2
+            }
+            if out.count >= 2, norm(out[out.count - 1]) == "a", esNumero(norm(out[out.count - 2])) {
+                ido = Array(out.suffix(2)) + ido
+                out.removeLast(2)
+            }
+            if let u = out.last, sueltosDosis.contains(u) { out.removeLast() }
+            let a = cuenta(ido, "("), c = cuenta(ido, ")")
+            if a > c { cerrar += a - c }
+            else if c > a, !out.isEmpty, cuenta(out, "(") > cuenta(out, ")") { out[out.count - 1] += ")" }
+        }
+        while let u = out.last, u.allSatisfy({ "-–—:,·+/x".contains($0) }) { out.removeLast() }
+        if !out.isEmpty {
+            while let c = out[out.count - 1].last, ",:;".contains(c) { out[out.count - 1].removeLast() }
+            if out[out.count - 1].isEmpty { out.removeLast() }
+        }
+        return out.joined(separator: " ").replacingOccurrences(of: "()", with: "").trimmingCharacters(in: .whitespaces)
     }
 
     // MARK: - Texto
