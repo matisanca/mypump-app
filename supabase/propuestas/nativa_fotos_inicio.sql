@@ -279,6 +279,9 @@ $$;
 
 -- ── La Mini: Entregas y el revisor de físico (service_role) ──
 -- Le pide las fotos a un alumno: desde acá le aparece la sección (con la palanca prendida). Idempotente; reabre una cerrada.
+-- Con la sección ya visible y fotos por subir, le encola UN aviso (mypump_encolar_push, mig 058) con el destino
+-- `fotos_inicio`: tocarlo abre justo la pantalla de las fotos. Uno solo por alumno (dedupe); pedir otra vez no repite.
+-- Con la palanca apagada no avisa: el aviso sale en el primer `pedir` que se haga con la palanca prendida.
 CREATE OR REPLACE FUNCTION mypump_fotos_inicio_pedir(p_cliente_id TEXT, p_por TEXT DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -294,6 +297,10 @@ BEGIN
   INSERT INTO mypump_fotos_inicio_sets (cliente_id, pedido_por) VALUES (p_cliente_id, NULLIF(btrim(COALESCE(p_por, '')), ''))
   ON CONFLICT (cliente_id) DO UPDATE SET cerrado_en = NULL
   RETURNING * INTO v_set;
+  IF v_set.completado_en IS NULL AND mypump_fotos_inicio_habilitado(p_cliente_id) THEN
+    PERFORM mypump_encolar_push(p_cliente_id, 'Mati', 'Necesito tus fotos de inicio. Tocá acá y las subís en un minuto',
+                                'fotos_inicio', 'fotos-inicio:' || p_cliente_id);
+  END IF;
   RETURN jsonb_build_object('ok', TRUE, 'pedido_en', v_set.pedido_en, 'completo', v_set.completado_en IS NOT NULL);
 END;
 $$;

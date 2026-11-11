@@ -218,7 +218,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         } else {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }
-                                    } else if (navegacion.fotosInicio && fir != null) {
+                                    } else if (navegacion.fotosInicio && fir != null && com.pumpteam.mypump.fotosinicio.fotosInicioVisible(modelo)) {
                                         FotosInicioPantalla(fir, alVolver = { navegacion.fotosInicio = false }, directo = true)
                                     } else {
                                         RevisionPantalla(

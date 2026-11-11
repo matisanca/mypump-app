@@ -176,6 +176,52 @@ class FotosInicioUiTest : PruebaUi() {
         assertFalse(p.existe(etiqueta("fotos-inicio-tarjeta")))
     }
 
+    /** En Entreno, lo primero que se ve al abrir: la tarjeta con el botón grande; un toque lleva a la pose que falta. */
+    @Test
+    fun tarjetaEnEntrenoConBotonGrande() {
+        lanzar("vacio")
+        p.nodo(etiqueta("fotos-inicio-tarjeta"), ms = 30_000)
+        p.nodo(etiqueta("fotos-inicio-tarjeta-boton"))
+        Telefono.captura("fi-entreno-tarjeta-claro")
+        p.tocar(etiqueta("fotos-inicio-tarjeta"))
+        p.nodo(etiqueta("fotos-inicio-instruccion"))
+        p.nodo(etiqueta("fotos-inicio-foto"))
+        assertTrue(p.seleccionado(etiqueta("pestana-revision")))
+    }
+
+    /** El aviso «subí tus fotos de inicio» (destino `fotos_inicio`), con la app cerrada: abre la pantalla en la pose que falta. */
+    @Test
+    fun elAvisoAbreLasFotosDeInicio() {
+        val d = DobleFotosInicio.escenario("vacio")
+        val s = servidor
+        Entorno.transporte = Transporte { pedido ->
+            if ("inicio" in pedido.ruta || pedido.ruta.endsWith("mypump_get_app_config")) d.enviar(pedido) else s.enviar(pedido)
+        }
+        Entorno.fotosInicioDePrueba = "buena"
+        guardarCuenta()
+        registrar(androidx.test.core.app.ActivityScenario.launch<com.pumpteam.mypump.MainActivity>(com.pumpteam.mypump.avisos.CentroAvisos.intentDeAviso(app, "fotos_inicio")))
+        p.nodo(etiqueta("fotos-inicio-instruccion"), ms = 30_000)
+        p.nodo(etiqueta("fotos-inicio-foto"))
+        assertTrue(p.seleccionado(etiqueta("pestana-revision")))
+        Telefono.captura("fi-aviso-abre-la-pose-claro")
+    }
+
+    /** El mismo aviso con la sección sin habilitar: queda en Revisión, sin pantalla rota. */
+    @Test
+    fun elAvisoSinHabilitarQuedaEnRevision() {
+        val d = DobleFotosInicio.escenario("noHabilitado")
+        val s = servidor
+        Entorno.transporte = Transporte { pedido ->
+            if ("inicio" in pedido.ruta || pedido.ruta.endsWith("mypump_get_app_config")) d.enviar(pedido) else s.enviar(pedido)
+        }
+        guardarCuenta()
+        registrar(androidx.test.core.app.ActivityScenario.launch<com.pumpteam.mypump.MainActivity>(com.pumpteam.mypump.avisos.CentroAvisos.intentDeAviso(app, "fotos_inicio")))
+        p.esperar<Boolean>("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
+        p.quieto(2500)
+        assertFalse(p.existe(etiqueta("fotos-inicio-instruccion")))
+        p.nodo(etiqueta("mis-datos"))
+    }
+
     @Test
     fun desdeMisDatos() {
         lanzar("completo")

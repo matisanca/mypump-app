@@ -127,7 +127,7 @@ fun TarjetaFotosInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier, soloS
     val c = MyPump.colores
     val navegacion = LocalNavegacion.current
     val listas = m.listas
-    Row(
+    Column(
         modifier
             .fillMaxWidth()
             .superficieTarjeta()
@@ -139,30 +139,35 @@ fun TarjetaFotosInicioDe(modelo: ModeloApp, modifier: Modifier = Modifier, soloS
             }
             .padding(Espacio.m)
             .testTag("fotos-inicio-tarjeta"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+        verticalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
-        Box(Modifier.size(42.dp).background(c.marcaSuave, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(if (listas) Iconos.TildeEnCirculo else Iconos.Camara, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(22.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            Box(Modifier.size(42.dp).background(c.marcaSuave, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(if (listas) Iconos.TildeEnCirculo else Iconos.Camara, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(22.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(T.tarjetaTitulo, style = MaterialTheme.typography.titleMedium, color = c.texto)
+                Text(if (listas) T.tarjetaLista else T.tarjetaBajada, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
+                if (!listas) Text(T.cuenta(m.hechas), style = MaterialTheme.typography.labelLarge, color = c.textoSecundario)
+            }
+            if (listas) Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(T.tarjetaTitulo, style = MaterialTheme.typography.titleMedium, color = c.texto)
-            if (listas) {
-                Text(T.tarjetaLista, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
-            } else {
-                Text(T.tarjetaBajada, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
-                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s), verticalAlignment = Alignment.CenterVertically) {
-                    Text(T.cuenta(m.hechas), style = MaterialTheme.typography.labelLarge, color = c.textoSecundario, modifier = Modifier.weight(1f, fill = false))
-                    Text(
-                        if (m.hechas == 0) T.tarjetaEmpezar else T.tarjetaSeguir,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = c.sobreMarca,
-                        modifier = Modifier.background(c.marca, CircleShape).padding(horizontal = Espacio.s, vertical = 4.dp),
-                    )
-                }
+        // Un botón grande y con texto, como en iOS: que se vea que es lo que hay que tocar (regla de Mati).
+        if (!listas) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 50.dp)
+                    .background(c.marca, CircleShape)
+                    .padding(horizontal = Espacio.m, vertical = Espacio.s)
+                    .testTag("fotos-inicio-tarjeta-boton"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Espacio.s, Alignment.CenterHorizontally),
+            ) {
+                Icon(Iconos.Camara, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(20.dp))
+                Text(if (m.hechas == 0) T.tarjetaEmpezar else T.tarjetaSeguir, style = MaterialTheme.typography.titleMedium, color = c.sobreMarca)
             }
         }
-        Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(20.dp))
     }
 }
 

@@ -32,5 +32,8 @@ DROP VIEW IF EXISTS mypump_fotos_inicio_vista;
 DROP TABLE IF EXISTS mypump_fotos_inicio;
 DROP TABLE IF EXISTS mypump_fotos_inicio_sets;
 DELETE FROM mypump_app_config WHERE clave = 'fotos_inicio';
+-- Los avisos con el destino `fotos_inicio`: los que no salieron ya se descartaron en el paso 1; acá se va el rastro, y con
+-- él la clave de dedupe (si la sección vuelve, el aviso puede volver a salir).
+DELETE FROM mypump_push_cola WHERE destino = 'fotos_inicio';
 NOTIFY pgrst, 'reload schema';
 COMMIT;

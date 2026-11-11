@@ -17,6 +17,7 @@ struct TarjetaFotosInicio: View {
     var soloSiFaltan = false
     @State private var app = Proveedor.modelo
     @State private var abierta = false
+    @Environment(Navegacion.self) private var navegacion: Navegacion?
 
     var body: some View {
         if let m = app.fotosInicio, (m.visible && !(soloSiFaltan && m.faltan.isEmpty)) || abierta {
@@ -55,6 +56,12 @@ struct TarjetaFotosInicio: View {
             .buttonStyle(FilaPresionable())
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("fotos-inicio-tarjeta")
+            // El aviso «subí tus fotos de inicio» (destino `fotos_inicio`): lo abre la tarjeta de Revisión apenas está a la vista.
+            .task(id: navegacion?.fotosInicio) {
+                guard !soloSiFaltan, let navegacion, navegacion.fotosInicio else { return }
+                navegacion.fotosInicio = false
+                abierta = true
+            }
             .sheet(isPresented: $abierta) {
                 FotosInicioRaiz(modelo: m, directo: true, alCerrar: { abierta = false }).presentationDragIndicator(.visible)
             }

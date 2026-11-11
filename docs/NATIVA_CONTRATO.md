@@ -254,6 +254,7 @@ fallidos (no los borra):
 | `train` | comentario sobre un ejercicio (076) | Entreno |
 | `revision` | la notificación local del domingo | Revisión |
 | `diet`, `progress`, `myday`, `salud` | válidos (057) | Dieta, Progreso, Mi Día, Mis datos |
+| `fotos_inicio` | `mypump_fotos_inicio_pedir` (propuesta, sección 13): uno solo por alumno | Revisión con «Tus fotos de inicio» abierta en la pose que falta. Con la sección no habilitada queda en Revisión. Una nativa anterior a la 2.3.0 cae a Chat |
 | `comentarios` | histórico (048, `scripts/push-test.json`) | **no existe**: la nativa cae a Chat |
 
 **Notificación local** (`NT:46-58`):
@@ -540,6 +541,15 @@ app, la web incluida. El revisor de físico de la entrega las baja desde la Mini
 `fotos_inicio` en `mypump_app_config`, apagada. Con la palanca prendida la sección le aparece solo a quien la Mini se la pidió
 (`mypump_fotos_inicio_pedir`) y hasta que se cierra (`mypump_fotos_inicio_cerrar`). Las reglas, los textos y las siluetas son
 comunes a iOS, Android y la web: `apps/shared/vectores/fotos_inicio.json`.
+
+**Dónde se ve** (regla de Mati: fácil de encontrar, botones grandes con texto, nada a más de dos toques): la tarjeta «Tus fotos
+de inicio» va arriba de todo en Entreno mientras falte alguna foto y arriba de todo en Revisión siempre, con un botón grande
+«Empezar» o «Seguir». Un toque abre la pose que falta; el segundo es «Sacar o elegir foto». También está en Mis datos.
+
+**El aviso**: con la palanca prendida y fotos por subir, `mypump_fotos_inicio_pedir` encola un push (`mypump_encolar_push`, 058;
+título «Mati», uno solo por alumno con `dedupe_key = 'fotos-inicio:<cliente_id>'`) con el destino `fotos_inicio` (sección 7).
+Tocarlo abre Revisión con la pantalla en la pose que falta, en iOS, Android y la web (`?scene=fotos_inicio`). Si la sección no
+está habilitada, queda en Revisión. El paso 1 del reverso descarta los que no salieron.
 
 ### Servidor
 

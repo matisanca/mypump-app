@@ -213,6 +213,23 @@ final class FotosInicioUITests: XCTestCase {
         XCTAssertFalse(e("fotos-inicio-tarjeta").exists, "con las tres, en Entreno ya no está")
     }
 
+    /// El aviso «subí tus fotos de inicio» (destino `fotos_inicio`): tocarlo abre la pantalla en la pose que falta. El aviso es
+    /// local (`-avisoDePrueba`, solo Debug) pero entra por el mismo camino que el push.
+    func testElAvisoAbreLasFotosDeInicio() {
+        lanzar("vacio", pestana: "entreno", extra: ["-avisoDePrueba", "fotos_inicio"])
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let permitir = springboard.alerts.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "Permitir"])).firstMatch
+        if permitir.waitForExistence(timeout: 5) { permitir.tap() }
+        esperar("fotos-inicio-tarjeta")
+        XCUIDevice.shared.press(.home)
+        let aviso = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Mati te dejó un mensaje")).firstMatch
+        XCTAssertTrue(aviso.waitForExistence(timeout: 20), "No llegó el aviso")
+        aviso.tap()
+        esperar("fotos-inicio-foto")
+        esperar("fotos-inicio-instruccion")
+        foto("aviso-abre-la-pose")
+    }
+
     /// Apagado, sin el servidor nuevo o sin pedido: la app es la de siempre.
     func testApagadoNoSeVeNada() {
         for escenario in ["apagado", "sinServidor", "noHabilitado"] {

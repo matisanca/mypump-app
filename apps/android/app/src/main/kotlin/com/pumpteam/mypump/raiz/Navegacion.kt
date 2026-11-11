@@ -154,6 +154,12 @@ class Navegacion(
             DestinoAviso.REVISION -> irARevision(null)
             // `?scene=myday` y el aviso de Mi Día (ya no existe): Revisión + Salud → Recuperación.
             DestinoAviso.RECUPERACION -> irASalud(SegmentoSalud.RECUPERACION)
+            // El aviso de «subí tus fotos de inicio»: Revisión con la pantalla abierta en la pose que falta. Si la sección
+            // no está habilitada (o todavía no cargó), se ve Revisión y la pantalla aparece sola cuando llega.
+            DestinoAviso.FOTOS_INICIO -> {
+                irARevision(null)
+                fotosInicio = true
+            }
             DestinoAviso.MIS_DATOS -> {
                 pestana = Pestana.REVISION
                 misDatos = true

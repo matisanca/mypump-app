@@ -17,7 +17,10 @@ import kotlinx.serialization.json.Json
  * Fuerza (lo que era Progreso) y el viejo `myday` (Mi Día ya no existe) abre Salud → Recuperación.
  */
 enum class DestinoAviso {
-    ENTRENO, DIETA, CHAT, REVISION, FUERZA, RECUPERACION, MIS_DATOS;
+    ENTRENO, DIETA, CHAT, REVISION, FUERZA, RECUPERACION, MIS_DATOS,
+
+    /** `fotos_inicio`: el aviso de «subí tus fotos de inicio» (lo encola `mypump_fotos_inicio_pedir`); abre esa pantalla. */
+    FOTOS_INICIO;
 
     companion object {
         fun deDestino(destino: String?): DestinoAviso = when (destino) {
@@ -27,6 +30,7 @@ enum class DestinoAviso {
             "myday" -> RECUPERACION
             "revision" -> REVISION
             "salud" -> MIS_DATOS
+            "fotos_inicio" -> FOTOS_INICIO
             else -> CHAT
         }
 
@@ -35,7 +39,7 @@ enum class DestinoAviso {
          * escena inexistente dejaba la app en blanco).
          */
         fun deEscena(escena: String?): DestinoAviso? =
-            if (escena in listOf("train", "diet", "chat", "revision", "progress", "salud", "myday")) deDestino(escena) else null
+            if (escena in listOf("train", "diet", "chat", "revision", "progress", "salud", "myday", "fotos_inicio")) deDestino(escena) else null
 
         /** Los extras con que tocar un aviso abre la app: el `destino` (el de push.py y el de los locales)… */
         const val EXTRA_DESTINO = "destino"

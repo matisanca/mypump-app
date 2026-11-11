@@ -7,7 +7,7 @@ import MyPumpReglas
 @MainActor @Observable
 final class Navegacion {
     /// Cambiar de pestaña (tocarla, un aviso, «Ir a Revisión», el banner) cierra la hoja de Salud si estaba abierta.
-    var pestaña: Raiz.Pestaña { didSet { saludAbierta = false } }
+    var pestaña: Raiz.Pestaña { didSet { saludAbierta = false; if pestaña != .revision { fotosInicio = false } } }
     /// Una sección de Revisión a la que desplazarse ("fotos", "check"); Revisión la consume al llegar. Las que se mudaron
     /// a Salud en la 2.1 ("peso" a Cuerpo; "reloj" y la vieja "midia" a Recuperación) cambian de pestaña (`irARevision`).
     var anclaRevision: String?
@@ -18,6 +18,9 @@ final class Navegacion {
     /// La hoja de Salud. Desde la 2.1.0 Salud no es una pestaña: se abre desde la tarjeta Recuperación de arriba de
     /// Revisión (pedido de Mati, 4-nov), un aviso o un link.
     var saludAbierta = false
+    /// Abrir «Tus fotos de inicio» (el aviso `fotos_inicio`): la tarjeta de Revisión lo consume cuando la sección está a la
+    /// vista. Si no está habilitada, queda en Revisión y se olvida al cambiar de pestaña.
+    var fotosInicio = false
     /// Abrir «Tu guía» en Entreno (el «Ver mi guía» de la bienvenida); Entreno lo consume al llegar.
     var abrirGuia = false
 
@@ -35,6 +38,9 @@ final class Navegacion {
         case .misDatos:
             pestaña = .revision
             misDatos = true
+        case .fotosInicio:
+            pestaña = .revision
+            fotosInicio = true
         }
     }
 
