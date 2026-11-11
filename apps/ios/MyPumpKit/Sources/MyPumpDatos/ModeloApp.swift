@@ -150,6 +150,8 @@ public final class ModeloApp {
         token = almacen.leer()
         fase = token == nil ? .sinToken : .cargando
         tipoDia = UserDefaults.standard.string(forKey: "mypump_tipo_dia")
+        // Antes que nada, y sin mirar la palanca ni si hay sesión: lo médico que venció o quedó suelto no sigue en el teléfono.
+        ModeloEstudios.barrerTelefono(raizDisco: raizDisco, raizCache: raizDisco?.appendingPathComponent("Caches", isDirectory: true))
         if let token { prepararCuenta(token) }
     }
 
@@ -227,6 +229,8 @@ public final class ModeloApp {
     public func salir() {
         almacen.guardar(nil)
         borrarCodigosDelDisco()
+        // Lo médico tampoco se queda: ni los estudios que esperaban salir, ni lo elegido, ni lo que se bajó para ver.
+        estudios?.borrarTodo()
         token = nil
         disco = nil
         outbox = nil
@@ -457,6 +461,7 @@ public final class ModeloApp {
         if let palancaLeida {
             palanca = palancaLeida
             palancaLeida.recordar()
+            estudios?.usarPalanca(palancaLeida.estudiosApp)
             await outbox?.usarPalanca(opsLegadas: palancaLeida.opsLegadas)
         }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
@@ -615,17 +620,12 @@ public final class ModeloApp {
         await fotos?.drenar()
         if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
         if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
-        if palanca.estudiosApp, estudios?.habilitado == true { estudios?.drenarEnFondo() }
+        if let estudios, estudios.palanca == true, estudios.habilitado { estudios.drenarEnFondo() }
     }
 
+    /// Con la palanca apagada, o sin haberla leído en esta sesión, no se llama a nada: la app es la de siempre.
     private func sincronizarEstudios() async {
-        guard let estudios else { return }
-        if palanca.estudiosApp {
-            await estudios.refrescar()
-            if estudios.habilitado { estudios.drenarEnFondo() }   // varios archivos de 20 MB no frenan el resto de la carga
-        } else {
-            estudios.apagar()
-        }
+        await estudios?.sincronizar()
     }
 
     /// Con la palanca apagada no se llama a nada: la app es la de siempre.

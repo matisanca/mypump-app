@@ -24,6 +24,8 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
     /// Respuestas forzadas para los próximos `enviar` («faltan_archivos»…).
     public var proximosEnviar: [String] = []
     public var topeDia = false
+    /// Corre después de atender cada subida (para probar lo que pasa en medio de una pasada).
+    public var alSubir: (@Sendable () async -> Void)?
     public var llamadas: [String] = []
     public var hoy = "2026-11-10"
     public var proximoControl: JSONValue = .null
@@ -50,6 +52,7 @@ public final class DobleEstudios: Transporte, @unchecked Sendable {
             if sinRed { throw URLError(.notConnectedToInternet) }
             return try atender(nombre, pedido)
         }
+        if ruta.hasSuffix("/estudios/upload") { await alSubir?() }
         return (cuerpo, HTTPURLResponse(url: pedido.url!, statusCode: status, httpVersion: nil, headerFields: nil)!)
     }
 

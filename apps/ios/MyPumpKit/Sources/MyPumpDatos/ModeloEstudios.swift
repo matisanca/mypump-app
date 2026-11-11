@@ -33,8 +33,8 @@ public struct EnvioEstudioPendiente: Codable, Equatable, Sendable, Identifiable 
 }
 
 /// Estudios y órdenes. Mismo criterio de cola que `ModeloGimnasio`: en disco, sobrevive a cerrar la app y a quedarse sin
-/// señal, un 5xx o un 429 no gasta el archivo y todo otro 4xx es definitivo para ese archivo. Con la palanca apagada
-/// `ModeloApp` no llama a nada de esto: `estado` queda en nil y no se ve ni se pide nada.
+/// señal, un 5xx o un 429 no gasta el archivo y todo otro 4xx es definitivo para ese archivo. Con la palanca apagada, o
+/// sin haberla leído en esta sesión, no se llama a nada: `estado` queda en nil y no se ve ni se pide nada.
 ///
 /// Son datos médicos: los archivos viven en Caches, fuera del respaldo de iCloud, y se borran al quedar enviados; lo que se
 /// abre para ver va a un temporal que se borra al cerrar; el estado del servidor no se guarda en el teléfono; nada va a
@@ -43,7 +43,8 @@ public struct EnvioEstudioPendiente: Codable, Equatable, Sendable, Identifiable 
 public final class ModeloEstudios {
     public enum Resultado: Equatable, Sendable { case ok, fecha, sinSenal, error }
     public enum Aviso: Equatable, Sendable { case recibido, recibidoConRechazo, rechazado, topeDia, error }
-    public enum Abrir: Equatable, Sendable { case archivos([ArchivoParaVer]), error }
+    /// `todaviaNo`: el estudio llegó pero aún no se puede abrir (409 `todavia_no`); no es un error.
+    public enum Abrir: Equatable, Sendable { case archivos([ArchivoParaVer]), todaviaNo, error }
 
     public struct ArchivoParaVer: Equatable, Sendable {
         public let url: URL
@@ -68,6 +69,11 @@ public final class ModeloEstudios {
     public private(set) var sinSenal = false
     /// Hay una pasada en curso: fuera de eso, lo que queda en la cola está esperando.
     public private(set) var subiendo = false
+    /// La última pasada se cortó por algo que no es la red (el link, el servidor) y nada la va a retomar sola: hay que
+    /// decirlo y ofrecer «Probar de nuevo».
+    public private(set) var detenida = false
+    /// La palanca `estudios_app` leída en esta sesión; nil hasta que se lee. No se recuerda de una vez para la otra.
+    public private(set) var palanca: Bool?
     /// Cambia cada vez que se descarta lo elegido: una foto que se estaba convirtiendo para la hoja anterior no entra en la próxima.
     public private(set) var hoja = 0
     public private(set) var aviso: Aviso?
@@ -93,41 +99,74 @@ public final class ModeloEstudios {
                 esperar: @escaping @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(for: .seconds($0)) }) {
         self.cliente = cliente; self.token = token; self.disco = disco; self.esperar = esperar
         cache = Self.carpetaCache(raiz: raiz, cuenta: "cuenta-\(Disco.huella(token))")
-        cola = disco?.leer([EnvioEstudioPendiente].self, EnvioEstudioPendiente.archivo) ?? []
-        barrer()
+        // Lo que quedó de una hoja de subida sin enviar o de un archivo abierto para ver se borra al arrancar.
+        Self.limpiarSueltos(cache)
+        cola = Self.sanear(disco: disco, cache: cache, ahora: Date())
+        // Y lo suelto de las otras cuentas de este teléfono (se cambió de link sin cerrar la app). Su cola espera a que
+        // la vengan a buscar (`adoptar`) o al plazo, que mira `barrerTelefono` en cada arranque.
+        let base = cache.deletingLastPathComponent()
+        for otra in (try? FileManager.default.contentsOfDirectory(atPath: base.path)) ?? [] where otra.hasPrefix("cuenta-") && otra != cache.lastPathComponent {
+            Self.limpiarSueltos(base.appendingPathComponent(otra, isDirectory: true))
+        }
     }
 
     static func carpetaCache(raiz: URL?, cuenta: String) -> URL {
         (raiz ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]).appendingPathComponent("MyPump/\(cuenta)", isDirectory: true)
     }
 
-    /// Lo que quedó de una hoja de subida sin enviar o de un archivo abierto para ver se borra al arrancar, y también lo que
-    /// está en la carpeta de la cola sin envío que lo nombre (un cierre entre la copia y el índice).
-    private func barrer() {
-        let fm = FileManager.default
-        try? fm.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpetaBorrador))
-        try? fm.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpetaVer))
-        // Un envío que no pudo salir en dos semanas no se queda en el teléfono para siempre.
-        let limite = Date().addingTimeInterval(-Self.diasDeVida * 86_400)
+    /// Lo elegido y no enviado, y lo que se bajó para ver.
+    static func limpiarSueltos(_ cache: URL) {
+        try? FileManager.default.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpetaBorrador))
+        try? FileManager.default.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpetaVer))
+    }
+
+    /// Deja la cola de una cuenta como tiene que estar y la devuelve: sin los envíos que no pudieron salir en dos semanas
+    /// y sin archivos que ningún envío nombre (un cierre entre la copia y el índice).
+    static func sanear(disco: Disco?, cache: URL, ahora: Date) -> [EnvioEstudioPendiente] {
+        var cola = disco?.leer([EnvioEstudioPendiente].self, EnvioEstudioPendiente.archivo) ?? []
+        let limite = ahora.addingTimeInterval(-diasDeVida * 86_400)
         if cola.contains(where: { ($0.creado ?? .distantFuture) < limite }) {
             cola.removeAll { ($0.creado ?? .distantFuture) < limite }
-            _ = guardarCola()
+            if cola.isEmpty { disco?.borrar(EnvioEstudioPendiente.archivo) } else { _ = disco?.guardar(cola, EnvioEstudioPendiente.archivo) }
         }
+        let fm = FileManager.default
         let carpeta = cache.appendingPathComponent(EnvioEstudioPendiente.carpeta)
         let vivos = Set(cola.flatMap { $0.archivos.map(\.nombre) })
         for f in (try? fm.contentsOfDirectory(atPath: carpeta.path)) ?? [] where !vivos.contains(f) {
             try? fm.removeItem(at: carpeta.appendingPathComponent(f))
         }
-        // Las carpetas de otras cuentas de este teléfono (otro link, sesión cerrada): lo suelto se borra ya, y la cola que
-        // nadie vino a buscar (`adoptar`), pasado el mismo plazo.
-        let base = cache.deletingLastPathComponent()
-        for otra in (try? fm.contentsOfDirectory(atPath: base.path)) ?? [] where otra.hasPrefix("cuenta-") && otra != cache.lastPathComponent {
-            let c = base.appendingPathComponent(otra, isDirectory: true)
-            try? fm.removeItem(at: c.appendingPathComponent(EnvioEstudioPendiente.carpetaBorrador))
-            try? fm.removeItem(at: c.appendingPathComponent(EnvioEstudioPendiente.carpetaVer))
-            let vieja = c.appendingPathComponent(EnvioEstudioPendiente.carpeta)
-            if let m = (try? fm.attributesOfItem(atPath: vieja.path))?[.modificationDate] as? Date, m < limite { try? fm.removeItem(at: vieja) }
+        return cola
+    }
+
+    /// Al arrancar la app, con o sin la sección prendida y con o sin sesión: lo de «Estudios» de TODAS las cuentas de
+    /// este teléfono (otro link, sesión cerrada, cuenta dada de baja). Lo suelto se borra ya; la cola que nadie vino a
+    /// buscar (`adoptar`), pasado el plazo. `raizDisco` y `raizCache` son las de las pruebas (nil: las del sistema).
+    public static func barrerTelefono(raizDisco: URL? = nil, raizCache: URL? = nil, ahora: Date = Date()) {
+        let fm = FileManager.default
+        let soporte = (raizDisco ?? fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]).appendingPathComponent("MyPump", isDirectory: true)
+        let caches = carpetaCache(raiz: raizCache, cuenta: "x").deletingLastPathComponent()
+        func cuentas(_ base: URL) -> [String] { ((try? fm.contentsOfDirectory(atPath: base.path)) ?? []).filter { $0.hasPrefix("cuenta-") } }
+        for nombre in Set(cuentas(soporte) + cuentas(caches)) {
+            let cache = caches.appendingPathComponent(nombre, isDirectory: true)
+            limpiarSueltos(cache)
+            // Sin la carpeta de la cuenta no hay índice: sus archivos no los va a subir nadie.
+            let carpeta = soporte.appendingPathComponent(nombre, isDirectory: true)
+            _ = sanear(disco: fm.fileExists(atPath: carpeta.path) ? Disco(carpeta: carpeta) : nil, cache: cache, ahora: ahora)
         }
+    }
+
+    /// Cerrar sesión: de esta cuenta no queda nada médico en el teléfono, ni lo que esperaba salir, ni lo elegido, ni lo
+    /// que se bajó para ver. Una pasada en curso se corta en el próximo paso.
+    public func borrarTodo() {
+        apagar()
+        palanca = false
+        descartarBorrador()
+        cerrarVisor()
+        cola = []
+        vueltas = [:]
+        aviso = nil
+        disco?.borrar(EnvioEstudioPendiente.archivo)
+        try? FileManager.default.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpeta))
     }
 
     // MARK: Lo que lee la pantalla
@@ -164,7 +203,28 @@ public final class ModeloEstudios {
         }
     }
 
-    public func apagar() { estado = nil; errorDeCarga = false }
+    public func apagar() { estado = nil; errorDeCarga = false; detenida = false }
+
+    /// Lo que dijo `get_app_config` recién. Apagada, la sección deja de existir en el momento.
+    public func usarPalanca(_ prendida: Bool) {
+        palanca = prendida
+        if !prendida { apagar() }
+    }
+
+    /// Lo que hace la pantalla al abrirse y al deslizar, y la app en cada carga: con la palanca prendida, `get` y que
+    /// salga lo pendiente (sin esperarlo: varios archivos de 20 MB no frenan a nadie). Si no, nada.
+    public func sincronizar() async {
+        guard palanca == true else { apagar(); return }
+        await refrescar()
+        if habilitado { drenarEnFondo() }
+    }
+
+    /// «Probar de nuevo» con la cola detenida.
+    public func reintentar() async {
+        reintentosDeFondo = 0
+        detenida = false
+        await sincronizar()
+    }
 
     /// «Ya me lo hice» con su fecha (`AAAA-MM-DD`), o nil para deshacerlo.
     public func marcarHecho(pedidoId: String, fecha: Estudios.Dia?) async -> Resultado {
@@ -243,6 +303,7 @@ public final class ModeloEstudios {
         borrador = []
         hoja += 1
         aviso = nil
+        detenida = false
         return true
     }
 
@@ -251,15 +312,21 @@ public final class ModeloEstudios {
     public func drenarEnFondo() { Task { await drenar() } }
 
     /// Una pasada a la vez, un envío por vez: `envio_nuevo` → cada archivo → `enviar`. Red: corta y espera a que vuelva.
-    /// 5xx o 429: espera y reintenta, y a la tercera seguida corta la pasada y prueba sola más tarde.
+    /// 5xx o 429: espera y reintenta, y a la tercera seguida corta la pasada y prueba sola más tarde. Con la sección
+    /// apagada (la palanca, el link, la cuenta) no sale nada: tampoco el reintento que estaba programado.
     public func drenar() async {
-        guard !drenando, !cola.isEmpty else { return }
+        guard estado != nil, !drenando, !cola.isEmpty else { return }
         drenando = true
         subiendo = true
-        defer { drenando = false; subiendo = false }
         sinSenal = false
+        detenida = false
+        defer {
+            drenando = false; subiendo = false
+            // Quedó algo, no es la red y nadie lo va a retomar solo: se dice, con «Probar de nuevo».
+            detenida = estado != nil && !cola.isEmpty && !sinSenal && !reintentoProgramado
+        }
         var termino = false
-        pasada: while let envio = cola.first {
+        pasada: while estado != nil, let envio = cola.first {
             switch await sacar(envio) {
             case .listo: termino = true
             case .seguir: continue
@@ -274,7 +341,8 @@ public final class ModeloEstudios {
     private func sacar(_ envio: EnvioEstudioPendiente) async -> Paso {
         if !envio.abierto { return await abrir(envio) }
         var seguidas = 0
-        while let a = cola.first?.archivos.first(where: { !$0.subido }), cola.first?.id == envio.id {
+        // `estado`: se apagó la sección o se cerró la sesión en medio de la pasada; no sale ni un archivo más.
+        while estado != nil, let a = cola.first?.archivos.first(where: { !$0.subido }), cola.first?.id == envio.id {
             switch await subir(a, envio: envio.id) {
             case .ok:
                 marcar(envio.id) { e in if let i = e.archivos.firstIndex(where: { $0.id == a.id }) { e.archivos[i].subido = true } }
@@ -302,6 +370,7 @@ public final class ModeloEstudios {
                 return .cortar
             }
         }
+        guard estado != nil else { return .cortar }
         guard let actual = cola.first, actual.id == envio.id else { return .seguir }
         if actual.archivos.isEmpty {
             // No quedó ninguno: el envío se descarta en silencio y se le dice que pruebe de otra forma.
@@ -466,9 +535,11 @@ public final class ModeloEstudios {
         pedido.httpMethod = "POST"
         pedido.setValue("application/json", forHTTPHeaderField: "Content-Type")
         pedido.httpBody = try? JSONEncoder().encode(JSONValue.objeto(["token": .texto(token), "clase": .texto(clase), "id": .texto(id)]))
-        guard let (datos, resp) = try? await cliente.transporte.enviar(pedido), (resp as? HTTPURLResponse)?.statusCode == 200,
-              let j = try? JSONDecoder().decode(JSONValue.self, from: datos), j["ok"] == .bool(true),
-              case .lista(let filas)? = j["archivos"], !filas.isEmpty else { return .error }
+        guard let (datos, resp) = try? await cliente.transporte.enviar(pedido) else { return .error }
+        let status = (resp as? HTTPURLResponse)?.statusCode
+        let j = try? JSONDecoder().decode(JSONValue.self, from: datos)
+        if status == 409, j?["error"]?.comoTexto == "todavia_no" { return .todaviaNo }
+        guard status == 200, let j, j["ok"] == .bool(true), case .lista(let filas)? = j["archivos"], !filas.isEmpty else { return .error }
         cerrarVisor()
         // Con la red de verdad, una sesión efímera: el archivo no queda en el caché de URLSession.
         let descarga: any Transporte = cliente.transporte is URLSession ? Self.sesionEfimera : cliente.transporte

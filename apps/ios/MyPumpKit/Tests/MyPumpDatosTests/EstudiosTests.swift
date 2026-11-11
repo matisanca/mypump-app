@@ -137,6 +137,11 @@ struct EstudiosTests {
         let (m2, _) = armar(d, raiz: raiz)
         #expect(m2.cola.count == 1)
         #expect(archivosEn(m2, EnvioEstudioPendiente.carpeta).count == 3)
+        // Sin el `get` de esta sesión la sección no existe: no sale nada.
+        let antes = d.llamadas.count
+        await m2.drenar()
+        #expect(d.llamadas.count == antes)
+        await m2.refrescar()
         d.sinRed = true
         await m2.drenar()
         #expect(m2.cola.count == 1)
@@ -445,9 +450,10 @@ struct EstudiosTests {
         #expect(d.urlsPedidas.last?["token"] == .texto(token))
         m.cerrarVisor()
         #expect(!FileManager.default.fileExists(atPath: a[0].url.path))
-        // Vencida, estudio que todavía no se abre, o sin red: el mismo error, sin archivo.
+        // Vencida o sin red: error, sin archivo. Un estudio que todavía no se abre no es un error: «Recibido…».
         #expect(await m.bajarParaVer(clase: "orden", id: m.estado!.ordenes[2].id) == .error)
-        #expect(await m.bajarParaVer(clase: "estudio", id: m.estado!.estudios[0].id) == .error)
+        #expect(await m.bajarParaVer(clase: "estudio", id: m.estado!.estudios[0].id) == .todaviaNo)
+        #expect(archivosEn(m, EnvioEstudioPendiente.carpetaVer).isEmpty)
         guard case .archivos = await m.bajarParaVer(clase: "estudio", id: m.estado!.estudios[1].id) else { Issue.record("no abrió el propio"); return }
         d.sinRed = true
         #expect(await m.bajarParaVer(clase: "orden", id: orden.id) == .error)
@@ -474,6 +480,160 @@ struct EstudiosTests {
         #expect(d.envios.count == 1)
         #expect(d.envios[0].estado == "enviado")
         #expect(d.envios[0].archivos.count == 2)
+    }
+
+    // MARK: La sección apagada no llama a nada
+
+    @Test func conLaSeccionApagadaLaColaNoSale() async {
+        let d = DobleEstudios.escenario("vacio")
+        let (m, _) = armar(d)
+        m.usarPalanca(true)
+        await m.refrescar()
+        for i in 1...2 { _ = m.elegir(jpeg(UInt8(i))) }
+        _ = m.enviar()
+        // Se apaga la palanca con el envío esperando: ni `envio_nuevo` ni subida, tampoco al abrir la pantalla o deslizar.
+        m.usarPalanca(false)
+        #expect(!m.habilitado)
+        let antes = d.llamadas.count
+        await m.drenar()
+        await m.sincronizar()
+        await m.reintentar()
+        #expect(d.llamadas.count == antes)
+        #expect(m.cola.count == 1)
+        #expect(archivosEn(m, EnvioEstudioPendiente.carpeta).count == 2)
+        // Vuelve a prenderse: sale.
+        m.usarPalanca(true)
+        await m.refrescar()
+        await m.drenar()
+        #expect(m.cola.isEmpty)
+        #expect(d.envios.first?.estado == "enviado")
+    }
+
+    @Test func sinLeerLaPalancaEnEstaSesionNoSeLlamaANada() async {
+        let d = DobleEstudios.escenario("completo")
+        let (m, _) = armar(d)
+        #expect(m.palanca == nil)
+        await m.sincronizar()
+        #expect(d.llamadas.isEmpty)
+        #expect(!m.habilitado)
+        m.usarPalanca(true)
+        await m.sincronizar()
+        #expect(m.habilitado)
+        #expect(d.llamadasEstudios == ["mypump_estudios_get"])
+    }
+
+    @Test func siSeApagaEnMedioDeLaPasadaNoSaleNiUnArchivoMas() async {
+        let d = DobleEstudios.escenario("vacio")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        for i in 1...3 { _ = m.elegir(jpeg(UInt8(i))) }
+        _ = m.enviar()
+        d.alSubir = { [weak m] in await m?.apagar() }   // mientras sube el primero
+        await m.drenar()
+        #expect(d.intentosDeSubida == 1)
+        #expect(m.cola.first?.archivos.count == 3)
+        #expect(!m.detenida)
+    }
+
+    // MARK: La cola detenida se explica
+
+    @Test func elLinkCaidoEnLaSubidaDejaLaColaDetenidaConProbarDeNuevo() async {
+        for codigo in [401, 403] {
+            let d = DobleEstudios.escenario("vacio")
+            let (m, _) = armar(d)
+            m.usarPalanca(true)
+            await m.refrescar()
+            for i in 1...2 { _ = m.elegir(jpeg(UInt8(i))) }
+            _ = m.enviar()
+            #expect(!m.detenida)
+            d.proximasSubidas = [codigo]
+            await m.drenar()
+            #expect(m.detenida, "\(codigo)")
+            #expect(!m.sinSenal)
+            #expect(!m.subiendo)
+            #expect(m.aviso == nil)
+            #expect(m.cola.first?.archivos.count == 2)
+            // «Probar de nuevo»: `get` y otra pasada.
+            await m.reintentar()
+            await m.drenar()
+            for _ in 0..<50 where !m.cola.isEmpty { await Task.yield() }
+            #expect(m.cola.isEmpty)
+            #expect(!m.detenida)
+            #expect(m.aviso == .recibido)
+        }
+        // Sin señal no es «detenida»: sale sola cuando vuelve.
+        let d = DobleEstudios.escenario("vacio")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        _ = m.elegir(pdf)
+        _ = m.enviar()
+        d.proximasSubidas = [0]
+        await m.drenar()
+        #expect(m.sinSenal)
+        #expect(!m.detenida)
+    }
+
+    // MARK: Lo que no se queda en el teléfono
+
+    @Test func cerrarSesionNoDejaNadaMedico() async {
+        let d = DobleEstudios.escenario("completo")
+        let r = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let app = ModeloApp(cliente: ClienteRPC(transporte: d), almacen: TokenEnMemoria(token), raizDisco: r)
+        await app.cargar()
+        let m = app.estudios!
+        #expect(m.habilitado)
+        d.sinRed = true
+        _ = m.elegir(pdf); _ = m.elegir(jpeg(1))
+        #expect(m.enviar())
+        _ = m.elegir(jpeg(2))   // una hoja abierta
+        let ver = m.cache.appendingPathComponent(EnvioEstudioPendiente.carpetaVer)
+        try? FileManager.default.createDirectory(at: ver, withIntermediateDirectories: true)
+        try? pdf.write(to: ver.appendingPathComponent("1.pdf"))
+        #expect(archivosEn(m, EnvioEstudioPendiente.carpeta).count == 2)
+        app.salir()
+        #expect(app.estudios == nil)
+        #expect(m.cola.isEmpty)
+        #expect(m.borrador.isEmpty)
+        for carpeta in [EnvioEstudioPendiente.carpeta, EnvioEstudioPendiente.carpetaBorrador, EnvioEstudioPendiente.carpetaVer] {
+            #expect(archivosEn(m, carpeta).isEmpty, "\(carpeta)")
+        }
+        #expect(m.disco?.leer([EnvioEstudioPendiente].self, EnvioEstudioPendiente.archivo) == nil)
+        d.sinRed = false
+        let antes = d.llamadas.count
+        await m.sincronizar()
+        await m.drenar()
+        #expect(d.llamadas.count == antes, "después de salir no se llama a nada")
+    }
+
+    @Test func alArrancarSeBarreTodoElTelefonoSinMirarLaPalanca() async throws {
+        let d = DobleEstudios.escenario("vacio")
+        let r = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let soporte = r.appendingPathComponent("soporte"), caches = r.appendingPathComponent("caches")
+        // Una cuenta de este teléfono sin sesión (otro link, cerró sesión en otra versión) con un envío sin salir.
+        let (otra, _) = armar(d, raiz: r, token: "tk-otra-cuenta")
+        await otra.refrescar()
+        d.sinRed = true
+        _ = otra.elegir(pdf)
+        #expect(otra.enviar())
+        _ = otra.elegir(jpeg(1))   // y una hoja que quedó abierta
+        let ver = otra.cache.appendingPathComponent(EnvioEstudioPendiente.carpetaVer)
+        try FileManager.default.createDirectory(at: ver, withIntermediateDirectories: true)
+        try pdf.write(to: ver.appendingPathComponent("1.pdf"))
+        // Archivos de una cuenta que ya no tiene carpeta.
+        let sinDueno = caches.appendingPathComponent("MyPump/cuenta-sin-dueno/\(EnvioEstudioPendiente.carpeta)")
+        try FileManager.default.createDirectory(at: sinDueno, withIntermediateDirectories: true)
+        try pdf.write(to: sinDueno.appendingPathComponent("x.pdf"))
+
+        ModeloEstudios.barrerTelefono(raizDisco: soporte, raizCache: caches)
+        #expect(archivosEn(otra, EnvioEstudioPendiente.carpetaBorrador).isEmpty)
+        #expect(archivosEn(otra, EnvioEstudioPendiente.carpetaVer).isEmpty)
+        #expect(archivosEn(otra, EnvioEstudioPendiente.carpeta).count == 1, "dentro del plazo, espera a su link nuevo")
+        #expect(((try? FileManager.default.contentsOfDirectory(atPath: sinDueno.path)) ?? []).isEmpty)
+
+        // Dos semanas después, sin que nadie abra esa cuenta ni lea la palanca: se va del teléfono.
+        ModeloEstudios.barrerTelefono(raizDisco: soporte, raizCache: caches, ahora: Date().addingTimeInterval(15 * 86_400))
+        #expect(archivosEn(otra, EnvioEstudioPendiente.carpeta).isEmpty)
+        #expect(otra.disco?.leer([EnvioEstudioPendiente].self, EnvioEstudioPendiente.archivo) == nil)
     }
 
     @Test func palancaApagadaSinLaClave() {

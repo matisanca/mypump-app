@@ -57,4 +57,5 @@ public enum TextosEstudios {
     public static func pdf(_ n: Int) -> String { "PDF \(n)" }
     public static let noSePudoGuardar = "No se pudo guardar. Probá de nuevo."
     public static let noSePudoEnviar = "No se pudo enviar. Probá de nuevo."
+    public static let probarDeNuevo = "Probar de nuevo"
 }
