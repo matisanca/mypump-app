@@ -4,14 +4,16 @@ import MyPumpReglas
 
 /// A dónde lleva tocar un aviso: el `destino` que mandan `push.py` (comentarios del coach) y la notificación local del
 /// domingo. Uno desconocido, como el histórico `comentarios`, cae a Chat (NOT-03). Desde la 2.1, `progress` abre Salud →
-/// Fuerza (lo que era Progreso) y el viejo `myday` (Mi Día ya no existe) abre Salud → Recuperación.
+/// Fuerza (lo que era Progreso) y el viejo `myday` (Mi Día ya no existe) abre Salud → Recuperación. `estudios` abre Mis
+/// datos → Estudios y órdenes; si la sección no está (palanca apagada, cuenta sin la función, `get` caído), queda en Mis
+/// datos (`ModeloApp.estudiosParaAviso`).
 public enum DestinoAviso: String, Sendable, Equatable {
-    case entreno, dieta, chat, revision, fuerza, recuperacion, misDatos
+    case entreno, dieta, chat, revision, fuerza, recuperacion, misDatos, estudios
 
     /// `?scene=<escena>` del link (ACC-09): solo una escena que existe; cualquier otra cosa no hace nada (en la web,
     /// una escena inexistente dejaba la app en blanco).
     public init?(escena: String?) {
-        guard let escena, ["train", "diet", "chat", "revision", "progress", "salud", "myday"].contains(escena) else { return nil }
+        guard let escena, ["train", "diet", "chat", "revision", "progress", "salud", "myday", Estudios.destino].contains(escena) else { return nil }
         self.init(destino: escena)
     }
 
@@ -23,6 +25,7 @@ public enum DestinoAviso: String, Sendable, Equatable {
         case "myday": self = .recuperacion
         case "revision": self = .revision
         case "salud": self = .misDatos
+        case Estudios.destino: self = .estudios
         default: self = .chat
         }
     }

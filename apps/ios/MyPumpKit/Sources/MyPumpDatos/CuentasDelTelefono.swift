@@ -170,4 +170,25 @@ enum CuentasDelTelefono {
         }
         return total
     }
+
+    /// Lo mismo con los envíos de estudios que no terminaron de salir. Los archivos están en Caches, en una carpeta con el
+    /// mismo nombre que la de la cuenta.
+    @MainActor @discardableResult
+    static func adoptarEstudios(clienteId: String, en disco: Disco, estudios: ModeloEstudios) -> Int {
+        guard !clienteId.isEmpty else { return 0 }
+        let base = disco.carpeta.deletingLastPathComponent()
+        let propia = disco.carpeta.lastPathComponent
+        let nombres = ((try? FileManager.default.contentsOfDirectory(atPath: base.path)) ?? []).filter { $0.hasPrefix("cuenta-") && $0 != propia }.sorted()
+        var total = 0
+        for nombre in nombres {
+            let otra = Disco(carpeta: base.appendingPathComponent(nombre, isDirectory: true))
+            let viejos = otra.leer([EnvioEstudioPendiente].self, EnvioEstudioPendiente.archivo) ?? []
+            let cache = estudios.cache.deletingLastPathComponent().appendingPathComponent(nombre, isDirectory: true)
+            guard !viejos.isEmpty, Self.clienteId(de: otra) == clienteId, estudios.adoptar(viejos, desde: cache) else { continue }
+            otra.borrar(EnvioEstudioPendiente.archivo)
+            try? FileManager.default.removeItem(at: cache.appendingPathComponent(EnvioEstudioPendiente.carpeta))
+            total += viejos.count
+        }
+        return total
+    }
 }

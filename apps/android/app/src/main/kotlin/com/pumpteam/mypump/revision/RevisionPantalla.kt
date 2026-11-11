@@ -125,6 +125,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
         navegacion.anclaRevision = null
     }
 
+    val novedadEstudios = com.pumpteam.mypump.estudios.hayNovedadDeEstudios(modelo)
     MarcoPantalla(
         "Revisión",
         subtitulo = semanaActual(),
@@ -133,7 +134,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
             Box(
                 Modifier
                     .padding(end = Espacio.s)
-                    .size(44.dp)
+                    .size(48.dp)
                     .vidrio(CircleShape, elevacion = 6.dp)
                     .clickable(role = Role.Button, onClick = alAbrirMisDatos)
                     .semantics { contentDescription = "Mis datos" }
@@ -141,6 +142,10 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Iconos.Persona, contentDescription = null, tint = MyPump.colores.marcaTexto, modifier = Modifier.size(26.dp))
+                // Un estudio pedido o una orden sin ver: el punto marca el camino (Mis datos → Estudios y órdenes).
+                if (novedadEstudios) {
+                    com.pumpteam.mypump.estudios.PuntoNovedad(Modifier.align(Alignment.TopEnd).padding(2.dp).testTag("mis-datos-novedad"))
+                }
             }
         },
     ) { relleno ->

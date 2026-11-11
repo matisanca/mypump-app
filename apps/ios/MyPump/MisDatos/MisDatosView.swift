@@ -32,6 +32,10 @@ struct MisDatosView: View {
     @State private var calibracionVisible = false
     @State private var verDocumentos = false
     @Environment(Navegacion.self) private var navegacion: Navegacion?
+    /// «Estudios y órdenes» abierta: por la fila, por un aviso o por la tarjeta de arriba de Entreno (un solo camino).
+    @State private var verEstudios = false
+    /// Cambia cada vez que se llega pidiendo la tarjeta nueva: Estudios se desplaza hasta ella.
+    @State private var enfocarEstudios = 0
 
     /// Las páginas legales de la web, en Safari dentro de la app (como hoy).
     enum Pagina: String, Identifiable {
@@ -93,11 +97,11 @@ struct MisDatosView: View {
             Section("Tu información") {
                 // «Novedades de tu plan» (palanca `novedades_plan`): el lugar fijo, primero.
                 if let nov = modelo.novedades, modelo.palanca.novedadesPlan || modelo.esDemo {
-                    NavigationLink { NovedadesListaView(modelo: nov) } label: {
+                    NavigationLink { NovedadesListaView(modelo: nov, estudios: modelo.estudios, irAEstudios: { navegacion?.irAEstudios() }) } label: {
                         Label { Text(TextosNovedades.entradaMisDatos) } icon: { IconoAzulejo("sparkles", color: .marcaTexto) }
                     }
                     .accessibilityIdentifier("mis-datos-novedades")
-                    .navigationDestination(isPresented: $verNovedades) { NovedadesListaView(modelo: nov) }
+                    .navigationDestination(isPresented: $verNovedades) { NovedadesListaView(modelo: nov, estudios: modelo.estudios, irAEstudios: { navegacion?.irAEstudios() }) }
                 }
                 // «Tu guía» después de la entrega (o si la quitó de Entreno): una sola fila, primera, como en Android. Sale
                 // del resumen, sin cartel.
@@ -106,6 +110,9 @@ struct MisDatosView: View {
                         Label { Text("Ver mi guía") } icon: { IconoAzulejo("play.rectangle.fill", color: .marcaTexto) }
                     }
                     .accessibilityIdentifier("mis-datos-guia")
+                }
+                if let est = modelo.estudios, est.habilitado {
+                    FilaEstudiosMisDatos(modelo: est) { verEstudios = true }
                 }
                 if let t = modelo.tecnica, t.habilitado || verTecnica {
                     Button { verTecnica = true } label: {
@@ -183,6 +190,23 @@ struct MisDatosView: View {
             }
         }
         .navigationTitle("Mis datos")
+        .navigationDestination(isPresented: $verEstudios) {
+            if let est = modelo.estudios { EstudiosView(modelo: est, enfocar: enfocarEstudios) }
+        }
+        // Un aviso de Estudios, `?scene=estudios` o la tarjeta de arriba de Entreno: ya se está en Mis datos (que existe
+        // siempre) y se pasa a Estudios cuando se sabe que la sección está. Con la app recién abierta el `get` puede no
+        // haber vuelto: se espera con tope. Si no está (palanca apagada, cuenta sin la función, `get` caído), se queda acá.
+        .task(id: navegacion?.estudios ?? false) {
+            guard navegacion?.estudios == true else { return }
+            let seccion = await modelo.estudiosParaAviso()
+            guard !Task.isCancelled, navegacion?.estudios == true else { return }
+            navegacion?.estudios = false
+            guard seccion != nil else { return }
+            enfocarEstudios += 1
+            verEstudios = true
+        }
+        // Se fue de Mis datos antes de saberlo: el pedido no queda esperando para la próxima vez que entre.
+        .onDisappear { if !verEstudios { navegacion?.estudios = false } }
         .tint(Color.marcaTexto)
         .sheet(isPresented: $fuentes) { FuentesView() }
         // El aviso del contrato pendiente pide Documentos: se abre y se consume. Sin documentos (un error, o ya no

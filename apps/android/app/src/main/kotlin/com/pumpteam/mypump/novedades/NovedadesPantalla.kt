@@ -296,11 +296,31 @@ fun TarjetaNovedadDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
 
 /** «Novedades de tu plan» en Mis datos: todas las guardadas, de la más nueva a la más vieja. */
 @Composable
-fun NovedadesListaPantalla(m: ModeloNovedades, alVolver: () -> Unit) {
+fun NovedadesListaPantalla(
+    m: ModeloNovedades,
+    alVolver: () -> Unit,
+    /** Estudios y órdenes: un pedido o una orden sin ver también es una novedad, y lleva directo a Estudios. */
+    deEstudios: com.pumpteam.mypump.reglas.Estudios.Novedad? = null,
+    alIrAEstudios: () -> Unit = {},
+) {
     val lista by m.lista.collectAsStateWithLifecycle()
     val c = MyPump.colores
     PantallaConTitulo(TextosNovedades.ENTRADA_MIS_DATOS, alVolver = alVolver, desplazable = true) {
-        if (lista.isEmpty()) {
+        if (deEstudios != null) {
+            Row(
+                Modifier.padding(horizontal = Espacio.m).fillMaxWidth().superficieTarjeta().clip(RoundedCornerShape(Radio.tarjeta))
+                    .clickable(role = Role.Button, onClick = alIrAEstudios)
+                    .padding(Espacio.m).testTag("novedad-estudios"),
+                horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+            ) {
+                Text(
+                    deEstudios.titulo, style = MaterialTheme.typography.titleLarge.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize),
+                    color = c.texto, modifier = Modifier.weight(1f),
+                )
+                Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.padding(top = 4.dp).size(20.dp))
+            }
+        }
+        if (lista.isEmpty() && deEstudios == null) {
             EstadoVacio(Iconos.Chispas, TextosNovedades.CEJA, TextosNovedades.VACIO)
         }
         for (n in lista) {

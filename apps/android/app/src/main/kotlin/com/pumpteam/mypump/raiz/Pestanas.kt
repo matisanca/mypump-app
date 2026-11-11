@@ -140,6 +140,13 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
             vm.destinoConsumido()
         }
     }
+    // Un aviso o un link de Estudios: ya se está en Mis datos (la caída segura); se espera, con tope, a saber si la sección
+    // existe (con la app recién abierta la carga puede no haber terminado) y recién ahí se abre.
+    LaunchedEffect(navegacion.pedidoEstudios) {
+        if (navegacion.pedidoEstudios == 0) return@LaunchedEffect
+        if (modelo.estudiosParaAviso() != null) navegacion.abrirEstudiosPedido()
+    }
+    val novedadEstudios = com.pumpteam.mypump.estudios.hayNovedadDeEstudios(modelo)
     // Salir de Dieta de verdad vuelve a hoy (girar el teléfono no: la pestaña sigue siendo la misma).
     LaunchedEffect(navegacion.pestana) { if (navegacion.pestana != Pestana.DIETA && modelo.enDiaPasado) modelo.irADia(null) }
     val enMisDatos = navegacion.pestana == Pestana.REVISION && navegacion.misDatos
@@ -158,6 +165,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     BackHandler(enabled = enMisDatos && navegacion.tecnicaEnMisDatos) { navegacion.tecnicaEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.novedadesEnMisDatos) { navegacion.novedadesEnMisDatos = false }
     BackHandler(enabled = enMisDatos && navegacion.documentosEnMisDatos) { navegacion.documentosEnMisDatos = false }
+    BackHandler(enabled = enMisDatos && navegacion.estudiosEnMisDatos) { navegacion.estudiosEnMisDatos = false }
     BackHandler(enabled = navegacion.pestana == Pestana.ENTRENO && navegacion.gimnasio) { navegacion.gimnasio = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
@@ -211,6 +219,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         val tec = tecnica
                                         val documentos by modelo.documentos.collectAsStateWithLifecycle()
                                         val docs = documentos
+                                        val estudios by modelo.estudios.collectAsStateWithLifecycle()
+                                        val est = estudios
                                         if (navegacion.guiaEnMisDatos && g != null) {
                                             GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false }, elegirHorario = com.pumpteam.mypump.guia.Videollamada.elegirHorario(modelo))
                                         } else if (navegacion.gimnasioEnMisDatos && gim != null) {
@@ -218,9 +228,21 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         } else if (navegacion.tecnicaEnMisDatos && tec != null) {
                                             com.pumpteam.mypump.tecnica.TecnicaPantalla(tec, modelo, alVolver = { navegacion.tecnicaEnMisDatos = false })
                                         } else if (navegacion.novedadesEnMisDatos && modelo.novedades.value != null) {
-                                            com.pumpteam.mypump.novedades.NovedadesListaPantalla(modelo.novedades.value!!, alVolver = { navegacion.novedadesEnMisDatos = false })
+                                            val estadoEst = est?.estado?.collectAsStateWithLifecycle()?.value
+                                            com.pumpteam.mypump.novedades.NovedadesListaPantalla(
+                                                modelo.novedades.value!!, alVolver = { navegacion.novedadesEnMisDatos = false },
+                                                deEstudios = estadoEst?.let(com.pumpteam.mypump.reglas.Estudios::novedad),
+                                                alIrAEstudios = { navegacion.irAEstudios(resuelto = true) },
+                                            )
                                         } else if (navegacion.documentosEnMisDatos && docs != null) {
                                             com.pumpteam.mypump.misdatos.DocumentosPantalla(docs, alVolver = { navegacion.documentosEnMisDatos = false })
+                                        } else if (navegacion.estudiosEnMisDatos && est != null) {
+                                            com.pumpteam.mypump.estudios.EstudiosPantalla(
+                                                est,
+                                                alVolver = { navegacion.estudiosEnMisDatos = false },
+                                                enfocar = navegacion.enfocarEstudios,
+                                                alEnfocar = { navegacion.enfocarEstudios = false },
+                                            )
                                         } else {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }
@@ -254,7 +276,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
             ) {
                 // Con el panel de la carga arriba, el descanso va ahí: dos barras apiladas tapan media pantalla.
                 if (panelesCarga.intValue == 0) entreno?.let { BarraDescansoEntreno(it) }
-                BarraPestanas(navegacion, badges, Pestana.barra(conSuplementacion))
+                BarraPestanas(navegacion, badges, Pestana.barra(conSuplementacion), novedadEstudios)
             }
             // Los avisos de abajo, apilados (revisión del 4-nov, hallazgo 19): «Ocultar» de la tarjeta de la guía («La
             // encontrás en Mis datos» con «Deshacer») va arriba del de guardado, nunca encima. Cada uno ocupa lugar solo
@@ -285,7 +307,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
  * con el ícono y el nombre en el verde de texto, y las demás en el color del texto, como en el iPhone.
  */
 @Composable
-private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>, pestanas: List<Pestana>) {
+private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>, pestanas: List<Pestana>, novedadEstudios: Boolean = false) {
     val c = MyPump.colores
     Row(
         modifier = Modifier
@@ -324,6 +346,16 @@ private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>, pes
                                 contentColor = c.sobreMarca,
                                 modifier = Modifier.semantics { contentDescription = "$n sin ver" },
                             ) { Text(if (n > 99) "99+" else "$n", fontWeight = FontWeight.Bold) }
+                        } else if (p == Pestana.REVISION && novedadEstudios) {
+                            // Un estudio pedido o una orden sin ver: el punto en la pestaña que lleva a Mis datos. Con
+                            // algo pendiente de la semana manda el número, como en iOS.
+                            Badge(
+                                containerColor = c.marca,
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .semantics { contentDescription = com.pumpteam.mypump.reglas.TextosEstudios.novedad }
+                                    .testTag("pestana-revision-novedad"),
+                            )
                         }
                     },
                 ) { Icon(p.icono, contentDescription = null, tint = tono, modifier = Modifier.size(28.dp)) }

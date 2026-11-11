@@ -44,6 +44,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -73,6 +74,10 @@ class ModeloApp(
     /** `UserDefaults` de iOS: lo poco que se recuerda fuera de la cuenta. */
     val preferencias: Preferencias,
     internal val alcance: CoroutineScope,
+    /** Donde esperan los archivos de «Estudios» hasta subir (en la app, `noBackupFilesDir`). Sin ella, [raizDisco]. */
+    private val raizSinRespaldo: File? = null,
+    /** La caché de la app (`cacheDir`): lo de «Estudios» que quedó ahí se barre al arrancar y al cerrar sesión. */
+    private val raizCache: File? = null,
 ) {
     enum class Fase {
         /** "Bienvenido a MyPump": pegá tu link o mirá la demo. */
@@ -304,6 +309,10 @@ class ModeloApp(
     private val _feedback = MutableStateFlow<ModeloFeedback?>(null)
     val feedback: StateFlow<ModeloFeedback?> = _feedback.asStateFlow()
 
+    /** Estudios y órdenes: existe con cuenta, pero solo llama al servidor con la palanca `estudios_app` prendida. */
+    private val _estudios = MutableStateFlow<ModeloEstudios?>(null)
+    val estudios: StateFlow<ModeloEstudios?> = _estudios.asStateFlow()
+
     /** Progreso: se carga al abrir la pestaña (como la web). */
     private val _progreso = MutableStateFlow<ModeloProgreso?>(null)
     val progreso: StateFlow<ModeloProgreso?> = _progreso.asStateFlow()
@@ -373,6 +382,8 @@ class ModeloApp(
         }
 
     init {
+        // Antes que nada, y sin mirar la palanca ni si hay sesión: lo médico que venció o quedó suelto no sigue en el teléfono.
+        ColaEstudios.barrerTelefono(raizDisco, raizSinRespaldo ?: raizDisco, raizCache)
         token?.let(::prepararCuenta)
     }
 
@@ -466,6 +477,9 @@ class ModeloApp(
         preferencias.guardar(CLAVE_TOKEN_INVALIDO, null)   // salió él: la próxima vez, la bienvenida
         // Lo buscado por código se va con la cuenta: se borra del teléfono.
         disco?.borrar(ARCHIVO_CODIGOS)
+        // Lo médico tampoco se queda: ni los estudios que esperaban salir, ni lo elegido, ni lo que se bajó para ver.
+        _estudios.value?.borrarTodo()
+        raizCache?.let { ColaEstudios.limpiarCache(it) }
         soltarCuentaEnMemoria()
         _entreno.value = null
         _rutina.value = null
@@ -583,6 +597,7 @@ class ModeloApp(
         _tecnica.value = null
         _devolucion.value = null
         _feedback.value = null
+        _estudios.value = null
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
@@ -635,6 +650,7 @@ class ModeloApp(
         _tecnica.value = ModeloTecnica(cliente, t, d, lanzar = { tarea -> alcance.launch { tarea() } })
         _devolucion.value = ModeloDevolucion(cliente, t, d)
         _feedback.value = ModeloFeedback(cliente, t, d)
+        _estudios.value = ModeloEstudios(cliente, t, d, ColaEstudios.carpeta(raizSinRespaldo ?: raizDisco, d), lanzar = { tarea -> alcance.launch { tarea() } })
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
@@ -857,6 +873,7 @@ class ModeloApp(
         val fotosCuenta = _fotos.value
         val gimnasioCuenta = _gimnasio.value
         val tecnicaCuenta = _tecnica.value
+        val estudiosCuenta = _estudios.value
         val clienteId = _info.value?.clienteId
         if (discoCuenta != null && colaCuenta != null && !clienteId.isNullOrEmpty()) {
             CuentasDelTelefono.anotar(clienteId, discoCuenta)
@@ -867,6 +884,7 @@ class ModeloApp(
             fotosCuenta?.let { f -> CuentasDelTelefono.adoptarFotos(clienteId, discoCuenta, f) }
             gimnasioCuenta?.let { g -> CuentasDelTelefono.adoptarGimnasio(clienteId, discoCuenta, g) }
             tecnicaCuenta?.let { x -> CuentasDelTelefono.adoptarTecnica(clienteId, discoCuenta, x) }
+            estudiosCuenta?.let { x -> CuentasDelTelefono.adoptarEstudios(clienteId, discoCuenta, x) }
             if (!vigente()) return
         }
 
@@ -889,6 +907,7 @@ class ModeloApp(
             _tecnica.value?.recordarPalanca(it.tecnicaVideo)
             _devolucion.value?.recordarPalanca(it.devolucionSemanal)
             disco?.let { d -> if (elegirHorarioRecordado(d) != it.elegirHorario) d.guardar(ARCHIVO_PALANCA_ELEGIR, ValorJson.Booleano(it.elegirHorario)) }
+            _estudios.value?.usarPalanca(it.estudiosApp)
             // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
             outbox?.usarPalanca(it.opsLegadas)
         }
@@ -976,6 +995,7 @@ class ModeloApp(
         sincronizarDevolucion()
         _chat.value?.consultarAdjuntos(if (palancaLeidaEnSesion) _palanca.value.chatAdjuntos else null)
         sincronizarFeedback()
+        sincronizarEstudios()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         anotarCargaCompleta()
@@ -994,6 +1014,29 @@ class ModeloApp(
         _fotos.value?.drenar()
         _gimnasio.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
         _tecnica.value?.takeIf { it.palancaRecordada }?.drenarEnFondo()
+        _estudios.value?.takeIf { it.palanca.value == true }?.drenarEnFondo()
+    }
+
+    /** Con la palanca apagada, o sin haberla leído en esta sesión, no se llama a nada: la app es la de siempre. */
+    private suspend fun sincronizarEstudios() {
+        _estudios.value?.sincronizar()
+    }
+
+    /**
+     * Tocaron un aviso de Estudios o un link con `?scene=estudios`: la sección, si existe; null = no está disponible (la
+     * palanca apagada, la cuenta sin la función, el `get` caído) y se queda en Mis datos. Con la app recién abierta la carga
+     * puede no haber terminado: se espera a saberlo, con un tope corto. No llama a nada: solo mira.
+     */
+    suspend fun estudiosParaAviso(topeMs: Long = 6_000, pasoMs: Long = 200, esperar: suspend (Long) -> Unit = { delay(it) }): ModeloEstudios? {
+        var quedan = topeMs
+        while (true) {
+            if (_esDemo.value || (_fase.value != Fase.CARGANDO && _fase.value != Fase.LISTO)) return null
+            val e = _estudios.value
+            if (e != null && e.resuelto.value) return e.takeIf { it.estado.value != null }
+            if (quedan <= 0) return null
+            esperar(pasoMs)
+            quedan -= pasoMs
+        }
     }
 
     /** Con las dos palancas apagadas no se llama a nada: la app es la de siempre. */
@@ -1081,10 +1124,13 @@ class ModeloApp(
         if (toca(Relectura.GIMNASIO)) {
             sincronizarGimnasio()
             sincronizarTecnica()
-            sincronizarDevolucion()
             _chat.value?.consultarAdjuntos(if (palancaLeidaEnSesion) _palanca.value.chatAdjuntos else null)
             sincronizarFeedback()
         }
+        // La devolución y los estudios llegan con un aviso que trae al alumno: se releen en cada vuelta (un pedido chico
+        // cada uno, y solo con su palanca prendida), sin esperar el intervalo.
+        sincronizarDevolucion()
+        sincronizarEstudios()
         if (toca(Relectura.GUIA)) _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }

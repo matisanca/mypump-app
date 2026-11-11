@@ -1,0 +1,1074 @@
+{
+ "_": "Vectores de Estudios y órdenes, comunes a iOS y Android. Fuente: estudios/CONTRATO_APP.md. Fechas AAAA-MM-DD; null = no viene.",
+ "maxPx": 2400,
+ "calidad": 0.8,
+ "topeArchivos": 20,
+ "topeMB": 20,
+ "textos": {
+  "entradaMisDatos": "Estudios y órdenes",
+  "titulo": "Estudios",
+  "proximoControl": "Próximo control",
+  "teFaltaHacer": "Te falta hacer",
+  "subirResultado": "Subir resultado",
+  "yaMeLoHice": "Ya me lo hice",
+  "verOrden": "Ver orden",
+  "deshacer": "Deshacer",
+  "subirEstudio": "Subir un estudio",
+  "tusOrdenes": "Tus órdenes",
+  "tusEstudios": "Tus estudios",
+  "ver": "Ver",
+  "recibido": "Recibido",
+  "matiLoVio": "Mati lo vio",
+  "sinFecha": "Sin fecha",
+  "ordenVencida": "Vencida. Si la necesitás, pedísela a Mati por el chat.",
+  "notaRecibido": "Recibido quiere decir que llegó. Mati lo revisa y te escribe. Si te sentís mal, no esperes: escribile o consultá a un médico.",
+  "vacio": "Acá vas a ver los estudios que te pida Mati, tus órdenes y lo que nos mandes.",
+  "errorDeCarga": "No se pudo cargar. Deslizá para reintentar.",
+  "cuandoTeLoHiciste": "¿Cuándo te lo hiciste?",
+  "guardar": "Guardar",
+  "revisaLaFecha": "Revisá la fecha.",
+  "guiaSubida": "Subí todas las hojas juntas, en PDF o en fotos donde se lea bien.",
+  "sacarFotos": "Sacar fotos",
+  "elegirFotos": "Elegir fotos",
+  "elegirPDF": "Elegir PDF",
+  "quitar": "Quitar",
+  "sinSenal": "Sin señal. Se envía solo cuando vuelva.",
+  "envioRecibido": "Recibido. Mati lo revisa y te escribe.",
+  "topeDia": "Ya mandaste varios envíos hoy. Probá mañana o escribile a Mati.",
+  "archivoRechazado": "No pudimos leer ese archivo. Probá con una foto o un PDF.",
+  "comoPrepararte": "Cómo prepararte",
+  "dondeHacerlo": "Dónde hacerlo",
+  "noSePudoAbrir": "No se pudo abrir. Probá de nuevo.",
+  "estudioNuevo": "Tenés un estudio nuevo para hacer",
+  "ordenNueva": "Tenés una orden nueva",
+  "estudioParaHacer": "Tenés un estudio para hacer",
+  "nuevo": "Nuevo",
+  "novedad": "Novedad"
+ },
+ "subtituloEntrada": [
+  {
+   "n": 0,
+   "texto": "Todo al día"
+  },
+  {
+   "n": 1,
+   "texto": "Te falta 1 estudio"
+  },
+  {
+   "n": 3,
+   "texto": "Te faltan 3 estudios"
+  }
+ ],
+ "enviarArchivos": [
+  {
+   "n": 1,
+   "texto": "Enviar 1 archivo"
+  },
+  {
+   "n": 5,
+   "texto": "Enviar 5 archivos"
+  }
+ ],
+ "hojas": [
+  {
+   "n": null,
+   "texto": null
+  },
+  {
+   "n": 0,
+   "texto": null
+  },
+  {
+   "n": 1,
+   "texto": "1 hoja"
+  },
+  {
+   "n": 4,
+   "texto": "4 hojas"
+  }
+ ],
+ "topes": {
+  "archivos": "Hasta 20 archivos por envío.",
+  "peso": "Ese archivo pesa más de 20 MB."
+ },
+ "progreso": [
+  {
+   "subidos": 0,
+   "total": 5,
+   "texto": "Subiendo 1 de 5"
+  },
+  {
+   "subidos": 1,
+   "total": 5,
+   "texto": "Subiendo 2 de 5"
+  },
+  {
+   "subidos": 5,
+   "total": 5,
+   "texto": "Subiendo 5 de 5"
+  }
+ ],
+ "fechas": [
+  {
+   "fecha": "2026-11-19",
+   "corta": "19/11",
+   "conDia": "jueves 19/11"
+  },
+  {
+   "fecha": "2026-11-03",
+   "corta": "3/11",
+   "conDia": "martes 3/11"
+  },
+  {
+   "fecha": "2027-01-02",
+   "corta": "2/1",
+   "conDia": "sábado 2/1"
+  },
+  {
+   "fecha": "2028-02-29",
+   "corta": "29/2",
+   "conDia": "martes 29/2"
+  },
+  {
+   "fecha": "2026-11-22",
+   "corta": "22/11",
+   "conDia": "domingo 22/11"
+  },
+  {
+   "fecha": "2026-11-25",
+   "corta": "25/11",
+   "conDia": "miércoles 25/11"
+  },
+  {
+   "fecha": "2026-02-30",
+   "corta": null,
+   "conDia": null
+  },
+  {
+   "fecha": "19/11/2026",
+   "corta": null,
+   "conDia": null
+  },
+  {
+   "fecha": "",
+   "corta": null,
+   "conDia": null
+  }
+ ],
+ "fechaPendiente": [
+  {
+   "desde": null,
+   "hasta": "2026-11-19",
+   "hoy": "2026-11-10",
+   "texto": "Antes del jueves 19/11",
+   "pasada": false
+  },
+  {
+   "desde": "2026-11-16",
+   "hasta": "2026-11-19",
+   "hoy": "2026-11-10",
+   "texto": "Entre el lunes 16/11 y el jueves 19/11",
+   "pasada": false
+  },
+  {
+   "desde": null,
+   "hasta": "2026-11-19",
+   "hoy": "2026-11-19",
+   "texto": "Antes del jueves 19/11",
+   "pasada": false
+  },
+  {
+   "desde": null,
+   "hasta": "2026-11-19",
+   "hoy": "2026-11-20",
+   "texto": "Era para el jueves 19/11",
+   "pasada": true
+  },
+  {
+   "desde": "2026-11-16",
+   "hasta": "2026-11-19",
+   "hoy": "2026-12-01",
+   "texto": "Era para el jueves 19/11",
+   "pasada": true
+  },
+  {
+   "desde": "2026-11-19",
+   "hasta": "2026-11-19",
+   "hoy": "2026-11-10",
+   "texto": "Antes del jueves 19/11",
+   "pasada": false
+  },
+  {
+   "desde": null,
+   "hasta": "2026-11-19",
+   "hoy": null,
+   "texto": "Antes del jueves 19/11",
+   "pasada": false
+  },
+  {
+   "desde": "2026-11-16",
+   "hasta": null,
+   "hoy": "2026-11-10",
+   "texto": null,
+   "pasada": false
+  }
+ ],
+ "fechaControl": [
+  {
+   "desde": "2026-11-23",
+   "hasta": "2026-11-29",
+   "texto": "Semana del 23/11"
+  },
+  {
+   "desde": "2026-11-23",
+   "hasta": "2026-11-30",
+   "texto": "Semana del 23/11"
+  },
+  {
+   "desde": "2026-11-23",
+   "hasta": "2026-12-04",
+   "texto": "Entre el lunes 23/11 y el viernes 4/12"
+  },
+  {
+   "desde": "2026-11-23",
+   "hasta": null,
+   "texto": "Semana del 23/11"
+  },
+  {
+   "desde": null,
+   "hasta": "2026-12-04",
+   "texto": "Antes del viernes 4/12"
+  },
+  {
+   "desde": null,
+   "hasta": null,
+   "texto": null
+  }
+ ],
+ "hecho": [
+  {
+   "fecha": "2026-11-12",
+   "texto": "Hecho el 12/11. Falta subir el resultado."
+  },
+  {
+   "fecha": null,
+   "texto": "Hecho. Falta subir el resultado."
+  }
+ ],
+ "orden": [
+  {
+   "emitida": "2026-11-03",
+   "vence": "2027-01-02",
+   "texto": "Emitida el 3/11 · Vale hasta el 2/1"
+  },
+  {
+   "emitida": null,
+   "vence": "2027-01-02",
+   "texto": "Vale hasta el 2/1"
+  },
+  {
+   "emitida": null,
+   "vence": null,
+   "texto": ""
+  }
+ ],
+ "estudio": [
+  {
+   "fecha": "2026-11-03",
+   "hojas": 4,
+   "texto": "3/11 · 4 hojas"
+  },
+  {
+   "fecha": null,
+   "hojas": 1,
+   "texto": "Sin fecha · 1 hoja"
+  },
+  {
+   "fecha": "2026-11-03",
+   "hojas": null,
+   "texto": "3/11"
+  }
+ ],
+ "envio": [
+  {
+   "enviado_en": "2026-11-10T12:00:00Z",
+   "zona": "America/Argentina/Buenos_Aires",
+   "archivos": 3,
+   "texto": "Envío del 10/11 · 3 archivos · Recibido"
+  },
+  {
+   "enviado_en": "2026-11-11T01:30:00Z",
+   "zona": "America/Argentina/Buenos_Aires",
+   "archivos": 1,
+   "texto": "Envío del 10/11 · 1 archivo · Recibido"
+  },
+  {
+   "enviado_en": null,
+   "zona": "America/Argentina/Buenos_Aires",
+   "archivos": null,
+   "texto": "Envío · Recibido"
+  }
+ ],
+ "preparacion": {
+  "laboratorio": [
+   "Ayuno de 8 a 12 horas. Podés tomar agua, y andá bien hidratado.",
+   "Extracción entre las 7 y las 10 de la mañana.",
+   "48 horas antes: sin entrenar y sin alcohol.",
+   "3 días antes: sin biotina (viene en suplementos para pelo y uñas y en algunos multivitamínicos).",
+   "Si te piden orina, la primera de la mañana.",
+   "Si estás enfermo o pasaste la noche sin dormir, mejor pasalo a otro día.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "ecografia": [
+   "Si es abdominal, ayuno de 6 a 8 horas.",
+   "Para otras ecografías, seguí lo que te indique el centro al sacar el turno.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "ecocardiograma": [
+   "No necesita preparación.",
+   "Si tenés dolor de pecho, falta de aire o palpitaciones, avisale a Mati antes de hacerlo.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "electrocardiograma": [
+   "No necesita preparación.",
+   "Si tenés dolor de pecho, falta de aire o palpitaciones, avisale a Mati antes de hacerlo.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "ergometria": [
+   "Comida liviana 2 horas antes.",
+   "Ese día, sin café, mate ni tabaco.",
+   "Llevá ropa y zapatillas para hacer ejercicio.",
+   "Si tenés dolor de pecho, falta de aire o palpitaciones, avisale a Mati antes de hacerlo.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "eco_estres": [
+   "Comida liviana 2 horas antes.",
+   "Ese día, sin café, mate ni tabaco.",
+   "Llevá ropa y zapatillas para hacer ejercicio.",
+   "Si tenés dolor de pecho, falta de aire o palpitaciones, avisale a Mati antes de hacerlo.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "mapa": [
+   "Elegí un día común de semana.",
+   "En cada toma, dejá el brazo quieto y relajado.",
+   "Anotá lo que vas haciendo: comidas, entreno y sueño.",
+   "Con el aparato puesto no te podés duchar.",
+   "Si tenés dolor de pecho, falta de aire o palpitaciones, avisale a Mati antes de hacerlo.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "densitometria": [
+   "Seguí lo que te indique el centro al sacar el turno.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "estudios": [
+   "Seguí lo que te indique el centro al sacar el turno.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "otro": [
+   "Seguí lo que te indique el centro al sacar el turno.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ],
+  "tipo_que_no_existe": [
+   "Seguí lo que te indique el centro al sacar el turno.",
+   "Si Mati te dio una indicación propia, vale esa.",
+   "No dejes ninguna medicación sin que Mati te lo diga."
+  ]
+ },
+ "donde": {
+  "laboratorio": [
+   "En cualquier laboratorio de análisis clínicos. Si tenés obra social o prepaga, en uno de tu cartilla: llevá la orden, tu credencial y tu DNI.",
+   "Si podés, siempre en el mismo laboratorio: así los resultados se comparan mejor."
+  ],
+  "ecografia": [
+   "En un centro de diagnóstico o de cardiología, con turno. Si tenés obra social o prepaga, en uno de tu cartilla: llevá la orden, tu credencial y tu DNI."
+  ],
+  "ecocardiograma": [
+   "En un centro de diagnóstico o de cardiología, con turno. Si tenés obra social o prepaga, en uno de tu cartilla: llevá la orden, tu credencial y tu DNI."
+  ],
+  "mapa": [
+   "En un centro de diagnóstico o de cardiología, con turno. Si tenés obra social o prepaga, en uno de tu cartilla: llevá la orden, tu credencial y tu DNI."
+  ],
+  "tipo_que_no_existe": [
+   "En un centro de diagnóstico o de cardiología, con turno. Si tenés obra social o prepaga, en uno de tu cartilla: llevá la orden, tu credencial y tu DNI."
+  ]
+ },
+ "subida": [
+  {
+   "status": 200,
+   "ok": true,
+   "accion": "ok"
+  },
+  {
+   "status": 200,
+   "ok": false,
+   "accion": "reintentar"
+  },
+  {
+   "status": 400,
+   "ok": false,
+   "accion": "descartar"
+  },
+  {
+   "status": 403,
+   "ok": false,
+   "accion": "descartar"
+  },
+  {
+   "status": 404,
+   "ok": false,
+   "accion": "descartar"
+  },
+  {
+   "status": 409,
+   "ok": false,
+   "accion": "descartar"
+  },
+  {
+   "status": 411,
+   "ok": false,
+   "accion": "descartar"
+  },
+  {
+   "status": 413,
+   "ok": false,
+   "accion": "descartar"
+  },
+  {
+   "status": 429,
+   "ok": false,
+   "accion": "reintentar"
+  },
+  {
+   "status": 500,
+   "ok": false,
+   "accion": "reintentar"
+  },
+  {
+   "status": 503,
+   "ok": false,
+   "accion": "reintentar"
+  },
+  {
+   "status": 0,
+   "ok": false,
+   "accion": "reintentar"
+  }
+ ],
+ "destino": "estudios",
+ "destinos": {
+  "_": "A dónde lleva el `destino` de un aviso y la escena de un link. va: estudios | misDatos | chat; null = el link no hace nada.",
+  "avisos": [
+   {
+    "destino": "estudios",
+    "va": "estudios"
+   },
+   {
+    "destino": "salud",
+    "va": "misDatos"
+   },
+   {
+    "destino": "estudio",
+    "va": "chat"
+   },
+   {
+    "destino": "Estudios",
+    "va": "chat"
+   },
+   {
+    "destino": null,
+    "va": "chat"
+   }
+  ],
+  "escenas": [
+   {
+    "escena": "estudios",
+    "va": "estudios"
+   },
+   {
+    "escena": "salud",
+    "va": "misDatos"
+   },
+   {
+    "escena": "estudio",
+    "va": null
+   },
+   {
+    "escena": null,
+    "va": null
+   }
+  ]
+ },
+ "novedades": [
+  {
+   "nombre": "servidor viejo: sin `novedades` ni `nuevo`, con algo por hacer",
+   "respuesta": {
+    "habilitado": true,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido"
+     },
+     {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido"
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": {
+     "titulo": "Tenés un estudio para hacer",
+     "boton": "Subir resultado",
+     "nueva": false
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000001-0000-4000-8000-000000000000"
+    },
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "un pedido y una orden sin ver",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 2,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": false
+     },
+     {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": true
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": true
+     },
+     {
+      "id": "00000012-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": false
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés un estudio nuevo para hacer",
+    "tarjeta": {
+     "titulo": "Tenés un estudio nuevo para hacer",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000002-0000-4000-8000-000000000000"
+    },
+    "nuevas": [
+     "00000002-0000-4000-8000-000000000000",
+     "00000011-0000-4000-8000-000000000000"
+    ]
+   }
+  },
+  {
+   "nombre": "solo una orden sin ver, con pedidos ya vistos",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 1,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": false
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": false
+     },
+     {
+      "id": "00000012-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés una orden nueva",
+    "tarjeta": {
+     "titulo": "Tenés una orden nueva",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": {
+     "clase": "orden",
+     "id": "00000012-0000-4000-8000-000000000000"
+    },
+    "nuevas": [
+     "00000012-0000-4000-8000-000000000000"
+    ]
+   }
+  },
+  {
+   "nombre": "solo una orden sin ver y nada por hacer",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 1,
+    "pendientes": [],
+    "ordenes": [
+     {
+      "id": "00000012-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés una orden nueva",
+    "tarjeta": {
+     "titulo": "Tenés una orden nueva",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": {
+     "clase": "orden",
+     "id": "00000012-0000-4000-8000-000000000000"
+    },
+    "nuevas": [
+     "00000012-0000-4000-8000-000000000000"
+    ]
+   }
+  },
+  {
+   "nombre": "nada sin ver y nada por hacer",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 0,
+    "pendientes": [],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": false
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": null,
+    "ancla": null,
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "un pedido ya hecho sigue siendo algo por hacer: falta el resultado",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 0,
+    "pendientes": [
+     {
+      "id": "00000003-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "hecho",
+      "hecho_fecha": "2026-11-09",
+      "nuevo": false
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": {
+     "titulo": "Tenés un estudio para hacer",
+     "boton": "Subir resultado",
+     "nueva": false
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000003-0000-4000-8000-000000000000"
+    },
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "cuenta novedades sin marcar ninguna fila, con pedidos",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 1,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido"
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés un estudio nuevo para hacer",
+    "tarjeta": {
+     "titulo": "Tenés un estudio nuevo para hacer",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000001-0000-4000-8000-000000000000"
+    },
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "cuenta novedades sin marcar ninguna fila y sin pedidos",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 1,
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": true,
+    "novedad": "Tenés una orden nueva",
+    "tarjeta": {
+     "titulo": "Tenés una orden nueva",
+     "boton": "Ver",
+     "nueva": true
+    },
+    "ancla": null,
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "tipos inesperados no cuentan",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": "3",
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": "true"
+     },
+     {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": 1
+     }
+    ],
+    "ordenes": [
+     {
+      "id": "00000011-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "emitida": "2026-11-03",
+      "vence": "2027-01-02",
+      "vigente": true,
+      "nuevo": null
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": {
+     "titulo": "Tenés un estudio para hacer",
+     "boton": "Subir resultado",
+     "nueva": false
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000001-0000-4000-8000-000000000000"
+    },
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "un número negativo es cero",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": -2,
+    "pendientes": [],
+    "ordenes": []
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": null,
+    "ancla": null,
+    "nuevas": []
+   }
+  },
+  {
+   "nombre": "una fila marcada sin que el servidor la cuente: no hay punto, pero al verla se marca",
+   "respuesta": {
+    "habilitado": true,
+    "novedades": 0,
+    "pendientes": [
+     {
+      "id": "00000001-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido"
+     },
+     {
+      "id": "00000002-0000-4000-8000-000000000000",
+      "tipo": "laboratorio",
+      "titulo": "Análisis de laboratorio",
+      "hasta": "2026-11-19",
+      "estado": "pedido",
+      "nuevo": true
+     }
+    ]
+   },
+   "espera": {
+    "indicador": false,
+    "novedad": null,
+    "tarjeta": {
+     "titulo": "Tenés un estudio para hacer",
+     "boton": "Subir resultado",
+     "nueva": false
+    },
+    "ancla": {
+     "clase": "pendiente",
+     "id": "00000002-0000-4000-8000-000000000000"
+    },
+    "nuevas": [
+     "00000002-0000-4000-8000-000000000000"
+    ]
+   }
+  }
+ ],
+ "get": {
+  "respuesta": {
+   "habilitado": true,
+   "hoy": "2026-11-10",
+   "topes": {
+    "archivos_por_envio": 20,
+    "mb_por_archivo": 20
+   },
+   "proximo_control": {
+    "tipo": "laboratorio",
+    "titulo": "Análisis de laboratorio",
+    "desde": "2026-11-23",
+    "hasta": "2026-11-29"
+   },
+   "pendientes": [
+    {
+     "id": "00000001-0000-4000-8000-000000000000",
+     "tipo": "laboratorio",
+     "titulo": "Análisis de laboratorio",
+     "detalle": null,
+     "desde": null,
+     "hasta": "2026-11-19",
+     "estado": "pedido",
+     "hecho_fecha": null,
+     "orden_id": null
+    },
+    {
+     "id": "00000002-0000-4000-8000-000000000000",
+     "tipo": "tipo_nuevo",
+     "titulo": "Estudio",
+     "hasta": "2026-11-05",
+     "estado": "estado_nuevo",
+     "campo_nuevo": 1
+    },
+    {
+     "tipo": "sin_id"
+    },
+    null,
+    7
+   ],
+   "ordenes": [
+    {
+     "id": "00000011-0000-4000-8000-000000000000",
+     "tipo": "laboratorio",
+     "titulo": "Análisis de laboratorio",
+     "emitida": "2026-11-03",
+     "vence": "2027-01-02",
+     "vigente": true
+    },
+    {
+     "id": "00000012-0000-4000-8000-000000000000",
+     "titulo": "Ecografía",
+     "vigente": false
+    }
+   ],
+   "estudios": [
+    {
+     "id": "00000021-0000-4000-8000-000000000000",
+     "tipo": "laboratorio",
+     "titulo": "Análisis de laboratorio",
+     "fecha": "2026-11-03",
+     "hojas": 4,
+     "estado": "recibido",
+     "recibido_en": "2026-11-04T13:02:11Z",
+     "se_puede_abrir": false
+    },
+    {
+     "id": "00000022-0000-4000-8000-000000000000",
+     "titulo": "Electrocardiograma",
+     "fecha": null,
+     "hojas": 1,
+     "estado": "visto",
+     "se_puede_abrir": true
+    },
+    {
+     "id": "00000023-0000-4000-8000-000000000000",
+     "estado": "estado_nuevo"
+    }
+   ],
+   "envios": [
+    {
+     "id": "00000031-0000-4000-8000-000000000000",
+     "estado": "enviado",
+     "archivos": 3,
+     "pedido_id": null,
+     "enviado_en": "2026-11-10T12:00:00Z"
+    },
+    {
+     "id": "00000032-0000-4000-8000-000000000000",
+     "estado": "borrador",
+     "archivos": 1
+    },
+    {
+     "id": "00000033-0000-4000-8000-000000000000",
+     "estado": "estado_nuevo",
+     "archivos": 2
+    }
+   ]
+  },
+  "espera": {
+   "pendientes": 2,
+   "pendientesHechos": 0,
+   "ordenes": 2,
+   "ordenesVigentes": 1,
+   "estudios": 3,
+   "estudiosVistos": 1,
+   "estudiosQueSeAbren": 1,
+   "enviosVisibles": 2,
+   "subtitulo": "Te faltan 2 estudios",
+   "tituloSinTitulo": "Estudio",
+   "bloques": {
+    "proximoControl": true,
+    "pendientes": true,
+    "ordenes": true,
+    "estudios": true,
+    "vacio": false
+   }
+  },
+  "noHabilitado": [
+   {
+    "habilitado": false
+   },
+   {},
+   null,
+   [],
+   {
+    "habilitado": "true"
+   }
+  ],
+  "vacia": {
+   "habilitado": true
+  }
+ }
+}

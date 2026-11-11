@@ -131,6 +131,24 @@ internal object CuentasDelTelefono {
         return false
     }
 
+    /** Lo mismo con los envíos de «Estudios» que no llegaron a salir: sus archivos pasan a la carpeta de este link. */
+    fun adoptarEstudios(clienteId: String, disco: Disco, estudios: ModeloEstudios): Int {
+        val raiz = estudios.carpetaArchivos?.parentFile?.parentFile ?: return 0
+        if (clienteId.isEmpty()) return 0
+        var total = 0
+        for (otra in otras(disco)) {
+            val viejos = ColaEstudios.leer(otra)
+            if (viejos.isEmpty() || clienteId(otra) != clienteId) continue
+            val carpetaVieja = File(raiz, "${otra.carpeta.name}/${ColaEstudios.CARPETA}")
+            if (estudios.adoptar(viejos, carpetaVieja)) {
+                otra.borrar(ColaEstudios.ARCHIVO)
+                carpetaVieja.deleteRecursively()
+                total += viejos.size
+            }
+        }
+        return total
+    }
+
     /** Lo mismo con las fotos del gimnasio que no llegaron a subirse. Cada una lleva su carga: se suben a la misma. */
     fun adoptarGimnasio(clienteId: String, disco: Disco, gimnasio: ModeloGimnasio): Int {
         if (clienteId.isEmpty()) return 0

@@ -129,8 +129,9 @@ private struct BarraAvanceGuia: View {
     }
 }
 
-/// El botón principal de la tarjeta: blanco con el texto verde, en cápsula como `BotonMarca`.
-private struct BotonSobreVerde: ButtonStyle {
+/// El botón principal de la tarjeta: blanco con el texto verde, en cápsula como `BotonMarca`. Lo usa también la tarjeta de
+/// Estudios de arriba de Entreno (`TarjetaEstudiosInicio`).
+struct BotonSobreVerde: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)

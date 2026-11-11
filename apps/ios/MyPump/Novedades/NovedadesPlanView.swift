@@ -274,11 +274,31 @@ struct TarjetaNovedadPlan: View {
 /// «Novedades de tu plan» en Mis datos: todas las guardadas, de la más nueva a la más vieja.
 struct NovedadesListaView: View {
     let modelo: ModeloNovedades
+    /// Estudios y órdenes: un pedido o una orden sin ver también es una novedad, y lleva directo a Estudios.
+    var estudios: ModeloEstudios? = nil
+    var irAEstudios: (() -> Void)? = nil
 
     var body: some View {
+        let deEstudios = irAEstudios == nil ? nil : estudios?.novedadDeEstudios
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Espacio.s) {
-                if modelo.lista.isEmpty {
+                if let deEstudios, let irAEstudios {
+                    Button(action: irAEstudios) {
+                        HStack(alignment: .center, spacing: Espacio.s) {
+                            Text(deEstudios.titulo).font(Archivo.fuente(18, peso: 750, relativoA: .headline)).foregroundStyle(.primary)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: Espacio.xs)
+                            Image(systemName: "chevron.right").font(.footnote.weight(.bold)).foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
+                        }
+                        .tarjeta()
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("novedad-estudios")
+                }
+                if modelo.lista.isEmpty, deEstudios == nil {
                     ContentUnavailableView {
                         Label(TextosNovedades.ceja, systemImage: "sparkles")
                     } description: {

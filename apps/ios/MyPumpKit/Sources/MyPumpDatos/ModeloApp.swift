@@ -115,6 +115,8 @@ public final class ModeloApp {
     public private(set) var devolucion: ModeloDevolucion?
     /// Feedback del alumno: existe con cuenta, pero solo llama al servidor con `me_duele` o `suple_estado` prendidas.
     public private(set) var feedback: ModeloFeedback?
+    /// Estudios y órdenes: existe con cuenta, pero solo llama al servidor con la palanca `estudios_app` prendida.
+    public private(set) var estudios: ModeloEstudios?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
     /// El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada).
@@ -172,6 +174,8 @@ public final class ModeloApp {
         token = almacen.leer()
         fase = token == nil ? Self.faseSinCuenta : .cargando
         tipoDia = UserDefaults.standard.string(forKey: "mypump_tipo_dia")
+        // Antes que nada, y sin mirar la palanca ni si hay sesión: lo médico que venció o quedó suelto no sigue en el teléfono.
+        ModeloEstudios.barrerTelefono(raizDisco: raizDisco, raizCache: raizDisco?.appendingPathComponent("Caches", isDirectory: true))
         if let token { prepararCuenta(token) }
     }
 
@@ -261,12 +265,14 @@ public final class ModeloApp {
         almacen.guardar(nil)
         UserDefaults.standard.removeObject(forKey: "mypump_token_invalido")   // salió él: la próxima vez, la bienvenida
         borrarCodigosDelDisco()
+        // Lo médico tampoco se queda: ni los estudios que esperaban salir, ni lo elegido, ni lo que se bajó para ver.
+        estudios?.borrarTodo()
         token = nil
         disco = nil
         registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; feedback = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         novedades = nil
         documentos = nil
@@ -346,7 +352,7 @@ public final class ModeloApp {
         registroMetas = PumpDelDia.Registro()
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; feedback = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; devolucion = nil; feedback = nil; estudios = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         novedades = nil
         documentos = nil
@@ -412,6 +418,8 @@ public final class ModeloApp {
         tecnica = ModeloTecnica(cliente: cliente, token: t, disco: disco)
         devolucion = ModeloDevolucion(cliente: cliente, token: t, disco: disco)
         feedback = ModeloFeedback(cliente: cliente, token: t, disco: disco)
+        // En las pruebas (`raizDisco`), el caché también va a la carpeta de la prueba.
+        estudios = ModeloEstudios(cliente: cliente, token: t, disco: disco, cache: raizDisco?.appendingPathComponent("Caches", isDirectory: true))
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
@@ -543,6 +551,7 @@ public final class ModeloApp {
             let f = fotos
             let g = gimnasio
             let tec = tecnica
+            let est = estudios
             CuentasDelTelefono.anotar(clienteId: id, en: d)
             await CuentasDelTelefono.adoptar(clienteId: id, en: d, cola: cola)
             // Los reemplazos de comida que esa carpeta tenía sin decidir vienen con ellas: hasta decidir, la cola los retiene
@@ -552,6 +561,7 @@ public final class ModeloApp {
             if let f { await CuentasDelTelefono.adoptarFotos(clienteId: id, en: d, fotos: f) }
             if let g { CuentasDelTelefono.adoptarGimnasio(clienteId: id, en: d, gimnasio: g) }
             if let tec { CuentasDelTelefono.adoptarTecnica(clienteId: id, en: d, tecnica: tec) }
+            if let est { CuentasDelTelefono.adoptarEstudios(clienteId: id, en: d, estudios: est) }
             guard vigente() else { return }
         }
 
@@ -563,6 +573,7 @@ public final class ModeloApp {
         if let palancaLeida {
             palanca = palancaLeida
             palancaLeida.recordar()
+            estudios?.usarPalanca(palancaLeida.estudiosApp)
             await outbox?.usarPalanca(opsLegadas: palancaLeida.opsLegadas)
         }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
@@ -650,6 +661,7 @@ public final class ModeloApp {
         await sincronizarDevolucion()
         await chat?.consultarAdjuntos(palanca: palanca.chatAdjuntos)
         await sincronizarFeedback()
+        await sincronizarEstudios()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         anotarCargaCompleta()
@@ -749,6 +761,27 @@ public final class ModeloApp {
         await fotos?.drenar()
         if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
         if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
+        if let estudios, estudios.palanca == true, estudios.habilitado { estudios.drenarEnFondo() }
+    }
+
+    /// Con la palanca apagada, o sin haberla leído en esta sesión, no se llama a nada: la app es la de siempre.
+    private func sincronizarEstudios() async {
+        await estudios?.sincronizar()
+    }
+
+    /// Tocaron un aviso de Estudios o un link con `?scene=estudios`: la sección, si existe; nil = no está disponible (la
+    /// palanca apagada, la cuenta sin la función, el `get` caído) y se queda en Mis datos. Con la app recién abierta la
+    /// carga puede no haber terminado: se espera a saberlo, con un tope corto. No llama a nada: solo mira.
+    public func estudiosParaAviso(tope: TimeInterval = 6, paso: TimeInterval = 0.2,
+                                  esperar: @Sendable (TimeInterval) async -> Void = { try? await Task.sleep(for: .seconds($0)) }) async -> ModeloEstudios? {
+        var quedan = tope
+        while true {
+            if esDemo || (fase != .cargando && fase != .listo) { return nil }
+            if let e = estudios, e.resuelto { return e.habilitado ? e : nil }
+            guard quedan > 0, !Task.isCancelled else { return nil }
+            await esperar(paso)
+            quedan -= paso
+        }
     }
 
     /// Con la palanca apagada no se llama a nada: la app es la de siempre.
@@ -840,10 +873,13 @@ public final class ModeloApp {
         if toca(.gimnasio) {
             await sincronizarGimnasio()
             await sincronizarTecnica()
-            await sincronizarDevolucion()
             await chat?.consultarAdjuntos(palanca: palanca.chatAdjuntos)
             await sincronizarFeedback()
         }
+        // La devolución y los estudios llegan con un aviso que trae al alumno: se releen en cada vuelta (un pedido chico
+        // cada uno, y solo con su palanca prendida), sin esperar el intervalo.
+        await sincronizarDevolucion()
+        await sincronizarEstudios()
         if toca(.salud) { await salud?.alVolver() }   // con Apple Health conectada: 7 días y retomar el historial
         _ = await entreno?.alVolverAPrimerPlano()
     }

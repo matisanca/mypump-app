@@ -98,6 +98,10 @@ abstract class PruebaUi {
         File(app.noBackupFilesDir, TokenEnKeystore.ARCHIVO).delete()
         app.getSharedPreferences(PreferenciasCompartidas.ARCHIVO, Context.MODE_PRIVATE).edit().clear().commit()
         File(app.filesDir, "MyPump").deleteRecursively()
+        // Los archivos de «Estudios» que esperan subir (fuera del respaldo) y sus temporales.
+        File(app.noBackupFilesDir, "MyPump").deleteRecursively()
+        File(app.cacheDir, "estudios-borrador").deleteRecursively()
+        File(app.cacheDir, "estudios-ver").deleteRecursively()
         // La hoja de permisos de la primera vez ya se vio (el `-sinOnboarding` de iOS): las que la prueban la vuelven a pedir.
         guardarPreferencia(Onboarding.CLAVE, "1")
     }

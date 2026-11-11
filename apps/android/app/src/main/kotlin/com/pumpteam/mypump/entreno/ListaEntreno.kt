@@ -202,6 +202,9 @@ fun ListaEntreno(
                     // La videollamada fija arriba (2.3.0), desde que se agenda hasta que termina (aunque la tarjeta de la
                     // guía esté oculta); con la palanca `elegir_horario`, «Agendá tu videollamada».
                     TarjetaVideollamadaEntreno(modelo)
+                    // Un estudio pedido o una orden nueva (10-nov): después de la entrega de ahora (tiene hora) y antes de
+                    // la guía. El mismo orden en iOS.
+                    com.pumpteam.mypump.estudios.TarjetaEstudiosInicioDe(modelo)
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
                     TarjetaGimnasioDe(modelo)
                     com.pumpteam.mypump.novedades.TarjetaNovedadDe(modelo)

@@ -113,7 +113,7 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
             val m = ArranqueMigracion.arrancar(app, almacen, preferencias, viewModelScope) {
                 ModeloApp(
                     cliente = cliente, almacen = almacen, raizDisco = app.filesDir, preferencias = preferencias,
-                    alcance = viewModelScope,
+                    alcance = viewModelScope, raizSinRespaldo = app.noBackupFilesDir, raizCache = app.cacheDir,
                 )
             }
             catalogo.await()?.let { ModeloApp.catalogoEmpaquetado = it }

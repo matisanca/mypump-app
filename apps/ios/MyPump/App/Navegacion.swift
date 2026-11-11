@@ -20,12 +20,15 @@ final class Navegacion {
     /// La hoja de Salud. Desde la 2.1.0 Salud no es una pestaña: se abre desde la tarjeta Recuperación de arriba de
     /// Revisión (pedido de Mati, 4-nov), un aviso o un link.
     var saludAbierta = false
+    /// Abrir «Estudios y órdenes» dentro de Mis datos, en la primera tarjeta nueva (un aviso, `?scene=estudios` o la
+    /// tarjeta de arriba de Entreno). Mis datos lo consume: espera a saber si la sección existe y, si no, se queda ahí.
+    var estudios = false
     /// Abrir «Tu guía» en Entreno (el «Ver mi guía» de la bienvenida); Entreno lo consume al llegar.
     var abrirGuia = false
 
     init(pestaña: Raiz.Pestaña) { self.pestaña = pestaña }
 
-    /// NOT-03: train/diet/progress/myday/revision/salud; lo desconocido ya llega como Chat.
+    /// NOT-03: train/diet/progress/myday/revision/salud/estudios; lo desconocido ya llega como Chat.
     func ir(a destino: DestinoAviso) {
         switch destino {
         case .entreno: pestaña = .entreno
@@ -37,6 +40,7 @@ final class Navegacion {
         case .misDatos:
             pestaña = .revision
             misDatos = true
+        case .estudios: irAEstudios()
         }
     }
 
@@ -45,6 +49,13 @@ final class Navegacion {
         pestaña = .revision
         misDatos = true
         documentos = true
+    }
+    /// Mis datos → Estudios y órdenes. Primero Mis datos, que existe siempre: si la sección no está disponible (la palanca
+    /// apagada, la cuenta sin la función, el `get` caído), el alumno queda ahí y nunca en una pantalla en blanco.
+    func irAEstudios() {
+        pestaña = .revision
+        misDatos = true
+        estudios = true
     }
 
     /// Salud, en la hoja sobre Revisión (los avisos y `?scene=progress|myday` llegan acá). Primero la pestaña: cambiarla

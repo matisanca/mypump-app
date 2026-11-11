@@ -37,6 +37,9 @@ public struct PalancaRemota: Equatable, Sendable {
     /// Elegir y cambiar el horario de la videollamada en la pantalla nueva (`elegir_horario`, 2.3.0). Sin la clave,
     /// apagada: la agenda de la guía queda como en la 2.2.0 y no se llama a `entregas_app_cambiar`.
     public var elegirHorario = false
+    /// Estudios y órdenes (`estudios_app`). Sin la clave, apagada: ni se muestra ni se llama a nada nuevo. No se recuerda
+    /// entre arranques: sin red no hay nada que mostrar (el estado no se guarda en el teléfono).
+    public var estudiosApp = false
 
     public init() {}
 
@@ -100,6 +103,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["me_duele"] { meDuele = b }
         if case .bool(let b)? = j["suple_estado"] { supleEstado = b }
         if case .bool(let b)? = j["elegir_horario"] { elegirHorario = b }
+        if case .bool(let b)? = j["estudios_app"] { estudiosApp = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
         if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }

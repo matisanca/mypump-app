@@ -171,6 +171,11 @@ final class DelegadoApp: NSObject, UIApplicationDelegate {
         MainActor.assumeIsolated { CentroAvisos.shared.configurar() }
         #if DEBUG
         if let d = UserDefaults.standard.string(forKey: "avisoDePrueba") { Task { await CentroAvisos.shared.agendarAvisoDePrueba(d) } }
+        // `-destinoDePrueba <destino>`: como tocar un aviso con la app cerrada (el destino queda anotado antes de que
+        // cargue nada). Las pruebas de interfaz miran a dónde llega sin depender del centro de notificaciones.
+        if let d = UserDefaults.standard.string(forKey: "destinoDePrueba") {
+            MainActor.assumeIsolated { CentroAvisos.shared.destino = DestinoAviso(destino: d) }
+        }
         // `-semanaDePrueba`: la prueba del aviso del domingo necesita el permiso para que haya algo agendado.
         if UserDefaults.standard.string(forKey: "semanaDePrueba") != nil {
             Task { @MainActor in
