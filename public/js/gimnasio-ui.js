@@ -415,21 +415,24 @@
   /* «¿Entrenás en casa? Tocá acá» (palanca `casa`): debajo de la tarjeta, abre Mi gimnasio con el interruptor arriba. */
   function botonCasa() {
     const t = raiz.CasaUI && raiz.CasaUI.botonTarjeta ? raiz.CasaUI.botonTarjeta() : null;
-    return t ? `<button type="button" class="casa-tarjeta-btn" id="casa-tarjeta">${e(t)}</button>` : '';
+    const sola = ui.modelo && !ui.modelo.tarjetaVisible ? ' is-sola' : '';
+    return t ? `<button type="button" class="casa-tarjeta-btn${sola}" id="casa-tarjeta">${e(t)}</button>` : '';
   }
 
   /* La tarjeta arriba en Entreno, debajo de la de la guía. renderTrain rehace todo: se vuelve a poner. */
   function montarTarjeta(root, despuesDe) {
     let host = document.getElementById('gimHost');
     const m = ui.modelo;
-    if (!root || !m || !m.tarjetaVisible) { if (host) host.remove(); return; }
+    // Con el gimnasio ya cargado la tarjeta no va, pero el botón de casa sí: nadie queda a tres toques.
+    const casa = m ? botonCasa() : '';
+    if (!root || !m || (!m.tarjetaVisible && !casa)) { if (host) host.remove(); return; }
     if (!host) {
       host = document.createElement('div');
       host.id = 'gimHost';
       host.addEventListener('click', () => abrir('train'));
     }
-    const html = `<button type="button" class="gim-tarjeta" id="gimTarjeta"><span class="gim-tarjeta-ic">${IC.pesa}</span>
-      <span class="gim-tarjeta-txt"><strong>${e(T.tarjetaTitulo)}</strong><span>${e(detalleTarjeta(m))}</span></span><span class="md-chev">${IC.chev}</span></button>${botonCasa()}`;
+    const html = !m.tarjetaVisible ? casa : `<button type="button" class="gim-tarjeta" id="gimTarjeta"><span class="gim-tarjeta-ic">${IC.pesa}</span>
+      <span class="gim-tarjeta-txt"><strong>${e(T.tarjetaTitulo)}</strong><span>${e(detalleTarjeta(m))}</span></span><span class="md-chev">${IC.chev}</span></button>${casa}`;
     if (host.dataset.h !== html) { host.innerHTML = html; host.dataset.h = html; }
     const sigue = despuesDe && despuesDe.parentNode === root ? despuesDe.nextSibling : root.firstChild;
     if (sigue !== host) root.insertBefore(host, sigue);
