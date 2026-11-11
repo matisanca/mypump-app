@@ -73,6 +73,21 @@ object Compras {
         return r
     }
 
+    /**
+     * En qué renglón de «Tu día» va el botón de cada ítem: el primero donde aparece (un ítem con varias tomas sale en varios
+     * momentos y el botón va una sola vez). (lugar del momento, lugar del renglón) → índice del ítem.
+     */
+    fun botones(vista: SuplementacionVista.Vista, items: List<ItemSuplemento>, porItem: Map<Int, List<OpcionCompra>>): Map<Pair<Int, Int>, Int> {
+        if (porItem.isEmpty()) return emptyMap()
+        val puestos = HashSet<Int>()
+        val r = LinkedHashMap<Pair<Int, Int>, Int>()
+        for ((m, momento) in vista.momentos.withIndex()) for ((f, fila) in momento.filas.withIndex()) {
+            val i = items.indexOf(fila.item)
+            if (i in porItem && puestos.add(i)) r[m to f] = i
+        }
+        return r
+    }
+
     object Textos {
         const val BOTON = "Dónde comprarlo"
         const val AYUDA = "Tocá “Dónde comprarlo” para ver dónde conseguir cada suplemento."

@@ -131,6 +131,20 @@ class ColaBReglasTest {
         assertTrue(Compras.porItem(supl.items, null).isEmpty())
     }
 
+    @Test fun comprasElBotonVaUnaVezPorItem() {
+        val s = PlanSuplementacion.desde(j("""{"suplementacion":{"dia":[{"id":"desayuno"},{"id":"dormir"}],"items":[
+            {"nombre":"Magnesio de prueba","tomas":[{"momento":"desayuno","cantidad":"1"},{"momento":"dormir","cantidad":"2"}]},
+            {"nombre":"Creatina de prueba","momento":"desayuno"},{"nombre":"Sin dato","momento":"dormir"}]},"esquema":1}"""))!!.suplementacion
+        val c = Compras.leer(j("""{"habilitado":true,"items":[
+            {"nombre":"Magnesio de prueba","opciones":[{"producto":"Magnesio Inventado","tienda":"Tienda Ejemplo"}]},
+            {"nombre":"Creatina de prueba","opciones":[{"producto":"Creatina Inventada","tienda":"Tienda Ejemplo"}]}]}"""))!!
+        val por = Compras.porItem(s.items, c)
+        val vista = SuplementacionVista.armar(s)
+        // Magnesio sale en desayuno y en dormir: el botón, solo en el primero.
+        assertEquals(mapOf((0 to 0) to 0, (0 to 1) to 1), Compras.botones(vista, s.items, por))
+        assertTrue(Compras.botones(vista, s.items, emptyMap()).isEmpty())
+    }
+
     @Test fun comprasUrlQueNoEsHttpsSeIgnora() {
         val c = Compras.leer(j(compras))!!
         val o = Compras.opcionesDe("Creatina de prueba", c)

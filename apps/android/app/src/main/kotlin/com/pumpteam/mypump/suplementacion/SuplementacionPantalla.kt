@@ -48,7 +48,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pumpteam.mypump.diseno.BotonMarca
+import com.pumpteam.mypump.diseno.BotonSecundario
+import com.pumpteam.mypump.diseno.abrirEnNavegador
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloSuplementacion
 import com.pumpteam.mypump.diseno.AccionHoja
@@ -68,6 +72,8 @@ import com.pumpteam.mypump.guia.TextoRotulado
 import com.pumpteam.mypump.modelos.ItemSuplemento
 import com.pumpteam.mypump.modelos.Suplementacion
 import com.pumpteam.mypump.raiz.BannerRevision
+import com.pumpteam.mypump.reglas.Compras
+import com.pumpteam.mypump.reglas.OpcionCompra
 import com.pumpteam.mypump.reglas.SuplementacionPestana
 import com.pumpteam.mypump.reglas.SuplementacionVista
 import kotlinx.coroutines.launch
@@ -100,13 +106,46 @@ fun SuplementacionPantalla(m: ModeloSuplementacion, modelo: ModeloApp) {
         if (abierto != null && itemAbierto == null) cerrarDetalle()
     }
 
+    // «Dónde comprarlo» (2.3.0, palanca `compras_pais`): solo lo que el servidor verificó; sin eso, la pestaña de siempre.
+    val modeloCompras by modelo.compras.collectAsStateWithLifecycle()
+    val compras = modeloCompras?.compras?.collectAsStateWithLifecycle()?.value
+    val comprasPorItem = remember(s, compras) { Compras.porItem(s.items, compras) }
+    val botonesCompra = remember(vista, comprasPorItem) { Compras.botones(vista, s.items, comprasPorItem) }
+    var comprasDe by rememberSaveable { mutableStateOf<Int?>(null) }
+    var comprasNombre by rememberSaveable { mutableStateOf<String?>(null) }
+    // Si después de un refresco ese suplemento ya no está ahí o ya no tiene dónde comprarlo, la hoja se cierra.
+    val comprasAbiertas = comprasDe?.let { i -> comprasPorItem[i]?.takeIf { s.items.getOrNull(i)?.nombre == comprasNombre } }
+    LaunchedEffect(comprasDe, comprasAbiertas) {
+        if (comprasDe != null && comprasAbiertas == null) {
+            comprasDe = null
+            comprasNombre = null
+        }
+    }
+
     PantallaConTitulo("Suplementación", desplazable = true, modifier = Modifier.testTag("suplementacion-pantalla")) {
         BannerRevision(modelo, Modifier.padding(horizontal = Espacio.m))
         Column(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
             if (s.titulo != null || s.accion != null) Cabecera(s.titulo, s.accion)
+            if (botonesCompra.isNotEmpty()) {
+                Text(
+                    Compras.Textos.AYUDA,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MyPump.colores.texto,
+                    modifier = Modifier.fillMaxWidth().superficieTarjeta(color = MyPump.colores.marcaSuave).padding(Espacio.m).testTag("compras-ayuda"),
+                )
+            }
             if (vista.momentos.isNotEmpty()) {
                 EncabezadoSeccion("Tu día", Modifier.padding(top = Espacio.xs))
-                for (momento in vista.momentos) Momento(momento, ::abrir)
+                for ((lugar, momento) in vista.momentos.withIndex()) {
+                    Momento(
+                        momento, ::abrir,
+                        compra = { fila -> botonesCompra[lugar to fila] },
+                        alComprar = { i ->
+                            comprasDe = i
+                            comprasNombre = s.items.getOrNull(i)?.nombre
+                        },
+                    )
+                }
             }
             vista.sigue?.let { TextoRotulado("Sigue igual.", it, Modifier.padding(horizontal = 4.dp), tonoTexto = MyPump.colores.texto) }
             if (vista.sale.isNotEmpty()) {
@@ -124,6 +163,63 @@ fun SuplementacionPantalla(m: ModeloSuplementacion, modelo: ModeloApp) {
     itemAbierto?.let { item ->
         HojaSuplemento(item, s, alCerrar = ::cerrarDetalle)
     }
+    comprasAbiertas?.let { opciones ->
+        HojaCompras(comprasNombre.orEmpty().trim(), opciones, alCerrar = {
+            comprasDe = null
+            comprasNombre = null
+        })
+    }
+}
+
+/** «Dónde comprarlo» de un suplemento: una tarjeta por opción y, si hay dirección segura, «Abrir la tienda». */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@Composable
+private fun HojaCompras(nombre: String, opciones: List<OpcionCompra>, alCerrar: () -> Unit) {
+    val c = MyPump.colores
+    val contexto = LocalContext.current
+    val hoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val alcance = rememberCoroutineScope()
+    fun cerrar() {
+        alcance.launch { hoja.hide() }.invokeOnCompletion { alCerrar() }
+    }
+    ModalBottomSheet(
+        onDismissRequest = alCerrar,
+        sheetState = hoja,
+        shape = FormaHoja,
+        containerColor = c.fondo,
+        tonalElevation = 0.dp,
+        dragHandle = { AsaHoja() },
+        modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag("compras-hoja"),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), horizontalArrangement = Arrangement.End) {
+            BotonSecundario(Compras.Textos.CERRAR, alTocar = ::cerrar, compacto = true, modifier = Modifier.testTag("compras-cerrar"))
+        }
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).padding(horizontal = Espacio.m).padding(top = Espacio.xs, bottom = Espacio.xl),
+            verticalArrangement = Arrangement.spacedBy(Espacio.m),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(nombre, style = MaterialTheme.typography.headlineSmall, color = c.texto, modifier = Modifier.semantics { heading() }.testTag("compras-titulo"))
+                Text(Compras.Textos.SUBTITULO, style = MaterialTheme.typography.titleMedium, color = c.textoSecundario)
+            }
+            opciones.forEachIndexed { i, o ->
+                Column(
+                    Modifier.fillMaxWidth().superficieTarjeta().padding(Espacio.m).testTag("compras-opcion-$i"),
+                    verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+                ) {
+                    Column(Modifier.semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(o.producto, style = MaterialTheme.typography.titleLarge, color = c.texto)
+                        Text(o.tienda, style = MaterialTheme.typography.bodyLarge, color = c.texto)
+                        o.nota?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario) }
+                    }
+                    o.url?.let { url ->
+                        BotonMarca(Compras.Textos.ABRIR_TIENDA, alTocar = { abrirEnNavegador(contexto, url) }, modifier = Modifier.testTag("compras-tienda-$i"))
+                    }
+                }
+            }
+            Text(Compras.Textos.PIE, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, modifier = Modifier.testTag("compras-pie"))
+        }
+    }
 }
 
 @Composable
@@ -138,7 +234,13 @@ private fun Cabecera(titulo: String?, accion: String?) {
 }
 
 @Composable
-private fun Momento(momento: SuplementacionVista.Momento, alAbrir: (ItemSuplemento) -> Unit) {
+private fun Momento(
+    momento: SuplementacionVista.Momento,
+    alAbrir: (ItemSuplemento) -> Unit,
+    /** El índice del ítem si en ese renglón va «Dónde comprarlo». */
+    compra: (fila: Int) -> Int? = { null },
+    alComprar: (Int) -> Unit = {},
+) {
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
         Text(
             momento.titulo,
@@ -151,6 +253,15 @@ private fun Momento(momento: SuplementacionVista.Momento, alAbrir: (ItemSuplemen
             for ((i, f) in momento.filas.withIndex()) {
                 if (i > 0) Separador(sangria = Espacio.m)
                 FilaDia(f) { alAbrir(f.item) }
+                // Debajo de lo que ya muestra el ítem: un botón grande y con texto.
+                compra(i)?.let { item ->
+                    BotonSecundario(
+                        Compras.Textos.BOTON,
+                        alTocar = { alComprar(item) },
+                        tono = MyPump.colores.marcaTexto,
+                        modifier = Modifier.padding(horizontal = Espacio.m).padding(bottom = Espacio.s).testTag("compras-abrir-$item"),
+                    )
+                }
             }
         }
     }

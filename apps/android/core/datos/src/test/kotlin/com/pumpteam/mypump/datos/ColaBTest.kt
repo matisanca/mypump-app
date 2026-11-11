@@ -549,7 +549,7 @@ class ColaBTest {
             "{}", """{"fin_plan":false,"compras_pais":false,"casa":false}""", """{"fin_plan":"true","compras_pais":1,"casa":"si","gimnasio_fotos":true}""",
             """{"novedades_plan":true,"gimnasio_fotos":true,"tecnica_video":true}""",
         )) {
-            val registro = mutableListOf<String>()
+            val registro = java.util.concurrent.CopyOnWriteArrayList<String>()
             val m = app(config, carpetaTemporal("colab-off"), alcance, registro = registro)
             m.cargar()
             m.asentar()
@@ -564,7 +564,7 @@ class ColaBTest {
     }
 
     @Test fun conLasPalancasPrendidasSeConsultaAlCargarYAlVolver() = enUnHilo { alcance ->
-        val registro = mutableListOf<String>()
+        val registro = java.util.concurrent.CopyOnWriteArrayList<String>()
         val raiz = carpetaTemporal("colab-on")
         val m = app("""{"fin_plan":true,"compras_pais":true,"casa":true,"gimnasio_fotos":true}""", raiz, alcance, registro = registro)
         m.cargar()
@@ -585,11 +585,12 @@ class ColaBTest {
         assertEquals(2, registro.count { it == "mypump_casa_get" })
 
         // Se apagan: la carga siguiente no llama a nada nuevo y deja de verse todo, también lo guardado.
-        registro.clear()
-        val apagada = app("{}", raiz, alcance, registro = registro)
+        // Con su propio registro: lo que la primera todavía tenga en vuelo no cuenta acá.
+        val registroApagada = java.util.concurrent.CopyOnWriteArrayList<String>()
+        val apagada = app("{}", raiz, alcance, registro = registroApagada)
         apagada.cargar()
         apagada.asentar()
-        assertEquals(emptyList<String>(), registro.deLaColaB())
+        assertEquals(emptyList<String>(), registroApagada.deLaColaB())
         assertNull(apagada.finPlan.value?.recorrido?.value)
         assertNull(apagada.compras.value?.compras?.value)
         assertNull(apagada.casa.value?.estado?.value)
@@ -597,7 +598,7 @@ class ColaBTest {
 
     /** `casa` necesita `gimnasio_fotos`; compras, que haya suplementación. */
     @Test fun casaNecesitaElGimnasioYComprasLaSuplementacion() = enUnHilo { alcance ->
-        val registro = mutableListOf<String>()
+        val registro = java.util.concurrent.CopyOnWriteArrayList<String>()
         val m = app("""{"compras_pais":true,"casa":true}""", carpetaTemporal("colab-dep"), alcance, suplementacion = "[]", registro = registro)
         m.cargar()
         m.asentar()
@@ -610,7 +611,7 @@ class ColaBTest {
     /** Si la palanca no se pudo leer (un corte), vale la última que se supo: lo que se veía se sigue viendo. */
     @Test fun sinPoderLeerLaPalancaValeLaUltima() = enUnHilo { alcance ->
         val raiz = carpetaTemporal("colab-corte")
-        val registro = mutableListOf<String>()
+        val registro = java.util.concurrent.CopyOnWriteArrayList<String>()
         app("""{"fin_plan":true}""", raiz, alcance, registro = registro).also { it.cargar(); it.asentar() }
         registro.clear()
         val m = app("CORTE", raiz, alcance, registro = registro)
