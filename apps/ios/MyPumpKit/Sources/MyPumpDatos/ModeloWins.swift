@@ -27,9 +27,12 @@ public final class ModeloWins {
     struct Guardado: Codable {
         var permiso: Bool
         var cola: [Logro]
+        /// Lo último que dijo `mypump_wins_estado` (opcional: los archivos de antes no lo traen).
+        var activa: Bool?
     }
 
-    /// El servidor dijo que la función está prendida (`activa` de `mypump_wins_estado`).
+    /// El servidor dijo que la función está prendida (`activa` de `mypump_wins_estado`). Se recuerda: sin red en el
+    /// gimnasio vale lo último que se supo. Sin haberlo sabido nunca, apagada.
     public private(set) var activa = false
     /// El último permiso conocido (se recuerda en disco para decidir sin red).
     public private(set) var permiso = false
@@ -51,13 +54,15 @@ public final class ModeloWins {
         if let g = disco?.leer(Guardado.self, Self.archivo) {
             permiso = g.permiso
             cola = g.cola
+            activa = g.activa ?? false
         }
     }
 
-    /// Lo que decide la pantalla: prendida = la palanca y lo que dijo el servidor (sin red, la palanca recordada).
-    public var prendida: Bool { palanca }
-    /// El interruptor de Mis datos: con la palanca prendida, o apagada si el permiso quedó dado (para poder sacarlo).
-    public var visibleEnMisDatos: Bool { palanca || permiso }
+    /// Lo que decide la pantalla (el festejo y el interruptor): la palanca y que el servidor haya dicho que está activa. Con
+    /// la función inexistente (PGRST202) o sin haber podido preguntar nunca, no se muestra nada.
+    public var prendida: Bool { palanca && activa }
+    /// El interruptor de Mis datos: prendida, o apagada si el permiso quedó dado (para poder sacarlo).
+    public var visibleEnMisDatos: Bool { prendida || permiso }
 
     // MARK: - Estado
 
@@ -66,7 +71,7 @@ public final class ModeloWins {
         palanca = true
         switch await cliente.llamar("mypump_wins_estado", ["p_token": .texto(token)]) {
         case .success(let j):
-            guard j["ok"] == .bool(true) else { activa = false; return }   // token caído: no se toca lo guardado
+            guard j["ok"] == .bool(true) else { return }   // token caído: no se toca nada
             activa = j["activa"] == .bool(true)
             fijarPermiso(j["permiso"] == .bool(true))
         case .failure(let e) where e.funcionInexistente:
@@ -81,7 +86,6 @@ public final class ModeloWins {
     /// La palanca se apagó: no se llama a nada. El permiso recordado queda (el interruptor sigue para poder apagarlo).
     public func apagar() {
         palanca = false
-        activa = false
     }
 
     private func fijarPermiso(_ nuevo: Bool) {
@@ -90,14 +94,14 @@ public final class ModeloWins {
         guardar()
     }
 
-    private func guardar() { disco?.guardar(Guardado(permiso: permiso, cola: cola), Self.archivo) }
+    private func guardar() { disco?.guardar(Guardado(permiso: permiso, cola: cola, activa: activa), Self.archivo) }
 
     // MARK: - Permiso
 
     /// «Sí, compartir». true si el servidor lo dejó dado; ahí los récords del festejo entran a la cola. Sin red o con un
     /// error no queda dado.
     public func darPermiso(records: [ReglasWins.Record] = [], dia: String = FechaLocal.hoy()) async -> Bool {
-        guard palanca else { return false }
+        guard prendida else { return false }
         let r = await cliente.llamar("mypump_wins_permiso", [
             "p_token": .texto(token), "p_otorga": .bool(true), "p_version": .numero(Double(ReglasWins.permisoVersion)),
             "p_plataforma": .texto(Self.plataforma),
@@ -122,7 +126,7 @@ public final class ModeloWins {
     /// Los récords de un festejo. No encola nada sin la palanca o sin el permiso. Devuelve si quedaron en la cola.
     @discardableResult
     public func encolar(_ records: [ReglasWins.Record], dia: String = FechaLocal.hoy()) -> Bool {
-        guard palanca, permiso, !records.isEmpty else { return false }
+        guard prendida, permiso, !records.isEmpty else { return false }
         for r in records { agregar(tipo: r.tipo, clave: r.clave, dia: dia, datos: r.datos) }
         guardar()
         Task { await vaciar() }
@@ -132,7 +136,7 @@ public final class ModeloWins {
     /// La racha de pasos, si es un hito y hay permiso. Devuelve si quedó en la cola (la celebración suma su línea).
     @discardableResult
     public func encolarRacha(dias: Int, meta: Int, dia: String = FechaLocal.hoy()) -> Bool {
-        guard palanca, permiso, ReglasWins.esHito(dias) else { return false }
+        guard prendida, permiso, ReglasWins.esHito(dias) else { return false }
         agregar(tipo: .rachaPasos, clave: "pasos", dia: dia, datos: ReglasWins.datosRacha(dias: dias, meta: meta))
         guardar()
         Task { await vaciar() }
@@ -150,7 +154,7 @@ public final class ModeloWins {
     /// Manda lo que haya: al encolar, al abrir la app y al volver al frente. Lo que el servidor contesta (guardado o no) sale
     /// de la cola; un corte o un 5xx lo deja para después.
     public func vaciar() async {
-        guard palanca, !vaciando else { return }
+        guard prendida, !vaciando else { return }
         vaciando = true
         defer { vaciando = false }
         while let l = cola.first {

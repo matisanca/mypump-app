@@ -31,7 +31,7 @@ public final class ModeloListaPrevia {
         vista = ReglasListaPrevia.vista(muestra)
     }
 
-    /// `forzar`: cambió la guía o la agenda (un video visto, una reserva). Igual respeta los 60 s.
+    /// Al abrir Entreno, al volver al frente o cuando cambió la guía o la agenda. Nunca más de un pedido cada 60 s.
     public func refrescar() async {
         guard let cliente, !pidiendo else { return }
         let ahora = reloj()
