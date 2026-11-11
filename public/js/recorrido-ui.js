@@ -43,6 +43,17 @@
   }
 
   // ── La hoja ──
+  /* Los controles de salud (palanca `controles_app`, desde js/estudios-ui.js) como hitos con fecha. Nada si no hay. */
+  function controlesHtml() {
+    const C = raiz.Controles, l = raiz.EstudiosUI && raiz.EstudiosUI.hitosControl ? raiz.EstudiosUI.hitosControl() : [];
+    if (!C || !l.length) return '';
+    const ic = (proximo) => `<span class="ctl-hito-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${proximo
+      ? '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>' : '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'}</svg></span>`;
+    return `<section class="ctl-hitos" id="recorrido-controles" aria-labelledby="ctlHitosTit"><h3 id="ctlHitosTit">${e(C.T.hitosTitulo)}</h3>
+      ${l.map((h, i) => `<div class="ctl-hito" id="recorrido-control-${i}">${ic(h.estado === C.T.hitoProximo)}
+        <div class="ctl-hito-txt"><strong>${e(h.titulo)}</strong><span>${e(h.cuando)}</span><em>${e(h.estado)}</em></div></div>`).join('')}</section>`;
+  }
+
   function logrosHtml(s) {
     return `<div class="rec-logros">${s.logros.map((l, i) => `<div class="rec-logro" id="recorrido-logro-${i}">
       <div class="rec-logro-valor">${e(l.valor)}</div><div class="rec-logro-tit">${e(l.titulo)}</div>
@@ -92,6 +103,7 @@
         <h2 class="cb-hoja-tit" id="recTit">${e(s.titulo)}</h2>
         ${s.mensaje ? `<p class="rec-mensaje">${e(s.mensaje)}</p>` : ''}
         ${logrosHtml(s)}
+        ${controlesHtml()}
         ${s.estado === 'publicado' ? preguntasHtml() : cartelHtml(s)}
       </div>
       <div class="cb-hoja-pie rec-pie"></div></div></div>`;

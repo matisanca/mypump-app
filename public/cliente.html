@@ -2162,6 +2162,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/feedback-ui.js"></script>
 <script src="/js/documentos.js"></script>
 <script src="/js/estudios.js"></script>
+<script src="/js/controles.js"></script>
 <script src="/js/estudios-cola.js"></script>
 <script src="/js/estudios-ui.js"></script>
 <script src="/js/recorrido.js"></script>
@@ -2502,7 +2503,9 @@ function _estPalanca(cfg) {
     escena: () => STATE.scene,
     alCambiarEntrada: () => { _estPuntos(); if (STATE.scene === 'misdatos') renderMisDatos(); },
   });
-  window.EstudiosUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.estudios_app === true : null);
+  // `controles_app` («Tu próximo control de salud», js/controles.js) vive dentro de Estudios: sin `estudios_app` no hay nada.
+  window.EstudiosUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.estudios_app === true : null,
+    cfg && typeof cfg === 'object' && cfg.controles_app === true);
 }
 /* El punto «Novedad» en la pestaña que lleva a Mis datos y en el botón de Mis datos, mientras haya un estudio o una orden sin ver.
    En la cuenta con el plan de ejemplo no hay Mis datos: ahí avisa la tarjeta de arriba. */
@@ -2513,7 +2516,7 @@ function _estPuntos() {
 /* El aviso de Estudios va primero en Entreno, arriba de todo. renderTrain rehace la pantalla: se vuelve a poner. */
 function _estArriba() {
   const r = document.getElementById('scene-train');
-  if (r && window.EstudiosUI) window.EstudiosUI.montarTarjeta(r);
+  if (r && window.EstudiosUI) { window.EstudiosUI.montarTarjeta(r); window.EstudiosUI.montarControl(r); }
 }
 /* La cola B de la 2.3.0: «Tu recorrido» (js/recorrido*.js, palanca `fin_plan`) y «Dónde comprarlo» (js/compras*.js, palanca
    `compras_pais`). Sin la clave, apagadas; sin red, lo último que se supo. Apagadas no llaman a ningún RPC ni muestran nada. */

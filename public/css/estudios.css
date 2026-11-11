@@ -88,6 +88,19 @@ button.est-fila{cursor:pointer}
 .est-aviso-tit{font-size:1.25rem;line-height:1.2;font-weight:700;overflow-wrap:anywhere}
 .est-aviso-btn{box-sizing:border-box;width:100%;min-height:52px;padding:10px var(--space-4);border:0;border-radius:var(--radius-full);background:#fff;color:#157a28;font:inherit;font-size:1.0625rem;font-weight:700;cursor:pointer}
 .est-aviso-btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+/* «Tu próximo control de salud» (controles_app): debajo de la de Estudios, el mismo verde; la fecha grande y la nota legible. */
+#ctlHost{margin-bottom:var(--space-3);cursor:pointer}
+.est-aviso-cuando{font-size:1.125rem;line-height:1.25;font-weight:600}
+.est-aviso-nota{margin:0;font-size:1rem;line-height:1.4}
+.est-control-nota{margin-top:2px}
+.ctl-hitos{display:flex;flex-direction:column;gap:var(--space-2)}
+.ctl-hitos h3{margin:var(--space-2) 0 0;font-size:1.25rem;line-height:1.2}
+.ctl-hito{display:flex;gap:var(--space-3);align-items:flex-start;padding:var(--space-3) var(--space-4);border-radius:var(--radius-lg);background:var(--color-brand-subtle);color:var(--color-text-primary)}
+.ctl-hito-ic{flex:none;color:var(--color-brand-text);margin-top:2px}
+.ctl-hito-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ctl-hito-txt strong{font-size:1.0625rem}
+.ctl-hito-txt span{font-size:1rem;color:var(--color-text-secondary)}
+.ctl-hito-txt em{font-style:normal;font-weight:700;font-size:.9375rem;color:var(--color-brand-text)}
 .est-pildora:focus-visible,.est-opcion:focus-visible,.est-x:focus-visible,button.est-fila:focus-visible,.est .btn-primary:focus-visible,.est-fecha:focus-visible,.est .sd-volver:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
 button.est-fila:focus-visible{outline-offset:-2px}
 @media (prefers-reduced-motion:reduce){.est .spinner{animation-duration:2s}}

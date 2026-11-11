@@ -89,6 +89,8 @@ firmas.set('mypump_estudios_envio_nuevo', new Set(['p_token', 'p_id', 'p_pedido_
 firmas.set('mypump_estudios_enviar', new Set(['p_token', 'p_id', 'p_archivos']));
 firmas.set('mypump_estudios_hecho', new Set(['p_token', 'p_pedido_id', 'p_fecha']));
 firmas.set('mypump_estudios_novedades_vistas', new Set(['p_token', 'p_ids']));
+// Controles de salud: propuesta sin aplicar (supabase/propuestas/nativa_controles_salud.sql, rama nativa-controles). Sin ella, la web no muestra nada.
+firmas.set('mypump_controles_get', new Set(['p_token']));
 // Fotos de inicio: propuesta sin aplicar (supabase/propuestas/nativa_fotos_inicio*, rama de fotos de inicio). Hasta aplicarla contesta PGRST202 y la web no muestra nada.
 firmas.set('mypump_fotos_inicio_get', new Set(['p_token']));
 firmas.set('mypump_fotos_inicio_nota', new Set(['p_token', 'p_nota']));

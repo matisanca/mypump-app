@@ -13,6 +13,10 @@
   'use strict';
 
   const E = (typeof module !== 'undefined' && module.exports) ? require('./estudios.js') : raiz.Estudios;
+  /* Las reglas del control de salud (js/controles.js). Sin ellas, sin controles. */
+  const controlesApi = () => ((typeof module !== 'undefined' && module.exports) ? require('./controles.js') : raiz.Controles) || null;
+  /* «AAAA-MM-DD» de hoy en el navegador (solo si el servidor no manda `hoy`). */
+  const hoyLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
   const MAX_SEGUIDAS = 3;       // errores del servidor seguidos antes de cortar la pasada
   const MAX_FONDO = 5;          // pasadas solas (una por minuto) por envío
@@ -85,8 +89,19 @@
       this.huella = deps.huella || sha256;
       this.zona = deps.zona;
 
-      /* null: apagado, sin el servidor nuevo, o todavía no se supo nada. No se muestra nada. */
+      /* null: apagado, sin el servidor nuevo, o todavía no se supo nada. No se muestra nada. Con un control de salud, su
+         fecha alimenta el bloque «Próximo control» (`_componer`). */
       this.estado = null;
+      /* Lo que devolvió `mypump_estudios_get`, tal cual. */
+      this._crudo = null;
+      /* Sube con cada pedido de controles y cada vez que dejan de valer: solo vale la respuesta del último pedido, y una que
+         viajaba cuando se apagó la palanca o la sección se descarta. */
+      this._vueltaCtl = 0;
+      /* Los controles de salud (`mypump_controles_get`): null con `controles_app` apagada, sin la sección, con la función
+         inexistente o `habilitado: false`. Como lo de estudios, no se guarda en el navegador. */
+      this.controles = null;
+      /* La palanca `controles_app` leída en esta carga. Sin leerla, apagada. */
+      this.palancaControles = deps.controles === true;
       /* El último `get` falló por red o servicio y lo que se ve puede estar viejo. */
       this.errorDeCarga = false;
       /* Todavía no se supo si la cuenta tiene la sección: el `get` no llegó a contestar. */
@@ -122,6 +137,14 @@
     /* La novedad de Estudios (título + destino) o null: el punto y el aviso de arriba salen de acá. */
     get novedad() { return E.novedadDeEstudios(this.estado); }
     get tarjetaInicio() { return E.tarjetaInicio(this.estado); }
+    /* La tarjeta de arriba del control: desde `avisar_desde` y mientras siga programado. Con la fecha del servidor; si no la
+       manda, la de Estudios y, si tampoco, la del navegador. */
+    get tarjetaControl() {
+      const C = controlesApi();
+      return C && this.palancaControles && this.estado && this.controles ? C.tarjetaInicio(this.controles, (this._crudo && this._crudo.hoy) || E.dia(hoyLocal())) : null;
+    }
+    /* «Tu recorrido»: el próximo control y los últimos, con su fecha. */
+    get hitosControl() { const C = controlesApi(); return C && this.palancaControles && this.estado && this.controles ? C.hitos(this.controles) : []; }
     get topeArchivos() { return this.estado ? this.estado.topeArchivos : E.TOPE_ARCHIVOS; }
     get topeMB() { return this.estado ? this.estado.topeMB : E.TOPE_MB; }
     get puedeAgregar() { return this.borrador.length < this.topeArchivos; }
@@ -142,26 +165,52 @@
       if (r.ok) {
         const e = E.decodificarEstado(r.data, this.zona);
         if (!e) return this.apagar();
-        this.estado = e;
+        this._crudo = e;
         this.errorDeCarga = false;
+        this.sinRespuesta = false;
+        this._componer();              // Estudios no espera a los controles
+        this._cambio();
+        if (await this._refrescarControles() && !this._muerto) { this._componer(); this._cambio(); }
+        return;
       } else if (r.status === 404 || r.codigo === 'PGRST202' || r.clase === 'permanente') {
         return this.apagar();
       } else {
         this.errorDeCarga = !!this.estado;
         this.sinRespuesta = !this.estado;
         this._cambio();
-        return;
       }
-      this.sinRespuesta = false;
-      this._cambio();
+    }
+
+    /* `mypump_controles_get`, solo con la palanca y la sección a la vista (la tarjeta lleva ahí). Token caído,
+       `habilitado: false`, una respuesta rara o la función inexistente: sin controles. Un corte deja lo de esta visita. */
+    async _refrescarControles() {
+      const C = controlesApi();
+      if (!C || !this.palancaControles || !this._crudo) { const habia = !!this.controles; this.controles = null; return habia; }
+      const vuelta = ++this._vueltaCtl;
+      const r = await this._rpc('mypump_controles_get', {});
+      // Se apagó la palanca o la sección mientras viajaba (o salió otro pedido después): esta respuesta ya es vieja.
+      if (vuelta !== this._vueltaCtl || this._muerto || !this.palancaControles || !this._crudo) return false;
+      if (r.ok) this.controles = C.decodificar(r.data);
+      else if (r.status === 404 || r.codigo === 'PGRST202' || r.clase === 'permanente') this.controles = null;
+      return true;
+    }
+    _componer() {
+      const C = controlesApi();
+      const pc = C && this.controles && this._crudo ? C.proximoParaEstudios(this.controles, this._crudo.ordenes.length > 0) : null;
+      this.estado = this._crudo && pc ? { ...this._crudo, proximoControl: pc } : this._crudo;
+    }
+    /* Lo que dijo la config de `controles_app`. Apagada, el control deja de verse en el momento. */
+    usarPalancaControles(prendida) {
+      this.palancaControles = prendida === true;
+      if (!this.palancaControles) { this._vueltaCtl++; if (this.controles) { this.controles = null; this._componer(); this._cambio(); } }
     }
 
     /* La sección deja de verse. La cola se conserva en memoria: si vuelve a estar habilitada, sale. */
-    apagar() { this.estado = null; this.errorDeCarga = false; this.sinRespuesta = false; this._cambio(); }
+    apagar() { this._vueltaCtl++; this.estado = null; this._crudo = null; this.controles = null; this.errorDeCarga = false; this.sinRespuesta = false; this._cambio(); }
 
     /* Palanca apagada: no queda nada, ni lo elegido. */
     cerrar() {
-      this.estado = null; this.cola = []; this.borrador = []; this.aviso = null;
+      this._vueltaCtl++; this.estado = null; this._crudo = null; this.controles = null; this.cola = []; this.borrador = []; this.aviso = null;
       this._muerto = true;
     }
 
