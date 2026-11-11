@@ -135,6 +135,10 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
         Unit
     }
     val margen = with(LocalDensity.current) { Espacio.xs.toPx() }
+    // «Tu cambio»: con cuenta y con la palanca `check_guiado`. Apagada, nada de esto existe (ni se lee nada).
+    val inicio by modelo.fotosInicio.collectAsStateWithLifecycle()
+    val fotosDeLaCuenta = fotos
+    val tuCambio = if (conCheckGuiado && fotosDeLaCuenta != null) recordarFuentesTuCambio(fotosDeLaCuenta, inicio, pesoParaLasFotos) else null
 
     // Un aviso o el banner de las otras pestañas piden una sección: se va y se consume.
     val ancla = navegacion?.anclaRevision
@@ -235,6 +239,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         CheckGuiadoTarjeta(conTarjeta, fotos, Modifier.seccion(AnclaRevision.CHECK, secciones)) { paso ->
                             conTarjeta.abrirFlujoGuiado(paso)
                         }
+                        // «Tu cambio» (pedido de Mati del 11/11): siempre a la vista, debajo del check.
+                        tuCambio?.let { TarjetaTuCambio(it) }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
                         // Fotos de inicio: arriba de todo, solo con la sección habilitada para esta cuenta.
@@ -250,7 +256,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         }
                         if (semanaPendiente) {
                             AvisoPlanIncompleto(modelo)
-                            FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
+                            FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones), tuCambio)
                             if (conTarjeta == null) Check(revision, salud, esDemo, alcance, secciones)
                         }
                         // La recuperación y el progreso, en una sola tarjeta de dos filas (reemplazan al corazón que había arriba).
@@ -258,7 +264,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         if (!semanaPendiente) AvisoPlanIncompleto(modelo)
                     }
                     if (!semanaPendiente) {
-                        FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
+                        FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones), tuCambio)
                         if (conTarjeta == null) Check(revision, salud, esDemo, alcance, secciones)
                     }
                 }
@@ -273,6 +279,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
             fotos = fotos,
             salud = filasSaludSemana(salud),
             pasoInicial = flujoGuiado.paso,
+            tuCambio = tuCambio,
             alEnviar = sincronizarSaludAlEnviar,
             alCerrar = { r.cerrarFlujoGuiado() },
         )

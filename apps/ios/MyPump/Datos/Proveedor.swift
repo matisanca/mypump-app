@@ -51,7 +51,8 @@ enum Proveedor {
             // `-colaADePrueba <escenario>`: logros y lista previa de mentira y lo demás de las muestras (ver `DobleColaA`).
             else if let caso = d.string(forKey: "colaADePrueba") { transporte = ColaADePrueba(doble: .escenario(caso)) }
             // `-checkGuiadoDePrueba <escenario>`: el check guiado contra un servidor de mentira (ver `CheckGuiadoDePrueba`).
-            else if let caso = d.string(forKey: "checkGuiadoDePrueba") { transporte = CheckGuiadoDePrueba(caso: caso) }
+            // `-tuCambio una|dos|unaConInicio|soloInicio`: además, las fotos de progreso y de inicio de «Tu cambio» (inventadas).
+            else if let caso = d.string(forKey: "checkGuiadoDePrueba") { transporte = CheckGuiadoDePrueba(caso: caso, tuCambio: d.string(forKey: "tuCambio")) }
             // `-presionDePrueba <escenario>`: el servidor de presión de mentira y lo demás de las muestras (ver `PresionDePrueba`).
             else if let caso = d.string(forKey: "presionDePrueba") { transporte = PresionDePrueba(doble: .escenario(caso)) }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
@@ -254,9 +255,17 @@ private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
     private var catalogo: String = "null"
     private var intensidades: String = "null"
     private var pesos: [String: Double] = [:]
+    /// «Tu cambio»: `una` (una semana vieja), `dos` (hace 8 semanas y la pasada), `unaConInicio` (las de inicio de hace 8
+    /// semanas y la pasada), `soloInicio` (solo las de inicio). Fotos armadas acá, con datos inventados.
+    private let tuCambio: String?
+    private var semanasTuCambio: [Int] {
+        switch tuCambio { case "una": [1]; case "dos": [8, 1]; case "unaConInicio": [1]; default: [] }
+    }
+    private var conInicio: Bool { tuCambio == "unaConInicio" || tuCambio == "soloInicio" }
 
-    init(caso: String) {
+    init(caso: String, tuCambio: String? = nil) {
         self.caso = caso
+        self.tuCambio = tuCambio
         if caso == "enviado" {
             check = #"{"energia":4,"descanso":3,"hambre":2,"adherencia":5,"nota":"Todo en orden"}"#
             senales = #"["ninguno"]"#
@@ -270,7 +279,12 @@ private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
         let hoy = FechaLocal.hoy(), lunes = FotosProgreso.lunes(hoy)
         let texto: String = candado.withLock {
             switch f {
-            case "mypump_get_app_config": return #"{"check_guiado":\#(caso != "apagado")}"#
+            case "mypump_get_app_config": return #"{"check_guiado":\#(caso != "apagado"),"fotos_inicio":\#(conInicio)}"#
+            case "mypump_fotos_inicio_get":
+                guard conInicio else { return #"{"habilitado":false}"# }
+                let n = (DiaCalendario.numero(lunes) ?? 0) - 56 + 2
+                let f = FotosProgreso.poses.map { #"{"id":"ini-\#($0.clave)","pose":"\#($0.clave)","tomada_en":"\#(DiaCalendario.texto(n))T15:00:00+00:00","ancho":900,"alto":1200}"# }
+                return #"{"habilitado":true,"completo":true,"nota":"","max_motivacion":4,"fotos":[\#(f.joined(separator: ","))]}"#
             case "mypump_check_guiado_get":
                 return #"{"activo":true,"en_ciclo":\#(caso.hasPrefix("ciclo")),"glp1":\#(caso == "cicloGlp1"),"semana":"\#(lunes)","catalogo":\#(catalogo),"senales":\#(senales),"intensidades":\#(intensidades)}"#
             case "mypump_check_guiado_guardar":
@@ -292,6 +306,8 @@ private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
                 // Una semana de pesos para la media de 7 días (ayer hacia atrás) y lo que se cargue hoy.
                 let n = DiaCalendario.numero(hoy) ?? 0
                 var filas = (1...7).map { i in #"{"fecha":"\#(DiaCalendario.texto(n - i))","tipo":"peso_kg","valor":\#(78.0 + Double(i % 3) * 0.2),"fuente":"manual"}"# }
+                // «Tu cambio»: un peso de hace 8 semanas, para el pie («8 semanas · -2,4 kg» o parecido).
+                if tuCambio != nil { filas.append(#"{"fecha":"\#(DiaCalendario.texto((DiaCalendario.numero(lunes) ?? 0) - 56))","tipo":"peso_kg","valor":80.6,"fuente":"manual"}"#) }
                 filas += pesos.map { #"{"fecha":"\#($0.key)","tipo":"peso_kg","valor":\#($0.value),"fuente":"manual"}"# }
                 return "[" + filas.joined(separator: ",") + "]"
             case "mypump_ingest_salud":
@@ -300,9 +316,27 @@ private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
                 }
                 return "1"
             case "mypump_get_fotos_progreso":
+                if tuCambio != nil {
+                    let n = DiaCalendario.numero(lunes) ?? 0
+                    return "[" + semanasTuCambio.flatMap { w in FotosProgreso.poses.map { #"{"semana_lunes":"\#(DiaCalendario.texto(n - 7 * w))","pose":"\#($0.clave)","tomada_el":"\#(DiaCalendario.texto(n - 7 * w))","created_at":"\#(DiaCalendario.texto(n - 7 * w))T12:00:00+00:00"}"# } }.joined(separator: ",") + "]"
+                }
                 guard caso == "enviado" else { return "[]" }
                 return "[" + FotosProgreso.poses.map { #"{"semana_lunes":"\#(lunes)","pose":"\#($0.clave)","tomada_el":"\#(lunes)","created_at":"\#(lunes)T12:00:00+00:00","storage_path":"p/\#($0.clave).jpg"}"# }.joined(separator: ",") + "]"
-            case "urls": return #"{"ok":true,"fotos":[]}"#
+            case "urls":
+                let n = DiaCalendario.numero(lunes) ?? 0
+                if pedido.url?.path.contains("/inicio/") == true {
+                    let f = FotosProgreso.poses.map { p in
+                        let u = Self.imagen("Inicio", p.etiqueta, "ini-" + p.clave, tono: 0.2).absoluteString
+                        return #"{"id":"ini-\#(p.clave)","url":"\#(u)"}"#
+                    }
+                    return #"{"ok":true,"fotos":[\#(f.joined(separator: ","))]}"#
+                }
+                let f = semanasTuCambio.flatMap { w in FotosProgreso.poses.map { p in
+                    let l = DiaCalendario.texto(n - 7 * w)
+                    let u = Self.imagen("Hace \(w) sem.", p.etiqueta, l + "-" + p.clave, tono: w == 1 ? 0.8 : 0.4).absoluteString
+                    return #"{"semana_lunes":"\#(l)","pose":"\#(p.clave)","url":"\#(u)"}"#
+                } }
+                return #"{"ok":true,"fotos":[\#(f.joined(separator: ","))]}"#
             default:
                 if let b = Bundle.main.url(forResource: "Muestras", withExtension: "bundle").flatMap(Bundle.init(url:)),
                    let u = b.url(forResource: f.replacingOccurrences(of: "mypump_", with: ""), withExtension: "json"), let d = try? String(contentsOf: u, encoding: .utf8) { return d }
@@ -313,6 +347,23 @@ private final class CheckGuiadoDePrueba: Transporte, @unchecked Sendable {
             return (Data(#"{"code":"PGRST202","message":"no existe"}"#.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 404, httpVersion: nil, headerFields: nil)!)
         }
         return (Data(texto.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+
+    /// Una imagen de prueba de 600×800 con un rótulo (nunca una foto de verdad), guardada en el caché temporal.
+    private static func imagen(_ cuando: String, _ pose: String, _ nombre: String, tono: CGFloat) -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("tucambio-prueba-\(nombre).jpg")
+        if FileManager.default.fileExists(atPath: url.path) { return url }
+        let img = UIGraphicsImageRenderer(size: CGSize(width: 600, height: 800)).image { c in
+            UIColor(hue: 0.38, saturation: 0.35, brightness: 0.3 + 0.5 * tono, alpha: 1).setFill()
+            c.fill(CGRect(x: 0, y: 0, width: 600, height: 800))
+            UIColor(white: 1, alpha: 0.35).setFill()
+            c.cgContext.fillEllipse(in: CGRect(x: 240, y: 110, width: 120, height: 140))
+            c.fill(CGRect(x: 200, y: 270, width: 200, height: 330))
+            ("\(cuando)\n\(pose)" as NSString).draw(in: CGRect(x: 40, y: 640, width: 520, height: 150),
+                withAttributes: [.font: UIFont.systemFont(ofSize: 52, weight: .bold), .foregroundColor: UIColor.white])
+        }
+        try? img.jpegData(compressionQuality: 0.8)?.write(to: url)
+        return url
     }
 }
 #endif

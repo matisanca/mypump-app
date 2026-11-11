@@ -46,7 +46,7 @@ struct RevisionView: View {
                             VStack(alignment: .leading, spacing: Espacio.l) {
                                 TarjetaFotosInicio()
                                 devolucion
-                                if guiado != nil { check }
+                                if guiado != nil { check; tuCambio }
                                 HStack(alignment: .top, spacing: Espacio.l) {
                                     recuperacion.frame(maxWidth: .infinity, alignment: .top)
                                     progreso.frame(maxWidth: .infinity, alignment: .top)
@@ -77,7 +77,7 @@ struct RevisionView: View {
                                 TarjetaFotosInicio()
                                 devolucion   // lo que Mati le dejó va primero, con la semana a medias o no
                                 // Check guiado: la tarjeta va arriba, para que nadie tenga que buscarla.
-                                if guiado != nil { check }
+                                if guiado != nil { check; tuCambio }
                                 if semanaPendiente {
                                     // U1 (auditoría del 10/11): con la semana a medias, lo que vino a hacer va arriba. Antes las
                                     // fotos y el check quedaban fuera de la primera pantalla de un iPhone común.
@@ -158,7 +158,7 @@ struct RevisionView: View {
         .fullScreenCover(item: $flujoGuiado) { apertura in
             if let guiado {
                 CheckGuiadoFlujo(revision: guiado, fotos: modeloFotos, saludSemana: saludSemana, sincronizarSalud: sincronizarSalud,
-                                 pasoInicial: apertura.paso)
+                                 pasoInicial: apertura.paso, tuCambio: fuentesTuCambio)
             }
         }
                 .onAppear { if DemoUI.abrir == "misdatos" || DemoUI.abrir == "novedades" { misDatos = true } }
@@ -268,8 +268,17 @@ struct RevisionView: View {
         return FotosProgreso.pendientes(checkinEnviado: revision.checkinEnviado, posesDeLaSemana: modeloFotos.posesDeLaSemana).total > 0
     }
     private var fotos: some View {
-        FotosSemana(modelo: modeloFotos, muestras: muestras.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(muestras.salud))
+        FotosSemana(modelo: modeloFotos, muestras: muestras.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(muestras.salud),
+                    tuCambio: fuentesTuCambio)
             .id("fotos")
+    }
+    /// «Tu cambio» (pedido de Mati del 11/11): con cuenta y con la palanca `check_guiado`. Apagada, nada de esto existe.
+    private var fuentesTuCambio: FuentesTuCambio? {
+        guard let guiado, let modeloFotos else { return nil }
+        return FuentesTuCambio(fotos: modeloFotos, inicio: modelo.fotosInicio, peso: guiado.serieDePeso)
+    }
+    @ViewBuilder private var tuCambio: some View {
+        if let fuentesTuCambio { TuCambioTarjeta(fuentes: fuentesTuCambio).id("tucambio") }
     }
     private var notaSemanal: some View {
         Text(SemanaRevision.explicacion)

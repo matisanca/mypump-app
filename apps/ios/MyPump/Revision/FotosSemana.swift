@@ -14,6 +14,8 @@ struct FotosSemana: View {
     let peso: [PesoCorporal.Punto]
     /// Solo los tres marcos y su mensaje (el paso de fotos del check guiado): la misma subida, sin encabezado ni galería.
     var soloMarcos = false
+    /// Con la palanca `check_guiado`: la galería abre el comparador de «Tu cambio» (y no se anuncia el de las 4 semanas).
+    var tuCambio: FuentesTuCambio? = nil
     @State private var mensaje: String?
     @State private var galeria = false
     @Environment(\.dynamicTypeSize) private var tamañoLetra
@@ -116,7 +118,7 @@ struct FotosSemana: View {
                 } else {
                     Button("Ver mis fotos · \(semanas.count) semana\(semanas.count == 1 ? "" : "s")") { galeria = true }
                         .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
-                    if semanas.count < 4 {
+                    if semanas.count < 4 && tuCambio == nil {
                         Text("El comparador antes/después se abre en \(4 - semanas.count) semana\(4 - semanas.count > 1 ? "s" : "") más.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
@@ -127,7 +129,7 @@ struct FotosSemana: View {
         }
         // Las miniaturas y la galería van con URLs firmadas (duran 1 h; se piden de nuevo a los 50 min).
         .task(id: fotos.count) { if let modelo, !modelo.fotos.isEmpty { await modelo.firmar() } }
-        .sheet(isPresented: $galeria) { GaleriaFotos(modelo: modelo, fotos: fotos, peso: peso) }
+        .sheet(isPresented: $galeria) { GaleriaFotos(modelo: modelo, fotos: fotos, peso: peso, tuCambio: tuCambio) }
     }
 
     @ViewBuilder
@@ -267,8 +269,17 @@ struct GaleriaFotos: View {
     let modelo: ModeloFotos?
     let fotos: [FotoProgreso]
     let peso: [PesoCorporal.Punto]
+    /// Con la palanca `check_guiado`: el comparador sigue la regla de «Tu cambio» (desde 2 semanas, la semana 1 es la de
+    /// inicio si la hay). nil: el de siempre, desde las 4 semanas.
+    let tuCambio: FuentesTuCambio?
     @Environment(\.dismiss) private var cerrar
-    @State private var pose = "frente"
+    @State private var pose: String
+
+    init(modelo: ModeloFotos?, fotos: [FotoProgreso], peso: [PesoCorporal.Punto], tuCambio: FuentesTuCambio? = nil,
+         poseInicial: String = "frente") {
+        self.modelo = modelo; self.fotos = fotos; self.peso = peso; self.tuCambio = tuCambio
+        _pose = State(initialValue: poseInicial)
+    }
 
     private var semanas: [String] { FotosProgreso.semanas(fotos) }
 
@@ -276,7 +287,9 @@ struct GaleriaFotos: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Espacio.l) {
-                    if semanas.count >= 4, let primera = semanas.first, let ultima = semanas.last {
+                    if let tuCambio {
+                        if tuCambio.vista(pose: pose).modo == .par { comparadorTuCambio(tuCambio) }
+                    } else if semanas.count >= 4, let primera = semanas.first, let ultima = semanas.last {
                         comparador(primera: primera, ultima: ultima)
                     }
                     ForEach(semanas.reversed(), id: \.self) { s in semana(s) }
@@ -288,9 +301,22 @@ struct GaleriaFotos: View {
             .navigationTitle("Mis fotos")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Listo") { cerrar() }.fontWeight(.semibold) } }
-            .task { await modelo?.firmar() }
+            .task { if let tuCambio { await tuCambio.firmar() } else { await modelo?.firmar() } }
         }
         .presentationDragIndicator(.visible)
+    }
+
+    /// «Antes y ahora» con la regla de «Tu cambio»: el selector grande y las dos fotos de la pose.
+    private func comparadorTuCambio(_ fuentes: FuentesTuCambio) -> some View {
+        let v = fuentes.vista(pose: pose)
+        return VStack(alignment: .leading, spacing: Espacio.m) {
+            EncabezadoSeccion(titulo: "Antes y ahora", detalle: v.pie)
+            SelectorPoseTuCambio(pose: $pose)
+            ParTuCambio(vista: v, fuentes: fuentes)
+        }
+        .tarjeta()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("tucambio-comparador")
     }
 
     private func comparador(primera: String, ultima: String) -> some View {

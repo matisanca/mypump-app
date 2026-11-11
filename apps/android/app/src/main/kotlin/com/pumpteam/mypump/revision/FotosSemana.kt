@@ -94,7 +94,13 @@ import kotlinx.coroutines.launch
  * queda guardada y se sube sola, y con 3 esperando no entra otra. En la demo ([modelo] null) no se sube nada.
  */
 @Composable
-fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: Modifier = Modifier) {
+internal fun FotosSemana(
+    modelo: ModeloFotos?,
+    peso: List<PesoCorporal.Punto>,
+    modifier: Modifier = Modifier,
+    /** Con la palanca `check_guiado`: la galería abre el comparador de «Tu cambio» (y no se anuncia el de las 4 semanas). */
+    tuCambio: FuentesTuCambio? = null,
+) {
     val alcance = LocalAlcanceApp.current
     val fotos = modelo?.fotos?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pendientes = modelo?.pendientes?.collectAsStateWithLifecycle()?.value ?: emptyMap()
@@ -186,7 +192,7 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
                     tono = c.marcaTexto,
                     modifier = Modifier.testTag("ver-mis-fotos"),
                 )
-                if (semanas.size < 4) {
+                if (semanas.size < 4 && tuCambio == null) {
                     val faltan = 4 - semanas.size
                     Text(
                         "El comparador antes/después se abre en $faltan semana${if (faltan > 1) "s" else ""} más.",
@@ -198,7 +204,7 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
         }
     }
 
-    if (galeria) GaleriaFotos(modelo, fotos, urls, peso, alCerrar = { galeria = false })
+    if (galeria) GaleriaFotos(modelo, fotos, urls, peso, alCerrar = { galeria = false }, tuCambio = tuCambio)
 }
 
 /**
@@ -397,9 +403,13 @@ internal fun GaleriaFotos(
     urls: Map<String, String>,
     peso: List<PesoCorporal.Punto>,
     alCerrar: () -> Unit,
+    /** Con la palanca `check_guiado`: el comparador sigue la regla de «Tu cambio» (desde 2 semanas, con las de inicio). */
+    tuCambio: FuentesTuCambio? = null,
+    poseInicial: String = "frente",
 ) {
     val semanas = remember(fotos) { FotosProgreso.semanas(fotos) }
-    LaunchedEffect(Unit) { modelo?.firmar() }
+    var pose by rememberSaveable { mutableStateOf(poseInicial) }
+    LaunchedEffect(Unit) { if (tuCambio != null) tuCambio.firmar() else modelo?.firmar() }
     PantallaSuperpuesta(alCerrar = alCerrar) {
         MarcoPantalla(
             "Mis fotos",
@@ -420,7 +430,11 @@ internal fun GaleriaFotos(
                 ) {
                     val primera = semanas.firstOrNull()
                     val ultima = semanas.lastOrNull()
-                    if (semanas.size >= 4 && primera != null && ultima != null) Comparador(primera, ultima, fotos, urls, peso)
+                    if (tuCambio != null) {
+                        if (tuCambio.vista(pose).modo == com.pumpteam.mypump.reglas.TuCambio.Modo.PAR) ComparadorTuCambio(tuCambio, pose) { pose = it }
+                    } else if (semanas.size >= 4 && primera != null && ultima != null) {
+                        Comparador(primera, ultima, fotos, urls, peso)
+                    }
                     for (s in semanas.reversed()) {
                         Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
                             Text("Semana del ${fechaLarga(s)}", style = Letras.titulo3, modifier = Modifier.padding(horizontal = 4.dp))
