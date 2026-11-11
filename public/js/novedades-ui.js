@@ -45,14 +45,19 @@
   /** op: {token, irA(area), puedeIr(area), host() → el #modalHost, ocupado() → otra hoja o el onboarding a la vista}. */
   function configurar(op) { ui.op = op; }
 
+  const ALMACEN = { leer: (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } },
+    guardar: (k, v2) => { try { localStorage.setItem(k, v2); } catch (_) {} },
+    borrar: (k) => { try { localStorage.removeItem(k); } catch (_) {} } };
+
   function aplicarPalanca(v) {
     ui.prendida = v === true;
-    if (!ui.prendida || !ui.op || !NP) { ui.modelo = null; return; }
-    if (!ui.modelo) {
-      const almacen = { leer: (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } },
-        guardar: (k, v2) => { try { localStorage.setItem(k, v2); } catch (_) {} } };
-      ui.modelo = NP.crearModelo(ui.op.token, almacen);
+    if (!ui.prendida || !ui.op || !NP) {
+      ui.modelo = null;
+      // Apagada, el plan «ya visto» se borra en cada carga (la lista de novedades guardadas queda).
+      if (!ui.prendida && ui.op && NP) NP.olvidarBase(ui.op.token, ALMACEN);
+      return;
     }
+    if (!ui.modelo) ui.modelo = NP.crearModelo(ui.op.token, ALMACEN);
   }
   /** La demo y las capturas: una lista armada, sin guardar nada. */
   function usarMuestra(lista) {

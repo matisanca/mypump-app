@@ -1,0 +1,110 @@
+/* Cola B de la 2.3.0: «Tu recorrido» (js/recorrido-ui.js), «Dónde comprarlo» (js/compras-ui.js) y «Entreno en casa»
+   (js/casa-ui.js). Solo se ve con cada palanca prendida; todo con los tokens de la app.
+   Pensado para alumnos mayores: botones grandes con texto y nada con alto fijo, para que con la letra grande los
+   renglones bajen en vez de cortarse o encimarse. */
+
+/* ── Piezas comunes ── (con la clase doble: los estilos de cliente.html van después de esta hoja y si no ganarían) */
+.btn-primary.cb-btn{box-sizing:border-box;height:auto;min-height:56px;padding:12px var(--space-4);font-size:17px;line-height:1.25;text-align:center;text-decoration:none;flex:none}
+.btn-primary.cb-btn:not(:disabled){color:#0a0a0a}
+.cb-btn:focus-visible,.cb-cerrar:focus-visible,.compras-btn:focus-visible,.casa-int-btn:focus-visible,.casa-fila:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
+.cb-btn svg{flex:none}
+/* La hoja: «Cerrar» fijo arriba, el contenido (con el título) con scroll y el botón principal fijo abajo. El título va
+   adentro del scroll para que, con la letra grande o un título largo, no se coma la pantalla. */
+.modal-sheet.cb-hoja{padding:0;gap:0;overflow:hidden;max-height:92vh;max-height:92dvh}
+.cb-hoja-cab{flex:none;display:flex;justify-content:flex-end;padding:var(--space-3) var(--space-4) var(--space-2)}
+.cb-hoja-tit{margin:0;font-family:"Archivo",var(--font-sans);font-size:24px;line-height:1.18;font-weight:800;letter-spacing:-.015em;color:var(--color-text-primary);overflow-wrap:break-word}
+.cb-cerrar{flex:none;box-sizing:border-box;min-height:44px;padding:8px 18px;border:1px solid var(--color-border-strong);border-radius:var(--radius-full);background:var(--color-bg-secondary);color:var(--color-text-primary);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.cb-hoja-cuerpo{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:var(--space-4)}
+.cb-hoja-cuerpo > *{flex:none}
+.cb-hoja-pie{flex:none;display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom,0px));border-top:1px solid var(--color-border);background:var(--color-bg-primary)}
+.cb-hoja-pie[hidden]{display:none}
+/* Pantalla muy baja (teléfono acostado, o la letra al máximo): se desplaza la hoja entera y nada queda tapado. */
+@media (max-height:520px){
+  .modal-sheet.cb-hoja{overflow-y:auto}
+  .cb-hoja-cuerpo{flex:none;overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.modal-sheet.cb-hoja{animation:none}}
+
+/* ── «Tu recorrido» ── */
+#recHost{margin-bottom:var(--space-3)}
+.rec-tarjeta{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-4);border-radius:var(--radius-lg);
+  border:1.5px solid color-mix(in oklab,var(--color-brand) 55%,var(--color-border));background:color-mix(in oklab,var(--color-brand) 9%,var(--color-bg-primary))}
+.rec-tarjeta-cab{display:flex;flex-wrap:wrap;align-items:flex-start;gap:var(--space-3)}
+.rec-ic{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.rec-tarjeta-txt{flex:1 1 12em;min-width:0;overflow-wrap:break-word}
+.rec-tarjeta-txt h2{margin:0 0 2px;font-family:"Archivo",var(--font-sans);font-size:19px;line-height:1.2;font-weight:800;letter-spacing:-.01em;color:var(--color-text-primary)}
+.rec-tarjeta-txt p{margin:0;font-size:15px;line-height:1.4;color:var(--color-text-secondary)}
+.rec-mensaje{margin:0;font-size:16px;line-height:1.5;color:var(--color-text-primary);overflow-wrap:anywhere}
+.rec-logros{display:flex;flex-direction:column;gap:var(--space-3)}
+.rec-logro{padding:var(--space-4);border-radius:var(--radius-lg);background:var(--color-bg-secondary);border:1px solid var(--color-border)}
+.rec-logro-valor{font-family:"Archivo",var(--font-sans);font-size:38px;line-height:1.08;font-weight:800;letter-spacing:-.02em;color:var(--color-brand-text);overflow-wrap:anywhere}
+.rec-logro-tit{margin-top:6px;font-size:17px;line-height:1.3;font-weight:700;color:var(--color-text-primary);overflow-wrap:anywhere}
+.rec-logro-det{margin-top:2px;font-size:14px;line-height:1.4;color:var(--color-text-secondary);overflow-wrap:anywhere}
+.rec-antes{display:flex;flex-direction:column;gap:var(--space-3)}
+.rec-h3{margin:0;font-family:"Archivo",var(--font-sans);font-size:19px;line-height:1.25;font-weight:800;color:var(--color-text-primary)}
+.rec-p{margin:0;font-size:15px;line-height:1.45;color:var(--color-text-secondary)}
+.rec-campo{display:flex;flex-direction:column;gap:6px;font-size:16px;line-height:1.3;font-weight:600;color:var(--color-text-primary)}
+.rec-campo textarea{box-sizing:border-box;width:100%;min-height:92px;padding:var(--space-3);border:1px solid var(--color-border-strong);border-radius:var(--radius-md);
+  background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:16px;font-weight:400;line-height:1.4;resize:vertical}
+.rec-campo textarea:focus-visible{outline:2px solid var(--color-brand);outline-offset:1px}
+.rec-listo{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--space-2);padding:var(--space-5) var(--space-4);border-radius:var(--radius-lg);background:var(--color-brand-subtle)}
+.rec-listo-ic{color:var(--color-brand-text);display:grid}
+.rec-listo-ic svg{width:44px;height:44px}
+.rec-listo-tit{margin:0;font-family:"Archivo",var(--font-sans);font-size:19px;line-height:1.25;font-weight:800;color:var(--color-text-primary)}
+.rec-error{margin:0;font-size:15px;line-height:1.35;font-weight:600;color:var(--color-alerta);text-align:center}
+.rec-pie-nota{margin:0;font-size:13px;line-height:1.35;color:var(--color-text-secondary);text-align:center}
+
+/* ── «Dónde comprarlo» ── */
+.compras-ayuda{margin:0 0 var(--space-3);padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);background:var(--color-brand-subtle);color:var(--color-text-primary);font-size:15px;line-height:1.4}
+.compras-btn{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;width:calc(100% - 2 * var(--space-4));margin:0 var(--space-4) var(--space-3);
+  min-height:48px;padding:10px 14px;border:1.5px solid color-mix(in oklab,var(--color-brand) 70%,var(--color-border));border-radius:var(--radius-md);background:var(--color-brand-subtle);
+  color:var(--color-brand-text);font-size:16px;line-height:1.25;font-weight:700;text-align:center;cursor:pointer}
+.compras-btn svg{flex:none}
+.compras-btn + .supl-fila{border-top:1px solid var(--color-border)}
+.compras-det{margin:var(--space-3) 0}
+.compras-det .compras-btn{width:100%;margin:0;min-height:56px;font-size:17px}
+.compras-sub{margin:4px 0 0;font-size:14px;font-weight:600;color:var(--color-brand-text)}
+.compras-op{display:flex;flex-direction:column;gap:4px;padding:var(--space-4);border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-secondary)}
+.compras-producto{font-family:"Archivo",var(--font-sans);font-size:18px;line-height:1.25;font-weight:800;color:var(--color-text-primary);overflow-wrap:anywhere}
+.compras-tienda{font-size:15px;line-height:1.35;font-weight:600;color:var(--color-text-secondary);overflow-wrap:anywhere}
+.compras-nota{font-size:14px;line-height:1.4;color:var(--color-text-secondary);overflow-wrap:anywhere}
+.compras-ir{margin-top:var(--space-2)}
+.compras-pie{margin:0;text-align:center;font-size:14px;line-height:1.4;color:var(--color-text-secondary)}
+
+/* ── «Entreno en casa» (dentro de .gim) ── */
+.casa-int{display:flex;flex-direction:column;gap:var(--space-2)}
+.casa-int-btn{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:64px;padding:var(--space-3) var(--space-4);
+  border:1.5px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-primary);cursor:pointer}
+.casa-int.is-on .casa-int-btn{border-color:var(--color-brand);background:color-mix(in oklab,var(--color-brand) 8%,var(--color-bg-primary))}
+.casa-int-btn:disabled{cursor:default}
+.casa-int-ic{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.casa-int-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.casa-int-txt strong{font-size:17px;line-height:1.25;font-weight:700;color:var(--color-text-primary)}
+.casa-int-txt span{font-size:14px;line-height:1.35;color:var(--color-text-secondary)}
+.md-switch.casa-switch{width:52px;height:32px;background:var(--color-bg-tertiary);box-shadow:inset 0 0 0 1px var(--color-border-strong)}
+.md-switch.casa-switch::after{width:28px;height:28px}
+.casa-int.is-on .md-switch.casa-switch{background:var(--color-brand);box-shadow:none}
+.casa-int.is-on .md-switch.casa-switch::after{transform:translateX(20px)}
+.casa-int.is-bloqueado .casa-switch{opacity:.45}
+.casa-lista,.casa-vigente{display:flex;flex-direction:column;gap:var(--space-3)}
+.casa-tipos{display:flex;flex-direction:column;gap:var(--space-2)}
+.casa-tipo{border:1.5px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-primary)}
+.casa-tipo.is-on{border-color:var(--color-brand);background:var(--color-brand-subtle)}
+.casa-tipo-nada{margin-top:var(--space-2)}
+.casa-fila{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:56px;padding:var(--space-2) var(--space-3);
+  font-size:17px;line-height:1.3;font-weight:600;color:var(--color-text-primary);cursor:pointer;border-radius:var(--radius-md)}
+.casa-casilla{flex:none;width:28px;height:28px;box-sizing:border-box;border-radius:8px;border:2px solid var(--color-border-strong);display:grid;place-items:center;background:var(--color-bg-primary);color:var(--color-on-brand)}
+.casa-fila.is-on .casa-casilla{border-color:var(--color-brand);background:var(--color-brand)}
+.casa-fila-txt{flex:1;min-width:0;overflow-wrap:anywhere}
+.casa-kg{display:flex;flex-direction:column;gap:6px;padding:0 var(--space-3) var(--space-3);font-size:15px;line-height:1.35;color:var(--color-text-secondary)}
+.casa-kg-campo{display:flex;align-items:center;gap:var(--space-2);font-size:16px}
+.casa-kg-campo input{flex:1;min-width:0;max-width:180px;box-sizing:border-box;min-height:48px;padding:0 var(--space-3);border:1px solid var(--color-border-strong);border-radius:var(--radius-md);
+  background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:17px}
+.casa-kg-mal{padding:0 var(--space-3) var(--space-3)}
+.casa-nota-l{margin-top:var(--space-2);font-size:16px;line-height:1.3;font-weight:600;color:var(--color-text-primary)}
+.gim .casa-error{font-size:15px;font-weight:600}
+.casa-eq{font-size:16px}
+
+/* «¿Entrenás en casa? Tocá acá», debajo de la tarjeta «Tu gimnasio» de Entreno: grande y con texto. */
+.casa-tarjeta-btn{all:unset;box-sizing:border-box;display:block;width:100%;min-height:52px;padding:var(--space-3) var(--space-4);margin:calc(var(--space-2) * -1) 0 var(--space-3);text-align:center;font-weight:600;font-size:1rem;line-height:1.3;color:var(--color-brand-text);background:var(--color-brand-subtle);border-radius:var(--radius-lg);cursor:pointer}
+.casa-tarjeta-btn:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}

@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="/css/gimnasio.css">
 <link rel="stylesheet" href="/css/novedades.css">
 <link rel="stylesheet" href="/css/fotos-inicio.css">
+<link rel="stylesheet" href="/css/cola-b.css">
 <link rel="stylesheet" href="/css/tecnica.css">
 <link rel="stylesheet" href="/css/devolucion.css">
 <link rel="stylesheet" href="/css/feedback.css">
@@ -2023,6 +2024,8 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/carga-simple.js"></script>
 <script src="/js/gimnasio.js"></script>
 <script src="/js/gimnasio-cola.js"></script>
+<script src="/js/casa.js"></script>
+<script src="/js/casa-ui.js"></script>
 <script src="/js/gimnasio-ui.js"></script>
 <script src="/js/metas.js"></script>
 <script src="/js/fotos-inicio.js"></script>
@@ -2041,6 +2044,10 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/estudios.js"></script>
 <script src="/js/estudios-cola.js"></script>
 <script src="/js/estudios-ui.js"></script>
+<script src="/js/recorrido.js"></script>
+<script src="/js/recorrido-ui.js"></script>
+<script src="/js/compras.js"></script>
+<script src="/js/compras-ui.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -2214,6 +2221,12 @@ function web230() { return _web230; }
 /* «Gimnasio por fotos» (js/gimnasio*.js), detrás de `gimnasio_fotos`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada. */
 function _gimPalanca(cfg) {
   if (!window.GimnasioUI || !TOKEN || DEMO) return;
+  // «Entreno en casa» (js/casa*.js, palanca `casa`): una excepción dentro de Mi gimnasio. Tiene que saber su palanca antes
+  // de que el gimnasio arme su modelo.
+  if (window.CasaUI) {
+    window.CasaUI.configurar({ token: TOKEN, rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params) });
+    window.CasaUI.aplicarConfig(cfg && typeof cfg === 'object' ? cfg : null);
+  }
   window.GimnasioUI.configurar({
     token: TOKEN,
     visionUrl: (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '',
@@ -2354,10 +2367,44 @@ function _estArriba() {
   const r = document.getElementById('scene-train');
   if (r && window.EstudiosUI) window.EstudiosUI.montarTarjeta(r);
 }
+/* La cola B de la 2.3.0: «Tu recorrido» (js/recorrido*.js, palanca `fin_plan`) y «Dónde comprarlo» (js/compras*.js, palanca
+   `compras_pais`). Sin la clave, apagadas; sin red, lo último que se supo. Apagadas no llaman a ningún RPC ni muestran nada. */
+function _recRepintar() {
+  if (!window.RecorridoUI) return;
+  if (STATE.scene === 'train') window.RecorridoUI.montarTarjeta(document.getElementById('scene-train'));
+  else if (STATE.scene === 'misdatos') renderMisDatos();
+}
+function _colaBPalancas(cfg) {
+  if (!TOKEN || DEMO || (DATA && DATA._isDemo)) return;
+  const c = cfg && typeof cfg === 'object' ? cfg : null;
+  const rpc = (fn, params) => window.mypumpDB.gimnasioRpc(fn, params);
+  const host = () => document.getElementById('modalHost');
+  if (window.RecorridoUI) {
+    window.RecorridoUI.configurar({
+      token: TOKEN, rpc, host, repintar: _recRepintar,
+      // Otra hoja a la vista (las del #modalHost, la bienvenida y la vista de «Tu guía») o el onboarding: espera.
+      ocupado: () => !!document.querySelector('#modalHost .modal-back:not(#recBack), .gu-bienvenida, .gu-overlay') || _onboardingPendiente(),
+    });
+    window.RecorridoUI.aplicarConfig(c);
+  }
+  if (window.ComprasUI) {
+    window.ComprasUI.configurar({ token: TOKEN, rpc, host });
+    window.ComprasUI.aplicarConfig(c);
+    _comprasRefrescar();
+  }
+}
+/* Las compras se piden junto con la suplementación: una sola vez, cuando ya se sabe la palanca y ya llegó la suplementación
+   (lo que termine último la dispara). Sin suplementación no se pide nada. */
+async function _comprasRefrescar() {
+  if (!window.ComprasUI || !window.ComprasUI.prendida() || !STATE.suplCargada) return;
+  await window.ComprasUI.refrescar(!!STATE.supl);
+  if (STATE.scene === 'supl') renderSupl();
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
   _novResolver(cfg);
+  _colaBPalancas(cfg);
   _gimPalanca(cfg);
   _tecPalanca(cfg);
   _devPalanca(cfg);
@@ -12256,6 +12303,8 @@ async function loadSuplementacion() {
   STATE.supl = resp;
   STATE.suplDesdeCache = desdeCache;
   STATE.suplLeidaEn = desdeCache ? 0 : Date.now();
+  STATE.suplCargada = true;
+  _comprasRefrescar();   // «Dónde comprarlo»: misma carga, solo con la palanca prendida
   const tab = document.querySelector('.tab[data-scene="supl"]');
   if (tab) tab.hidden = !resp;
   // Si los datos dejan de estar estando en la pestaña, se vuelve a Entreno (como la app).
@@ -12337,9 +12386,21 @@ function renderSupl() {
     return;
   }
   const E = escapeHtml;
+  // «Dónde comprarlo» (palanca `compras_pais`): por ítem, sus opciones o null. Apagada, todo null.
+  const compras = window.ComprasUI ? window.ComprasUI.cruzar(v.items) : [];
+  const abrirCompras = (i) => { if (compras[i]) window.ComprasUI.abrir(_suplTxt(v.items[i].nombre), compras[i]); };
   if (STATE.suplAbierto != null) {
     const it = v.items[STATE.suplAbierto];
-    if (it) { root.innerHTML = _suplDetalleHtml(it, v); _bindSuplDetalle(root); window.scrollTo(0, 0); return; }
+    if (it) {
+      root.innerHTML = _suplDetalleHtml(it, v); _bindSuplDetalle(root);
+      const cab = compras[STATE.suplAbierto] ? root.querySelector('.supl-det-cab') : null;
+      if (cab) {
+        const i = STATE.suplAbierto;
+        cab.insertAdjacentHTML('afterend', `<div class="compras-det">${window.ComprasUI.botonHtml(i)}</div>`);
+        root.querySelector('[data-compras]').onclick = () => abrirCompras(i);
+      }
+      window.scrollTo(0, 0); return;
+    }
     root.innerHTML = `<button class="sd-volver" id="suplVolver">‹ Suplementación</button>
       <div class="supl-sinred" style="margin-top:12px">Este suplemento ya no está</div>`;
     const vb = document.getElementById('suplVolver');
@@ -12355,14 +12416,18 @@ function renderSupl() {
     if (dias) c.push(`<span class="supl-chip">${E(dias)}</span>`);
     return c.length ? `<div class="supl-chips">${c.join('')}</div>` : '';
   };
+  // El botón va una vez por suplemento (en su primera toma del día), debajo de lo que ya muestra.
+  const conBoton = new Set();
+  const botonCompras = i => (compras[i] && !conBoton.has(i)) ? (conBoton.add(i), window.ComprasUI.botonHtml(i)) : '';
   const filaHtml = f => `
     <button class="supl-fila" data-supl-item="${f.item}">
       <div class="supl-fila-top"><span class="supl-nombre">${E(f.nombre)}</span>${f.cantidad ? `<span class="supl-cant">${E(f.cantidad)}</span>` : ''}</div>
       ${f.nota ? `<div class="supl-nota">${E(f.nota)}</div>` : ''}
       ${chips(v.items[f.item])}
-    </button>`;
+    </button>${botonCompras(f.item)}`;
   root.innerHTML = `
     ${STATE.suplDesdeCache ? '<div class="supl-sinred">Sin conexión: ves lo último que guardaste</div>' : ''}
+    ${compras.some(Boolean) ? window.ComprasUI.ayudaHtml() : ''}
     ${(v.titulo || v.accion) ? `<div class="supl-cab">${v.titulo ? `<div class="supl-cab-tit">${E(v.titulo)}</div>` : ''}${v.accion ? `<div class="supl-cab-acc">${E(v.accion)}</div>` : ''}</div>` : ''}
     ${v.momentos.length ? `<div class="supl-ceja">Tu día</div>${v.momentos.map(m => `
       <div class="supl-momento"><div class="supl-momento-tit">${E(m.titulo)}</div>${m.filas.map(filaHtml).join('')}</div>`).join('')}` : ''}
@@ -12375,6 +12440,7 @@ function renderSupl() {
     STATE.suplAbierto = Number(b.dataset.suplItem); renderSupl();
   });
   if (window.FeedbackUI) window.FeedbackUI.enlazarSuple(root);
+  root.querySelectorAll('[data-compras]').forEach(b => b.onclick = () => abrirCompras(Number(b.dataset.compras)));
 }
 
 function _suplDetalleHtml(it, v) {
@@ -12563,6 +12629,7 @@ function renderMisDatos() {
 
     <div class="md-ceja">Tu información</div>
     <div class="md-grupo">
+      ${window.RecorridoUI && window.RecorridoUI.entradaVisible() ? fila('mis-datos-recorrido', escapeHtml(window.Recorrido.T.entradaMisDatos)) : ''}
       ${window.NovedadesUI && window.NovedadesUI.entradaVisible() ? fila('mdNovedades', window.NovedadesUI.T.entradaMisDatos) : ''}
       ${guia ? fila('mdGuia', 'Ver mi guía') : ''}
       ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
@@ -12576,6 +12643,8 @@ function renderMisDatos() {
     </div>
     <div class="md-pie md-legal">Pump Team no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.</div>`;
   document.getElementById('mdRec').onclick = () => setScene('salud');
+  const rec = document.getElementById('mis-datos-recorrido');
+  if (rec) rec.onclick = () => window.RecorridoUI.abrirHoja();
   const nov = document.getElementById('mdNovedades');
   if (nov) nov.onclick = () => window.NovedadesUI.abrirLista();
   const gim = document.getElementById('mdGimnasio');
@@ -13003,6 +13072,7 @@ function _bienvenidaGuia() {
     if (r && window.MyPumpGuia && _guiaHost.dataset.montado) { r.insertBefore(_guiaHost, r.firstChild); _bienvenidaGuia(); }
     if (r && window.GimnasioUI) window.GimnasioUI.montarTarjeta(r, _guiaHost);
     if (r && window.NovedadesUI) window.NovedadesUI.montarTarjeta(r, document.getElementById('gimHost') || _guiaHost);
+    if (r && window.RecorridoUI) window.RecorridoUI.montarTarjeta(r);   // «Tu recorrido»: lo primero de la pantalla
     try { renderAvisoContrato(); } catch (_) {}
     _estArriba();
     // «Fotos de inicio»: arriba de todo también acá, mientras falte alguna (lo primero que se ve al abrir).

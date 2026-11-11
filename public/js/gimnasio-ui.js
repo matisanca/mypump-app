@@ -391,7 +391,9 @@
     if (!cambioDeEtapa && (escribiendo() || ui.presionando)) { ui.pendiente = true; return; }
     ui.pendiente = false;
     const volver = ui.pila.length ? T.tarjetaTitulo : T.cerrar;
-    const h = `<div class="gim"><button type="button" class="sd-volver" data-gim="volver" id="gimVolver">‹ ${e(volver)}</button>${cuerpo(m)}</div>`;
+    // «Entreno en casa» (js/casa-ui.js): el interruptor arriba de todo y, si la carga es de casa, su lista en lugar de las zonas.
+    const casa = raiz.CasaUI && !ui.pila.length && !m.envio ? raiz.CasaUI.piezas() : null;
+    const h = `<div class="gim"><button type="button" class="sd-volver" data-gim="volver" id="gimVolver">‹ ${e(volver)}</button>${casa ? casa.arriba : ''}${casa && casa.cuerpo != null ? casa.cuerpo : cuerpo(m)}</div>`;
     if (h !== ui.ultimoHtml) { r.innerHTML = h; ui.ultimoHtml = h; }
     const t = document.getElementById('hdrTitle');
     if (t) t.textContent = titulo();
@@ -400,12 +402,20 @@
   }
 
   function detalleTarjeta(m) {
+    const casa = raiz.CasaUI ? raiz.CasaUI.detalleTarjeta() : null;
+    if (casa) return casa;
     switch (m.pantalla) {
       case 'zonas': return m.faltantes.length ? T.faltanZonas(m.faltantes.length) : T.revisarYEnviar;
       case 'recibido': return T.recibido;
       case 'preguntas': return T.confirmarTarjeta;
       default: return T.inicioBajada;
     }
+  }
+
+  /* «¿Entrenás en casa? Tocá acá» (palanca `casa`): debajo de la tarjeta, abre Mi gimnasio con el interruptor arriba. */
+  function botonCasa() {
+    const t = raiz.CasaUI && raiz.CasaUI.botonTarjeta ? raiz.CasaUI.botonTarjeta() : null;
+    return t ? `<button type="button" class="casa-tarjeta-btn" id="casa-tarjeta">${e(t)}</button>` : '';
   }
 
   /* La tarjeta arriba en Entreno, debajo de la de la guía. renderTrain rehace todo: se vuelve a poner. */
@@ -419,7 +429,7 @@
       host.addEventListener('click', () => abrir('train'));
     }
     const html = `<button type="button" class="gim-tarjeta" id="gimTarjeta"><span class="gim-tarjeta-ic">${IC.pesa}</span>
-      <span class="gim-tarjeta-txt"><strong>${e(T.tarjetaTitulo)}</strong><span>${e(detalleTarjeta(m))}</span></span><span class="md-chev">${IC.chev}</span></button>`;
+      <span class="gim-tarjeta-txt"><strong>${e(T.tarjetaTitulo)}</strong><span>${e(detalleTarjeta(m))}</span></span><span class="md-chev">${IC.chev}</span></button>${botonCasa()}`;
     if (host.dataset.h !== html) { host.innerHTML = html; host.dataset.h = html; }
     const sigue = despuesDe && despuesDe.parentNode === root ? despuesDe.nextSibling : root.firstChild;
     if (sigue !== host) root.insertBefore(host, sigue);
@@ -585,7 +595,7 @@
       }
     } catch (_) { prendida = valor === true; }
     if (!prendida) {
-      if (ui.modelo) { ui.modelo.apagar(); ui.modelo = null; pintar(); }
+      if (ui.modelo) { ui.modelo.apagar(); ui.modelo = null; if (raiz.CasaUI) raiz.CasaUI.conGimnasio(null); pintar(); }
       return;
     }
     if (ui.modelo) return;
@@ -599,6 +609,7 @@
         rpc: ui.op.rpc, almacen, token: ui.op.token, visionUrl: ui.op.visionUrl, conLock: conLock(ui.op.token),
       });
       await m.cargar();
+      if (raiz.CasaUI) raiz.CasaUI.conGimnasio(m, pintar);      // con la palanca `casa`, cada refresco trae también lo de casa
       await m.refrescar(primera);
       m.alCambiar = pintar;
       ui.modelo = m;
@@ -608,6 +619,7 @@
       m.reanudar();
     } catch (_) {
       ui.modelo = null;
+      if (raiz.CasaUI) raiz.CasaUI.conGimnasio(null);
     } finally {
       ui.arrancando = false;
     }
