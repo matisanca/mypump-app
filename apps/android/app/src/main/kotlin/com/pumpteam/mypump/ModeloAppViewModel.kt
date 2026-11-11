@@ -183,16 +183,16 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
         _destino.value = destino
     }
 
-    /** "Ver demo": la rutina, la dieta, la guía y la suplementación de ejemplo, empaquetadas. Sin red ni cuenta. */
+    /** "Ver demo": la rutina, la dieta, la guía, la suplementación y el historial de ejemplo, empaquetados. Sin red ni cuenta. */
     fun entrarEnDemo() {
         viewModelScope.launch {
             val m = _modelo.value ?: return@launch
             val (rutina, dieta, opcionales) = withContext(Dispatchers.IO) {
                 fun leer(n: String) = app.assets.open("demo/$n.json").use { it.readBytes().toString(Charsets.UTF_8) }
                 // La guía y la suplementación de muestra son opcionales: si faltaran, la demo sigue sin ellas.
-                Triple(leer("rutina"), leer("dieta"), listOf("guia", "suplementacion", "agenda").map { runCatching { leer(it) }.getOrNull() })
+                Triple(leer("rutina"), leer("dieta"), listOf("guia", "suplementacion", "agenda", "historial").map { runCatching { leer(it) }.getOrNull() })
             }
-            m.entrarEnDemo(rutina, dieta, opcionales[0], opcionales[1], opcionales[2])
+            m.entrarEnDemo(rutina, dieta, opcionales[0], opcionales[1], opcionales[2], historial = opcionales[3])
         }
     }
 

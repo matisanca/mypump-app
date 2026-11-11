@@ -88,6 +88,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
     val modeloDevolucion by modelo.devolucion.collectAsStateWithLifecycle()
     val devolucion = modeloDevolucion?.estado?.collectAsStateWithLifecycle()?.value
+    val demoHistorial by modelo.demoHistorial.collectAsStateWithLifecycle()
     val filasDePeso = revision?.salud?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pesoParaLasFotos = remember(filasDePeso) { PesoCorporal.serie(filasDePeso) }
     val alcance = LocalAlcanceApp.current
@@ -162,8 +163,10 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     verticalArrangement = Arrangement.spacedBy(Espacio.xl),
                 ) {
                     // La devolución de Mati, arriba de todo. Apagada (el modelo queda sin estado) o sin ninguna publicada, no hay nada.
-                    val ultima = devolucion?.ultima
-                    if (!esDemo && ultima != null) TarjetaDevolucion(ultima, devolucion.anteriores)
+                    // En la demo con historial, las inventadas (nunca las de una cuenta).
+                    val devoluciones = if (esDemo) demoHistorial?.devoluciones else devolucion
+                    val ultima = devoluciones?.ultima
+                    if (ultima != null) TarjetaDevolucion(ultima, devoluciones.anteriores)
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
                         // Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo).
                         SemanaRevision.textoDia(diaDeRevision(modelo))?.let {

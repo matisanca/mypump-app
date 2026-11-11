@@ -88,6 +88,8 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
         // Salud (SAL-09…13): la recuperación, que abre el detalle, y conectar Health Connect (salud/MisDatosSalud.kt).
         SeccionSaludMisDatos(modelo)
         SeccionNotificaciones(vm, modelo)
+        // «Logros» (2.3.0): el permiso para que Mati se entere de los récords. Sin la función, no hay sección.
+        com.pumpteam.mypump.logros.SeccionLogros(modelo)
         Seccion(
             "Apariencia",
             pie = if (oscuro) "La app queda oscura aunque el teléfono esté en claro." else "La app sigue al teléfono: clara u oscura según cómo lo tengas.",

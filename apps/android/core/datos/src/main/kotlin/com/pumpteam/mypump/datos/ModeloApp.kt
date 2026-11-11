@@ -856,7 +856,7 @@ class ModeloApp(
         sincronizarTecnica()
         sincronizarDevolucion()
         sincronizarWins()
-        sincronizarListaPrevia()
+        sincronizarListaPreviaYa()
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -906,7 +906,12 @@ class ModeloApp(
      * Con la palanca apagada no se llama a nada y no queda nada en pantalla. La de la demo es fija.
      */
     suspend fun sincronizarListaPrevia() {
-        if (_fase.value != Fase.LISTO && _fase.value != Fase.CARGANDO) return
+        // Mientras carga no: la palanca recordada puede ser vieja, y `cargar` la mira apenas la lee.
+        if (_fase.value != Fase.LISTO) return
+        sincronizarListaPreviaYa()
+    }
+
+    private suspend fun sincronizarListaPreviaYa() {
         if (_esDemo.value || token == null) return
         val x = _listaPrevia.value ?: return
         if (x.palancaRecordada) x.refrescar() else x.apagar()
@@ -970,7 +975,7 @@ class ModeloApp(
         sincronizarTecnica()
         sincronizarDevolucion()
         sincronizarWins()
-        sincronizarListaPrevia()
+        sincronizarListaPreviaYa()
         _guia.value?.refrescarResumen()
         // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
         _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }

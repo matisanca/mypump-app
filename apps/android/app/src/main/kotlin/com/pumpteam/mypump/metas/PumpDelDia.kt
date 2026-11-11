@@ -203,9 +203,11 @@ fun estadoPump(modelo: ModeloApp): Pair<PumpDelDia.Vista, Boolean>? {
     val filas = salud?.salud?.collectAsStateWithLifecycle()?.value
     val conectado = salud?.conectado?.collectAsStateWithLifecycle()?.value
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
-    if (esDemo) return null
+    // La demo con historial trae su meta y sus pasos inventados; sin historial, nada (como antes).
+    val demo by modelo.demoHistorial.collectAsStateWithLifecycle()
+    if (esDemo && demo == null) return null
     // Lo leído arriba es para recomponer cuando cambie; la cuenta la hace el modelo.
-    @Suppress("UNUSED_VARIABLE") val dependencias = listOf(palanca, dieta, filas, conectado)
+    @Suppress("UNUSED_VARIABLE") val dependencias = listOf(palanca, dieta, filas, conectado, demo)
     return modelo.pumpDelDia()
 }
 
@@ -342,7 +344,8 @@ fun RitmoPesoLinea(modelo: ModeloApp?, serie: List<PesoCorporal.Punto>, modifier
     val m = modelo ?: return
     val palanca by m.palanca.collectAsStateWithLifecycle()
     val dieta by m.dieta.collectAsStateWithLifecycle()
-    @Suppress("UNUSED_VARIABLE") val dependencias = listOf(palanca, dieta)
+    val demo by m.demoHistorial.collectAsStateWithLifecycle()
+    @Suppress("UNUSED_VARIABLE") val dependencias = listOf(palanca, dieta, demo)
     val ritmo = m.metas()?.ritmoKgSemana ?: return
     RitmoPesoCaja(RitmoPeso.resumen(ritmo, serie, FechaLocal.hoy()), modifier)
 }
@@ -372,7 +375,7 @@ fun RitmoPesoCaja(r: RitmoPeso.Resumen, modifier: Modifier = Modifier) {
  * saltan chispas verdes y doradas y aparece el día con la racha. Con las animaciones apagadas, todo quieto y un háptico.
  */
 @Composable
-fun CelebracionPump(vista: PumpDelDia.Vista, alCerrar: () -> Unit) {
+fun CelebracionPump(vista: PumpDelDia.Vista, rachaCompartida: Boolean = false, alCerrar: () -> Unit) {
     val c = MyPump.colores
     val reducir = reducirMovimiento()
     val vistaAndroid = LocalView.current
@@ -437,6 +440,14 @@ fun CelebracionPump(vista: PumpDelDia.Vista, alCerrar: () -> Unit) {
                             Text(it, style = MaterialTheme.typography.titleSmall, color = c.alerta)
                         }
                     }
+                    // Logros (2.3.0): la racha quedó para que Mati la vea (solo con el permiso dado y un hito).
+                    if (rachaCompartida) {
+                        Text(
+                            com.pumpteam.mypump.reglas.ReglasWins.RACHA_CON_PERMISO,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = c.marcaTexto, textAlign = TextAlign.Center, modifier = Modifier.testTag("pump-racha-compartida"),
+                        )
+                    }
                 }
             }
             if (textos) SemanaPump(vista.semana, vista.fraccion.toFloat(), Modifier.padding(horizontal = Espacio.s))
@@ -495,6 +506,7 @@ fun CelebracionPumpRaiz(modelo: ModeloApp) {
     // La fecha que se está celebrando sobrevive a recrear la Activity (girar, modo oscuro): el día ya quedó marcado y,
     // si se perdiera, esa celebración no volvería.
     var mostrandoDia by rememberSaveable { mutableStateOf<String?>(null) }
+    var rachaCompartida by rememberSaveable { mutableStateOf(false) }
     val hoy = FechaLocal.hoy()
     // Solo con la app al frente: un delay que termina en segundo plano no marca el día (se celebra al volver).
     val ciclo = LocalLifecycleOwner.current.lifecycle
@@ -508,13 +520,15 @@ fun CelebracionPumpRaiz(modelo: ModeloApp) {
         if (!ciclo.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
         if (FechaLocal.hoy() != hoy || !modelo.debeCelebrarPump(v, hoy)) return@LaunchedEffect
         modelo.marcarPumpCelebrado(hoy)
+        // Logros: una racha que es un hito, con la función prendida y el permiso, queda en la cola (y la celebración lo dice).
+        rachaCompartida = !modelo.esDemo.value && modelo.wins.value?.encolarRacha(v.racha, v.meta, hoy) == true
         mostrandoDia = hoy
     }
     val mostrando = if (mostrandoDia != null) e?.first else null
     if (mostrando != null) BackHandler { mostrandoDia = null }
     AnimatedVisibility(mostrando != null, enter = fadeIn(tween(200)), exit = fadeOut(tween(250))) {
         Box(Modifier.semantics { paneTitle = PumpDelDia.LLENO }) {
-            mostrando?.let { CelebracionPump(it) { mostrandoDia = null } }
+            mostrando?.let { CelebracionPump(it, rachaCompartida) { mostrandoDia = null } }
         }
     }
 }

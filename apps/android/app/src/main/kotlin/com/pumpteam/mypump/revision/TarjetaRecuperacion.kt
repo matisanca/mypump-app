@@ -90,12 +90,13 @@ fun TarjetaProgresoRevision(modelo: ModeloApp, alAbrirFuerza: () -> Unit, modifi
     // Espera a la rutina: sin ella la carga deja la lista vacía y la tarjeta quedaba en lo genérico (revisión, hallazgo 1).
     LaunchedEffect(progreso, esDemo, conRutina) {
         val p = progreso ?: return@LaunchedEffect
-        if (esDemo || !conRutina) return@LaunchedEffect
+        // En la demo solo hay progreso con el historial inventado (no toca la red).
+        if (!conRutina) return@LaunchedEffect
         if (p.tarjetas.value.isEmpty() || p.estado.value == ModeloProgreso.Estado.SIN_RED) alcance.launch { modelo.cargarProgreso() }
     }
     val hoy = FechaLocal.hoy()
     val linea = remember(tarjetas, esDemo, hoy) {
-        if (esDemo) null else ProgresoSemana.linea(tarjetas.map { ProgresoSemana.ejercicio(it.nombre, it.filas) }, hoy)
+        ProgresoSemana.linea(tarjetas.map { ProgresoSemana.ejercicio(it.nombre, it.filas) }, hoy)
     }
     val c = MyPump.colores
     TarjetaRevision("📈", "Tu progreso", "Ver fuerza y récords", "tarjeta-progreso-revision", alAbrirFuerza, modifier,

@@ -344,7 +344,10 @@ fun HojaCerrarDia(modelo: ModeloApp, motor: ModeloEntreno, v: VistaEntreno, alCe
 
     fun cerrar() {
         foco.clearFocus()
-        alcanceHoja.launch { hoja.hide() }.invokeOnCompletion { alCerrar() }
+        alcanceHoja.launch { hoja.hide() }.invokeOnCompletion {
+            alCerrar()
+            com.pumpteam.mypump.logros.EstadoFestejo.alCerrarseLaHoja()
+        }
     }
 
     fun confirmar() {
@@ -352,6 +355,8 @@ fun HojaCerrarDia(modelo: ModeloApp, motor: ModeloEntreno, v: VistaEntreno, alCe
         enviando = true
         aviso = null
         alcance.launch {
+            // Los récords de hoy se miran antes de cerrar (2.3.0): con la función apagada, ninguno.
+            val records = com.pumpteam.mypump.logros.WinsUI.recordsAlCerrar(modelo, motor)
             val resultado = motor.cerrarDia(notas)
             enviando = false
             val a = resultado.aviso
@@ -359,6 +364,8 @@ fun HojaCerrarDia(modelo: ModeloApp, motor: ModeloEntreno, v: VistaEntreno, alCe
                 aviso = a
             } else {
                 haptico.performHapticFeedback(HapticFeedbackType.Confirm)
+                // El festejo se presenta cuando esta hoja ya se fue.
+                com.pumpteam.mypump.logros.EstadoFestejo.pendientes = records
                 cerrar()
             }
         }

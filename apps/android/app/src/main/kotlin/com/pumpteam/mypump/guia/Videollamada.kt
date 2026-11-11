@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -88,6 +89,8 @@ import com.pumpteam.mypump.modelos.AgendaEntrega
 import com.pumpteam.mypump.modelos.FranjaEntrega
 import com.pumpteam.mypump.modelos.ReservaEntrega
 import com.pumpteam.mypump.modelos.TipoVideollamada
+import com.pumpteam.mypump.raiz.LocalNavegacion
+import com.pumpteam.mypump.reglas.ReglasListaPrevia
 import com.pumpteam.mypump.reglas.ReglasAgenda
 import com.pumpteam.mypump.salud.PantallaSuperpuesta
 import java.time.Instant
@@ -151,7 +154,17 @@ private fun letraGrande(): Boolean = LocalDensity.current.fontScale >= 1.5f
  */
 @Composable
 fun TarjetaVideollamadaEntreno(modelo: ModeloApp, modifier: Modifier = Modifier) {
-    val g = modelo.guia.collectAsStateWithLifecycle().value ?: return
+    // «Antes de la videollamada» (2.3.0): con la palanca apagada no hay lista (y no se llama a nada).
+    val lista = vistaListaPrevia(modelo)
+    val navegacion = LocalNavegacion.current
+    val g = modelo.guia.collectAsStateWithLifecycle().value
+    if (g == null) {
+        // Sin guía no hay tarjeta de videollamada: la lista sola (y la fila de la guía no es un botón).
+        SincronizarListaPrevia(modelo, clave = "")
+        lista?.let { TarjetaListaPrevia(it, abrirGuia = null, modifier = modifier) }
+        return
+    }
+    val abrirGuia: (() -> Unit)? = navegacion?.let { n -> { n.guia = true } }
     val resumen by g.resumen.collectAsStateWithLifecycle()
     val agenda by g.agenda.agenda.collectAsStateWithLifecycle()
     val guia by g.guia.collectAsStateWithLifecycle()
@@ -166,6 +179,8 @@ fun TarjetaVideollamadaEntreno(modelo: ModeloApp, modifier: Modifier = Modifier)
     val ahora = ahoraCada15s(fuente)
     val r = fuente?.takeIf { ReglasAgenda.paraTarjeta(it, ahora) }
     var pantalla by remember { mutableStateOf<ModoHorario?>(null) }
+    // Cuando cambian la guía o la agenda se vuelve a pedir la lista (el modelo no pide más de una vez por minuto).
+    SincronizarListaPrevia(modelo, clave = "${r?.inicio}|${r?.estado}|${resumen.hashCode()}")
 
     val ciclo = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(g, ciclo, elegir) {
@@ -195,8 +210,15 @@ fun TarjetaVideollamadaEntreno(modelo: ModeloApp, modifier: Modifier = Modifier)
             elegirHorario = elegir,
             alCambiar = { pantalla = ModoHorario.Cambiar(r) },
             modifier = modifier,
+            // Solo con la videollamada de comienzo: con una de revisión la lista no se muestra.
+            listaPrevia = lista?.takeIf { r.tipo == TipoVideollamada.COMIENZO },
+            alAbrirGuia = abrirGuia,
         )
-    } else if (elegir && agenda != null && reservando == null) {
+    } else {
+        // Sin tarjeta de videollamada, la lista como tarjeta propia en ese mismo lugar.
+        lista?.let { TarjetaListaPrevia(it, abrirGuia, modifier) }
+    }
+    if (r == null && elegir && agenda != null && reservando == null) {
         val a = agenda!!
         val vista = ReglasAgenda.vista(a, ReglasAgenda.faltanAMostrar(a, guia), reservando != null)
         if (vista == ReglasAgenda.Vista.ELEGIR) {
@@ -234,6 +256,9 @@ fun TarjetaVideollamada(
     alCambiar: () -> Unit,
     modifier: Modifier = Modifier,
     etiqueta: String = "videollamada",
+    /** «Antes de la videollamada», dentro de la tarjeta y debajo de lo que ya tiene (solo en Entreno, con la de comienzo). */
+    listaPrevia: ReglasListaPrevia.Vista? = null,
+    alAbrirGuia: (() -> Unit)? = null,
 ) {
     val c = MyPump.colores
     val contexto = LocalContext.current
@@ -424,6 +449,19 @@ fun TarjetaVideollamada(
                 )
             }
         }
+        if (listaPrevia != null) {
+            Box(Modifier.fillMaxWidth().height(1.dp).background(if (activa) Color.White.copy(alpha = 0.3f) else c.marca.copy(alpha = 0.25f)))
+            ListaPreviaBloque(listaPrevia, sobreVerde = activa, conIcono = false, abrirGuia = alAbrirGuia, modifier = Modifier.testTag("lista-previa-dentro"))
+        }
+    }
+}
+
+/** Al abrir Entreno, al volver al frente y cuando cambia [clave]: la lista previa se vuelve a mirar (apagada, no llama). */
+@Composable
+private fun SincronizarListaPrevia(modelo: ModeloApp, clave: String) {
+    val ciclo = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(modelo, clave, ciclo) {
+        ciclo.repeatOnLifecycle(Lifecycle.State.RESUMED) { modelo.sincronizarListaPrevia() }
     }
 }
 
