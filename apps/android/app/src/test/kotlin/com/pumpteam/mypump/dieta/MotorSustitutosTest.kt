@@ -131,8 +131,9 @@ class MotorSustitutosTest {
         // Math.round(-2,5) es -2 en JS (al más cercano, y los empates hacia +∞); el redondeo de iOS daría -3.
         assertEquals(-2L, MotorSustitutos.deltaKcal(original, s(195.0)))
         assertEquals(3L, MotorSustitutos.deltaKcal(original, s(205.0)))
-        assertEquals(0L, MotorSustitutos.deltaKcal(original.copy(kcal = null), s(150.0)))
-        assertEquals(0L, MotorSustitutos.deltaKcal(original.copy(kcal = 0.0), s(150.0)))
+        // 2.3.1: sin kcal en el original, «sin dato» (antes, un 0 % verde).
+        assertEquals(null, MotorSustitutos.deltaKcal(original.copy(kcal = null), s(150.0)))
+        assertEquals(null, MotorSustitutos.deltaKcal(original.copy(kcal = 0.0), s(150.0)))
     }
 
     @Test

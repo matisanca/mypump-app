@@ -5,6 +5,7 @@ import com.pumpteam.mypump.modelos.Alimento
 import com.pumpteam.mypump.modelos.AlimentoPropio
 import com.pumpteam.mypump.reglas.BaseAlimentos
 import com.pumpteam.mypump.reglas.CategoriaAlimento
+import com.pumpteam.mypump.reglas.ReemplazosKcal
 import com.pumpteam.mypump.reglas.SustitucionAlimentos
 import com.pumpteam.mypump.reglas.Sustituto
 import com.pumpteam.mypump.reglas.jsRound
@@ -56,11 +57,8 @@ object MotorSustitutos {
     fun filtrar(opciones: List<Sustituto>, busqueda: String): List<Sustituto> = SustitucionAlimentos.filtrar(opciones, busqueda)
 
     /** La diferencia de kcal contra el original, en % redondeado como `Math.round` de JS (0 si el original no tiene kcal). */
-    fun deltaKcal(original: Alimento, s: Sustituto): Long {
-        val k0 = original.kcal ?: 0.0
-        if (!(k0 > 0)) return 0
-        return Formato.entero(jsRound((s.kcal - k0) / k0 * 100))
-    }
+    /** 2.3.1: `null` sin kcal en el original («sin dato»; antes, un 0 % verde). */
+    fun deltaKcal(original: Alimento, s: Sustituto): Long? = ReemplazosKcal.desvioPct(original.kcal, s.kcal)
 
     fun nombreCategoria(c: String): String = when (c) {
         CategoriaAlimento.PROTEINA -> "proteínas"

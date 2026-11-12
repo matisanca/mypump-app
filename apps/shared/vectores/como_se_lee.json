@@ -1,0 +1,14 @@
+{
+ "descripcion": "2.3.1 «¿Cómo se lee?» de la cabecera de Dieta: los mismos textos en iOS, Android y la web. video: URL opcional (null = sin botón de video).",
+ "boton": "¿Cómo se lee?",
+ "titulo": "Cómo se lee tu dieta",
+ "pasos": [
+  "Cada tarjeta es una comida del día, con lo que tenés que comer y cuántas calorías suma.",
+  "Si una comida tiene opciones (A, B…), elegí una sola: cualquiera te sirve igual.",
+  "Cuando comés, tocá «Comí». Arriba se va sumando lo que comiste en el día.",
+  "¿No conseguís un alimento? Tocá el botón de las dos flechas y elegí otro parecido."
+ ],
+ "verVideo": "Ver el video",
+ "cerrar": "Entendido",
+ "video": null
+}

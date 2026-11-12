@@ -1,0 +1,344 @@
+{
+ "descripcion": "2.3.1 reemplazos de comida: universales y propios arriba solo con hasta 15 % de desvío; confirmar si suma más del 10 % o más de 60 kcal; renglón de la cabecera. Redondeo como Math.round de JS.",
+ "textos": {
+  "usarIgual": "Usar igual",
+  "elegirOtro": "Elegir otro",
+  "deshacer": "Deshacer"
+ },
+ "ordenar": [
+  {
+   "nombre": "universal lejos baja a la lista",
+   "kcalOriginal": 200,
+   "subs": [
+    {
+     "nombre": "Pollo",
+     "kcal": 260,
+     "universal": true,
+     "propio": false
+    },
+    {
+     "nombre": "Arroz",
+     "kcal": 205,
+     "universal": true,
+     "propio": false
+    },
+    {
+     "nombre": "Propio cerca",
+     "kcal": 190,
+     "universal": false,
+     "propio": true
+    },
+    {
+     "nombre": "Propio lejos",
+     "kcal": 300,
+     "universal": false,
+     "propio": true
+    },
+    {
+     "nombre": "Quinoa",
+     "kcal": 230,
+     "universal": false,
+     "propio": false
+    },
+    {
+     "nombre": "Fideos",
+     "kcal": 198,
+     "universal": false,
+     "propio": false
+    },
+    {
+     "nombre": "Batata",
+     "kcal": 170,
+     "universal": false,
+     "propio": false
+    }
+   ],
+   "universales": [
+    "Arroz"
+   ],
+   "resto": [
+    "Propio cerca",
+    "Fideos",
+    "Quinoa",
+    "Batata",
+    "Pollo",
+    "Propio lejos"
+   ]
+  },
+  {
+   "nombre": "sin kcal en el original: nada arriba, orden del motor",
+   "kcalOriginal": 0,
+   "subs": [
+    {
+     "nombre": "Pollo",
+     "kcal": 260,
+     "universal": true,
+     "propio": false
+    },
+    {
+     "nombre": "Huevo",
+     "kcal": 140,
+     "universal": true,
+     "propio": false
+    },
+    {
+     "nombre": "Tuyo",
+     "kcal": 90,
+     "universal": false,
+     "propio": true
+    },
+    {
+     "nombre": "Avena",
+     "kcal": 150,
+     "universal": false,
+     "propio": false
+    }
+   ],
+   "universales": [],
+   "resto": [
+    "Pollo",
+    "Huevo",
+    "Tuyo",
+    "Avena"
+   ]
+  },
+  {
+   "nombre": "kcal nula",
+   "kcalOriginal": null,
+   "subs": [
+    {
+     "nombre": "A",
+     "kcal": 100,
+     "universal": true,
+     "propio": false
+    },
+    {
+     "nombre": "B",
+     "kcal": 50,
+     "universal": false,
+     "propio": false
+    }
+   ],
+   "universales": [],
+   "resto": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "nombre": "justo 15 %",
+   "kcalOriginal": 100,
+   "subs": [
+    {
+     "nombre": "Quince arriba",
+     "kcal": 115,
+     "universal": true,
+     "propio": false
+    },
+    {
+     "nombre": "Quince abajo",
+     "kcal": 85,
+     "universal": true,
+     "propio": false
+    },
+    {
+     "nombre": "Dieciseis",
+     "kcal": 116,
+     "universal": true,
+     "propio": false
+    },
+    {
+     "nombre": "Comun",
+     "kcal": 101,
+     "universal": false,
+     "propio": false
+    }
+   ],
+   "universales": [
+    "Quince arriba",
+    "Quince abajo"
+   ],
+   "resto": [
+    "Comun",
+    "Dieciseis"
+   ]
+  },
+  {
+   "nombre": "empates por desvio conservan el orden",
+   "kcalOriginal": 300,
+   "subs": [
+    {
+     "nombre": "X",
+     "kcal": 330,
+     "universal": false,
+     "propio": false
+    },
+    {
+     "nombre": "Y",
+     "kcal": 270,
+     "universal": false,
+     "propio": false
+    },
+    {
+     "nombre": "Z",
+     "kcal": 300,
+     "universal": false,
+     "propio": false
+    },
+    {
+     "nombre": "W",
+     "kcal": 400,
+     "universal": true,
+     "propio": false
+    }
+   ],
+   "universales": [],
+   "resto": [
+    "Z",
+    "X",
+    "Y",
+    "W"
+   ]
+  }
+ ],
+ "confirmar": [
+  {
+   "kcalOriginal": 100,
+   "kcalReemplazo": 110,
+   "desvioPct": 10,
+   "pide": false,
+   "suma": 10,
+   "texto": null
+  },
+  {
+   "kcalOriginal": 100,
+   "kcalReemplazo": 111,
+   "desvioPct": 11,
+   "pide": true,
+   "suma": 11,
+   "texto": "Este cambio suma 11 kcal a esta comida y a todos tus días. ¿Lo usás igual?"
+  },
+  {
+   "kcalOriginal": 100,
+   "kcalReemplazo": 90,
+   "desvioPct": -10,
+   "pide": false,
+   "suma": -10,
+   "texto": null
+  },
+  {
+   "kcalOriginal": 500,
+   "kcalReemplazo": 560,
+   "desvioPct": 12,
+   "pide": true,
+   "suma": 60,
+   "texto": "Este cambio suma 60 kcal a esta comida y a todos tus días. ¿Lo usás igual?"
+  },
+  {
+   "kcalOriginal": 500,
+   "kcalReemplazo": 561,
+   "desvioPct": 12,
+   "pide": true,
+   "suma": 61,
+   "texto": "Este cambio suma 61 kcal a esta comida y a todos tus días. ¿Lo usás igual?"
+  },
+  {
+   "kcalOriginal": 500,
+   "kcalReemplazo": 549,
+   "desvioPct": 10,
+   "pide": false,
+   "suma": 49,
+   "texto": null
+  },
+  {
+   "kcalOriginal": 0,
+   "kcalReemplazo": 50,
+   "desvioPct": null,
+   "pide": false,
+   "suma": 50,
+   "texto": null
+  },
+  {
+   "kcalOriginal": 0,
+   "kcalReemplazo": 61,
+   "desvioPct": null,
+   "pide": true,
+   "suma": 61,
+   "texto": "Este cambio suma 61 kcal a esta comida y a todos tus días. ¿Lo usás igual?"
+  },
+  {
+   "kcalOriginal": null,
+   "kcalReemplazo": 80,
+   "desvioPct": null,
+   "pide": true,
+   "suma": 80,
+   "texto": "Este cambio suma 80 kcal a esta comida y a todos tus días. ¿Lo usás igual?"
+  },
+  {
+   "kcalOriginal": 250,
+   "kcalReemplazo": 250,
+   "desvioPct": 0,
+   "pide": false,
+   "suma": 0,
+   "texto": null
+  },
+  {
+   "kcalOriginal": 700,
+   "kcalReemplazo": 765,
+   "desvioPct": 9,
+   "pide": true,
+   "suma": 65,
+   "texto": "Este cambio suma 65 kcal a esta comida y a todos tus días. ¿Lo usás igual?"
+  },
+  {
+   "kcalOriginal": 80,
+   "kcalReemplazo": 95,
+   "desvioPct": 19,
+   "pide": true,
+   "suma": 15,
+   "texto": "Este cambio suma 15 kcal a esta comida y a todos tus días. ¿Lo usás igual?"
+  },
+  {
+   "kcalOriginal": 120,
+   "kcalReemplazo": null,
+   "desvioPct": null,
+   "pide": false,
+   "suma": 0,
+   "texto": null
+  }
+ ],
+ "renglon": [
+  {
+   "suma": 0,
+   "texto": null
+  },
+  {
+   "suma": 0.4,
+   "texto": null
+  },
+  {
+   "suma": -0.4,
+   "texto": null
+  },
+  {
+   "suma": 12,
+   "texto": "Tus reemplazos suman +12 kcal"
+  },
+  {
+   "suma": 61.5,
+   "texto": "Tus reemplazos suman +62 kcal"
+  },
+  {
+   "suma": -40.4,
+   "texto": "Tus reemplazos restan 40 kcal"
+  },
+  {
+   "suma": -40.5,
+   "texto": "Tus reemplazos restan 40 kcal"
+  },
+  {
+   "suma": 250,
+   "texto": "Tus reemplazos suman +250 kcal"
+  }
+ ]
+}

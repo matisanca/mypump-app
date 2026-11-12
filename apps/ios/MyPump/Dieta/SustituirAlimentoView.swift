@@ -22,6 +22,8 @@ struct SustituirAlimentoView: View {
     @State private var elegido: OpcionSustituto?
     @State private var resultado = MotorSustitutos.Resultado()
     @State private var creando = false
+    /// 2.3.1: el reemplazo elegido suma más del 10 % o más de 60 kcal: se confirma antes de usarlo.
+    @State private var aConfirmar: OpcionSustituto?
 
     var body: some View {
         NavigationStack {
@@ -62,8 +64,11 @@ struct SustituirAlimentoView: View {
                     }
                     .listRowBackground(Color.clear)
                 } else {
-                    let universales = lista.filter(\.sustituto.universal)
-                    let resto = lista.filter { !$0.sustituto.universal }
+                    // 2.3.1: universales arriba y propios primero solo con hasta 15 % de desvío; el resto, por desvío.
+                    let orden = ReemplazosKcal.ordenar(lista, kcalOriginal: original.kcal, kcal: { $0.sustituto.kcal },
+                                                       universal: \.sustituto.universal, propio: \.sustituto.esPropio)
+                    let universales = orden.universales
+                    let resto = orden.resto
                     if !universales.isEmpty {
                         Section("🌍 Disponibles en cualquier país") { ForEach(universales) { fila($0) } }
                     }
@@ -112,8 +117,12 @@ struct SustituirAlimentoView: View {
             .safeAreaInset(edge: .bottom) {
                 Button {
                     guard let e = elegido else { return }
-                    alElegir(e.sustituto.foodData)
-                    cerrar()
+                    if ReemplazosKcal.pideConfirmacion(original: original.kcal, reemplazo: e.sustituto.kcal) {
+                        aConfirmar = e
+                    } else {
+                        alElegir(e.sustituto.foodData)
+                        cerrar()
+                    }
                 } label: {
                     Text(elegido.map { "Reemplazar por \($0.sustituto.nombre)" } ?? "Elegí un alimento").lineLimit(1)
                 }
@@ -126,6 +135,17 @@ struct SustituirAlimentoView: View {
             }
         }
         .task { resultado = MotorSustitutos.buscar(original: original, modelo: modelo) }
+        // 2.3.1: nunca subir las kcal del plan en silencio. «Elegir otro» vuelve a la lista.
+        .alert(aConfirmar.map { ReemplazosKcal.textoConfirmacion(original: original.kcal, reemplazo: $0.sustituto.kcal) } ?? "",
+               isPresented: Binding(get: { aConfirmar != nil }, set: { if !$0 { aConfirmar = nil } })) {
+            Button(ReemplazosKcal.usarIgual) {
+                if let e = aConfirmar { alElegir(e.sustituto.foodData); cerrar() }
+                aConfirmar = nil
+            }
+            .accessibilityIdentifier("reemplazo-usar-igual")
+            Button(ReemplazosKcal.elegirOtro, role: .cancel) { aConfirmar = nil }
+                .accessibilityIdentifier("reemplazo-elegir-otro")
+        }
         .presentationDragIndicator(.visible)
     }
 
@@ -137,8 +157,8 @@ struct SustituirAlimentoView: View {
 
     private func fila(_ o: OpcionSustituto) -> some View {
         let s = o.sustituto
-        let kcalOriginal = original.kcal ?? 0
-        let delta = kcalOriginal > 0 ? ((s.kcal - kcalOriginal) / kcalOriginal * 100).jsEntero : 0
+        // 2.3.1: sin kcal en el original no hay porcentaje: «sin dato» (antes, un 0 % verde).
+        let delta = ReemplazosKcal.desvioPct(original: original.kcal, reemplazo: s.kcal)
         let marcado = elegido == o
         return Button {
             withAnimation(.snappy) { elegido = marcado ? nil : o }
@@ -163,12 +183,21 @@ struct SustituirAlimentoView: View {
                         .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 6)
-                Text("\(delta > 0 ? "+" : "")\(delta) %")
-                    .font(.caption.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(abs(delta) <= 5 ? Color.exito : Color.alerta)
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background((abs(delta) <= 5 ? Color.exito : Color.alerta).opacity(0.14), in: .capsule)
-                    .accessibilityLabel("\(delta > 0 ? "más" : "menos") \(abs(delta)) por ciento de calorías")
+                if let delta {
+                    Text("\(delta > 0 ? "+" : "")\(delta) %")
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(abs(delta) <= 5 ? Color.exito : Color.alerta)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background((abs(delta) <= 5 ? Color.exito : Color.alerta).opacity(0.14), in: .capsule)
+                        .accessibilityLabel("\(delta > 0 ? "más" : "menos") \(abs(delta)) por ciento de calorías")
+                } else {
+                    Text("sin dato")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Color.campo, in: .capsule)
+                        .accessibilityLabel("sin dato de calorías del original")
+                }
             }
             .contentShape(.rect)
         }

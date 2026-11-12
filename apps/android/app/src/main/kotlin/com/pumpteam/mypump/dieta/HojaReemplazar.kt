@@ -74,7 +74,10 @@ import com.pumpteam.mypump.entreno.Letras
 import com.pumpteam.mypump.modelos.Alimento
 import com.pumpteam.mypump.modelos.AlimentoPropio
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.reglas.ReemplazosKcal
 import com.pumpteam.mypump.reglas.Sustituto
+import com.pumpteam.mypump.diseno.Alerta
+import com.pumpteam.mypump.diseno.BotonAlerta
 import kotlin.math.abs
 import kotlinx.coroutines.launch
 
@@ -102,6 +105,8 @@ fun HojaReemplazar(modelo: ModeloApp, original: Alimento, alElegir: (ValorJson) 
     // El elegido por su nombre (la identidad de la web: no hay dos con el mismo nombre en minúsculas).
     var elegido by rememberSaveable { mutableStateOf<String?>(null) }
     var creando by rememberSaveable { mutableStateOf(false) }
+    // 2.3.1: el elegido suma más del 10 % o más de 60 kcal: se confirma antes de usarlo.
+    var aConfirmar by rememberSaveable { mutableStateOf<String?>(null) }
     val resultado = remember(base, propios, excluir, original) {
         base?.let { MotorSustitutos.buscar(original, it, propios, excluir) } ?: MotorSustitutos.Resultado(categoria = CategoriaComida.inferir(original))
     }
@@ -192,8 +197,10 @@ fun HojaReemplazar(modelo: ModeloApp, original: Alimento, alElegir: (ValorJson) 
                         if (filtradas.isEmpty()) {
                             item(key = "vacio") { SinSustitutos(busqueda) }
                         } else {
-                            val universales = filtradas.filter { it.universal }
-                            val resto = filtradas.filterNot { it.universal }
+                            // 2.3.1: universales arriba y propios primero solo con hasta 15 % de desvío; el resto, por desvío.
+                            val orden = ReemplazosKcal.ordenar(filtradas, original.kcal, { it.kcal }, { it.universal }, { it.esPropio })
+                            val universales = orden.universales
+                            val resto = orden.resto
                             if (universales.isNotEmpty()) {
                                 item(key = "titulo-universales") { TituloSeccion("🌍 Disponibles en cualquier país") }
                                 items(universales, key = { "u-" + it.nombre.lowercase() }) { s ->
@@ -239,14 +246,35 @@ fun HojaReemplazar(modelo: ModeloApp, original: Alimento, alElegir: (ValorJson) 
                             }
                         }
                     }
+                    // 2.3.1: nunca subir las kcal del plan en silencio. «Elegir otro» vuelve a la lista.
+                    aConfirmar?.let { nombre ->
+                        resultado.opciones.firstOrNull { it.nombre.lowercase() == nombre }?.let { s ->
+                            Alerta(
+                                titulo = ReemplazosKcal.textoConfirmacion(original.kcal, s.kcal),
+                                botones = listOf(
+                                    BotonAlerta(ReemplazosKcal.ELEGIR_OTRO, "reemplazo-elegir-otro", cancelar = true) { aConfirmar = null },
+                                    BotonAlerta(ReemplazosKcal.USAR_IGUAL, "reemplazo-usar-igual") {
+                                        aConfirmar = null
+                                        tactil.performHapticFeedback(HapticFeedbackType.Confirm)
+                                        elegir(s)
+                                    },
+                                ),
+                                alDescartar = { aConfirmar = null },
+                            )
+                        }
+                    }
                     // Abajo, siempre a mano.
                     Box(Modifier.fillMaxWidth().padding(horizontal = Espacio.m).padding(top = Espacio.xs, bottom = Espacio.m)) {
                         BotonMarca(
                             opcionElegida?.let { "Reemplazar por ${it.nombre}" } ?: "Elegí un alimento",
                             alTocar = {
                                 opcionElegida?.let {
-                                    tactil.performHapticFeedback(HapticFeedbackType.Confirm)
-                                    elegir(it)
+                                    if (ReemplazosKcal.pideConfirmacion(original.kcal, it.kcal)) {
+                                        aConfirmar = it.nombre.lowercase()
+                                    } else {
+                                        tactil.performHapticFeedback(HapticFeedbackType.Confirm)
+                                        elegir(it)
+                                    }
                                 }
                             },
                             habilitado = opcionElegida != null,
@@ -382,8 +410,8 @@ private fun SinSustitutos(busqueda: String) {
 private fun FilaSustituto(original: Alimento, s: Sustituto, marcado: Boolean, alTocar: () -> Unit) {
     val c = MyPump.colores
     val delta = MotorSustitutos.deltaKcal(original, s)
-    val bien = abs(delta) <= 5
-    val tono = if (bien) c.exito else c.alerta
+    val bien = delta != null && abs(delta) <= 5
+    val tono = if (delta == null) c.textoSecundario else if (bien) c.exito else c.alerta
     Row(
         Modifier
             .fillMaxWidth()
@@ -424,15 +452,18 @@ private fun FilaSustituto(original: Alimento, s: Sustituto, marcado: Boolean, al
             Text(FormatoDieta.macros(s.prot, s.carb, s.fat, c.proteina, c.carbohidrato, c.grasa), style = Letras.caption.merge(Letras.cifras), color = c.textoSecundario)
         }
         Text(
-            "${if (delta > 0) "+" else ""}$delta %",
+            if (delta == null) "sin dato" else "${if (delta > 0) "+" else ""}$delta %",
             style = Letras.caption.copy(fontWeight = FontWeight.SemiBold).merge(Letras.cifras),
             color = tono,
             maxLines = 1,
             modifier = Modifier
                 .clip(CircleShape)
-                .background(tono.copy(alpha = 0.14f))
+                .background(if (delta == null) c.campo else tono.copy(alpha = 0.14f))
                 .padding(horizontal = 8.dp, vertical = 4.dp)
-                .semantics { contentDescription = "${if (delta > 0) "más" else "menos"} ${abs(delta)} por ciento de calorías" },
+                .semantics {
+                    contentDescription = if (delta == null) "sin dato de calorías del original"
+                    else "${if (delta > 0) "más" else "menos"} ${abs(delta)} por ciento de calorías"
+                },
         )
     }
 }
