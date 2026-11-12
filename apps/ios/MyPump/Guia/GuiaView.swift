@@ -827,6 +827,16 @@ private struct Suplementacion: View {
                     ForEach(m.filas) { f in fila(f) }
                 }
             }
+            if !vista.protectores.isEmpty {
+                VStack(alignment: .leading, spacing: Espacio.xs) {
+                    Divider()
+                    Text(VistaSuplementacion.tituloProtectores).font(.subheadline.weight(.semibold)).foregroundStyle(Color.marcaTexto)
+                        .accessibilityAddTraits(.isHeader)
+                    BloqueProtectores(protectores: vista.protectores, margen: 0)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("guia-protectores")
+            }
             if let s = vista.sigue {
                 Divider()
                 Text("\(Text("Sigue igual.").fontWeight(.semibold)) \(s)").font(.subheadline)

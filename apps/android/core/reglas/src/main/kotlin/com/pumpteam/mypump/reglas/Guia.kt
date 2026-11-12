@@ -426,7 +426,19 @@ object SuplementacionVista {
 
     data class Sale(val nombre: String, val porQue: String?, val detalle: List<String>, val item: ItemSuplemento)
 
-    data class Vista(val titulo: String, val accion: String?, val momentos: List<Momento>, val sigue: String?, val sale: List<Sale>)
+    /**
+     * Un protector (un fármaco que indicó Mati, `protector: true` o `tipo: "protector"`): va aparte, en «Protectores, indicados
+     * por Mati», con la cantidad y el momento, sin compra y sin marcar. [indice] es su lugar en `items`.
+     */
+    data class Protector(val nombre: String, val cantidad: String?, val momento: String?, val nota: String?, val item: ItemSuplemento, val indice: Int)
+
+    data class Vista(
+        val titulo: String, val accion: String?, val momentos: List<Momento>, val sigue: String?, val sale: List<Sale>,
+        /** Vacío si el servidor no manda el campo: la vista queda como antes. */
+        val protectores: List<Protector> = emptyList(),
+    )
+
+    const val TITULO_PROTECTORES = "Protectores, indicados por Mati"
 
     /** Los momentos con nombre propio de la web (`MOMENTOS`), en su orden. */
     val MOMENTOS: List<Pair<String, String>> = listOf(
@@ -441,9 +453,20 @@ object SuplementacionVista {
         val porMomento = LinkedHashMap<String, MutableList<Pair<ItemSuplemento, TomaVista>>>()
         val sueltos = mutableListOf<Pair<ItemSuplemento, TomaVista>>()
         val sale = mutableListOf<ItemSuplemento>()
-        for (it in s.items) {
+        val protectores = mutableListOf<Protector>()
+        for ((i, it) in s.items.withIndex()) {
             if (it.estado == "sale") {
                 sale += it
+                continue
+            }
+            if (it.protector) {
+                val ts = if (it.tomas.isNotEmpty()) it.tomas.map { t -> TomaVista(t.momento, t.cantidad, t.nota, t.nombre) }
+                else listOf(TomaVista(it.momento ?: "", it.cantidad, it.nota, null))
+                for (t in ts) {
+                    val m = t.momento.ifEmpty { null }
+                    protectores += Protector(t.nombre?.ifEmpty { null } ?: it.nombre, t.cantidad?.ifEmpty { null },
+                        m?.let { tituloMomento(it, s) }, mayuscula(t.nota), it, i)
+                }
                 continue
             }
             val tomas = if (it.tomas.isNotEmpty()) it.tomas.map { t -> TomaVista(t.momento, t.cantidad, t.nota, t.nombre) }
@@ -488,6 +511,7 @@ object SuplementacionVista {
             momentos = momentos,
             sigue = s.sigueTexto,
             sale = sale.map { Sale(it.nombre, it.porQue, it.detalle, it) },
+            protectores = protectores,
         )
     }
 

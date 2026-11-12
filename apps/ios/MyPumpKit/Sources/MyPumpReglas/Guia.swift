@@ -545,6 +545,20 @@ public struct VistaSuplementacion: Equatable, Sendable {
         public let filas: [Fila]
     }
 
+    /// Un protector (un fármaco que indicó Mati, `protector: true` o `tipo: "protector"`): va aparte, en «Protectores,
+    /// indicados por Mati», con la cantidad y el momento, sin compra y sin marcar.
+    public struct Protector: Equatable, Sendable, Identifiable {
+        public let id: String
+        public let nombre: String
+        public let cantidad: String?
+        public let momento: String?
+        public let nota: String?
+        /// El índice del ítem en `items`.
+        public let item: Int
+    }
+
+    public static let tituloProtectores = "Protectores, indicados por Mati"
+
     public struct Sale: Equatable, Sendable {
         public let nombre: String
         public let porQue: String?
@@ -558,6 +572,8 @@ public struct VistaSuplementacion: Equatable, Sendable {
     public let momentos: [Momento]
     public let sigue: String?
     public let sale: [Sale]
+    /// Los protectores, aparte de los momentos (vacío si el servidor no manda el campo: la vista queda como antes).
+    public let protectores: [Protector]
     /// Los ítems tal como vinieron: el detalle de la pestaña Suplementación lee de acá (`Fila.item`, `Sale.item`).
     public let items: [ItemSuplemento]
 
@@ -579,9 +595,21 @@ public struct VistaSuplementacion: Equatable, Sendable {
         var ordenAparicion: [String] = []
         var sueltos: [Toma] = []
         var sale: [Sale] = []
+        var protectores: [Protector] = []
         for (i, it) in s.items.enumerated() {
             if it.estado == "sale" {
                 sale.append(Sale(nombre: it.nombre, porQue: it.porQue, detalle: it.detalle, item: i))
+                continue
+            }
+            if it.protector {
+                let ts = !it.tomas.isEmpty ? it.tomas : [TomaSuplemento(momento: it.momento, cantidad: it.cantidad, nota: it.nota)]
+                for (n, t) in ts.enumerated() {
+                    let m = t.momento.flatMap { $0.isEmpty ? nil : $0 }
+                    protectores.append(Protector(id: "protector-\(i)-\(n)", nombre: t.nombre.flatMap { $0.isEmpty ? nil : $0 } ?? it.nombre,
+                                                 cantidad: t.cantidad.flatMap { $0.isEmpty ? nil : $0 },
+                                                 momento: m.map { Self.titulo(momento: $0, definido: def[$0]) },
+                                                 nota: Self.mayuscula(t.nota), item: i))
+                }
                 continue
             }
             let ts: [Toma]?
@@ -635,6 +663,7 @@ public struct VistaSuplementacion: Equatable, Sendable {
         momentos = grupos
         sigue = s.sigueTexto
         self.sale = sale
+        self.protectores = protectores
         items = s.items
     }
 

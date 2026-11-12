@@ -92,6 +92,14 @@ struct SuplementacionView: View {
                         }
                     }
                 }
+                if !v.protectores.isEmpty {
+                    VStack(alignment: .leading, spacing: Espacio.s) {
+                        Text(VistaSuplementacion.tituloProtectores).textoCeja().accessibilityAddTraits(.isHeader)
+                        BloqueProtectores(protectores: v.protectores).superficieTarjeta()
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("supl-protectores")
+                }
                 if let f = app.feedback { SeccionYaLoTenes(modelo: f, items: v.items) }
                 if let sigue = v.sigue {
                     Text("\(Text("Sigue igual.").fontWeight(.semibold)) \(sigue)")
@@ -579,5 +587,36 @@ private struct HojaCompras: View {
         }
         .accessibilityIdentifier("compras-hoja")
         .onChange(of: opciones.isEmpty, initial: true) { _, vacia in if vacia { cerrar() } }
+    }
+}
+
+/// «Protectores, indicados por Mati» (2.3.1): los fármacos que indicó Mati, aparte de los suplementos. Cada uno con su
+/// cantidad y su momento; sin «Comprar», sin marcar y sin abrir el detalle comercial. Lo usan la pestaña y «Tu guía».
+struct BloqueProtectores: View {
+    let protectores: [VistaSuplementacion.Protector]
+    /// En la tarjeta de «Tu guía» el margen ya lo pone la tarjeta.
+    var margen: CGFloat = Espacio.m
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(protectores.enumerated()), id: \.element.id) { n, p in
+                if n > 0 { Divider().padding(.leading, margen) }
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: Espacio.xs) {
+                        Text(p.nombre).font(.body.weight(.semibold))
+                        Spacer(minLength: Espacio.xs)
+                        if let c = p.cantidad { Text(c).font(.body.weight(.semibold).monospacedDigit()).multilineTextAlignment(.trailing) }
+                    }
+                    if let m = p.momento { Text(m).font(.subheadline).foregroundStyle(Color.marcaTexto) }
+                    if let nota = p.nota { Text(nota).font(.subheadline).foregroundStyle(.secondary) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, margen)
+                .padding(.vertical, Espacio.s)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("supl-protector-\(p.item)")
+            }
+        }
     }
 }

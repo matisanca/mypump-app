@@ -274,8 +274,12 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
         antes = c.texto(.antes).flatMap { $0.isEmpty ? nil : $0 }
         cambio = c.texto(.cambio).flatMap { $0.isEmpty ? nil : $0 }
         comprar = (try? c.decodeIfPresent(CompraSuplemento.self, forKey: .comprar)).flatMap { $0?.vacia == false ? $0 : nil }
-        protector = c.booleano(.protector) ?? false
+        // `protector: true` o `tipo: "protector"` (2.3.1): las dos formas que puede mandar el servidor.
+        let t = try decoder.container(keyedBy: ClaveTipo.self)
+        protector = (c.booleano(.protector) ?? false) || t.texto(.tipo) == "protector"
     }
+
+    private enum ClaveTipo: String, CodingKey { case tipo }
 }
 
 /// `comprar` de un ítem: qué buscar, dónde y una aclaración. Un texto suelto se toma como `buscar`.

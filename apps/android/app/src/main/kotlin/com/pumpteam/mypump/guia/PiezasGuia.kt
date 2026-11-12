@@ -608,6 +608,17 @@ fun SuplementacionGuia(v: SuplementacionVista.Vista, porQue: PorQueSuplemento?, 
             )
             for (f in m.filas) FilaSuplemento(f, porQue)
         }
+        if (v.protectores.isNotEmpty()) {
+            SeparadorFino()
+            Text(
+                SuplementacionVista.TITULO_PROTECTORES,
+                style = MaterialTheme.typography.titleSmall,
+                color = c.marcaTexto,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 4.dp).semantics { heading() },
+            )
+            com.pumpteam.mypump.suplementacion.BloqueProtectores(v.protectores, Modifier.testTag("guia-protectores"), margen = 0.dp)
+        }
         if (v.sigue != null || v.sale.isNotEmpty()) SeparadorFino()
         v.sigue?.let { TextoRotulado("Sigue igual.", it, tonoTexto = c.texto) }
         if (v.sale.isNotEmpty()) {

@@ -47,6 +47,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -146,6 +147,10 @@ fun SuplementacionPantalla(m: ModeloSuplementacion, modelo: ModeloApp) {
                         },
                     )
                 }
+            }
+            if (vista.protectores.isNotEmpty()) {
+                EncabezadoSeccion(SuplementacionVista.TITULO_PROTECTORES, Modifier.padding(top = Espacio.xs))
+                BloqueProtectores(vista.protectores, Modifier.fillMaxWidth().superficieTarjeta().testTag("suplementacion-protectores"))
             }
             // «¿Ya lo tenés?» (palanca `suple_estado`): con la palanca apagada o sin el servidor nuevo, no existe.
             val feedback by modelo.feedback.collectAsStateWithLifecycle()
@@ -449,5 +454,35 @@ private fun Seccion(titulo: String, contenido: @Composable () -> Unit) {
             modifier = Modifier.semantics { heading() },
         )
         contenido()
+    }
+}
+
+/**
+ * «Protectores, indicados por Mati» (2.3.1): los fármacos que indicó Mati, aparte de los suplementos. Cada uno con su
+ * cantidad y su momento; sin «Comprar», sin marcar y sin abrir el detalle. Lo usan la pestaña y «Tu guía».
+ */
+@Composable
+fun BloqueProtectores(protectores: List<SuplementacionVista.Protector>, modifier: Modifier = Modifier, margen: Dp = Espacio.m) {
+    val c = MyPump.colores
+    Column(modifier) {
+        for ((i, p) in protectores.withIndex()) {
+            if (i > 0) Separador(sangria = margen)
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("protector-${p.indice}")
+                    .semantics(mergeDescendants = true) {}
+                    .padding(horizontal = margen, vertical = Espacio.s),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(p.nombre, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = c.texto)
+                    p.momento?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.marcaTexto) }
+                    p.nota?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario) }
+                }
+                p.cantidad?.let {
+                    Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = c.texto,
+                        modifier = Modifier.padding(start = Espacio.s))
+                }
+            }
+        }
     }
 }

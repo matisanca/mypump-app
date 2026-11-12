@@ -294,7 +294,8 @@ data class ItemSuplemento(
                     else -> listOfNotNull(Lector.textoTolerante(d)?.trim()?.ifEmpty { null })
                 },
                 comprar = CompraSuplemento.desde(o["comprar"]),
-                protector = o.booleano("protector") ?: false,
+                // `protector: true` o `tipo: "protector"` (2.3.1): las dos formas que puede mandar el servidor.
+                protector = (o.booleano("protector") ?: false) || o.texto("tipo") == "protector",
             )
         }
     }
