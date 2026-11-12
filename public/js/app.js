@@ -811,3 +811,74 @@ window.MyPump.ui = {
     });
   },
 };
+
+/* 2.3.1 — Reemplazos de comida sin subir las kcal en silencio (mismas reglas y vectores que iOS y Android,
+ * apps/shared/vectores/reemplazos_kcal.json). Los universales y los propios van arriba solo con hasta 15 % de desvío;
+ * un reemplazo que suma más del 10 % o más de 60 kcal pide confirmación; la cabecera de Dieta dice cuánto suman. */
+window.MyPump.reemplazosKcal = {
+  DESVIO_ARRIBA: 0.15,
+  CONFIRMAR_FRACCION: 0.10,
+  CONFIRMAR_KCAL: 60,
+
+  _n(x) { if (x === null || x === undefined || x === "") return null; const v = Number(x); return Number.isFinite(v) ? v : null; },
+
+  // Desvío relativo del reemplazo contra el original; null sin kcal en el original («sin dato»).
+  desvio(kcalOriginal, kcalReemplazo) {
+    const o = this._n(kcalOriginal), r = this._n(kcalReemplazo);
+    if (o === null || o <= 0 || r === null) return null;
+    return (r - o) / o;
+  },
+
+  // El «+N %» de cada opción, o null para mostrar «sin dato».
+  desvioPct(kcalOriginal, kcalReemplazo) {
+    const d = this.desvio(kcalOriginal, kcalReemplazo);
+    return d === null ? null : Math.round(d * 100);
+  },
+
+  // Arriba («Disponibles en cualquier país») solo los universales con hasta 15 %. Abajo, primero los propios con hasta
+  // 15 % y después todo lo demás ordenado por desvío (sin dato al final, en el orden del motor).
+  ordenar(subs, kcalOriginal) {
+    const conD = subs.map((s, i) => ({ s, i, d: this.desvio(kcalOriginal, s.kcal) }));
+    const cerca = x => x.d !== null && Math.abs(x.d) <= this.DESVIO_ARRIBA + 1e-9;
+    const universales = conD.filter(x => x.s._universal && cerca(x));
+    const propios = conD.filter(x => !x.s._universal && x.s._isCustom && cerca(x));
+    const tomados = new Set([...universales, ...propios]);
+    const resto = conD.filter(x => !tomados.has(x)).sort((a, b) => {
+      if (a.d === null || b.d === null) return (a.d === null) - (b.d === null) || a.i - b.i;
+      return Math.abs(a.d) - Math.abs(b.d) || a.i - b.i;
+    });
+    return { universales: universales.map(x => x.s), resto: [...propios, ...resto].map(x => x.s) };
+  },
+
+  // Cuántas kcal suma el reemplazo por día (redondeado).
+  suma(kcalOriginal, kcalReemplazo) {
+    const r = this._n(kcalReemplazo);
+    if (r === null) return 0;
+    return Math.round(r - (this._n(kcalOriginal) || 0));
+  },
+
+  pideConfirmacion(kcalOriginal, kcalReemplazo) {
+    const r = this._n(kcalReemplazo);
+    if (r === null) return false;
+    const suma = r - (this._n(kcalOriginal) || 0);
+    if (suma <= 0) return false;
+    if (suma > this.CONFIRMAR_KCAL) return true;
+    const d = this.desvio(kcalOriginal, kcalReemplazo);
+    return d !== null && d > this.CONFIRMAR_FRACCION + 1e-9;
+  },
+
+  textoConfirmacion(kcalOriginal, kcalReemplazo) {
+    return `Este cambio suma ${this.suma(kcalOriginal, kcalReemplazo)} kcal a esta comida y a todos tus días. ¿Lo usás igual?`;
+  },
+  USAR_IGUAL: 'Usar igual',
+  ELEGIR_OTRO: 'Elegir otro',
+
+  // El renglón de la cabecera de Dieta con la suma de los reemplazos del día; null si no mueven nada.
+  renglon(suma) {
+    const n = Math.round(this._n(suma) || 0);
+    if (n === 0) return null;
+    return n > 0 ? `Tus reemplazos suman +${n} kcal` : `Tus reemplazos restan ${-n} kcal`;
+  },
+  DESHACER: 'Deshacer',
+};
+

@@ -555,6 +555,7 @@ main{padding:var(--space-4)}
 .swap-delta{font-family:var(--font-num);font-size:11px;font-weight:700;min-width:44px;text-align:right;flex:0 0 auto}
 .swap-delta.ok{color:#16a34a}
 .swap-delta.warn{color:#f59e0b}
+.swap-delta.nd{color:var(--color-text-muted);font-weight:600}
 .swap-empty{padding:var(--space-6) var(--space-4);text-align:center;color:var(--color-text-muted);font-size:14px;line-height:1.6}
 .swap-sheet{max-height:88vh;display:flex;flex-direction:column}
 .swap-search-row{display:flex;align-items:center;gap:var(--space-2);margin:var(--space-2) 0}
@@ -1442,6 +1443,8 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .dz-elegidas{color:var(--color-text-primary)}
 .dz-elegidas:not(.is-ok){color:var(--color-text-primary)}
 .dz-elegidas.is-ok{color:var(--color-brand-text)}
+.dz-reemplazos{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:600;color:var(--color-text-primary)}
+.dz-reemp-deshacer{min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid var(--color-border-strong);background:transparent;color:var(--color-brand-text);font:inherit;font-weight:700;cursor:pointer}
 .dz-ejemplo{margin:0 0 var(--space-3);padding:12px 14px;border-radius:16px;background:var(--color-brand-subtle);font-size:14px}
 
 /* Dieta: tarjeta de comida */
@@ -8389,6 +8392,21 @@ function _comidasDelDia(ajustes) {
     _vistasDieta(), _efectivoDieta);
 }
 // El día como se ve hoy: cada comida con sus porciones de hoy y sus agregados.
+// 2.3.1: cuánto suman los reemplazos en las opciones elegidas del día y dónde están (para «Deshacer»).
+function _reemplazosDelDia() {
+  let suma = 0; const lugares = [];
+  const vistas = _vistasDieta();
+  for (const c of getActivePlan().comidas) {
+    const o = vistas[c.id] || 0;
+    ((c.options[o] || {}).foods || []).forEach((f, i) => {
+      const sw = getFoodSwap(f, c.id, o, i);
+      if (!sw) return;
+      suma += (Number(sw.current && sw.current.kcal) || 0) - (Number(f.kcal) || 0);
+      lugares.push([c.id, o, i]);
+    });
+  }
+  return { suma, lugares };
+}
 function _diaDieta() {
   const delDia = _comidasDelDia();
   return { delDia, dia: AjustesDieta.dia(delDia, STATE.ajustesDieta) };
@@ -8983,7 +9001,10 @@ function renderDiet() {
   const lineaComidas = nHechas || nSalt
     ? `Comiste ${nHechas} de ${consumido.nComidas} comidas${nSalt ? ` · salteaste ${nSalt}` : ''}`
     : (esHoy ? 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.' : 'Tocá «Comí» en lo que comiste ese día y acá se va sumando.');
-  const lineaElegidas = `<div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? (esHoy ? 'Con tus ajustes de hoy' : 'Con tus ajustes de ese día') : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>`;
+  // 2.3.1: los reemplazos son para todos los días; la cabecera dice cuánto mueven y deja volver al plan de Mati.
+  const _txtReemp = esHoy ? window.MyPump.reemplazosKcal.renglon(_reemplazosDelDia().suma) : null;
+  const lineaReemplazos = _txtReemp ? `<div class="dz-linea dz-reemplazos" id="dzReemplazos"><span>${_txtReemp}</span><button type="button" class="dz-reemp-deshacer" data-reemp-deshacer>${window.MyPump.reemplazosKcal.DESHACER}</button></div>` : '';
+  const lineaElegidas = lineaReemplazos + `<div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? (esHoy ? 'Con tus ajustes de hoy' : 'Con tus ajustes de ese día') : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>`;
   const cabecera = !_w ? `
   <div class="dz-hdr">
     <div class="dz-ring">
@@ -9974,14 +9995,28 @@ function bindDietEvents() {
     if (!food) return;
     openSwapModal(food, comidaId, +optIdx, +foodIdx);
   }));
+  // 2.3.1: «Deshacer» de la cabecera: todos los reemplazos del día vuelven al plan, con confirmación.
+  $$('[data-reemp-deshacer]').forEach(btn => btn.addEventListener('click', async e => {
+    e.stopPropagation();
+    const { lugares } = _reemplazosDelDia();
+    if (!lugares.length) return;
+    const ok = await window.MyPump.showConfirmModal({ title: '¿Volver a los alimentos de tu plan?', body: 'Se deshacen tus reemplazos y vuelven los alimentos que armó Mati, para todos tus días.', confirmLabel: 'Volver al plan', cancelLabel: 'Cancelar' });
+    if (!ok) return;
+    for (const [comidaId, o, i] of lugares) _revertirSwap(comidaId, o, i, false);
+    renderDiet();
+  }));
   // Revertir swap — local + backend
-  $$('[data-revert]').forEach(btn => btn.addEventListener('click', async e => {
+  $$('[data-revert]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
     const [comidaId, optIdx, foodIdx] = btn.getAttribute('data-revert').split('|');
+    _revertirSwap(comidaId, optIdx, foodIdx, true);
+  }));
+  // La vuelta de un reemplazo al alimento del plan (también la usa «Deshacer» de la cabecera).
+  async function _revertirSwap(comidaId, optIdx, foodIdx, pintar) {
     const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
     delete STATE.foodSwaps[key];
     persistSwaps();
-    renderDiet();
+    if (pintar) renderDiet();
     if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
       // Por el Outbox y con la MISMA key que el swap: antes iba directo y sin
       // reintento, y no cancelaba un 'swap' pendiente — sin señal el
@@ -9993,7 +10028,7 @@ function bindDietEvents() {
       }
     }
     _planCambio(comidaId, +optIdx, +foodIdx);
-  }));
+  }
   // Ajustes del día (como la app): cantidad de un alimento, agregados y la comida entera.
   $$('[data-cant]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
@@ -16004,10 +16039,10 @@ function openSwapModal(food, comidaId, optIdx, foodIdx) {
 // mostrada) para que selectSwapCard/confirmSwap sigan funcionando tras agrupar/filtrar.
 function _swapCardHtml(s, allSubs, food) {
   const origIdx = allSubs.indexOf(s);
-  const origKcal = food.kcal;
-  const kcalDiff = origKcal > 0 ? Math.round((s.kcal - origKcal) / origKcal * 100) : 0;
+  // 2.3.1: sin kcal en el original no hay porcentaje: «sin dato» (antes, un 0 % verde).
+  const kcalDiff = window.MyPump.reemplazosKcal.desvioPct(food.kcal, s.kcal);
   const sign = kcalDiff > 0 ? '+' : '';
-  const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
+  const dCls = kcalDiff === null ? 'nd' : Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
   const customBadge = s._isCustom ? '<span class="swap-custom-badge">★ Personalizado</span>' : '';
   const uniBadge = s._universal ? '<span class="swap-uni-badge" style="margin-left:6px">Global</span>' : '';
   const enLabel = s._en ? `<div class="swap-card-en" style="font-size:11px;color:var(--color-text-muted);margin-top:1px">${s._en}</div>` : '';
@@ -16018,7 +16053,7 @@ function _swapCardHtml(s, allSubs, food) {
       <div class="swap-card-qty">${s.qty} ${s.unit}</div>
       <div class="swap-card-macros">${s.kcal} kcal · ${s.prot}p / ${s.carb}c / ${s.fat}g</div>
     </div>
-    <span class="swap-delta ${dCls}">${sign}${kcalDiff}%</span>
+    <span class="swap-delta ${dCls}">${kcalDiff === null ? 'sin dato' : `${sign}${kcalDiff}%`}</span>
   </div>`;
 }
 
@@ -16030,8 +16065,8 @@ function _swapListHtml(subs, allSubs, food, query) {
       ? `Sin resultados para "${query}". Probá crear tu alimento personalizado.`
       : 'No hay sustitutos equivalentes disponibles dentro del rango de macros.'}</div>`;
   }
-  const uni  = subs.filter(s => s._universal);
-  const rest = subs.filter(s => !s._universal);
+  // 2.3.1: universales arriba y propios primero solo con hasta 15 % de desvío; el resto, por desvío.
+  const { universales: uni, resto: rest } = window.MyPump.reemplazosKcal.ordenar(subs, food.kcal);
   let html = '';
   if (uni.length) {
     html += `<div class="swap-subs-title">Disponibles en cualquier país</div>`;
@@ -16153,6 +16188,15 @@ async function confirmSwap() {
   const subs = _swapCache[cacheKey] || [];
   const sub = subs[_swapState.selected];
   if (!sub) return;
+  // 2.3.1: nunca subir las kcal del plan en silencio. Más del 10 % o más de 60 kcal: confirmar. «Elegir otro» vuelve a
+  // la lista con lo que se había buscado.
+  const RK = window.MyPump.reemplazosKcal;
+  if (RK.pideConfirmacion(original.kcal, sub.kcal)) {
+    const estado = Object.assign({}, _swapState);
+    const ok = await window.MyPump.showConfirmModal({ title: RK.textoConfirmacion(original.kcal, sub.kcal), confirmLabel: RK.USAR_IGUAL, cancelLabel: RK.ELEGIR_OTRO });
+    _swapState = estado;
+    if (!ok) { renderSwapModal(); return; }
+  }
 
   const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
   const subAnclado = _conAncla(sub, original);
