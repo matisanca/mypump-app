@@ -759,6 +759,7 @@ main{padding:var(--space-4)}
 .ck-peso-row .peso-input{flex:1}
 .ck-peso-kg{font-size:14px;color:var(--color-text-muted)}
 .ck-peso-aviso{font-size:12px;color:var(--color-danger);margin-top:4px}
+.ck-peso-ok{font-size:12px;font-weight:600;color:var(--color-text-secondary);margin-top:6px}
 .ss-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--color-border)}
 .ss-fila:first-of-type{border-top:0}
 .ss-etq{font-size:14px;color:var(--color-text-primary)}
@@ -2920,6 +2921,8 @@ const STATE = {
   // vea de donde salen y que la escena renderice bien con todo vacio.
   checkin:            null,       // check de la semana ya guardado en el server
   checkinDraft:       null,       // borrador local sin enviar
+  checkinPeso:        null,       // lo escrito en «Tu peso de hoy» del check; null = sin tocar (muestra el peso de hoy)
+  pesoBorrador:       null,       // lo escrito en la tarjeta Peso corporal sin guardar; null = sin tocar
   salud:              [],         // registros de salud/peso — alimenta Peso y Salud
   recup:              [],         // serie diaria de recuperación (mig 043), 14 días
   conexiones:         [],         // wearables conectados por OAuth (mig 045)
@@ -10520,7 +10523,7 @@ async function loadSalud() {
   // Recuperación también: desde que su estado "conectado pero sin score" decide
   // el texto mirando STATE.salud, si no se repinta acá el cliente se queda con
   // la copy que se calculó cuando STATE.salud todavía estaba vacío.
-  if (STATE.scene === 'revision') { _renderRevTarjetas(); _repintarSaludSemana(); }
+  if (STATE.scene === 'revision') { _renderRevTarjetas(); _repintarSaludSemana(); _ckPintarPesoHoy(); }
   if (_escenaVisible('cuerpo')) renderMydayPeso();
 }
 /* Valor de un tipo en una fecha, eligiendo la MEJOR fuente.
@@ -11574,6 +11577,10 @@ function renderMydayPeso() {
   }
 
   const fmtKg = v => v.toFixed(1).replace('.', ',');
+  // Un repintado (llega la salud del servidor, el «pump» del día) no borra lo que está escribiendo ni le saca el foco.
+  const previo = document.getElementById('pesoInput');
+  const escribiendo = !!previo && document.activeElement === previo;
+  const valorCampo = STATE.pesoBorrador != null ? STATE.pesoBorrador : (hoyVal ? fmtKg(hoyVal.kg) : '');
   el.innerHTML = `
     <div class="myday-section">
       <div class="myday-section-hdr">
@@ -11584,7 +11591,7 @@ function renderMydayPeso() {
       <div class="myday-section-body">
         <div class="peso-input-row">
           <input type="text" inputmode="decimal" class="peso-input mono" id="pesoInput"
-                 placeholder="${hoyVal ? '' : 'kg de hoy'}" value="${hoyVal ? fmtKg(hoyVal.kg) : ''}">
+                 placeholder="${hoyVal ? '' : 'kg de hoy'}" value="${escapeHtml(valorCampo)}">
           <button class="peso-save btn-primary" id="pesoSave">${hoyVal ? 'Corregir' : 'Guardar'}</button>
         </div>
         <div class="peso-hint">En ayunas al despertar, siempre en la misma condición.</div>
@@ -11596,6 +11603,10 @@ function renderMydayPeso() {
 
   const input = document.getElementById('pesoInput');
   const btn = document.getElementById('pesoSave');
+  if (input) {
+    input.addEventListener('input', () => { STATE.pesoBorrador = input.value; });
+    if (escribiendo) { input.focus({ preventScroll: true }); try { const n = input.value.length; input.setSelectionRange(n, n); } catch (_) {} }
+  }
   const guardar = () => {
     const v = parseFloat(String(input.value).replace(',', '.'));
     if (!isFinite(v) || v < 30 || v > 300) {
@@ -11604,6 +11615,7 @@ function renderMydayPeso() {
       return;
     }
     const valor = Math.round(v * 10) / 10;
+    STATE.pesoBorrador = null;
     // Update optimista de STATE.salud (el Outbox garantiza la persistencia).
     STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === hoyLocal() && r.fuente === 'manual'));
     STATE.salud.push({ fecha: hoyLocal(), tipo: 'peso_kg', valor, fuente: 'manual' });
@@ -13058,6 +13070,28 @@ async function loadCheckin() {
   try { renderRecordatorio(); } catch (_) {}
 }
 
+/* «Tu peso de hoy» del check. Sin tocar (STATE.checkinPeso null) muestra el peso que ya quedó guardado hoy, con una
+   línea que lo confirma. Antes, al enviar el check el campo quedaba vacío y el alumno creía que el peso se había
+   borrado (y lo volvía a escribir en la nota). */
+const _ckKg = (v) => Number(v).toFixed(1).replace('.', ',');
+function _ckPesoValor() {
+  if (STATE.checkinPeso != null) return STATE.checkinPeso;
+  const hoy = _cgPesoDeHoy();
+  return hoy != null ? _ckKg(hoy) : '';
+}
+function _ckPesoOkTexto() {
+  const hoy = _cgPesoDeHoy();
+  return hoy != null ? `✓ Tu peso de hoy quedó guardado: ${_ckKg(hoy)} kg` : '';
+}
+// Cuando llega el peso del servidor: se pone en el lugar, sin repintar el check (no le saca el teclado a nadie).
+function _ckPintarPesoHoy() {
+  const campo = document.getElementById('ckPeso');
+  if (!campo) return;
+  if (STATE.checkinPeso == null && document.activeElement !== campo) campo.value = _ckPesoValor();
+  const ok = document.getElementById('ckPesoOk');
+  if (ok) { const t = _ckPesoOkTexto(); ok.textContent = t; ok.hidden = !t; }
+}
+
 function renderMydayCheckin() {
   const el = document.getElementById('myday-checkin');
   if (!el) return;
@@ -13077,6 +13111,8 @@ function renderMydayCheckin() {
     </div>`;
 
   const nMarcadas = CHECKIN_METRICAS.filter(m => ck[m.k]).length;
+  // Si un repintado llega mientras escribe el peso o la nota, el foco vuelve a donde estaba.
+  const enFoco = document.activeElement && ['ckPeso', 'ckNota'].includes(document.activeElement.id) ? document.activeElement.id : null;
   // El sistema visual 2.3.0 va con la palanca; apagada, la cabecera de antes.
   el.innerHTML = (web230() ? `
     ${_encabezadoAvance('Check de la semana', yaGuardado && !STATE.checkinDraft ? CHECKIN_METRICAS.length : nMarcadas, CHECKIN_METRICAS.length, 'enviado')}
@@ -13093,7 +13129,8 @@ function renderMydayCheckin() {
         <textarea class="ck-nota" id="ckNota" rows="2" placeholder="Algo que quieras contarme (opcional)">${(ck.nota || '').replace(/</g,'&lt;')}</textarea>
         <div class="ck-peso">
           <div class="ck-peso-lbl">Tu peso de hoy</div>
-          <div class="ck-peso-row"><input type="text" inputmode="decimal" class="peso-input mono" id="ckPeso" placeholder="Ej: 78,4" value="${escapeHtml(STATE.checkinPeso || '')}"><span class="ck-peso-kg">kg</span></div>
+          <div class="ck-peso-row"><input type="text" inputmode="decimal" class="peso-input mono" id="ckPeso" placeholder="Ej: 78,4" value="${escapeHtml(_ckPesoValor())}"><span class="ck-peso-kg">kg</span></div>
+          <div class="ck-peso-ok" id="ckPesoOk"${_ckPesoOkTexto() ? '' : ' hidden'}>${_ckPesoOkTexto()}</div>
           <div class="peso-hint">En ayunas, al despertar. Si hoy no te pesaste, dejalo vacío: lo cargás otro día en Peso corporal.</div>
           <div class="ck-peso-aviso" id="ckPesoAviso" hidden>Revisá el peso: tiene que estar entre 30 y 300 kg.</div>
         </div>
@@ -13102,6 +13139,10 @@ function renderMydayCheckin() {
     </div>
     <div id="ss-host">${_saludSemanaHtml()}</div>`;
 
+  if (enFoco) {
+    const f = document.getElementById(enFoco);
+    if (f) { f.focus({ preventScroll: true }); try { const n = f.value.length; f.setSelectionRange(n, n); } catch (_) {} }
+  }
   const ckPeso = document.getElementById('ckPeso');
   if (ckPeso) ckPeso.addEventListener('input', () => {
     STATE.checkinPeso = ckPeso.value;
@@ -13140,12 +13181,14 @@ function renderMydayCheckin() {
       }
       kilos = Math.round(v * 10) / 10;
     }
-    if (kilos != null) {
+    // El que ya está cargado hoy (viene puesto en el campo) no se manda de nuevo.
+    if (kilos != null && kilos !== _cgPesoDeHoy()) {
       STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === hoyLocal() && r.fuente === 'manual'));
       STATE.salud.push({ fecha: hoyLocal(), tipo: 'peso_kg', valor: kilos, fuente: 'manual' });
       if (!DEMO) Outbox.enqueue('peso', { fecha: hoyLocal(), valor: kilos }, 'peso_' + hoyLocal());
     }
-    STATE.checkinPeso = '';
+    // Sin tocar: el campo vuelve a mostrar el peso guardado de hoy (antes quedaba vacío y parecía que se había borrado).
+    STATE.checkinPeso = null;
     const datos = { energia: d.energia, descanso: d.descanso, hambre: d.hambre, adherencia: d.adherencia, nota: (d.nota || '').trim() };
     STATE.checkin = { ...datos };          // update optimista
     STATE.checkinDraft = null;
@@ -13490,7 +13533,7 @@ function _cgEnviar() {
     return;
   }
   for (const op of ops) {
-    if (op.kind === 'checkin') { STATE.checkin = { ...op.payload.datos }; STATE.checkinDraft = null; STATE.checkinPeso = ''; }
+    if (op.kind === 'checkin') { STATE.checkin = { ...op.payload.datos }; STATE.checkinDraft = null; STATE.checkinPeso = null; }
     else if (op.kind === 'peso') _cgPonerPeso(op.payload.valor);
     else if (op.kind === 'check_guiado') {
       const s = _cgSrv();
