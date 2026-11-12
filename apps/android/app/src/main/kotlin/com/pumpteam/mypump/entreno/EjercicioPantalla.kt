@@ -101,6 +101,7 @@ import com.pumpteam.mypump.reglas.IndiceComentarios
 import com.pumpteam.mypump.reglas.TextosFeedback
 import com.pumpteam.mypump.reglas.NotaProgresion
 import com.pumpteam.mypump.reglas.ReglasEjercicio
+import com.pumpteam.mypump.reglas.TextoAlumno
 import com.pumpteam.mypump.reglas.Pauta
 import com.pumpteam.mypump.reglas.TextosEntreno
 import java.time.ZoneId
@@ -488,7 +489,7 @@ private fun ComoSeHace(t: ModeloEntreno.Tarjeta, modifier: Modifier = Modifier) 
     val inicio = t.efectivo.ejercicio.imagenes?.eccentric
     val pico = t.efectivo.ejercicio.imagenes?.concentric
     val hayFotos = inicio != null || pico != null
-    val notas = t.efectivo.ejercicio.notasTecnica?.takeIf { it.isNotEmpty() }
+    val notas = TextoAlumno.notaParaAlumno(t.efectivo.ejercicio.notasTecnica, t.pauta.rir)   // sin RIR, salvo reserva clínica
     if (!hayFotos && notas == null) return
     Column(modifier.testTag("como-se-hace"), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
         Text("Cómo se hace", style = Letras.titulo3, modifier = Modifier.padding(horizontal = 4.dp).semantics { heading() })

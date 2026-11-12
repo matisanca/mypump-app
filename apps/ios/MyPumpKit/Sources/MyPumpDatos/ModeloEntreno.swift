@@ -483,10 +483,20 @@ public final class ModeloEntreno {
         let kg = Preparacion.kgEfectivo(escrito: conCarga, sugerido: sugerido)
         let clave = "\(lugar)|\(kg.map { "\($0)" } ?? "-")|\(cacheEntradas?.firma ?? "")"
         if let c = cachePreparacion[lugar], c.clave == clave { return c.series }
+        let plan = Self.aproximacionesParaAlumno(ef.aproximaciones, rir: Progresiones.pauta(lista[i], semana: semana).rir)
         let series = Preparacion.series(dia: entradas, indice: i, nombre: ef.nombre, equipo: ef.equipo,
-                                        sinKg: ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kgEfectivo: kg, plan: ef.aproximaciones)
+                                        sinKg: ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kgEfectivo: kg, plan: plan)
         cachePreparacion[lugar] = (clave, series)
         return series
+    }
+
+    /// Las series de preparación del plan con la nota como la ve el alumno: sin RIR, salvo reserva clínica esa semana.
+    nonisolated static func aproximacionesParaAlumno(_ plan: [Aproximacion]?, rir: String?) -> [Aproximacion]? {
+        plan?.map { a in
+            var a = a
+            a.nota = TextoAlumno.notaParaAlumno(a.nota, rir: rir)
+            return a
+        }
     }
 
     /// Las entradas del día para la preparación (lo caro: resolver cada ejercicio en el catálogo). Se recalculan solo si

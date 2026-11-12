@@ -32,7 +32,8 @@ extension ModeloEntreno {
             var e = EjercicioReloj(
                 lugar: lugar, nombre: conEquipo.nombre, bloque: nil, tipo: ef.tipo, musculo: musculo(plan), equipo: conEquipo.equipo,
                 sinKg: sinKg, sinPeso: ReglasEjercicio.esSinPeso(nombre: ef.nombre, tipo: ef.tipo, equipo: ef.equipo),
-                aproximacionesPlan: conEquipo.aproximaciones?.map(AproximacionReloj.init),
+                aproximacionesPlan: Self.aproximacionesParaAlumno(conEquipo.aproximaciones, rir: Progresiones.pauta(ef, semana: semana).rir)?
+                    .map(AproximacionReloj.init),
                 descansoSegundos: dia.descanso(lugar), repsPlan: Progresiones.pauta(ef, semana: semana).reps,
                 estado: dia.estado(lugar), series: series,
                 anteriores: RecordSerie.anteriores(historial, hoy: hoy, zona: zona).map(MarcaReloj.init),

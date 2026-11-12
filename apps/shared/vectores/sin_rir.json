@@ -1,0 +1,165 @@
+{
+  "descripcion": "sinRIR: el texto libre del plan que ve el alumno nunca dice RIR ni reps en reserva (REGLA DURA, todo al fallo). Los 25 «reales» salen de notas_tecnica, progresion[].titulo y mensajes_semana[].msg de rutinas reales, sin nombres. Lo generó la referencia de la web (public/js/reglas-entreno.js) y lo corren las tres plataformas.",
+  "prohibido": "\\bRIR\\b|en reserva|en la recámara|en el tanque|cerca del fallo",
+  "reales": [
+    {
+      "entra": "El abdomen se entrena como un músculo más: con carga y cerca del fallo, no a cien repeticiones. Flexioná el tronco llevando los codos hacia las rodillas; la cadera no se mueve. Si te salen más de 15 fácil, subí el peso.",
+      "sale": "El abdomen se entrena como un músculo más: con carga y al fallo, no a cien repeticiones. Flexioná el tronco llevando los codos hacia las rodillas; la cadera no se mueve. Si te salen más de 15 fácil, subí el peso."
+    },
+    {
+      "entra": "Todas las series cerca del fallo. No calcules RIR: si terminaste la serie y te sobraba, subi la carga la proxima.",
+      "sale": "Todas las series al fallo. Si terminaste la serie y te sobraba, subi la carga la proxima."
+    },
+    {
+      "entra": "3×10 (RIR 0) — sube carga",
+      "sale": "3×10 — sube carga"
+    },
+    {
+      "entra": "Agrega rep — 4×10 RIR 1",
+      "sale": "Agrega rep — 4×10"
+    },
+    {
+      "entra": "Introducción — 3×12 (RIR 0), calibrar cargas y técnica",
+      "sale": "Introducción — 3×12, calibrar cargas y técnica"
+    },
+    {
+      "entra": "Semana 1 — Calibración (3×12, RIR 2)",
+      "sale": "Semana 1 — Calibración (3×12)"
+    },
+    {
+      "entra": "Semana 1 — Calibración (compuestos 3×12 · aislamiento 3×12 · RIR 2)",
+      "sale": "Semana 1 — Calibración (compuestos 3×12 · aislamiento 3×12)"
+    },
+    {
+      "entra": "Semana 1 — Calibración: compuestos 3×12 (RIR 2) · aislamiento 3×12",
+      "sale": "Semana 1 — Calibración: compuestos 3×12 · aislamiento 3×12"
+    },
+    {
+      "entra": "Semana 12 — AMRAP · 3×AMRAP · RIR 0 · Récord personal",
+      "sale": "Semana 12 — AMRAP · 3×AMRAP · Récord personal"
+    },
+    {
+      "entra": "Semana 2 — Carga: 3×10 (+2,5 kg) RIR 2",
+      "sale": "Semana 2 — Carga: 3×10 (+2,5 kg)"
+    },
+    {
+      "entra": "Semana 6 — DELOAD: compuestos 2×12 RIR 3 · aislamiento 2×12",
+      "sale": "Semana 6 — DELOAD: compuestos 2×12 · aislamiento 2×12"
+    },
+    {
+      "entra": "Compuestos 3×8 y aislamientos 3×8, RIR 1, con la última serie al fallo.",
+      "sale": "Compuestos 3×8 y aislamientos 3×8, con la última serie al fallo."
+    },
+    {
+      "entra": "Técnica, control y RIR 1.",
+      "sale": "Técnica y control."
+    },
+    {
+      "entra": "Mantené las 8 repeticiones bien controladas y solo 1 en reserva.",
+      "sale": "Mantené las 8 repeticiones bien controladas."
+    },
+    {
+      "entra": "En fuerza, series cerca del fallo (que te queden 1 o 2) y repeticiones explosivas; en potencia, lejos del fallo.",
+      "sale": "En fuerza, series al fallo y repeticiones explosivas; en potencia, lejos del fallo."
+    },
+    {
+      "entra": "Compuestos 3×12 dejando 2 repeticiones en reserva. No te mates, esto es solo el arranque.",
+      "sale": "Compuestos 3×12. No te mates, esto es solo el arranque."
+    },
+    {
+      "entra": "Compuestos 3×12 con RIR 2 (te sobran 2 reps), aislamiento 3×12.",
+      "sale": "Compuestos 3×12, aislamiento 3×12."
+    },
+    {
+      "entra": "Esta semana dejá 3 repeticiones en reserva en todo y anotá los pesos: esa es la base de las próximas 11.",
+      "sale": "Esta semana anotá los pesos: esa es la base de las próximas 11."
+    },
+    {
+      "entra": "No te mates — esto es solo el arranque, dejá 2 repes en reserva en todo.",
+      "sale": "No te mates — esto es solo el arranque."
+    },
+    {
+      "entra": "Esta semana subís la intensidad de nuevo: RIR 1 en todos los compuestos con los mismos pesos de la semana 8.",
+      "sale": "Esta semana subís la intensidad de nuevo: en todos los compuestos con los mismos pesos de la semana 8."
+    },
+    {
+      "entra": "Quedate con 3 repeticiones en reserva (RIR 3) — si sentís que podrías hacer 15, el peso está bien.",
+      "sale": "Si sentís que podrías hacer 15, el peso está bien."
+    },
+    {
+      "entra": "Las primeras 3 series RIR 1-2.",
+      "sale": "Las primeras 3 series."
+    },
+    {
+      "entra": "Compuestos 3×12 y aislamientos 3×12, dejando 2 repes en la recámara (RIR 2).",
+      "sale": "Compuestos 3×12 y aislamientos 3×12."
+    },
+    {
+      "entra": "Volvemos a 3 series y retomamos las cargas de la semana 5, pero con 10 reps y RIR 2.",
+      "sale": "Volvemos a 3 series y retomamos las cargas de la semana 5, pero con 10 reps."
+    },
+    {
+      "entra": "Quedate con 2 repeticiones en reserva.",
+      "sale": ""
+    }
+  ],
+  "sinCambio": [
+    "Bajá lento y subí explosivo. Codos pegados al cuerpo.",
+    "Bajamos a 2 series por ejercicio y nos quedamos lejos del fallo.",
+    "Prensa 45°: pies a la altura de los hombros.\nNo trabes las rodillas arriba.",
+    ""
+  ],
+  "otros": [
+    {
+      "entra": "Línea con técnica.\nQuedate con 2 repeticiones en reserva.\nOtra línea con técnica.",
+      "sale": "Línea con técnica.\nOtra línea con técnica."
+    },
+    {
+      "entra": "Codos fijos. rir 2 en todas.",
+      "sale": "Codos fijos. En todas."
+    }
+  ],
+  "reserva": {
+    "regla": "Reserva clínica de Mati (lumbar, cardiopatía, excepciones): si el rir del plan para esa semana tiene un número mayor que 0, la nota es una indicación clínica y va entera. Sin dato, 0, «al fallo» o RPE: sinRIR.",
+    "conReserva": [
+      "1-2",
+      "2",
+      2,
+      "2-3",
+      "0-1",
+      "1,5"
+    ],
+    "sinReserva": [
+      null,
+      "",
+      "0",
+      0,
+      "al fallo",
+      "Al fallo",
+      "RPE 8",
+      "0-0"
+    ],
+    "casos": [
+      {
+        "entra": "Compuestos con RIR 2: cuidá la lumbar y dejá 2 repeticiones en reserva.",
+        "rir": "2-3",
+        "sale": "Compuestos con RIR 2: cuidá la lumbar y dejá 2 repeticiones en reserva."
+      },
+      {
+        "entra": "Compuestos con RIR 2: cuidá la lumbar y dejá 2 repeticiones en reserva.",
+        "rir": "0",
+        "sale": "Compuestos: cuidá la lumbar."
+      },
+      {
+        "entra": "Compuestos con RIR 2: cuidá la lumbar y dejá 2 repeticiones en reserva.",
+        "rir": null,
+        "sale": "Compuestos: cuidá la lumbar."
+      },
+      {
+        "entra": "Todas las series cerca del fallo. No calcules RIR: si terminaste la serie y te sobraba, subi la carga la proxima.",
+        "rir": "1-2",
+        "sale": "Todas las series cerca del fallo. No calcules RIR: si terminaste la serie y te sobraba, subi la carga la proxima."
+      }
+    ]
+  }
+}

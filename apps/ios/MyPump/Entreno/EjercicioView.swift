@@ -285,7 +285,7 @@ struct EjercicioView: View {
         let inicio = t.efectivo.ejercicio.imagenes?.eccentric.flatMap(URL.init(string:))
         let pico = t.efectivo.ejercicio.imagenes?.concentric.flatMap(URL.init(string:))
         let hayFotos = inicio != nil || pico != nil
-        let notas = t.efectivo.ejercicio.notasTecnica.flatMap { $0.isEmpty ? nil : $0 }
+        let notas = TextoAlumno.notaParaAlumno(t.efectivo.ejercicio.notasTecnica, rir: t.pauta.rir)   // sin RIR, salvo reserva clínica
         if hayFotos || notas != nil {
             VStack(alignment: .leading, spacing: Espacio.s) {
                 Text("Cómo se hace").font(.title3.weight(.bold)).padding(.horizontal, 4).accessibilityAddTraits(.isHeader)

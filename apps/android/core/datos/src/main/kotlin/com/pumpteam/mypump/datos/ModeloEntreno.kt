@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.datos
 
+import com.pumpteam.mypump.modelos.Aproximacion
 import com.pumpteam.mypump.modelos.ClienteInfo
 import com.pumpteam.mypump.modelos.Comentario
 import com.pumpteam.mypump.modelos.Dia
@@ -39,6 +40,7 @@ import com.pumpteam.mypump.reglas.NotaProgresion
 import com.pumpteam.mypump.reglas.Pauta
 import com.pumpteam.mypump.reglas.Pregunta
 import com.pumpteam.mypump.reglas.Progresiones
+import com.pumpteam.mypump.reglas.TextoAlumno
 import com.pumpteam.mypump.reglas.ReglasEjercicio
 import com.pumpteam.mypump.reglas.ReglasWins
 import com.pumpteam.mypump.reglas.ResumenDia
@@ -595,7 +597,8 @@ class ModeloEntreno(
         val kg = Preparacion.kgEfectivo(conCarga, sugerido)
         val clave = "$lugar|$kg|${cacheEntradas?.first}"
         cachePreparacion[lugar]?.let { (c, series) -> if (c == clave) return series }
-        val series = Preparacion.series(entradas, i, ef.nombre, ef.equipo, ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kg, ef.aproximaciones)
+        val plan = aproximacionesParaAlumno(ef.aproximaciones, Progresiones.pauta(lista[i], d.semana).rir)
+        val series = Preparacion.series(entradas, i, ef.nombre, ef.equipo, ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kg, plan)
         cachePreparacion[lugar] = clave to series
         return series
     }
@@ -2107,3 +2110,7 @@ internal fun leerAnotadas(v: ValorJson): Map<String, ModeloEntreno.EscrituraAnot
         val ts = e["ts"]?.comoNumero ?: return@mapNotNull null
         k to ModeloEntreno.EscrituraAnotada(kind, payload, ts, e["rutinaId"]?.comoTexto)
     }.toMap()
+
+/** Las series de preparación del plan con la nota como la ve el alumno: sin RIR, salvo reserva clínica esa semana. */
+fun aproximacionesParaAlumno(plan: List<Aproximacion>?, rir: String?): List<Aproximacion>? =
+    plan?.map { it.copy(nota = TextoAlumno.notaParaAlumno(it.nota, rir)) }
