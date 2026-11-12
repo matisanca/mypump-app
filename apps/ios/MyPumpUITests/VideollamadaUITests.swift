@@ -109,7 +109,10 @@ final class VideollamadaUITests: XCTestCase {
             XCTAssertTrue(app.staticTexts["abc-defg-hij"].exists || codigo.label.contains("a b c"))
             let conTexto = { (t: String) in self.app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", t)).firstMatch }
             XCTAssertTrue(conTexto("Si no se abre la reunión:").exists, "Los pasos para pegar el código")
-            XCTAssertTrue(conTexto("Unirse con un código").exists)
+            let pasos = id("videollamada-pasos-codigo")
+            XCTAssertTrue(pasos.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS %@", "Unirse con un código")).firstMatch.exists
+                || pasos.label.contains("Unirse con un código"), "Dónde pegar el código, dentro de los pasos")
             let copiar = app.buttons["videollamada-copiar-codigo"]
             XCTAssertTrue(copiar.label.contains("Copiar código"))
             copiar.tap()
@@ -122,10 +125,16 @@ final class VideollamadaUITests: XCTestCase {
             XCTAssertFalse(entrar.isHittable, "La reunión se abre encima de la tarjeta")
             captura("reunion-adentro", oscuro: oscuro)
             // Al cerrar el navegador se vuelve a la tarjeta y la app sigue respondiendo (la ventana de la reunión se va).
-            // El botón de listo del navegador no está en el árbol de accesibilidad: se toca por su lugar (arriba a la izquierda).
+            // El botón de listo del navegador vive en otro proceso: se busca ahí y, si no aparece, se toca por su lugar.
             if app.buttons["Cancelar"].waitForExistence(timeout: 5) { app.buttons["Cancelar"].tap() }
+            let servicio = XCUIApplication(bundleIdentifier: "com.apple.SafariViewService")
+            let botonListo = servicio.buttons.matching(NSPredicate(format: "identifier IN %@ OR label IN %@",
+                                                                   ["Done", "Listo", "OK"], ["Done", "Listo", "OK"])).firstMatch
             let listo = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 38, dy: 84))
-            for _ in 0..<3 where !entrar.waitForHittable(3) { listo.tap() }
+            // Primero el lugar conocido; si no cerró (otro modelo o letra grande), el botón del servicio.
+            for i in 0..<4 where !entrar.waitForHittable(3) {
+                if i % 2 == 1, botonListo.waitForExistence(timeout: 2) { botonListo.tap() } else { listo.tap() }
+            }
             XCTAssertTrue(entrar.waitForHittable(8), "Después de cerrar, «Entrar» se puede tocar de nuevo")
             app.buttons["videollamada-copiar-codigo"].tap()
             XCTAssertTrue(app.buttons["videollamada-copiar-codigo"].label.contains("Código copiado"),

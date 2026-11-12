@@ -376,6 +376,7 @@ final class ReunionMeet: NSObject, @preconcurrency SFSafariViewControllerDelegat
         w.rootViewController = nil
         ventana = nil
         anterior?.makeKey()
+        UIAccessibility.post(notification: .screenChanged, argument: nil)
     }
 }
 
@@ -407,6 +408,7 @@ private struct CodigoReunion: View {
     let codigo: String
     @State private var copiado = false
     @State private var tarea: Task<Void, Never>?
+    @ScaledMetric(relativeTo: .subheadline) private var ladoNumero: CGFloat = 26
 
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.xs) {
@@ -443,7 +445,7 @@ private struct CodigoReunion: View {
                     HStack(alignment: .firstTextBaseline, spacing: Espacio.xs) {
                         Text("\(i + 1)")
                             .font(.subheadline.weight(.bold)).monospacedDigit()
-                            .frame(width: 26, height: 26)
+                            .frame(minWidth: ladoNumero, minHeight: ladoNumero)
                             .background(Color.sobreMarca.opacity(0.22), in: .circle)
                             .accessibilityHidden(true)
                         Text(t).font(.body).fixedSize(horizontal: false, vertical: true)
