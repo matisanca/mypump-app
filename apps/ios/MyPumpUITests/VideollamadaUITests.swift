@@ -96,6 +96,32 @@ final class VideollamadaUITests: XCTestCase {
         }
     }
 
+    /// 2.3.1: debajo de «Entrar» siempre está el código de la reunión con «Copiar código», y «Entrar» abre la reunión
+    /// DENTRO de la app (SFSafariViewController), sin pasar por Gmail ni por Safari: MyPump sigue adelante.
+    func testCodigoYEntrarDentroDeLaApp() throws {
+        for oscuro in [false, true] {
+            abrir("porEntrar", oscuro: oscuro)
+            let entrar = app.buttons["agenda-entrar"]
+            XCTAssertTrue(entrar.waitForExistence(timeout: 40))
+            let codigo = id("videollamada-codigo")
+            XCTAssertTrue(codigo.exists, "El código tiene que estar a la vista debajo de «Entrar»")
+            XCTAssertTrue(codigo.label.contains("Código de la reunión"))
+            XCTAssertTrue(app.staticTexts["abc-defg-hij"].exists || codigo.label.contains("a b c"))
+            XCTAssertTrue(id("videollamada-pegar-codigo").label.contains("Unirse con un código"))
+            let copiar = app.buttons["videollamada-copiar-codigo"]
+            XCTAssertTrue(copiar.label.contains("Copiar código"))
+            copiar.tap()
+            XCTAssertTrue(app.buttons["videollamada-copiar-codigo"].label.contains("Código copiado"))
+            captura("codigo-copiado", oscuro: oscuro)
+            entrar.tap()
+            // El navegador de adentro de la app: su barra de abajo y la página; MyPump no pasa a segundo plano.
+            RunLoop.current.run(until: Date().addingTimeInterval(4))
+            XCTAssertEqual(app.state, .runningForeground, "«Entrar» no tiene que sacar al alumno de la app")
+            XCTAssertFalse(entrar.isHittable, "La reunión se abre encima de la tarjeta")
+            captura("reunion-adentro", oscuro: oscuro)
+        }
+    }
+
     /// Sin la palanca: no hay «Elegir horario» en Entreno (la agenda de la guía queda como en la 2.2.0), pero la tarjeta
     /// fija de una reserva confirmada sí está (no cambia datos).
     func testSinPalanca() throws {
@@ -111,6 +137,11 @@ final class VideollamadaUITests: XCTestCase {
         abrir("diasAntes", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
         XCTAssertTrue(id("videollamada").waitForExistence(timeout: 40))
         captura("dias-antes-letra-grande", oscuro: false)
+        abrir("porEntrar", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
+        XCTAssertTrue(app.buttons["agenda-entrar"].waitForExistence(timeout: 40))
+        app.swipeUp()
+        XCTAssertTrue(app.buttons["videollamada-copiar-codigo"].isHittable)
+        captura("codigo-letra-grande", oscuro: false)
         abrir("elegir", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
         let agendar = app.buttons["videollamada-elegir"]
         XCTAssertTrue(agendar.waitForExistence(timeout: 40))

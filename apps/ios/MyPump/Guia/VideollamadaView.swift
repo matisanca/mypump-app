@@ -1,3 +1,4 @@
+import SafariServices
 import SwiftUI
 import UserNotifications
 import MyPumpModelos
@@ -106,7 +107,6 @@ struct TarjetaVideollamada: View {
     @State private var paraCalendario = false
     @State private var cambiar = false
     @State private var ayuda = false
-    @Environment(\.openURL) private var abrirURL
     @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     private var zona: TimeZone { AgendaUI.zona }
@@ -219,7 +219,7 @@ struct TarjetaVideollamada: View {
                     .font(.headline)
                     .accessibilityIdentifier("agenda-sala")
                 Button {
-                    if let u = reserva.meetUrl { abrirURL(u) }
+                    if let u = reserva.meetUrl { ReunionMeet.abrir(u) }
                 } label: {
                     Label("Entrar a la videollamada", systemImage: "video.fill")
                         .font(.headline)
@@ -229,8 +229,11 @@ struct TarjetaVideollamada: View {
                         .contentShape(.capsule)
                 }
                 .buttonStyle(.plain)
-                .accessibilityHint("Abre Google Meet. Mati te admite en la sala")
+                .accessibilityHint("Abre la reunión de Google Meet acá, en la app. Mati te admite en la sala")
                 .accessibilityIdentifier("agenda-entrar")
+                if let codigo = ReglasAgenda.codigoMeet(reserva.meetUrl) {
+                    CodigoReunion(codigo: codigo)
+                }
             } else {
                 Button {} label: { Label("Entrar", systemImage: "lock.fill") }
                     .buttonStyle(BotonMarca())
@@ -315,6 +318,98 @@ struct TarjetaVideollamada: View {
                 Text(modelo.agenda.textos.cambiar)
                     .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+}
+
+// MARK: - Abrir la reunión (2.3.1)
+
+/// Abre la reunión de Meet DENTRO de la app, en un SFSafariViewController, y no con `openURL`.
+///
+/// Con `openURL`, el link de meet.google.com es un universal link: si el teléfono tiene Gmail o la app de Meet, iOS se lo
+/// da a esa app, y con otra cuenta de Google o sin sesión el alumno caía en la bandeja de Gmail o en la portada de Meet,
+/// no en la reunión (lo reportó Mati, 12/11). El SFSafariViewController no sigue universal links al cargar, así que abre
+/// ESA reunión en la web de Meet, que desde junio de 2026 deja entrar en el iPhone sin app ni cuenta: el alumno escribe
+/// su nombre, toca «Solicitar unirse» y Mati lo admite (Meet en TRUSTED, sin moderación).
+///
+/// Se presenta con UIKit desde el controlador de arriba de todo y no con un `.fullScreenCover` de la tarjeta: la tarjeta se
+/// va cuando termina el horario de la reserva o cuando se rearma, y la llamada no se puede cortar por eso. Pantalla
+/// completa para que un deslizamiento hacia abajo no la cierre sin querer; se sale con «OK».
+@MainActor
+enum ReunionMeet {
+    static func abrir(_ url: URL) {
+        guard let arriba = controladorDeArriba() else { return }
+        if arriba is SFSafariViewController { return }  // Un segundo toque mientras se abre.
+        let c = SFSafariViewController(url: url)
+        c.preferredControlTintColor = UIColor(Color.marcaTexto)
+        c.dismissButtonStyle = .done
+        c.modalPresentationStyle = .fullScreen
+        arriba.present(c, animated: true)
+    }
+
+    private static func controladorDeArriba() -> UIViewController? {
+        let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let ventana = escenas.flatMap(\.windows).first { $0.isKeyWindow } ?? escenas.first?.windows.first
+        var c = ventana?.rootViewController
+        while let p = c?.presentedViewController, !p.isBeingDismissed { c = p }
+        return c
+    }
+}
+
+/// El respaldo de «Entrar», siempre a la vista debajo del botón: el código de la reunión, «Copiar código» y dónde pegarlo.
+private struct CodigoReunion: View {
+    let codigo: String
+    @State private var copiado = false
+    @State private var tarea: Task<Void, Never>?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Espacio.xs) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ReglasAgenda.tituloCodigo)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.sobreMarca.opacity(0.9))
+                Text(codigo)
+                    .font(.system(.title, design: .monospaced, weight: .bold))
+                    .foregroundStyle(Color.sobreMarca)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .textSelection(.enabled)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(ReglasAgenda.tituloCodigo): \(codigo.map { $0 == "-" ? "guion" : String($0) }.joined(separator: " "))")
+            .accessibilityIdentifier("videollamada-codigo")
+            Button(action: copiar) {
+                Label(copiado ? ReglasAgenda.textoCodigoCopiado : ReglasAgenda.textoCopiarCodigo,
+                      systemImage: copiado ? "checkmark.circle.fill" : "doc.on.doc.fill")
+                    .font(.headline)
+                    .foregroundStyle(Color.sobreMarca)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .overlay { Capsule().strokeBorder(Color.sobreMarca, lineWidth: 2) }
+                    .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .sensoryFeedback(.success, trigger: copiado) { _, nuevo in nuevo }
+            .accessibilityIdentifier("videollamada-copiar-codigo")
+            Text(ReglasAgenda.textoPegarCodigo)
+                .font(.subheadline)
+                .foregroundStyle(Color.sobreMarca)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("videollamada-pegar-codigo")
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.sobreMarca.opacity(0.14), in: .rect(cornerRadius: 16, style: .continuous))
+        .onDisappear { tarea?.cancel() }
+    }
+
+    private func copiar() {
+        UIPasteboard.general.string = codigo
+        withAnimation(.snappy) { copiado = true }
+        UIAccessibility.post(notification: .announcement, argument: ReglasAgenda.textoCodigoCopiado)
+        tarea?.cancel()
+        tarea = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { copiado = false }
         }
     }
 }

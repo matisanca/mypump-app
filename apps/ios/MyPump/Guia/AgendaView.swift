@@ -443,6 +443,9 @@ final class ServidorAgendaUI: Transporte, @unchecked Sendable {
             reserva = ReservaAgenda(id: "r1", inicio: fs[0].inicio, fin: fs[0].fin, estado: .fallo, motivo: "vencida")
         default: break
         }
+        // `-agendaMeetUrl <link>`: otro link de Meet para la reserva de la demo (probar a mano la apertura con una sala real
+        // de prueba sin dejarla escrita en el código).
+        if let u = UserDefaults.standard.string(forKey: "agendaMeetUrl"), reserva?.meetUrl != nil { reserva?.meetUrl = URL(string: u) }
     }
 
     private var guia: Guia {
