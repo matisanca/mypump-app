@@ -24,6 +24,10 @@ struct DietaView: View {
     @State private var cantidadAbierta: CantidadAlimento?
     /// La hoja de copiar a hoy lo cargado otro día.
     @State private var copiando: CopiaPedida?
+    /// 2.3.1: «Deshacer» de la cabecera pide confirmación.
+    @State private var deshaciendoReemplazos = false
+    /// 2.3.1: «¿Cómo se lee?» abierto.
+    @State private var comoSeLee = false
     /// En iPad la dieta va en una columna centrada: el título grande del sistema quedaba pegado al borde, lejos de la
     /// columna. Ahí el título va adentro de la columna (como el encabezado de Entreno) y arriba queda chico.
     @Environment(\.horizontalSizeClass) private var claseAncho
@@ -156,6 +160,19 @@ struct DietaView: View {
                     }
                     Cabecera(objetivo: modelo.objetivoVista, consumo: consumo, elegidas: Self.total(dia),
                              conAjustes: !modelo.ajustesVista.isEmpty, esHoy: !modelo.enDiaPasado)
+                    Button { comoSeLee = true } label: {
+                        Label(ComoSeLee.boton, systemImage: "questionmark.circle")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.marcaTexto)
+                    .background(Color.campo, in: .capsule)
+                    .accessibilityIdentifier("dieta-como-se-lee")
+                    .sheet(isPresented: $comoSeLee) { HojaComoSeLee() }
+                    if !modelo.enDiaPasado, modelo.vistaEditable, let texto = ReemplazosKcal.renglon(suma: reemplazosDelDia.suma) {
+                        renglonReemplazos(texto)
+                    }
                     if !modelo.enDiaPasado {
                         BannerRevision()
                         if !modelo.fechasDieta.isEmpty {
@@ -263,6 +280,63 @@ struct DietaView: View {
                 .disabled(!modelo.vistaEditable)
             }
         }
+    }
+
+    /// 2.3.1: cuánto suman los reemplazos en las opciones elegidas del día y dónde están (para «Deshacer»). Un reemplazo
+    /// vale para todos los días: la cabecera lo dice y deja volver al plan de Mati.
+    private var reemplazosDelDia: (suma: Double, lugares: [(comidaId: String, opt: Int, idx: Int)]) {
+        var suma = 0.0
+        var lugares: [(comidaId: String, opt: Int, idx: Int)] = []
+        let opciones = opcionesVigentes
+        for c in modelo.comidasVista {
+            let o = min(opciones[c.id] ?? 0, max(c.opciones.count - 1, 0))
+            for (i, a) in (c.opciones[safe: o]?.alimentos ?? []).enumerated() {
+                let e = modelo.efectivoVista(a, comidaId: c.id, opt: o, idx: i)
+                guard e.sustituido else { continue }
+                let d = (e.alimento.kcal ?? 0) - (a.kcal ?? 0)
+                if d.isFinite { suma += d }
+                lugares.append((c.id, o, i))
+            }
+        }
+        return (suma, lugares)
+    }
+
+    private func renglonReemplazos(_ texto: String) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                Text(texto).font(.body.weight(.semibold))
+                Spacer(minLength: 8)
+                botonDeshacer
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text(texto).font(.body.weight(.semibold))
+                botonDeshacer
+            }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .background(Color.tarjeta, in: .rect(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("reemplazos-suman")
+        .confirmationDialog("¿Volver a los alimentos de tu plan?", isPresented: $deshaciendoReemplazos, titleVisibility: .visible) {
+            Button("Volver al plan") {
+                let lugares = reemplazosDelDia.lugares
+                Task { for l in lugares { await modelo.revertir(comidaId: l.comidaId, opt: l.opt, idx: l.idx) } }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Se deshacen tus reemplazos y vuelven los alimentos que armó Mati, para todos tus días.")
+        }
+    }
+
+    private var botonDeshacer: some View {
+        Button(ReemplazosKcal.deshacer) { deshaciendoReemplazos = true }
+            .font(.body.weight(.bold))
+            .foregroundStyle(Color.marcaTexto)
+            .padding(.horizontal, 18)
+            .frame(minHeight: 44)
+            .background(Color.campo, in: .capsule)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("reemplazos-deshacer")
     }
 
     /// Lo del día con las opciones elegidas, los reemplazos y los ajustes de hoy.
@@ -1194,5 +1268,51 @@ private struct AvisoAjuste: View {
 
     static func hayQueMostrar(_ a: AjustePorciones.ComidaAjustada, propia: Bool) -> Bool {
         a.omitida || propia || (abs(a.absorbido) >= 1 && abs(llega(a, propia: false)) >= 1)
+    }
+}
+
+/// 2.3.1: «¿Cómo se lee?» de Dieta: pocos pasos, letra grande y números bien visibles. Si hay video, un botón para verlo.
+private struct HojaComoSeLee: View {
+    @Environment(\.dismiss) private var cerrar
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(Array(ComoSeLee.pasos.enumerated()), id: \.offset) { i, paso in
+                        HStack(alignment: .firstTextBaseline, spacing: 14) {
+                            Text("\(i + 1)")
+                                .font(.title3.weight(.bold).monospacedDigit())
+                                .foregroundStyle(Color.sobreMarca)
+                                .frame(minWidth: 36, minHeight: 36)
+                                .background(Color.marca, in: .circle)
+                                .accessibilityHidden(true)
+                            Text(paso).font(.title3).fixedSize(horizontal: false, vertical: true)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Paso \(i + 1). \(paso)")
+                    }
+                    if let url = ComoSeLee.urlVideo() {
+                        Link(destination: url) {
+                            Label(ComoSeLee.verVideo, systemImage: "play.circle.fill").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(BotonMarca())
+                        .accessibilityIdentifier("como-se-lee-video")
+                    }
+                }
+                .padding(20)
+            }
+            .navigationTitle(ComoSeLee.titulo)
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                Button(ComoSeLee.cerrar) { cerrar() }
+                    .buttonStyle(BotonMarca())
+                    .accessibilityIdentifier("como-se-lee-cerrar")
+                    .padding(.horizontal).padding(.vertical, 10)
+                    .background(.bar)
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
     }
 }

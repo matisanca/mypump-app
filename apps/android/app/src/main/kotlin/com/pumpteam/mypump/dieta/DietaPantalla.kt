@@ -131,12 +131,16 @@ import com.pumpteam.mypump.reglas.DiasDieta
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.MarcaComida
 import com.pumpteam.mypump.reglas.PorcionCasera
+import com.pumpteam.mypump.reglas.ReemplazosKcal
+import com.pumpteam.mypump.reglas.ComoSeLee
 import com.pumpteam.mypump.reglas.SwapLocal
 import com.pumpteam.mypump.respaldo.OrigenRespaldo
 import com.pumpteam.mypump.respaldo.PieRespaldo
 import com.pumpteam.mypump.respaldo.RenglonFuentes
 import kotlin.math.abs
 import kotlin.math.max
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.foundation.layout.wrapContentHeight
 import kotlin.math.min
 import kotlinx.coroutines.launch
 
@@ -201,6 +205,11 @@ fun DietaPantalla(modelo: ModeloApp) {
     var cantidadAbierta by rememberSaveable { mutableStateOf<String?>(null) }
     // La hoja de copiar a hoy lo cargado otro día: desde qué día abre.
     var copiandoDe by rememberSaveable { mutableStateOf<String?>(null) }
+    // 2.3.1: cuánto suman los reemplazos del día (valen para todos los días) y «Deshacer», con confirmación.
+    val reemplazos = remember(comidas, vigentes, swaps, diaPasado) { reemplazosDelDia(modelo, comidas, vigentes) }
+    var deshaciendoReemplazos by rememberSaveable { mutableStateOf(false) }
+    // 2.3.1: «¿Cómo se lee?» abierto.
+    var comoSeLee by rememberSaveable { mutableStateOf(false) }
     // El día de las hojas de edición. Se guarda con ellas: al restaurar tras matar el proceso se abre hoy, y una hoja de ayer
     // guardaría en otra fecha. Si el día cambia (medianoche, volver a hoy) se cierran sin guardar.
     val fechaVista = modelo.fechaVista
@@ -297,6 +306,15 @@ fun DietaPantalla(modelo: ModeloApp) {
                                 ) {
                                     item(key = "cabecera") {
                                         Cabecera(objetivo, consumo, elegidas, Modifier.widthIn(max = AnchoLectura), conAjustes = ajustesVistos.isNotEmpty(), esHoy = esHoy)
+                                    }
+                                    item(key = "como-se-lee") {
+                                        BotonComoSeLee(Modifier.widthIn(max = AnchoLectura).fillMaxWidth(), alTocar = { comoSeLee = true })
+                                    }
+                                    val textoReemplazos = if (esHoy && modelo.vistaEditable) ReemplazosKcal.renglon(reemplazos.suma) else null
+                                    if (textoReemplazos != null) {
+                                        item(key = "reemplazos") {
+                                            RenglonReemplazos(textoReemplazos, Modifier.widthIn(max = AnchoLectura).fillMaxWidth(), alDeshacer = { deshaciendoReemplazos = true })
+                                        }
                                     }
                                     if (esHoy) {
                                         item(key = "banner") { BannerRevision(modelo, Modifier.widthIn(max = AnchoLectura)) }
@@ -445,6 +463,122 @@ fun DietaPantalla(modelo: ModeloApp) {
     }
     pedidoCantidad?.takeIf { hojasVigentes }?.let { p ->
         key(cantidadAbierta) { HojaCantidad(modelo, p, fechaHojas, opciones = vigentes, alCerrar = { cantidadAbierta = null }) }
+    }
+    if (comoSeLee) ExplicacionComoSeLee(alCerrar = { comoSeLee = false })
+    if (deshaciendoReemplazos) {
+        Alerta(
+            titulo = "¿Volver a los alimentos de tu plan?",
+            mensaje = "Se deshacen tus reemplazos y vuelven los alimentos que armó Mati, para todos tus días.",
+            botones = listOf(
+                BotonAlerta("Cancelar", etiqueta = "cancelar-deshacer", cancelar = true) { deshaciendoReemplazos = false },
+                BotonAlerta("Volver al plan", etiqueta = "confirmar-deshacer") {
+                    deshaciendoReemplazos = false
+                    val lugares = reemplazos.lugares
+                    alcance.launch { for (l in lugares) modelo.revertir(l.comidaId, l.opt, l.idx) }
+                },
+            ),
+            alDescartar = { deshaciendoReemplazos = false },
+        )
+    }
+}
+
+/** 2.3.1: los reemplazos en las opciones elegidas del día, cuánto suman y dónde están (para «Deshacer»). */
+private class ReemplazosDelDia(val suma: Double, val lugares: List<Posicion>)
+
+private fun reemplazosDelDia(modelo: ModeloApp, comidas: List<Comida>, vigentes: Map<String, Int>): ReemplazosDelDia {
+    var suma = 0.0
+    val lugares = mutableListOf<Posicion>()
+    for (c in comidas) {
+        val o = (vigentes[c.id] ?: 0).coerceIn(0, max(c.opciones.size - 1, 0))
+        (c.opciones.getOrNull(o)?.alimentos ?: emptyList()).forEachIndexed { i, a ->
+            val e = modelo.efectivoVista(a, c.id, o, i)
+            if (!e.sustituido) return@forEachIndexed
+            val d = (e.alimento.kcal ?: 0.0) - (a.kcal ?: 0.0)
+            if (d.isFinite()) suma += d
+            lugares += Posicion(c.id, o, i, a)
+        }
+    }
+    return ReemplazosDelDia(suma, lugares)
+}
+
+/** 2.3.1: «¿Cómo se lee?» debajo de la cabecera: un botón grande y neutro (el verde lleno queda para «Comí»). */
+@Composable
+private fun BotonComoSeLee(modifier: Modifier, alTocar: () -> Unit) {
+    val c = MyPump.colores
+    Row(
+        modifier
+            .clip(CircleShape)
+            .background(c.campo)
+            .clickable(role = Role.Button, onClick = alTocar)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = Espacio.m)
+            .testTag("dieta-como-se-lee"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    ) {
+        Text("?", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = c.sobreMarca,
+            textAlign = TextAlign.Center, modifier = Modifier.size(22.dp).clip(CircleShape).background(c.marca))
+        Text(ComoSeLee.BOTON, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
+    }
+}
+
+/** Los pasos de «¿Cómo se lee?», con número grande, y el video si Mati lo cargó. */
+@Composable
+private fun ExplicacionComoSeLee(alCerrar: () -> Unit) {
+    val c = MyPump.colores
+    val uri = LocalUriHandler.current
+    val video = ComoSeLee.urlVideo()
+    Alerta(
+        titulo = ComoSeLee.TITULO,
+        botones = listOfNotNull(
+            video?.let { u -> BotonAlerta(ComoSeLee.VER_VIDEO, etiqueta = "como-se-lee-video") { runCatching { uri.openUri(u) } } },
+            BotonAlerta(ComoSeLee.CERRAR, etiqueta = "como-se-lee-cerrar", alTocar = alCerrar),
+        ),
+        alDescartar = alCerrar,
+        modifier = Modifier.testTag("como-se-lee"),
+        contenido = {
+            Column(Modifier.padding(horizontal = 28.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ComoSeLee.PASOS.forEachIndexed { i, paso ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.semantics(mergeDescendants = true) {}) {
+                        Text("${i + 1}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = c.sobreMarca,
+                            textAlign = TextAlign.Center, modifier = Modifier.size(32.dp).clip(CircleShape).background(c.marca).wrapContentHeight())
+                        Text(paso, style = MaterialTheme.typography.bodyLarge, color = c.texto)
+                    }
+                }
+            }
+        },
+    )
+}
+
+/** «Tus reemplazos suman +N kcal» con «Deshacer», debajo de la cabecera. Con letra grande, uno debajo del otro. */
+@Composable
+private fun RenglonReemplazos(texto: String, modifier: Modifier, alDeshacer: () -> Unit) {
+    val c = MyPump.colores
+    val apilado = LocalDensity.current.fontScale >= ESCALA_APILADA
+    val boton = @Composable {
+        Box(
+            Modifier
+                .clip(CircleShape)
+                .background(c.campo)
+                .clickable(role = Role.Button, onClick = alDeshacer)
+                .heightIn(min = 48.dp)
+                .padding(horizontal = 18.dp)
+                .testTag("reemplazos-deshacer"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(ReemplazosKcal.DESHACER, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = c.marcaTexto)
+        }
+    }
+    val txt = @Composable { m: Modifier -> Text(texto, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = c.texto, modifier = m) }
+    val base = modifier
+        .clip(RoundedCornerShape(16.dp))
+        .background(c.tarjeta)
+        .padding(horizontal = Espacio.m, vertical = 12.dp)
+        .testTag("reemplazos-suman")
+    if (apilado) {
+        Column(base, verticalArrangement = Arrangement.spacedBy(8.dp)) { txt(Modifier); boton() }
+    } else {
+        Row(base, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) { txt(Modifier.weight(1f)); boton() }
     }
 }
 
