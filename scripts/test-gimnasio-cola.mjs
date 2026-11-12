@@ -300,6 +300,18 @@ t('faltan fotos: la de la ronda va antes de responder y responde incompleto', as
   await m.enviarRespuestas();
   eq(orden, ['foto', 'responder']); eq(d.ultimoResponder, { peso: 32.5, foto_1: 'subida' }); eq(d.fotos[0].ronda, 1); eq(m.pantalla, 'recibido');
 });
+t('2.3.1: la de opción múltiple que vio y no marcó va como []; «No sé» como duda', async () => {
+  const preguntas = [
+    { id: 'm1', clase: 'elegir', multiple: true, texto: 't', opciones: [{ valor: 'a', texto: 'A' }] },
+    { id: 'm2', clase: 'elegir', multiple: true, texto: 't', opciones: [{ valor: 'a', texto: 'A' }] },
+    { id: 'm3', clase: 'elegir', multiple: true, texto: 't', opciones: [{ valor: 'a', texto: 'A' }] },
+  ];
+  const d = doble({ abierta: { id: ID, estado: 'a_confirmar', modo: 'completa', preguntas }, }); const m = await listo(modelo(d));
+  m.marcarVista('m1'); m.marcarVista('m1'); m.marcarVista('m2'); m.responder('m2', 'no_se');
+  eq(m.borrador.vistas, ['m1', 'm2']);
+  await m.enviarRespuestas();
+  eq(d.ultimoResponder, { m1: [], m2: 'no_se' }); eq(m.borrador.vistas, []);
+});
 t('la foto de una pregunta rechazada: se la vuelve a pedir y no responde', async () => {
   const preguntas = [{ id: 'foto_1', clase: 'foto', zona: 'bancos', texto: 't' }];
   const d = doble({ abierta: { id: ID, estado: 'a_confirmar', modo: 'completa', preguntas }, proximas: [400] }); const m = await listo(modelo(d));

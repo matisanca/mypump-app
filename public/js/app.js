@@ -736,6 +736,30 @@ window.MyPump.exerciseSwap = {
       .slice(0, 30);
   },
 
+  // 2.3.1, port de sustitutosDeCardio de las apps: las máquinas de cardio se ofrecen entre sí, con su nombre en castellano
+  // (el catálogo no las traduce y las trae sin patrón). El orden es el de la lista; sin la del plan.
+  CARDIO: [
+    ['Walking_Treadmill', 'Cinta (caminata)'], ['Jogging_Treadmill', 'Cinta (trote)'],
+    ['Bicycling_Stationary', 'Bicicleta fija'], ['Recumbent_Bike', 'Bicicleta reclinada'],
+    ['Elliptical_Trainer', 'Elíptico'], ['Rowing_Stationary', 'Remo ergómetro'], ['Stairmaster', 'Escaladora'],
+  ],
+  cardioSubstitutes(originalEjercicio) {
+    const db = window.MYPUMP_EJERCICIO_DB;
+    if (!db || !db.length) return [];
+    const propio = this._resolve(originalEjercicio);
+    const out = [];
+    for (const [slug, nombre] of this.CARDIO) {
+      const e = db.find(x => x.slug_en === slug);
+      if (!e || (propio && propio.slug_en === e.slug_en)) continue;
+      out.push({
+        slug: e.slug_en, name: nombre, name_en: e.name_en, equipo: this._equipLabel(e), equipmentRaw: e.equipment,
+        primary_muscle: e.primary_muscle, patron_movimiento: e.patron_movimiento,
+        images: { eccentric: e.image_eccentric || null, concentric: e.image_concentric || null }, _sameEquip: true,
+      });
+    }
+    return out;
+  },
+
   // Búsqueda libre por nombre dentro de los sustitutos válidos
   // (mantiene todos los constraints de findSubstitutes).
   searchSubstitutes(originalEjercicio, query) {
@@ -785,5 +809,98 @@ window.MyPump.ui = {
         if (e.target.id === 'confirmBack') close(false);
       });
     });
+  },
+};
+
+/* 2.3.1 — Reemplazos de comida sin subir las kcal en silencio (mismas reglas y vectores que iOS y Android,
+ * apps/shared/vectores/reemplazos_kcal.json). Los universales y los propios van arriba solo con hasta 15 % de desvío;
+ * un reemplazo que suma más del 10 % o más de 60 kcal pide confirmación; la cabecera de Dieta dice cuánto suman. */
+window.MyPump.reemplazosKcal = {
+  DESVIO_ARRIBA: 0.15,
+  CONFIRMAR_FRACCION: 0.10,
+  CONFIRMAR_KCAL: 60,
+
+  _n(x) { if (x === null || x === undefined || x === "") return null; const v = Number(x); return Number.isFinite(v) ? v : null; },
+
+  // Desvío relativo del reemplazo contra el original; null sin kcal en el original («sin dato»).
+  desvio(kcalOriginal, kcalReemplazo) {
+    const o = this._n(kcalOriginal), r = this._n(kcalReemplazo);
+    if (o === null || o <= 0 || r === null) return null;
+    return (r - o) / o;
+  },
+
+  // El «+N %» de cada opción, o null para mostrar «sin dato».
+  desvioPct(kcalOriginal, kcalReemplazo) {
+    const d = this.desvio(kcalOriginal, kcalReemplazo);
+    return d === null ? null : Math.round(d * 100);
+  },
+
+  // Arriba («Disponibles en cualquier país») solo los universales con hasta 15 %. Abajo, primero los propios con hasta
+  // 15 % y después todo lo demás ordenado por desvío (sin dato al final, en el orden del motor).
+  ordenar(subs, kcalOriginal) {
+    const conD = subs.map((s, i) => ({ s, i, d: this.desvio(kcalOriginal, s.kcal) }));
+    const cerca = x => x.d !== null && Math.abs(x.d) <= this.DESVIO_ARRIBA + 1e-9;
+    const universales = conD.filter(x => x.s._universal && cerca(x));
+    const propios = conD.filter(x => !x.s._universal && x.s._isCustom && cerca(x));
+    const tomados = new Set([...universales, ...propios]);
+    const resto = conD.filter(x => !tomados.has(x)).sort((a, b) => {
+      if (a.d === null || b.d === null) return (a.d === null) - (b.d === null) || a.i - b.i;
+      return Math.abs(a.d) - Math.abs(b.d) || a.i - b.i;
+    });
+    return { universales: universales.map(x => x.s), resto: [...propios, ...resto].map(x => x.s) };
+  },
+
+  // Cuántas kcal suma el reemplazo por día (redondeado).
+  suma(kcalOriginal, kcalReemplazo) {
+    const r = this._n(kcalReemplazo);
+    if (r === null) return 0;
+    return Math.round(r - (this._n(kcalOriginal) || 0));
+  },
+
+  pideConfirmacion(kcalOriginal, kcalReemplazo) {
+    const r = this._n(kcalReemplazo);
+    if (r === null) return false;
+    const suma = r - (this._n(kcalOriginal) || 0);
+    if (suma <= 0) return false;
+    if (suma > this.CONFIRMAR_KCAL) return true;
+    const d = this.desvio(kcalOriginal, kcalReemplazo);
+    return d !== null && d > this.CONFIRMAR_FRACCION + 1e-9;
+  },
+
+  textoConfirmacion(kcalOriginal, kcalReemplazo) {
+    return `Este cambio suma ${this.suma(kcalOriginal, kcalReemplazo)} kcal a esta comida y a todos tus días. ¿Lo usás igual?`;
+  },
+  USAR_IGUAL: 'Usar igual',
+  ELEGIR_OTRO: 'Elegir otro',
+
+  // El renglón de la cabecera de Dieta con la suma de los reemplazos del día; null si no mueven nada.
+  renglon(suma) {
+    const n = Math.round(this._n(suma) || 0);
+    if (n === 0) return null;
+    return n > 0 ? `Tus reemplazos suman +${n} kcal` : `Tus reemplazos restan ${-n} kcal`;
+  },
+  DESHACER: 'Deshacer',
+};
+
+
+/* 2.3.1 — «¿Cómo se lee?» de la cabecera de Dieta: los mismos textos que iOS y Android
+ * (apps/shared/vectores/como_se_lee.json). VIDEO: lugar para un video opcional (sin URL https no hay botón). */
+window.MyPump.comoSeLee = {
+  BOTON: '¿Cómo se lee?',
+  TITULO: 'Cómo se lee tu dieta',
+  PASOS: [
+    'Cada tarjeta es una comida del día, con lo que tenés que comer y cuántas calorías suma.',
+    'Si una comida tiene opciones (A, B…), elegí una sola: cualquiera te sirve igual.',
+    'Cuando comés, tocá «Comí». Arriba se va sumando lo que comiste en el día.',
+    '¿No conseguís un alimento? Tocá el botón de las dos flechas y elegí otro parecido.',
+  ],
+  VER_VIDEO: 'Ver el video',
+  CERRAR: 'Entendido',
+  VIDEO: null,
+  urlVideo(v) {
+    const t = (v === undefined ? this.VIDEO : v);
+    if (typeof t !== 'string') return null;
+    const s = t.trim();
+    return /^https:\/\/[^\s/"'<>]+(\/[^\s"'<>]*)?$/.test(s) ? s : null;
   },
 };

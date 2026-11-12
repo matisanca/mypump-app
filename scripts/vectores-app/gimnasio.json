@@ -86,7 +86,11 @@
   "faltaAlgo": "Falta algo",
   "yaNoEsta": "Esto ya no está",
   "cambieDeGimnasio": "Cambié de gimnasio",
-  "marcarLoQueNoEsta": "Marcá lo que ya no está", "volverAEditar": "Volver a editar", "cerrar": "Cerrar", "listoTeclado": "Listo", "kg": "kg",
+  "marcarLoQueNoEsta": "Marcá lo que ya no está",
+  "volverAEditar": "Volver a editar",
+  "cerrar": "Cerrar",
+  "listoTeclado": "Listo",
+  "kg": "kg",
   "confirmarTarjeta": "Confirmanos qué de esto hay en tu gimnasio"
  },
  "plurales": [
@@ -1106,5 +1110,100 @@
    "abierta": "a_confirmar",
    "preguntas": 1
   }
- ]
+ ],
+ "paraEnviarVistas": {
+  "regla": "2.3.1: una pregunta de opción múltiple que el alumno vio y no marcó va como [] («lo que no marques cuenta como que no está»). «No sé» sigue yendo como duda; la que no vio no va; una de opción única vista sin elegir tampoco.",
+  "preguntas": [
+   {
+    "id": "par_1",
+    "clase": "elegir",
+    "multiple": true,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "remo_t",
+      "texto": "Remo T"
+     },
+     {
+      "valor": "remo_pecho",
+      "texto": "Remo apoyado"
+     }
+    ]
+   },
+   {
+    "id": "par_2",
+    "clase": "elegir",
+    "multiple": true,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "a",
+      "texto": "A"
+     }
+    ]
+   },
+   {
+    "id": "par_3",
+    "clase": "elegir",
+    "multiple": true,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "a",
+      "texto": "A"
+     }
+    ]
+   },
+   {
+    "id": "par_4",
+    "clase": "elegir",
+    "multiple": true,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "a",
+      "texto": "A"
+     }
+    ]
+   },
+   {
+    "id": "peso_discos",
+    "clase": "elegir",
+    "multiple": false,
+    "texto": "x",
+    "opciones": [
+     {
+      "valor": "2.5",
+      "texto": "2,5 kg"
+     }
+    ]
+   }
+  ],
+  "borrador": {
+   "par_2": [
+    "a"
+   ],
+   "par_3": "no_se"
+  },
+  "vistas": [
+   "par_1",
+   "par_2",
+   "par_3",
+   "peso_discos",
+   "inventada"
+  ],
+  "resultado": {
+   "par_1": [],
+   "par_2": [
+    "a"
+   ],
+   "par_3": "no_se"
+  },
+  "sinVistas": {
+   "par_2": [
+    "a"
+   ],
+   "par_3": "no_se"
+  }
+ }
 }

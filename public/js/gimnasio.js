@@ -143,11 +143,15 @@
         return false;
     }
   }
-  function respuestasParaEnviar(preguntas, borrador) {
+  // vistas: las preguntas que el alumno tuvo en pantalla. Una de opción múltiple que vio y no marcó va como []
+  // («lo que no marques cuenta como que no está», 2.3.1); «No sé» sigue yendo como duda.
+  function respuestasParaEnviar(preguntas, borrador, vistas) {
     const r = {};
+    const vio = new Set(Array.isArray(vistas) ? vistas : []);
     for (const p of preguntas || []) {
       const v = (borrador || {})[p.id];
       if (v !== undefined && v !== null && respuestaValida(p, v)) r[p.id] = v;
+      else if (p.clase === 'elegir' && p.multiple && vio.has(p.id)) r[p.id] = [];
     }
     return r;
   }

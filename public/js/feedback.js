@@ -284,7 +284,7 @@
     const vistos = new Set();
     const salen = [];
     for (const it of (Array.isArray(items) ? items : [])) {
-      if (!esObjeto(it) || esProtector(it.protector) || typeof it.nombre !== 'string') continue;
+      if (!esObjeto(it) || esProtector(it.protector) || it.tipo === 'protector' || typeof it.nombre !== 'string') continue;
       const k = clave(it.nombre);
       if (!k || vistos.has(k)) continue;
       vistos.add(k);

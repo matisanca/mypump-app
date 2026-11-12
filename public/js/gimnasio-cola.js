@@ -177,7 +177,7 @@
       this.preparando = 0;          // fotos elegidas que todavía se están reduciendo: el envío las espera
     }
 
-    _borradorVacio() { return { gimnasioId: null, noHay: [], nota: '', quitar: [], respuestas: {}, envio: null, borrarPendientes: [] }; }
+    _borradorVacio() { return { gimnasioId: null, noHay: [], nota: '', quitar: [], respuestas: {}, vistas: [], envio: null, borrarPendientes: [] }; }
     get _kvBorrador() { return `borrador:${this.cuenta}`; }
     get _kvEstado() { return `estado:${this.cuenta}`; }
     _avisar() { try { this.alCambiar(); } catch (_) {} }
@@ -431,6 +431,13 @@
       this._guardarBorrador();
       this._avisar();
     }
+    /* El alumno vio la pregunta (una de opción múltiple sin marcar va como «no hay ninguna»). Sin _avisar: no cambia nada a la vista. */
+    marcarVista(id) {
+      const v = Array.isArray(this.borrador.vistas) ? this.borrador.vistas : [];
+      if (v.includes(id)) return;
+      this.borrador.vistas = [...v, id];
+      this._guardarBorrador();
+    }
     limpiarAvisoFoto() { this.avisoFoto = null; }
 
     /* La pantalla avisa cuántas fotos elegidas se están reduciendo: al terminar, sale lo que estaba esperando. */
@@ -628,7 +635,7 @@
           r = await this.rpc('mypump_gimnasio_enviar', { p_token: this.token, p_id: e.gimnasioId, p_no_hay: e.noHay, p_nota: e.nota, p_quitar: e.quitar });
         } else {
           const preguntas = this.abierta ? this.abierta.preguntas : [];
-          r = await this.rpc('mypump_gimnasio_responder', { p_token: this.token, p_id: e.gimnasioId, p_respuestas: G.respuestasParaEnviar(preguntas, this.borrador.respuestas) });
+          r = await this.rpc('mypump_gimnasio_responder', { p_token: this.token, p_id: e.gimnasioId, p_respuestas: G.respuestasParaEnviar(preguntas, this.borrador.respuestas, this.borrador.vistas) });
         }
         if (!r.ok) {
           if (r.clase === 'permanente') {      // 22023: error de programación, no se reintenta
@@ -644,7 +651,7 @@
         const j = r.data;
         this.borrador.envio = null;
         if (j.ok === true) {
-          if (e.tipo === 'responder') this.borrador.respuestas = {};
+          if (e.tipo === 'responder') { this.borrador.respuestas = {}; this.borrador.vistas = []; }
           await this._guardarBorrador();
           await this.refrescar();
           return;

@@ -109,6 +109,8 @@
       antes: noVacio(texto(o.antes)),
       cambio: noVacio(texto(o.cambio)),
       comprar: normalizarComprar(o.comprar),
+      // Un fármaco que indicó Mati (2.3.1): `protector: true` o `tipo: "protector"`. Va aparte, sin compra y sin marcar.
+      protector: booleano(o.protector) === true || texto(o.tipo) === 'protector',
     };
   }
 
@@ -794,14 +796,24 @@
   function tituloMomento(m, definido) {
     return (definido && noVacio(definido.nombre)) || NOMBRES_MOMENTOS[m] || mayuscula(m.replace(/_/g, ' ')) || m;
   }
+  const TITULO_PROTECTORES = 'Protectores';
   function vistaSuplementacion(s) {
     if (!s || !s.items.length) return null;
     const def = new Map();
     for (const m of s.dia) if (!def.has(m.id)) def.set(m.id, m);
     const tomas = new Map();
-    const ordenAparicion = [], sueltos = [], sale = [];
+    const ordenAparicion = [], sueltos = [], sale = [], protectores = [];
     s.items.forEach((it, i) => {
       if (it.estado === 'sale') { sale.push({ nombre: it.nombre, porQue: it.porQue, detalle: it.detalle, item: i }); return; }
+      if (it.protector) {
+        const pts = it.tomas.length ? it.tomas : [{ momento: it.momento, cantidad: it.cantidad, nota: it.nota, nombre: null }];
+        pts.forEach((t, n) => {
+          const m = noVacio(t.momento);
+          protectores.push({ id: `protector-${i}-${n}`, nombre: noVacio(t.nombre) || it.nombre, cantidad: noVacio(t.cantidad),
+            momento: m ? tituloMomento(m, def.get(m)) : null, nota: mayuscula(t.nota), item: i });
+        });
+        return;
+      }
       let ts = null;
       if (it.tomas.length) ts = it.tomas.map(t => ({ item: i, nombre: t.nombre, cantidad: t.cantidad, nota: t.nota }));
       else if (it.momento) ts = [{ item: i, nombre: null, cantidad: it.cantidad, nota: it.nota }];
@@ -846,7 +858,7 @@
       grupos.push({ id: m, titulo: tituloMomento(m, def.get(m)), filas: ts.map((t, n) => fila(t, n, m)) });
     }
     if (sueltos.length) grupos.push({ id: '_ademas', titulo: 'Además', filas: sueltos.map((t, n) => fila(t, n, '_ademas')) });
-    return { titulo: noVacio(s.titulo) || 'Tu suplementación', accion: s.accion, momentos: grupos, sigue: s.sigueTexto, sale };
+    return { titulo: noVacio(s.titulo) || 'Tu suplementación', accion: s.accion, momentos: grupos, sigue: s.sigueTexto, sale, protectores };
   }
 
   // ─── Fechas en una zona (la del teléfono o la de Argentina) ─────
@@ -1018,11 +1030,41 @@
     TEXTO_ADMITE: 'Mati te admite en la sala. Si tarda un poco, esperá ahí sin salir.',
     // «¿Cómo entro?», en el orden en que pasan las cosas.
     AYUDA_ENTRAR: [
-      'Tocás Entrar y se abre Google Meet. Si no lo tenés instalado, se abre en el navegador y funciona igual.',
+      'Tocás Entrar y se abre la reunión. Si te pide tu nombre, escribilo y tocá «Solicitar unirse».',
       'Mati te admite en la sala. Esperá ahí, no hace falta salir y volver a entrar.',
+      'Si se abre Gmail o la portada de Meet, copiá el código de la reunión, que aparece junto a Entrar, y pegalo en «Unirse con un código».',
       'Si se corta, volvé a la app y tocá Entrar de nuevo.',
       'Si no podés entrar, escribinos por el chat.',
     ],
+    // El código de la reunión (2.3.1): el respaldo de «Entrar».
+    TITULO_CODIGO: 'Código de la reunión',
+    TEXTO_COPIAR_CODIGO: 'Copiar código',
+    TEXTO_CODIGO_COPIADO: 'Código copiado',
+    // Solo en Android: sin la app de Meet, la web de Meet manda a Google Play (gemelo de Android).
+    TEXTO_SIN_APP_MEET: 'Si te pide instalar Google Meet, instalala y volvé a tocar Entrar.',
+    // Dónde se pega el código si «Entrar» no abre la reunión, en pasos cortos para gente mayor (Mati, 12/11).
+    TITULO_PASOS_CODIGO: 'Si no se abre la reunión:',
+    PASOS_CODIGO: [
+      'Tocá «Copiar código».',
+      'Abrí Google Meet.',
+      'Tocá «Unirse con un código».',
+      'Pegá el código y tocá «Unirse».',
+    ],
+    // El código de un link de Meet, «abc-defg-hij», o null (gemelo de iOS y Android). Acepta el código sin guiones y
+    // lo devuelve con guiones; ignora mayúsculas, la barra final y lo que venga después (`?authuser`, `#`).
+    codigoMeet: url => {
+      if (typeof url !== 'string') return null;
+      const m = /^https:\/\/(www\.)?meet\.google\.com(\/[^?#]*)?([?#].*)?$/i.exec(url.trim());
+      if (!m) return null;
+      const partes = (m[2] || '').split('/').filter(Boolean);
+      if (partes.length !== 1) return null;
+      const crudo = partes[0].toLowerCase();
+      let letras;
+      if (/^[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(crudo)) letras = crudo.replace(/-/g, '');
+      else if (/^[a-z]{10}$/.test(crudo)) letras = crudo;
+      else return null;
+      return `${letras.slice(0, 3)}-${letras.slice(3, 7)}-${letras.slice(7)}`;
+    },
     TEXTO_LISTO_AVISO: 'Mati te admite en la sala. Si tarda un poco, esperá ahí sin salir.',
     textoListoEntrar: desdeMin => `Vas a entrar a la videollamada desde la app, en Entreno. El botón se habilita ${desdeMin || RA.ENTRAR_DESDE_MIN} minutos antes.`,
 
@@ -1329,7 +1371,7 @@
     MAX_TEXTO, MAX_SEGUNDOS, HORAS_TARJETA, ZONA_BA, largo,
     texto, booleano, decimal, entero, lista, esObjeto, noVacio, textos, trimServidor,
     normalizarClip, normalizarGuia, normalizarResumen, normalizarAgenda, normalizarReserva, normalizarFranja,
-    R, RD, RA, RV, AvanceVideo, vistaSuplementacion, diaBA, desfase, esUuid,
+    R, RD, RA, RV, AvanceVideo, vistaSuplementacion, TITULO_PROTECTORES, diaBA, desfase, esUuid,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.ReglasGuia = API;

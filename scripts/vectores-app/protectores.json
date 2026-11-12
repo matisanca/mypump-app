@@ -1,0 +1,34 @@
+{
+  "_": "2.3.1: los protectores (fármacos que indica Mati: protector true o tipo \"protector\") van aparte de «Tu día», en «Protectores», con cantidad y momento, sin compra y sin marcar. Sin el campo, la vista queda como antes.",
+  "titulo": "Protectores",
+  "suplementacion": {
+    "dia": [{"id": "desayuno", "nombre": "Desayuno"}, {"id": "cena"}],
+    "items": [
+      {"nombre": "Creatina", "cantidad": "5 g", "momento": "desayuno"},
+      {"nombre": "Telmisartán", "cantidad": "40 mg", "momento": "desayuno", "protector": true, "nota": "con agua"},
+      {"nombre": "Omega 3", "cantidad": "2 cápsulas", "momento": "cena"},
+      {"nombre": "Ezetimibe", "tipo": "protector", "tomas": [{"momento": "cena", "cantidad": "10 mg"}, {"momento": "raro_x", "cantidad": "5 mg"}]},
+      {"nombre": "Cardioaspirina", "protector": true},
+      {"nombre": "Finasteride", "protector": true, "estado": "sale"}
+    ]
+  },
+  "momentos": [
+    {"id": "desayuno", "nombres": ["Creatina"]},
+    {"id": "cena", "nombres": ["Omega 3"]}
+  ],
+  "protectores": [
+    {"nombre": "Telmisartán", "cantidad": "40 mg", "momento": "Desayuno", "nota": "Con agua", "item": 1},
+    {"nombre": "Ezetimibe", "cantidad": "10 mg", "momento": "Cena", "nota": null, "item": 3},
+    {"nombre": "Ezetimibe", "cantidad": "5 mg", "momento": "Raro x", "nota": null, "item": 3},
+    {"nombre": "Cardioaspirina", "cantidad": null, "momento": null, "nota": null, "item": 4}
+  ],
+  "sale": ["Finasteride"],
+  "sinCampo": {
+    "momentos": [
+      {"id": "desayuno", "nombres": ["Creatina", "Telmisartán"]},
+      {"id": "cena", "nombres": ["Omega 3", "Ezetimibe"]},
+      {"id": "raro_x", "nombres": ["Ezetimibe"]},
+      {"id": "_ademas", "nombres": ["Cardioaspirina"]}
+    ]
+  }
+}

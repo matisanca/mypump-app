@@ -555,6 +555,7 @@ main{padding:var(--space-4)}
 .swap-delta{font-family:var(--font-num);font-size:11px;font-weight:700;min-width:44px;text-align:right;flex:0 0 auto}
 .swap-delta.ok{color:#16a34a}
 .swap-delta.warn{color:#f59e0b}
+.swap-delta.nd{color:var(--color-text-muted);font-weight:600}
 .swap-empty{padding:var(--space-6) var(--space-4);text-align:center;color:var(--color-text-muted);font-size:14px;line-height:1.6}
 .swap-sheet{max-height:88vh;display:flex;flex-direction:column}
 .swap-search-row{display:flex;align-items:center;gap:var(--space-2);margin:var(--space-2) 0}
@@ -672,6 +673,8 @@ main{padding:var(--space-4)}
 .supl-momento-tit{font-size:14px;font-weight:600;color:var(--color-brand-text);padding:var(--space-3) var(--space-4) 2px}
 .supl-fila{all:unset;box-sizing:border-box;display:block;width:100%;padding:var(--space-3) var(--space-4);cursor:pointer}
 .supl-fila + .supl-fila{border-top:1px solid var(--color-border)}
+.supl-protector{cursor:default}
+.supl-protector-momento{color:var(--color-brand-text)}
 .supl-fila-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:15px;color:var(--color-text-primary)}
 .supl-nombre{font-weight:600}
 .supl-cant{font-weight:600;font-family:var(--font-num);white-space:nowrap}
@@ -1441,6 +1444,14 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .dz-elegidas{color:var(--color-text-primary)}
 .dz-elegidas:not(.is-ok){color:var(--color-text-primary)}
 .dz-elegidas.is-ok{color:var(--color-brand-text)}
+.dz-como-se-lee{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;margin:10px 0 0;border:0;border-radius:999px;background:var(--color-bg-secondary);color:var(--color-brand-text);font:inherit;font-size:16px;font-weight:700;cursor:pointer}
+.dz-csl-ico{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand,#fff);font-size:14px;font-weight:800}
+.csl-pasos{margin:4px 0 16px;padding:0;list-style:none;counter-reset:csl}
+.csl-pasos li{counter-increment:csl;position:relative;padding:4px 0 4px 48px;margin:0 0 14px;font-size:18px;line-height:1.45;color:var(--color-text-primary)}
+.csl-pasos li::before{content:counter(csl);position:absolute;left:0;top:2px;width:34px;height:34px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand,#fff);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px}
+.csl-video{display:block;text-align:center;text-decoration:none;margin-bottom:8px}
+.dz-reemplazos{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:600;color:var(--color-text-primary)}
+.dz-reemp-deshacer{min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid var(--color-border-strong);background:transparent;color:var(--color-brand-text);font:inherit;font-weight:700;cursor:pointer}
 .dz-ejemplo{margin:0 0 var(--space-3);padding:12px 14px;border-radius:16px;background:var(--color-brand-subtle);font-size:14px}
 
 /* Dieta: tarjeta de comida */
@@ -4477,8 +4488,14 @@ function escapeHtml(s) {
 // Cacheado por slug/nombre del original — se invalida al recargar el catálogo.
 function exGetSubs(ex) {
   if (!window.MyPump || !window.MyPump.exerciseSwap) return [];
-  if (ex.tipo === 'calentamiento' || ex.tipo === 'cardio') return [];
   const orig = { nombre: ex._origNombre || ex.nombre, images: ex._origImages || ex.images, catalogo_slug: ex._origSlug || ex.images?._matched_slug || null };
+  // 2.3.1, como las apps: el cardio ofrece las otras máquinas de cardio (cinta, bici, elíptico, remo, escaladora).
+  if (CS && CS.esCardio(orig.nombre, ex.tipo, [orig.catalogo_slug, ex.catalogo_slug, ex.matched_slug])) {
+    const k = `cardio:${orig.catalogo_slug || orig.nombre || ''}`;
+    if (!_exSwapCache[k]) _exSwapCache[k] = window.MyPump.exerciseSwap.cardioSubstitutes(orig);
+    return _exSwapCache[k];
+  }
+  if (ex.tipo === 'calentamiento' || ex.tipo === 'cardio') return [];
   const entry = window.MyPump.exerciseSwap._resolve(orig);
   const key = entry ? entry.slug_en : `n:${(orig.nombre||'').toLowerCase()}`;
   if (!_exSwapCache[key]) _exSwapCache[key] = window.MyPump.exerciseSwap.findSubstitutes(orig);
@@ -5961,6 +5978,8 @@ function ocultarPreparacion(exId, ocultar) {
   renderTrain();
 }
 function _preparacionHtml(ex, series, noKg) {
+  const _rirPlan = getProgresionActual(ex, DATA.rutina.semana_actual).rir;
+  const _notaPrep = (n) => (n ? ReglasEntreno.notaParaAlumno(n, _rirPlan).trim() : '');   // 2.3.1: sin RIR, salvo reserva clínica
   if (!series.length) return '';
   const titulo = 'Calentamiento y aproximación';
   if (_preparacionOculta(ex.id)) {
@@ -5976,7 +5995,7 @@ function _preparacionHtml(ex, series, noKg) {
       <span class="prep-nombre">${ReglasEntreno.etiquetaPreparacion(s)}${s.opcional ? ' <small>opcional</small>' : ''}</span>
       <span class="prep-cant">${kg ? `${reps} × <b>${kg}</b>` : `${reps} reps`}</span>
       ${hecha ? '<span class="prep-ok">✓</span>' : ''}
-    </button>${s.nota ? `<div class="prep-nota">${escapeHtml(s.nota)}</div>` : ''}`;
+    </button>${_notaPrep(s.nota) ? `<div class="prep-nota">${escapeHtml(_notaPrep(s.nota))}</div>` : ''}`;
   }).join('');
   return `<div class="prep">
     <div class="prep-head"><span>${titulo}</span><button class="prep-ocultar" data-prep-ocultar="${ex.id}|1">Ocultar</button></div>
@@ -6066,8 +6085,12 @@ const _csKey = () => `mypump_cargas_${TOKEN || 'anon'}_${RUTINA_ID || 'demo'}`;
 const _csKeyOK = () => `mypump_ok_demorado_${TOKEN || 'anon'}`;
 
 function _csOn() { return !!(CS && web230()); }
+// La cinta, la bici o el elíptico van por tiempo, con la palanca 2.3.0 prendida o no (2.3.1): sin progresión, o con una
+// progresión cuyas reps de esta semana son una duración («10 min»), aunque el plan traiga `series`.
 function _csCardioPorTiempo(ex) {
-  return !!CS && !(ex.progresion && ex.progresion.length) && CS.esCardio(ex.nombre, ex.tipo, [ex.catalogo_slug, ex.matched_slug, ex._swapSlug]);
+  if (!CS || !ex || !CS.esCardio(ex.nombre, ex.tipo, [ex.catalogo_slug, ex.matched_slug, ex._swapSlug])) return false;
+  if (!(ex.progresion && ex.progresion.length)) return true;
+  return CS.repsEsTiempo(getProgresionActual(ex, DATA && DATA.rutina ? DATA.rutina.semana_actual : 1).reps);
 }
 function _csLeer() {
   _csCargas = {};
@@ -6851,7 +6874,8 @@ function renderExCard(ex, blockIdx) {
     const _diaFin = _diaFinalizado;
     const _prep = _preparacionDe(ex);
     const _csPanelS = _csDe(ex.id);
-    const _porTiempo = _csOn() && _csCardioPorTiempo(ex);   // la cinta va por tiempo: sin series, kg ni RIR
+    const _porTiempo = _csCardioPorTiempo(ex);   // la cinta va por tiempo: sin series, kg ni RIR (también sin la palanca 2.3.0)
+    const _notaTecnica = ex.notas_tecnica ? ReglasEntreno.notaParaAlumno(ex.notas_tecnica, prog.rir).trim() : '';   // 2.3.1: sin RIR, salvo reserva clínica del plan
     const _leyendaRir = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'Al fallo' : null;   // 2.3.0: nunca «Dejando N en reserva»
     // Selector de NIVEL/variante para ejercicios que lo tienen (ej: rueda abdominal).
     const variantePicker = _variantes ? `
@@ -6864,7 +6888,7 @@ function renderExCard(ex, blockIdx) {
     panel = `
     <div class="ex-panel">
       <div class="divider"></div>
-      ${_metricasHtml(ex, prog)}
+      ${_metricasHtml(ex, _porTiempo ? Object.assign({}, prog, { series: null }) : prog)}
       ${_progNota ? `<div class="ex-prog-nota ${_progNota.cambia ? 'is-cambio' : (_progNota.calibracion ? 'is-calibracion' : 'is-mantener')}">
         <span class="ex-prog-nota-lbl">${_progNota.cambia ? 'Cambio de la semana' : (_progNota.calibracion ? 'Semana 1' : 'Esta semana')}</span>
         <span class="ex-prog-nota-txt">${_progNota.texto}</span>
@@ -6940,11 +6964,11 @@ function renderExCard(ex, blockIdx) {
           </div>
         </div>`;
       })()}
-      ${(ex.notas_tecnica || ex.video_url) ? `
+      ${(_notaTecnica || ex.video_url) ? `
         <div class="ex-extras">
-          ${ex.notas_tecnica ? `
+          ${_notaTecnica ? `
             <button class="ex-extra-row is-note" data-acc="note-${ex.id}">${ICONS.note}<span class="label">Nota técnica de Mati</span><span class="chev">${ICONS.chevron}</span></button>
-            <div class="ex-extra-content" id="note-${ex.id}" hidden>${ex.notas_tecnica}</div>` : ''}
+            <div class="ex-extra-content" id="note-${ex.id}" hidden>${escapeHtml(_notaTecnica).replace(/\n/g, '<br>')}</div>` : ''}
           ${ex.video_url ? `
             <button class="ex-extra-row" data-acc="video-${ex.id}">${ICONS.video}<span class="label">Ver video tutorial</span><span class="chev">${ICONS.chevron}</span></button>
             <div class="ex-extra-content video" id="video-${ex.id}" hidden>
@@ -7398,7 +7422,7 @@ function bindTrainEvents() {
     _csVaciarDeshacer();
     const confirmedCount = exState.sets.filter(s => s.confirmed).length;
     let confirmed = true;
-    if (confirmedCount === 0 && !(_csOn() && _csCardioPorTiempo(getEffectiveEx(_exPorSlot(id))))) {
+    if (confirmedCount === 0 && !_csCardioPorTiempo(getEffectiveEx(_exPorSlot(id)))) {
       confirmed = await MyPump.ui.showConfirmModal({
         title: 'Terminaste sin cargar datos',
         body: 'No confirmaste ninguna serie. ¿Querés marcar este ejercicio como terminado de todas formas?',
@@ -8377,6 +8401,41 @@ function _comidasDelDia(ajustes) {
     _vistasDieta(), _efectivoDieta);
 }
 // El día como se ve hoy: cada comida con sus porciones de hoy y sus agregados.
+// 2.3.1: «¿Cómo se lee?» de Dieta: pocos pasos con número grande y, si Mati cargó un video, el botón para verlo.
+function abrirComoSeLee() {
+  const C = window.MyPump.comoSeLee;
+  const host = document.getElementById('modalHost');
+  if (!host) return;
+  const video = C.urlVideo();
+  host.innerHTML = `
+    <div class="modal-back" id="cslBack">
+      <div class="modal-sheet csl-sheet" role="dialog" aria-modal="true" aria-labelledby="cslTitulo">
+        <div class="modal-handle"></div>
+        <div class="modal-title" id="cslTitulo">${C.TITULO}</div>
+        <ol class="csl-pasos">${C.PASOS.map(p => `<li>${p}</li>`).join('')}</ol>
+        ${video ? `<a class="btn-secondary csl-video" href="${video.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${C.VER_VIDEO}</a>` : ''}
+        <button class="btn-primary" id="cslCerrar">${C.CERRAR}</button>
+      </div>
+    </div>`;
+  const cerrar = () => { host.innerHTML = ''; };
+  document.getElementById('cslCerrar').addEventListener('click', cerrar);
+  document.getElementById('cslBack').addEventListener('click', e => { if (e.target.id === 'cslBack') cerrar(); });
+}
+// 2.3.1: cuánto suman los reemplazos en las opciones elegidas del día y dónde están (para «Deshacer»).
+function _reemplazosDelDia() {
+  let suma = 0; const lugares = [];
+  const vistas = _vistasDieta();
+  for (const c of getActivePlan().comidas) {
+    const o = vistas[c.id] || 0;
+    ((c.options[o] || {}).foods || []).forEach((f, i) => {
+      const sw = getFoodSwap(f, c.id, o, i);
+      if (!sw) return;
+      suma += (Number(sw.current && sw.current.kcal) || 0) - (Number(f.kcal) || 0);
+      lugares.push([c.id, o, i]);
+    });
+  }
+  return { suma, lugares };
+}
 function _diaDieta() {
   const delDia = _comidasDelDia();
   return { delDia, dia: AjustesDieta.dia(delDia, STATE.ajustesDieta) };
@@ -8692,6 +8751,7 @@ function _bindBarraDias() {
   root.querySelectorAll('[data-dia]').forEach(b => b.addEventListener('click', () => irADiaDieta(b.getAttribute('data-dia'))));
   root.querySelectorAll('[data-dia-volver]').forEach(b => b.addEventListener('click', () => irADiaDieta(null)));
   root.querySelectorAll('[data-dia-copiar]').forEach(b => b.addEventListener('click', () => abrirCopiarAHoy(STATE.diaPasado && STATE.diaPasado.fecha)));
+  root.querySelectorAll('[data-como-se-lee]').forEach(b => b.addEventListener('click', abrirComoSeLee));
   root.querySelectorAll('[data-dia-copiar-otro]').forEach(b => b.addEventListener('click', () => abrirCopiarAHoy(DiasDieta.sumar(hoyLocal(), -1))));
   root.querySelectorAll('[data-dia-reintentar]').forEach(b => b.addEventListener('click', () => _refrescarDiaPasado()));
   const activa = root.querySelector('.dz-dia.is-active');
@@ -8971,7 +9031,10 @@ function renderDiet() {
   const lineaComidas = nHechas || nSalt
     ? `Comiste ${nHechas} de ${consumido.nComidas} comidas${nSalt ? ` · salteaste ${nSalt}` : ''}`
     : (esHoy ? 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.' : 'Tocá «Comí» en lo que comiste ese día y acá se va sumando.');
-  const lineaElegidas = `<div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? (esHoy ? 'Con tus ajustes de hoy' : 'Con tus ajustes de ese día') : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>`;
+  // 2.3.1: los reemplazos son para todos los días; la cabecera dice cuánto mueven y deja volver al plan de Mati.
+  const _txtReemp = esHoy && vistaEditable() ? window.MyPump.reemplazosKcal.renglon(_reemplazosDelDia().suma) : null;
+  const lineaReemplazos = _txtReemp ? `<div class="dz-linea dz-reemplazos" id="dzReemplazos"><span>${_txtReemp}</span><button type="button" class="dz-reemp-deshacer" data-reemp-deshacer>${window.MyPump.reemplazosKcal.DESHACER}</button></div>` : '';
+  const lineaElegidas = lineaReemplazos + `<div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? (esHoy ? 'Con tus ajustes de hoy' : 'Con tus ajustes de ese día') : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>`;
   const cabecera = !_w ? `
   <div class="dz-hdr">
     <div class="dz-ring">
@@ -9007,6 +9070,7 @@ function renderDiet() {
   ${barraDias}
   ${tipoDiaHtml}
   ${cabecera}
+  <button type="button" class="dz-como-se-lee" data-como-se-lee><span class="dz-csl-ico" aria-hidden="true">?</span>${window.MyPump.comoSeLee.BOTON}</button>
   ${esHoy && barraDias ? '<button class="dz-copiar-otro" data-dia-copiar-otro>Copiar de otro día</button>' : ''}
   ${DATA && DATA._dietaEjemplo ? '<div class="dz-ejemplo">Ejemplo: todavía no tenés dieta. Cuando Mati publique la tuya, la vas a ver acá.</div>' : ''}
   ${renderComidasLibres()}
@@ -9962,14 +10026,29 @@ function bindDietEvents() {
     if (!food) return;
     openSwapModal(food, comidaId, +optIdx, +foodIdx);
   }));
+  // 2.3.1: «Deshacer» de la cabecera: todos los reemplazos del día vuelven al plan, con confirmación.
+  $$('[data-reemp-deshacer]').forEach(btn => btn.addEventListener('click', async e => {
+    e.stopPropagation();
+    const { lugares } = _reemplazosDelDia();
+    if (!lugares.length) return;
+    const ok = await window.MyPump.ui.showConfirmModal({ title: '¿Volver a los alimentos de tu plan?', body: 'Se deshacen tus reemplazos y vuelven los alimentos que armó Mati, para todos tus días.', confirmLabel: 'Volver al plan', cancelLabel: 'Cancelar' });
+    if (!ok) return;
+    try { for (const [comidaId, o, i] of lugares) await _revertirSwap(comidaId, o, i, false); }
+    catch (err) { console.warn('[swap] deshacer:', err); }
+    renderDiet();
+  }));
   // Revertir swap — local + backend
-  $$('[data-revert]').forEach(btn => btn.addEventListener('click', async e => {
+  $$('[data-revert]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
     const [comidaId, optIdx, foodIdx] = btn.getAttribute('data-revert').split('|');
+    _revertirSwap(comidaId, optIdx, foodIdx, true);
+  }));
+  // La vuelta de un reemplazo al alimento del plan (también la usa «Deshacer» de la cabecera).
+  async function _revertirSwap(comidaId, optIdx, foodIdx, pintar) {
     const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
     delete STATE.foodSwaps[key];
     persistSwaps();
-    renderDiet();
+    if (pintar) renderDiet();
     if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
       // Por el Outbox y con la MISMA key que el swap: antes iba directo y sin
       // reintento, y no cancelaba un 'swap' pendiente — sin señal el
@@ -9981,7 +10060,7 @@ function bindDietEvents() {
       }
     }
     _planCambio(comidaId, +optIdx, +foodIdx);
-  }));
+  }
   // Ajustes del día (como la app): cantidad de un alimento, agregados y la comida entera.
   $$('[data-cant]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
@@ -14115,9 +14194,15 @@ function _vistaSupl(s) {
   const dia = Array.isArray(s.dia) ? s.dia.filter(m => m && _suplTxt(m.id)) : [];
   const def = {};
   dia.forEach(m => { if (!def[m.id]) def[m.id] = m; });
-  const tomas = {}, ordenAparicion = [], sueltos = [], sale = [];
+  const tomas = {}, ordenAparicion = [], sueltos = [], sale = [], protectores = [];
   items.forEach((it, i) => {
     if (it.estado === 'sale') { sale.push({ nombre: it.nombre, porQue: _suplTxt(it.por_que), item: i }); return; }
+    // 2.3.1: un fármaco que indicó Mati (protector true o tipo "protector") va aparte, sin compra y sin marcar.
+    if (it.protector === true || it.protector === 1 || it.protector === 'true' || it.tipo === 'protector') {
+      const pts = Array.isArray(it.tomas) && it.tomas.some(x => x && typeof x === 'object') ? it.tomas.filter(x => x && typeof x === 'object') : [it];
+      pts.forEach(x => protectores.push({ nombre: _suplTxt(x.nombre) || it.nombre, cantidad: _suplTxt(x.cantidad), momento: _suplTxt(x.momento), nota: _suplMayus(_suplTxt(x.nota)), item: i }));
+      return;
+    }
     const ts = Array.isArray(it.tomas) ? it.tomas.filter(x => x && typeof x === 'object') : [];
     let lista = null, momentos = [];
     if (ts.length) { lista = ts.map(x => ({ item: i, nombre: _suplTxt(x.nombre), cantidad: _suplTxt(x.cantidad), nota: _suplTxt(x.nota) })); momentos = ts.map(x => _suplTxt(x.momento) || ''); }
@@ -14142,7 +14227,8 @@ function _vistaSupl(s) {
   const grupos = [];
   orden.forEach(m => { if (tomas[m]) grupos.push({ id: m, titulo: titulo(m), filas: tomas[m].map(fila) }); });
   if (sueltos.length) grupos.push({ id: '_ademas', titulo: 'Además', filas: sueltos.map(fila) });
-  return { titulo: _suplTxt(s.titulo), accion: _suplTxt(s.accion), momentos: grupos, sigue: _suplTxt(s.sigue_texto), sale, items, dia, tituloMomento: titulo };
+  protectores.forEach(p => { p.momento = p.momento ? titulo(p.momento) : null; });
+  return { titulo: _suplTxt(s.titulo), accion: _suplTxt(s.accion), momentos: grupos, sigue: _suplTxt(s.sigue_texto), sale, items, dia, tituloMomento: titulo, protectores };
 }
 
 /* `dias` para el cliente (ReglasSuplementacion.textoDias): null = todos los días. */
@@ -14226,6 +14312,9 @@ function renderSupl() {
     ${(v.titulo || v.accion) ? `<div class="supl-cab">${v.titulo ? `<div class="supl-cab-tit">${E(v.titulo)}</div>` : ''}${v.accion ? `<div class="supl-cab-acc">${E(v.accion)}</div>` : ''}</div>` : ''}
     ${v.momentos.length ? `<div class="supl-ceja">Tu día</div>${v.momentos.map(m => `
       <div class="supl-momento"><div class="supl-momento-tit">${E(m.titulo)}</div>${m.filas.map(filaHtml).join('')}</div>`).join('')}` : ''}
+    ${v.protectores.length ? `<div class="supl-ceja">Protectores</div><div class="supl-momento" id="suplProtectores">${v.protectores.map(p => `
+      <div class="supl-fila supl-protector"><div class="supl-fila-top"><span class="supl-nombre">${E(p.nombre)}</span>${p.cantidad ? `<span class="supl-cant">${E(p.cantidad)}</span>` : ''}</div>
+      ${p.momento ? `<div class="supl-nota supl-protector-momento">${E(p.momento)}</div>` : ''}${p.nota ? `<div class="supl-nota">${E(p.nota)}</div>` : ''}</div>`).join('')}</div>` : ''}
     ${window.FeedbackUI ? window.FeedbackUI.supleHtml(s.items) : ''}
     ${v.sigue ? `<div class="supl-sigue"><b>Sigue igual.</b> ${E(v.sigue)}</div>` : ''}
     ${v.sale.length ? `<div class="supl-ceja">Dejás de tomar</div><div class="supl-momento">${v.sale.map(x => `
@@ -16025,10 +16114,10 @@ function openSwapModal(food, comidaId, optIdx, foodIdx) {
 // mostrada) para que selectSwapCard/confirmSwap sigan funcionando tras agrupar/filtrar.
 function _swapCardHtml(s, allSubs, food) {
   const origIdx = allSubs.indexOf(s);
-  const origKcal = food.kcal;
-  const kcalDiff = origKcal > 0 ? Math.round((s.kcal - origKcal) / origKcal * 100) : 0;
+  // 2.3.1: sin kcal en el original no hay porcentaje: «sin dato» (antes, un 0 % verde).
+  const kcalDiff = window.MyPump.reemplazosKcal.desvioPct(food.kcal, s.kcal);
   const sign = kcalDiff > 0 ? '+' : '';
-  const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
+  const dCls = kcalDiff === null ? 'nd' : Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
   const customBadge = s._isCustom ? '<span class="swap-custom-badge">★ Personalizado</span>' : '';
   const uniBadge = s._universal ? '<span class="swap-uni-badge" style="margin-left:6px">Global</span>' : '';
   const enLabel = s._en ? `<div class="swap-card-en" style="font-size:11px;color:var(--color-text-muted);margin-top:1px">${s._en}</div>` : '';
@@ -16039,7 +16128,7 @@ function _swapCardHtml(s, allSubs, food) {
       <div class="swap-card-qty">${s.qty} ${s.unit}</div>
       <div class="swap-card-macros">${s.kcal} kcal · ${s.prot}p / ${s.carb}c / ${s.fat}g</div>
     </div>
-    <span class="swap-delta ${dCls}">${sign}${kcalDiff}%</span>
+    <span class="swap-delta ${dCls}">${kcalDiff === null ? 'sin dato' : `${sign}${kcalDiff}%`}</span>
   </div>`;
 }
 
@@ -16051,8 +16140,8 @@ function _swapListHtml(subs, allSubs, food, query) {
       ? `Sin resultados para "${query}". Probá crear tu alimento personalizado.`
       : 'No hay sustitutos equivalentes disponibles dentro del rango de macros.'}</div>`;
   }
-  const uni  = subs.filter(s => s._universal);
-  const rest = subs.filter(s => !s._universal);
+  // 2.3.1: universales arriba y propios primero solo con hasta 15 % de desvío; el resto, por desvío.
+  const { universales: uni, resto: rest } = window.MyPump.reemplazosKcal.ordenar(subs, food.kcal);
   let html = '';
   if (uni.length) {
     html += `<div class="swap-subs-title">Disponibles en cualquier país</div>`;
@@ -16174,6 +16263,15 @@ async function confirmSwap() {
   const subs = _swapCache[cacheKey] || [];
   const sub = subs[_swapState.selected];
   if (!sub) return;
+  // 2.3.1: nunca subir las kcal del plan en silencio. Más del 10 % o más de 60 kcal: confirmar. «Elegir otro» vuelve a
+  // la lista con lo que se había buscado.
+  const RK = window.MyPump.reemplazosKcal;
+  if (RK.pideConfirmacion(original.kcal, sub.kcal)) {
+    const estado = Object.assign({}, _swapState);
+    const ok = await window.MyPump.ui.showConfirmModal({ title: RK.textoConfirmacion(original.kcal, sub.kcal), confirmLabel: RK.USAR_IGUAL, cancelLabel: RK.ELEGIR_OTRO });
+    _swapState = estado;
+    if (!ok) { renderSwapModal(); return; }
+  }
 
   const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
   const subAnclado = _conAncla(sub, original);
@@ -16730,6 +16828,14 @@ async function aplicarCustomFoodComoSwap(name) {
   const subs = window.MyPump.foodSwap.findSubstitutes(orig) || [];
   const sub  = subs.find(s => s.name.toLowerCase() === name.toLowerCase());
   if (!sub) { closeCustomFoodModal(); return; }  // fallback: queda en la lista para elegir
+  // 2.3.1: «Crear y usar» también confirma si suma más del 10 % o más de 60 kcal. «Elegir otro» vuelve a la lista con el creado elegido.
+  const RK = window.MyPump.reemplazosKcal;
+  if (RK.pideConfirmacion(orig.kcal, sub.kcal)) {
+    const estado = Object.assign({}, _swapState, { selected: subs.indexOf(sub), query: '' });  // como iOS y Android: queda elegido el creado
+    const ok = await window.MyPump.ui.showConfirmModal({ title: RK.textoConfirmacion(orig.kcal, sub.kcal), confirmLabel: RK.USAR_IGUAL, cancelLabel: RK.ELEGIR_OTRO });
+    _swapState = estado;
+    if (!ok) { _invalidateSwapCache(); renderSwapModal(); return; }
+  }
 
   const { comidaId, optIdx, foodIdx } = _swapState;
   const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;

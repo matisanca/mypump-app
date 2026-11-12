@@ -32,11 +32,13 @@
 
   const normal = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
+  // 2.3.1: el slug de una máquina de cardio gana sobre el tipo (una cinta cargada como «compuesto» va por tiempo). El
+  // nombre solo sigue respetando el tipo.
   function esCardio(nombre, tipo, slugs) {
     const t = String(tipo || '').trim().toLowerCase() || null;
     if (t === 'cardio') return true;
-    if (t !== null && t !== 'calentamiento') return false;
     if ((slugs || []).some(s => s && SLUGS_CARDIO.has(String(s).trim().toLowerCase()))) return true;
+    if (t !== null && t !== 'calentamiento') return false;
     const n = normal(nombre);
     return cardioRE.test(n) && !noCardioRE.test(n);
   }
@@ -62,10 +64,15 @@
     const prev = sem > 1 ? (prog.find(p => p.semana === sem - 1) || (sem - 2 < prog.length ? prog[sem - 2] : null) || null) : null;
     return { actual: cur, anterior: prev };
   }
+  // Las reps del plan son una duración pura («10 min», «20'», «30 s», «1 h»). Los intervalos («6 × 30 s / 30 s») no.
+  const tiempoRE = /^\s*\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?\s*(?:min(?:utos?|s)?|'|′|s|seg(?:undos?)?|h(?:oras?|s)?)\.?\s*$/i;
+  const repsEsTiempo = (r) => r != null && tiempoRE.test(String(r));
   function pauta(e, semana) {
     const prog = e.progresion || [];
     if (prog.length) {
       const p = prog[Math.max(0, Math.min(semanaJS(semana) - 1, prog.length - 1))];
+      // 2.3.1: el cardio con progresión por tiempo no arma filas aunque el plan traiga `series`.
+      if (repsEsTiempo(p.reps) && esCardio(e.nombre, e.tipo, [e.catalogo_slug, e.matched_slug, e._swapSlug])) return { series: null, reps: p.reps };
       return { series: p.series != null ? p.series : null, reps: p.reps != null ? p.reps : null };
     }
     return { series: e.series != null ? e.series : null, reps: e.reps != null ? e.reps : null };
@@ -367,7 +374,7 @@
 
   const API = {
     P, MANO, ESPERA_SEGUNDO_TOQUE, VENCE_EN, REPS_MAX,
-    esCardio, tope, repsDelPlan, pauta, esCalibracion,
+    esCardio, repsEsTiempo, SLUGS_CARDIO, tope, repsDelPlan, pauta, esCalibracion,
     corresponde, paso, mover, hasta, moda,
     GuardiaOK, Carga, ultimaSesion, kgTexto,
   };
