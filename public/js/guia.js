@@ -1626,6 +1626,7 @@
 .vl-codigo-icono{display:inline-flex}.vl-codigo-copiar svg{width:1.25rem;height:1.25rem}
 .vl-codigo-copiar:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .vl-codigo-pasos{color:#fff;font-size:1rem}
+.vl-tarjeta .vl-codigo-sin-app{margin:0;color:#fff;font-weight:600;font-size:.9375rem}
 .vl-tarjeta .vl-codigo-pasos>p{margin:0 0 .375rem;font-weight:700;color:#fff}
 .vl-codigo-pasos ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.375rem}
 .vl-codigo-pasos li{display:flex;align-items:flex-start;gap:.5rem}
@@ -1802,6 +1803,8 @@
   const ayudaAbierta = new Map();
   // «Código copiado»: hasta cuándo, por cliente (las tarjetas se repintan solas y no lo tienen que borrar).
   const codigoCopiadoHasta = new Map();
+  // En Android, la web de Meet sin la app manda a Google Play: se avisa que la instale y vuelva a tocar Entrar.
+  const esAndroid = /Android/i.test(navigator.userAgent || '');
 
   // El respaldo de «Entrar» (2.3.1), siempre a la vista debajo del botón: el código de la reunión, «Copiar código» y
   // dónde pegarlo, para cuando el link cae en Gmail o en la portada de Meet con otra cuenta.
@@ -1813,8 +1816,9 @@
         <span class="vl-codigo-titulo">${esc(RA.TITULO_CODIGO)}</span><span class="vl-codigo-valor">${esc(codigo)}</span></p>
       <button type="button" class="vl-codigo-copiar" data-vl="copiar-codigo" data-codigo="${esc(codigo)}"><span class="vl-codigo-icono">${
         copiado ? I.check : VI.copiar}</span><span class="vl-codigo-rotulo" aria-live="polite">${esc(copiado ? RA.TEXTO_CODIGO_COPIADO : RA.TEXTO_COPIAR_CODIGO)}</span></button>
-      <div class="vl-codigo-pasos"><p>${esc(RA.TITULO_PASOS_CODIGO)}</p><ol>${
-        RA.PASOS_CODIGO.map((t, n) => `<li><span aria-hidden="true">${n + 1}</span><span>${esc(t)}</span></li>`).join('')}</ol></div></div>`;
+${esAndroid ? `<p class="vl-codigo-sin-app">${esc(RA.TEXTO_SIN_APP_MEET)}</p>` : ''}
+      <div class="vl-codigo-pasos"><p role="heading" aria-level="3">${esc(RA.TITULO_PASOS_CODIGO)}</p><ol role="list">${
+        RA.PASOS_CODIGO.map((t, n) => `<li><span aria-hidden="true">${n + 1}</span><span><span class="gu-oculto">Paso ${n + 1}: </span>${esc(t)}</span></li>`).join('')}</ol></div></div>`;
   }
 
   async function copiarCodigo(texto) {

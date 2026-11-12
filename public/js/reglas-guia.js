@@ -1028,6 +1028,8 @@
     TITULO_CODIGO: 'Código de la reunión',
     TEXTO_COPIAR_CODIGO: 'Copiar código',
     TEXTO_CODIGO_COPIADO: 'Código copiado',
+    // Solo en Android: sin la app de Meet, la web de Meet manda a Google Play (gemelo de Android).
+    TEXTO_SIN_APP_MEET: 'Si te pide instalar Google Meet, instalala y volvé a tocar Entrar.',
     // Dónde se pega el código si «Entrar» no abre la reunión, en pasos cortos para gente mayor (Mati, 12/11).
     TITULO_PASOS_CODIGO: 'Si no se abre la reunión:',
     PASOS_CODIGO: [

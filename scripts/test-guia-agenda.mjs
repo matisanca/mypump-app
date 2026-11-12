@@ -676,7 +676,7 @@ function cuadroLuma(ancho, alto, x0, x1, y0 = 0, y1 = alto) {
     'https://meet.google.com:443/abc-defg-hij', 'https://x@meet.google.com/abc-defg-hij', 'https://meet.google.com/abc%2Ddefg-hij']) {
     eq(c(u), null, `código: ${u} no es una reunión`);
   }
-  for (const t of [RA.TITULO_CODIGO, RA.TEXTO_COPIAR_CODIGO, RA.TEXTO_CODIGO_COPIADO, RA.TITULO_PASOS_CODIGO, ...RA.PASOS_CODIGO, ...RA.AYUDA_ENTRAR]) {
+  for (const t of [RA.TITULO_CODIGO, RA.TEXTO_COPIAR_CODIGO, RA.TEXTO_CODIGO_COPIADO, RA.TEXTO_SIN_APP_MEET, RA.TITULO_PASOS_CODIGO, ...RA.PASOS_CODIGO, ...RA.AYUDA_ENTRAR]) {
     ok(!/entrenador|whatsapp/i.test(t) && !/\bIA\b/.test(t), `texto sin «entrenador», WhatsApp ni IA: ${t}`);
   }
   ok(RA.AYUDA_ENTRAR.some(t => t.includes('Unirse con un código')), '«¿Cómo entro?» dice dónde pegar el código');
