@@ -557,7 +557,7 @@ public struct VistaSuplementacion: Equatable, Sendable {
         public let item: Int
     }
 
-    public static let tituloProtectores = "Protectores, indicados por Mati"
+    public static let tituloProtectores = "Protectores"
 
     public struct Sale: Equatable, Sendable {
         public let nombre: String

@@ -590,7 +590,7 @@ private struct HojaCompras: View {
     }
 }
 
-/// «Protectores, indicados por Mati» (2.3.1): los fármacos que indicó Mati, aparte de los suplementos. Cada uno con su
+/// «Protectores» (2.3.1): los fármacos que indicó Mati, aparte de los suplementos. Cada uno con su
 /// cantidad y su momento; sin «Comprar», sin marcar y sin abrir el detalle comercial. Lo usan la pestaña y «Tu guía».
 struct BloqueProtectores: View {
     let protectores: [VistaSuplementacion.Protector]

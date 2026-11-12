@@ -458,7 +458,7 @@ private fun Seccion(titulo: String, contenido: @Composable () -> Unit) {
 }
 
 /**
- * «Protectores, indicados por Mati» (2.3.1): los fármacos que indicó Mati, aparte de los suplementos. Cada uno con su
+ * «Protectores» (2.3.1): los fármacos que indicó Mati, aparte de los suplementos. Cada uno con su
  * cantidad y su momento; sin «Comprar», sin marcar y sin abrir el detalle. Lo usan la pestaña y «Tu guía».
  */
 @Composable

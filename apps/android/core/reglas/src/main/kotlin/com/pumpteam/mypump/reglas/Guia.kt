@@ -438,7 +438,7 @@ object SuplementacionVista {
         val protectores: List<Protector> = emptyList(),
     )
 
-    const val TITULO_PROTECTORES = "Protectores, indicados por Mati"
+    const val TITULO_PROTECTORES = "Protectores"
 
     /** Los momentos con nombre propio de la web (`MOMENTOS`), en su orden. */
     val MOMENTOS: List<Pair<String, String>> = listOf(
