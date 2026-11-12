@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -67,6 +68,7 @@ import com.pumpteam.mypump.diseno.Tarjeta
 import com.pumpteam.mypump.entreno.Letras
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.FechaLocal
+import com.pumpteam.mypump.reglas.PasosHealthConnect
 import com.pumpteam.mypump.reglas.SaludVista
 import com.pumpteam.mypump.reglas.jsRound
 import java.time.Duration
@@ -408,6 +410,11 @@ fun SeccionHealthConnect(salud: ModeloSalud, alAbrirDiagnostico: () -> Unit) {
     val alcance = LocalAlcanceApp.current
     var mensaje by rememberSaveable { mutableStateOf<String?>(null) }
     var ocupado by remember { mutableStateOf(false) }
+    // 2.3.1: si los pasos llegan (y de qué app) o hay que activar Samsung Health → Health Connect → Pasos.
+    var pasos by remember { mutableStateOf<PasosHealthConnect.Estado?>(null) }
+    LaunchedEffect(conectado, ultimaSync, disponible) {
+        pasos = if (conectado && disponible == EstadoHealthConnect.DISPONIBLE) salud.estadoPasos() else null
+    }
     var toques by remember { mutableIntStateOf(0) }
     var ultimoToque by remember { mutableLongStateOf(0L) }
     val t = salud.textos
@@ -487,6 +494,10 @@ fun SeccionHealthConnect(salud: ModeloSalud, alAbrirDiagnostico: () -> Unit) {
                 })
             }
         }
+        pasos?.let { e ->
+            if (e.sinPasos) AvisoPasosSinLlegar()
+            else e.origen?.let { Text(PasosHealthConnect.pasosDesde(it), style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, modifier = Modifier.testTag("pasos-desde")) }
+        }
         // En Android los permisos se cambian en Health Connect, y desde acá se llega directo (Ajustes no tiene un camino
         // fijo: cambia con cada marca de teléfono).
         if (sinDatos && disponible == EstadoHealthConnect.DISPONIBLE) {
@@ -495,6 +506,39 @@ fun SeccionHealthConnect(salud: ModeloSalud, alAbrirDiagnostico: () -> Unit) {
             }
         }
         mensaje?.let { NotaSalud(it) }
+    }
+}
+
+/**
+ * 2.3.1: permiso de pasos dado y ningún paso en 3 días. Casi siempre es Samsung Health, que no escribe en Health Connect
+ * hasta que el alumno lo activa (la app no puede hacerlo por él). El botón abre Samsung Health si está; si no, Health Connect.
+ */
+@Composable
+private fun AvisoPasosSinLlegar() {
+    val c = MyPump.colores
+    val contexto = LocalContext.current
+    val samsung = remember { contexto.packageManager.getLaunchIntentForPackage(PasosHealthConnect.SAMSUNG_HEALTH) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(c.alerta.copy(alpha = 0.12f))
+            .padding(Espacio.m)
+            .testTag("aviso-pasos"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(PasosHealthConnect.TITULO, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = c.texto)
+        Text(PasosHealthConnect.TEXTO, style = MaterialTheme.typography.bodyLarge, color = c.texto)
+        BotonMarca(
+            if (samsung != null) PasosHealthConnect.BOTON_SAMSUNG else PasosHealthConnect.BOTON_HEALTH_CONNECT,
+            alTocar = {
+                val abrio = samsung?.let {
+                    try { contexto.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true } catch (_: ActivityNotFoundException) { false }
+                } ?: false
+                if (!abrio) abrirPermisosHealthConnect(contexto)
+            },
+            modifier = Modifier.testTag("abrir-samsung-health"),
+        )
     }
 }
 

@@ -6,6 +6,8 @@ import com.pumpteam.mypump.modelos.RecuperacionDia
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.DiaCalendario
 import com.pumpteam.mypump.reglas.FechaLocal
+import com.pumpteam.mypump.reglas.PasosHealthConnect
+import com.pumpteam.mypump.reglas.PlataformaSalud
 import com.pumpteam.mypump.reglas.PuntoSalud
 import com.pumpteam.mypump.reglas.RelojLocal
 import com.pumpteam.mypump.reglas.SaludVista
@@ -117,6 +119,27 @@ class ModeloSalud(
         sincronizador?.alCambiar = { alcance.launch { cargar() } }
         sincronizador?.alCambiarProgreso = { p -> _progresoHistorial.value = p?.let { ProgresoHistorial(it.first, it.second) } }
         leerEstado()
+    }
+
+    /**
+     * 2.3.1 (Android): si los pasos llegan y de qué app. Lee del teléfono (no de la base) los pasos de los últimos
+     * [PasosHealthConnect.DIAS] días con su paquete de origen. `null` en iPhone, sin fuente o si Health Connect falla: en
+     * ese caso no se avisa nada (mejor callar que mandar a tocar ajustes por un error nuestro).
+     */
+    suspend fun estadoPasos(): PasosHealthConnect.Estado? {
+        val f = sincronizador?.fuente ?: return null
+        if (f.plataforma != PlataformaSalud.ANDROID) return null
+        return try {
+            val permiso = "steps" in f.permisos(listOf("steps")).preguntados
+            if (!permiso) return PasosHealthConnect.evaluar(false, emptyList())
+            val hasta = ahora().toEpochMilli().toDouble()
+            val desde = hasta - PasosHealthConnect.DIAS * 86_400_000.0
+            PasosHealthConnect.evaluar(true, f.muestras("steps", desde, hasta, 1000).map { it.fuenteId to it.valor })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
     }
 
     // MARK: Ciclo de vida
