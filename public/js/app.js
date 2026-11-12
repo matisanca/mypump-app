@@ -882,3 +882,25 @@ window.MyPump.reemplazosKcal = {
   DESHACER: 'Deshacer',
 };
 
+
+/* 2.3.1 — «¿Cómo se lee?» de la cabecera de Dieta: los mismos textos que iOS y Android
+ * (apps/shared/vectores/como_se_lee.json). VIDEO: lugar para un video opcional (sin URL https no hay botón). */
+window.MyPump.comoSeLee = {
+  BOTON: '¿Cómo se lee?',
+  TITULO: 'Cómo se lee tu dieta',
+  PASOS: [
+    'Cada tarjeta es una comida del día, con lo que tenés que comer y cuántas calorías suma.',
+    'Si una comida tiene opciones (A, B…), elegí una sola: cualquiera te sirve igual.',
+    'Cuando comés, tocá «Comí». Arriba se va sumando lo que comiste en el día.',
+    '¿No conseguís un alimento? Tocá el botón de las dos flechas y elegí otro parecido.',
+  ],
+  VER_VIDEO: 'Ver el video',
+  CERRAR: 'Entendido',
+  VIDEO: null,
+  urlVideo(v) {
+    const t = (v === undefined ? this.VIDEO : v);
+    if (typeof t !== 'string') return null;
+    const s = t.trim();
+    return /^https:\/\/[^\s/"'<>]+(\/[^\s"'<>]*)?$/.test(s) ? s : null;
+  },
+};

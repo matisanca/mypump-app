@@ -1443,6 +1443,12 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .dz-elegidas{color:var(--color-text-primary)}
 .dz-elegidas:not(.is-ok){color:var(--color-text-primary)}
 .dz-elegidas.is-ok{color:var(--color-brand-text)}
+.dz-como-se-lee{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;margin:10px 0 0;border:0;border-radius:999px;background:var(--color-bg-secondary);color:var(--color-brand-text);font:inherit;font-size:16px;font-weight:700;cursor:pointer}
+.dz-csl-ico{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand,#fff);font-size:14px;font-weight:800}
+.csl-pasos{margin:4px 0 16px;padding:0;list-style:none;counter-reset:csl}
+.csl-pasos li{counter-increment:csl;position:relative;padding:4px 0 4px 48px;margin:0 0 14px;font-size:18px;line-height:1.45;color:var(--color-text-primary)}
+.csl-pasos li::before{content:counter(csl);position:absolute;left:0;top:2px;width:34px;height:34px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand,#fff);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px}
+.csl-video{display:block;text-align:center;text-decoration:none;margin-bottom:8px}
 .dz-reemplazos{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:600;color:var(--color-text-primary)}
 .dz-reemp-deshacer{min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid var(--color-border-strong);background:transparent;color:var(--color-brand-text);font:inherit;font-weight:700;cursor:pointer}
 .dz-ejemplo{margin:0 0 var(--space-3);padding:12px 14px;border-radius:16px;background:var(--color-brand-subtle);font-size:14px}
@@ -8392,6 +8398,26 @@ function _comidasDelDia(ajustes) {
     _vistasDieta(), _efectivoDieta);
 }
 // El día como se ve hoy: cada comida con sus porciones de hoy y sus agregados.
+// 2.3.1: «¿Cómo se lee?» de Dieta: pocos pasos con número grande y, si Mati cargó un video, el botón para verlo.
+function abrirComoSeLee() {
+  const C = window.MyPump.comoSeLee;
+  const host = document.getElementById('modalHost');
+  if (!host) return;
+  const video = C.urlVideo();
+  host.innerHTML = `
+    <div class="modal-back" id="cslBack">
+      <div class="modal-sheet csl-sheet" role="dialog" aria-modal="true" aria-labelledby="cslTitulo">
+        <div class="modal-handle"></div>
+        <div class="modal-title" id="cslTitulo">${C.TITULO}</div>
+        <ol class="csl-pasos">${C.PASOS.map(p => `<li>${p}</li>`).join('')}</ol>
+        ${video ? `<a class="btn-secondary csl-video" href="${video.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${C.VER_VIDEO}</a>` : ''}
+        <button class="btn-primary" id="cslCerrar">${C.CERRAR}</button>
+      </div>
+    </div>`;
+  const cerrar = () => { host.innerHTML = ''; };
+  document.getElementById('cslCerrar').addEventListener('click', cerrar);
+  document.getElementById('cslBack').addEventListener('click', e => { if (e.target.id === 'cslBack') cerrar(); });
+}
 // 2.3.1: cuánto suman los reemplazos en las opciones elegidas del día y dónde están (para «Deshacer»).
 function _reemplazosDelDia() {
   let suma = 0; const lugares = [];
@@ -8722,6 +8748,7 @@ function _bindBarraDias() {
   root.querySelectorAll('[data-dia]').forEach(b => b.addEventListener('click', () => irADiaDieta(b.getAttribute('data-dia'))));
   root.querySelectorAll('[data-dia-volver]').forEach(b => b.addEventListener('click', () => irADiaDieta(null)));
   root.querySelectorAll('[data-dia-copiar]').forEach(b => b.addEventListener('click', () => abrirCopiarAHoy(STATE.diaPasado && STATE.diaPasado.fecha)));
+  root.querySelectorAll('[data-como-se-lee]').forEach(b => b.addEventListener('click', abrirComoSeLee));
   root.querySelectorAll('[data-dia-copiar-otro]').forEach(b => b.addEventListener('click', () => abrirCopiarAHoy(DiasDieta.sumar(hoyLocal(), -1))));
   root.querySelectorAll('[data-dia-reintentar]').forEach(b => b.addEventListener('click', () => _refrescarDiaPasado()));
   const activa = root.querySelector('.dz-dia.is-active');
@@ -9040,6 +9067,7 @@ function renderDiet() {
   ${barraDias}
   ${tipoDiaHtml}
   ${cabecera}
+  <button type="button" class="dz-como-se-lee" data-como-se-lee><span class="dz-csl-ico" aria-hidden="true">?</span>${window.MyPump.comoSeLee.BOTON}</button>
   ${esHoy && barraDias ? '<button class="dz-copiar-otro" data-dia-copiar-otro>Copiar de otro día</button>' : ''}
   ${DATA && DATA._dietaEjemplo ? '<div class="dz-ejemplo">Ejemplo: todavía no tenés dieta. Cuando Mati publique la tuya, la vas a ver acá.</div>' : ''}
   ${renderComidasLibres()}
