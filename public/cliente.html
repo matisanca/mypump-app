@@ -16782,10 +16782,10 @@ async function aplicarCustomFoodComoSwap(name) {
   const subs = window.MyPump.foodSwap.findSubstitutes(orig) || [];
   const sub  = subs.find(s => s.name.toLowerCase() === name.toLowerCase());
   if (!sub) { closeCustomFoodModal(); return; }  // fallback: queda en la lista para elegir
-  // 2.3.1: «Crear y usar» también confirma si suma más del 10 % o más de 60 kcal. «Elegir otro» vuelve a la lista.
+  // 2.3.1: «Crear y usar» también confirma si suma más del 10 % o más de 60 kcal. «Elegir otro» vuelve a la lista con el creado elegido.
   const RK = window.MyPump.reemplazosKcal;
   if (RK.pideConfirmacion(orig.kcal, sub.kcal)) {
-    const estado = Object.assign({}, _swapState, { selected: null });
+    const estado = Object.assign({}, _swapState, { selected: subs.indexOf(sub), query: '' });  // como iOS y Android: queda elegido el creado
     const ok = await window.MyPump.ui.showConfirmModal({ title: RK.textoConfirmacion(orig.kcal, sub.kcal), confirmLabel: RK.USAR_IGUAL, cancelLabel: RK.ELEGIR_OTRO });
     _swapState = estado;
     if (!ok) { _invalidateSwapCache(); renderSwapModal(); return; }
