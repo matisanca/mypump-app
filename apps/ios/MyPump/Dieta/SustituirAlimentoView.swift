@@ -106,8 +106,16 @@ struct SustituirAlimentoView: View {
                     // "Crear y usar": si el motor lo ofrece como sustituto, se aplica de una (aplicarCustomFoodComoSwap).
                     resultado = MotorSustitutos.buscar(original: original, modelo: modelo)
                     if let s = resultado.opciones.first(where: { $0.sustituto.nombre.lowercased() == creado.nombre.lowercased() }) {
-                        alElegir(s.sustituto.foodData)
-                        cerrar()
+                        if ReemplazosKcal.pideConfirmacion(original: original.kcal, reemplazo: s.sustituto.kcal) {
+                            // 2.3.1: también confirma; «Elegir otro» deja la lista con el creado elegido.
+                            creando = false
+                            busqueda = ""
+                            elegido = s
+                            aConfirmar = s
+                        } else {
+                            alElegir(s.sustituto.foodData)
+                            cerrar()
+                        }
                     } else {
                         creando = false
                         busqueda = ""

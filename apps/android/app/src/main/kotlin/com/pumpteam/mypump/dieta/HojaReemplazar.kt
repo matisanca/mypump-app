@@ -142,7 +142,13 @@ fun HojaReemplazar(modelo: ModeloApp, original: Alimento, alElegir: (ValorJson) 
         val b = base
         val ahora = if (b == null) null else MotorSustitutos.buscar(original, b, modelo.alimentosPropios.value, modelo.excluir.value)
         val s = ahora?.opciones?.firstOrNull { it.nombre.lowercase() == a.nombre.lowercase() }
-        if (s != null) {
+        if (s != null && ReemplazosKcal.pideConfirmacion(original.kcal, s.kcal)) {
+            // 2.3.1: también confirma; «Elegir otro» deja la lista con el creado elegido.
+            creando = false
+            busqueda = ""
+            elegido = s.nombre.lowercase()
+            aConfirmar = s.nombre.lowercase()
+        } else if (s != null) {
             tactil.performHapticFeedback(HapticFeedbackType.Confirm)
             elegir(s)
         } else {
