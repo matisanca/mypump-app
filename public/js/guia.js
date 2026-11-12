@@ -1625,7 +1625,11 @@
 .vl-codigo-copiar{display:flex;align-items:center;justify-content:center;gap:.5rem;min-height:3.25rem;width:100%;border:2px solid #fff;border-radius:999px;background:transparent;color:#fff;font:inherit;font-size:1.0625rem;font-weight:600;cursor:pointer}
 .vl-codigo-icono{display:inline-flex}.vl-codigo-copiar svg{width:1.25rem;height:1.25rem}
 .vl-codigo-copiar:focus-visible{outline:3px solid #fff;outline-offset:2px}
-.vl-codigo-pegar{margin:0;font-size:.9375rem;color:#fff}
+.vl-codigo-pasos{color:#fff;font-size:1rem}
+.vl-tarjeta .vl-codigo-pasos>p{margin:0 0 .375rem;font-weight:700;color:#fff}
+.vl-codigo-pasos ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.375rem}
+.vl-codigo-pasos li{display:flex;align-items:flex-start;gap:.5rem}
+.vl-codigo-pasos li>span:first-child{flex:none;display:inline-flex;align-items:center;justify-content:center;width:1.5rem;height:1.5rem;border-radius:50%;background:rgba(255,255,255,.22);font-weight:700;font-size:.875rem}
 .vl-ayuda summary{list-style:none;min-height:2.75rem;display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.9375rem;font-weight:600;color:var(--color-brand-text)}
 .vl-ayuda summary::-webkit-details-marker{display:none}
 .vl-ayuda summary>svg{width:1.0625rem;height:1.0625rem;flex:0 0 auto}
@@ -1809,7 +1813,8 @@
         <span class="vl-codigo-titulo">${esc(RA.TITULO_CODIGO)}</span><span class="vl-codigo-valor">${esc(codigo)}</span></p>
       <button type="button" class="vl-codigo-copiar" data-vl="copiar-codigo" data-codigo="${esc(codigo)}"><span class="vl-codigo-icono">${
         copiado ? I.check : VI.copiar}</span><span class="vl-codigo-rotulo" aria-live="polite">${esc(copiado ? RA.TEXTO_CODIGO_COPIADO : RA.TEXTO_COPIAR_CODIGO)}</span></button>
-      <p class="vl-codigo-pegar">${esc(RA.TEXTO_PEGAR_CODIGO)}</p></div>`;
+      <div class="vl-codigo-pasos"><p>${esc(RA.TITULO_PASOS_CODIGO)}</p><ol>${
+        RA.PASOS_CODIGO.map((t, n) => `<li><span aria-hidden="true">${n + 1}</span><span>${esc(t)}</span></li>`).join('')}</ol></div></div>`;
   }
 
   async function copiarCodigo(texto) {

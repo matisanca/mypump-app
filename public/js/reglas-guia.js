@@ -1028,8 +1028,14 @@
     TITULO_CODIGO: 'Código de la reunión',
     TEXTO_COPIAR_CODIGO: 'Copiar código',
     TEXTO_CODIGO_COPIADO: 'Código copiado',
-    // Dónde se pega el código si «Entrar» no abre la reunión (Gmail o la portada de Meet con otra cuenta).
-    TEXTO_PEGAR_CODIGO: 'Si no se abre la reunión, entrá a Google Meet, tocá «Unirse con un código» y pegalo.',
+    // Dónde se pega el código si «Entrar» no abre la reunión, en pasos cortos para gente mayor (Mati, 12/11).
+    TITULO_PASOS_CODIGO: 'Si no se abre la reunión:',
+    PASOS_CODIGO: [
+      'Tocá «Copiar código».',
+      'Abrí Google Meet.',
+      'Tocá «Unirse con un código».',
+      'Pegá el código y tocá «Unirse».',
+    ],
     // El código de un link de Meet, «abc-defg-hij», o null (gemelo de iOS y Android). Acepta el código sin guiones y
     // lo devuelve con guiones; ignora mayúsculas, la barra final y lo que venga después (`?authuser`, `#`).
     codigoMeet: url => {

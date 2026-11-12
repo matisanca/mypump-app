@@ -148,7 +148,8 @@ try {
     comprobar((await texto('.vl-admite')) === 'Mati te admite en la sala. Si tarda un poco, esperá ahí sin salir.', 'texto de la sala');
     // 2.3.1: el código de la reunión debajo de «Entrar», con «Copiar código» y dónde pegarlo.
     comprobar((await texto('.vl-codigo-valor')) === 'abc-defg-hij', 'el código de la reunión a la vista');
-    comprobar((await texto('.vl-codigo-pegar')).includes('«Unirse con un código»'), 'dónde pegar el código');
+    comprobar((await texto('.vl-codigo-pasos')).includes('Si no se abre la reunión:') && (await evaluar('document.querySelectorAll(".vl-codigo-pasos li").length')) === 4,
+      'dónde pegar el código, en 4 pasos');
     comprobar((await texto('.vl-codigo-copiar')) === 'Copiar código', '«Copiar código»');
     await capturar(`web-tarjeta-entrar-${tema}`);
     await clic('[data-vl="copiar-codigo"]');
