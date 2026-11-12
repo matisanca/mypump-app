@@ -111,7 +111,11 @@ struct SustituirAlimentoView: View {
                             creando = false
                             busqueda = ""
                             elegido = s
-                            aConfirmar = s
+                            // La alerta se pide después del pop: si se presenta mientras vuelve la pantalla, SwiftUI la pierde.
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(450))
+                                aConfirmar = s
+                            }
                         } else {
                             alElegir(s.sustituto.foodData)
                             cerrar()
