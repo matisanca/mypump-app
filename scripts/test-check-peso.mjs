@@ -202,6 +202,22 @@ t('lo escrito sin guardar sobrevive al repintado y conserva el foco', () => {
   igual(c.$('pesoInput').value, '69,9', 'campo');
   igual(c.doc.activeElement && c.doc.activeElement.id, 'pesoInput', 'foco');
 });
+t('si se fue sin guardar, la tarjeta vuelve al peso guardado (no queda un borrador suelto)', () => {
+  const c = contexto();
+  c.ctx.STATE.salud = [{ fecha: '2026-11-12', tipo: 'peso_kg', valor: 70.2, fuente: 'manual' }];
+  c.ctx.renderMydayPeso();
+  c.escribir('pesoInput', '7');
+  c.doc.activeElement = null;   // se fue a otra parte
+  c.ctx.renderMydayPeso();
+  igual(c.$('pesoInput').value, '70,2', 'campo');
+});
+t('un peso de hoy con dos decimales que viene puesto no se reenvía redondeado', () => {
+  const c = contexto();
+  c.ctx.STATE.salud = [{ fecha: '2026-11-12', tipo: 'peso_kg', valor: 69.85, fuente: 'manual' }];
+  c.lleno(); c.ctx.renderMydayCheckin();
+  c.enviar();
+  igual(c.cola.filter(o => o.kind === 'peso').length, 0, 'pesos en la cola');
+});
 t('al guardar, el borrador se limpia y queda el valor guardado', () => {
   const c = contexto();
   c.ctx.renderMydayPeso();

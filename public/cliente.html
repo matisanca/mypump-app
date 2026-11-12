@@ -11580,6 +11580,8 @@ function renderMydayPeso() {
   // Un repintado (llega la salud del servidor, el «pump» del día) no borra lo que está escribiendo ni le saca el foco.
   const previo = document.getElementById('pesoInput');
   const escribiendo = !!previo && document.activeElement === previo;
+  // El borrador vale solo mientras escribe: si se fue sin guardar, vuelve el peso guardado (no queda un «7» suelto).
+  if (!escribiendo) STATE.pesoBorrador = null;
   const valorCampo = STATE.pesoBorrador != null ? STATE.pesoBorrador : (hoyVal ? fmtKg(hoyVal.kg) : '');
   el.innerHTML = `
     <div class="myday-section">
@@ -13182,7 +13184,8 @@ function renderMydayCheckin() {
       kilos = Math.round(v * 10) / 10;
     }
     // El que ya está cargado hoy (viene puesto en el campo) no se manda de nuevo.
-    if (kilos != null && kilos !== _cgPesoDeHoy()) {
+    const pesoHoy = _cgPesoDeHoy();
+    if (kilos != null && (pesoHoy == null || kilos !== Number(_ckKg(pesoHoy).replace(',', '.')))) {
       STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === hoyLocal() && r.fuente === 'manual'));
       STATE.salud.push({ fecha: hoyLocal(), tipo: 'peso_kg', valor: kilos, fuente: 'manual' });
       if (!DEMO) Outbox.enqueue('peso', { fecha: hoyLocal(), valor: kilos }, 'peso_' + hoyLocal());
