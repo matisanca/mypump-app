@@ -1020,7 +1020,7 @@
     AYUDA_ENTRAR: [
       'Tocás Entrar y se abre la reunión. Si te pide tu nombre, escribilo y tocá «Solicitar unirse».',
       'Mati te admite en la sala. Esperá ahí, no hace falta salir y volver a entrar.',
-      'Si se abre Gmail o la portada de Meet, copiá el código de abajo y pegalo en «Unirse con un código».',
+      'Si se abre Gmail o la portada de Meet, copiá el código de la reunión, que aparece junto a Entrar, y pegalo en «Unirse con un código».',
       'Si se corta, volvé a la app y tocá Entrar de nuevo.',
       'Si no podés entrar, escribinos por el chat.',
     ],

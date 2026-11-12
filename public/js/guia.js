@@ -1623,7 +1623,7 @@
 .vl-codigo-titulo{font-size:.9375rem;font-weight:600;color:rgba(255,255,255,.9)}
 .vl-codigo-valor{font:700 1.75rem/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#fff;user-select:all;-webkit-user-select:all;overflow-wrap:break-word}
 .vl-codigo-copiar{display:flex;align-items:center;justify-content:center;gap:.5rem;min-height:3.25rem;width:100%;border:2px solid #fff;border-radius:999px;background:transparent;color:#fff;font:inherit;font-size:1.0625rem;font-weight:600;cursor:pointer}
-.vl-codigo-copiar svg{width:1.25rem;height:1.25rem}
+.vl-codigo-icono{display:inline-flex}.vl-codigo-copiar svg{width:1.25rem;height:1.25rem}
 .vl-codigo-copiar:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .vl-codigo-pegar{margin:0;font-size:.9375rem;color:#fff}
 .vl-ayuda summary{list-style:none;min-height:2.75rem;display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.9375rem;font-weight:600;color:var(--color-brand-text)}
@@ -1807,8 +1807,8 @@
     const deletreado = codigo.split('').map(c => (c === '-' ? 'guion' : c)).join(' ');
     return `<div class="vl-codigo"><p class="vl-codigo-dato" role="text" aria-label="${esc(`${RA.TITULO_CODIGO}: ${deletreado}`)}">
         <span class="vl-codigo-titulo">${esc(RA.TITULO_CODIGO)}</span><span class="vl-codigo-valor">${esc(codigo)}</span></p>
-      <button type="button" class="vl-codigo-copiar" data-vl="copiar-codigo" data-codigo="${esc(codigo)}">${copiado ? I.check : VI.copiar}<span aria-live="polite">${
-        esc(copiado ? RA.TEXTO_CODIGO_COPIADO : RA.TEXTO_COPIAR_CODIGO)}</span></button>
+      <button type="button" class="vl-codigo-copiar" data-vl="copiar-codigo" data-codigo="${esc(codigo)}"><span class="vl-codigo-icono">${
+        copiado ? I.check : VI.copiar}</span><span class="vl-codigo-rotulo" aria-live="polite">${esc(copiado ? RA.TEXTO_CODIGO_COPIADO : RA.TEXTO_COPIAR_CODIGO)}</span></button>
       <p class="vl-codigo-pegar">${esc(RA.TEXTO_PEGAR_CODIGO)}</p></div>`;
   }
 
@@ -2044,13 +2044,17 @@
           }
           // En el lugar (la tarjeta de la guía no pasa por repintarTarjetas) y en el mapa (por si se repinta antes).
           codigoCopiadoHasta.set(m.token, Date.now() + 3000);
+          // Solo el ícono y el texto: el <span aria-live> queda el mismo, así el lector de pantalla dice «Código copiado».
           const poner = (el, copiado) => {
-            el.innerHTML = `${copiado ? I.check : VI.copiar}<span aria-live="polite">${esc(copiado ? RA.TEXTO_CODIGO_COPIADO : RA.TEXTO_COPIAR_CODIGO)}</span>`;
+            const ic = el.querySelector('.vl-codigo-icono'), ro = el.querySelector('.vl-codigo-rotulo');
+            if (ic) ic.innerHTML = copiado ? I.check : VI.copiar;
+            if (ro) ro.textContent = copiado ? RA.TEXTO_CODIGO_COPIADO : RA.TEXTO_COPIAR_CODIGO;
           };
           poner(b, true);
           setTimeout(() => {
+            if ((codigoCopiadoHasta.get(m.token) || 0) > Date.now()) return;  // Otro toque después: vuelve su propio timer.
             document.querySelectorAll(`[data-vl-token="${CSS.escape(m.token)}"] [data-vl="copiar-codigo"]`).forEach(el => poner(el, false));
-          }, 3000);
+          }, 3050);
         });
         break;
       }

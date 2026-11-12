@@ -672,7 +672,8 @@ function cuadroLuma(ancho, alto, x0, x1, y0 = 0, y1 = alto) {
   for (const u of [null, undefined, '', 'http://meet.google.com/abc-defg-hij', 'https://meet.google.com/', 'https://meet.google.com',
     'https://meet.google.com/abc', 'https://meet.google.com/new', 'https://meet.google.com/lookup/abc-defg-hij',
     'https://meet.google.com/abcd-efg-hij', 'https://meet.google.com/abc-defg-hi1', 'https://meet.google.com/abc-defg-hijk',
-    'https://meet.google.com.evil.com/abc-defg-hij', 'https://evil.com/abc-defg-hij', 'https://meet.google.com/abc-dé-fghij']) {
+    'https://meet.google.com.evil.com/abc-defg-hij', 'https://evil.com/abc-defg-hij', 'https://meet.google.com/abc-dé-fghij',
+    'https://meet.google.com:443/abc-defg-hij', 'https://x@meet.google.com/abc-defg-hij', 'https://meet.google.com/abc%2Ddefg-hij']) {
     eq(c(u), null, `código: ${u} no es una reunión`);
   }
   for (const t of [RA.TITULO_CODIGO, RA.TEXTO_COPIAR_CODIGO, RA.TEXTO_CODIGO_COPIADO, RA.TEXTO_PEGAR_CODIGO, ...RA.AYUDA_ENTRAR]) {
