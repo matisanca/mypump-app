@@ -121,6 +121,15 @@ final class VideollamadaUITests: XCTestCase {
             XCTAssertEqual(app.state, .runningForeground, "«Entrar» no tiene que sacar al alumno de la app")
             XCTAssertFalse(entrar.isHittable, "La reunión se abre encima de la tarjeta")
             captura("reunion-adentro", oscuro: oscuro)
+            // Al cerrar el navegador se vuelve a la tarjeta y la app sigue respondiendo (la ventana de la reunión se va).
+            // El botón de listo del navegador no está en el árbol de accesibilidad: se toca por su lugar (arriba a la izquierda).
+            if app.buttons["Cancelar"].waitForExistence(timeout: 5) { app.buttons["Cancelar"].tap() }
+            let listo = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 38, dy: 84))
+            for _ in 0..<3 where !entrar.waitForHittable(3) { listo.tap() }
+            XCTAssertTrue(entrar.waitForHittable(8), "Después de cerrar, «Entrar» se puede tocar de nuevo")
+            app.buttons["videollamada-copiar-codigo"].tap()
+            XCTAssertTrue(app.buttons["videollamada-copiar-codigo"].label.contains("Código copiado"),
+                          "La app sigue respondiendo después de cerrar la reunión")
         }
     }
 
@@ -151,5 +160,16 @@ final class VideollamadaUITests: XCTestCase {
         XCTAssertTrue(app.buttons["horario-franja-f1"].waitForExistence(timeout: 5))
         app.buttons["horario-franja-f1"].tap()
         captura("elegir-letra-grande", oscuro: false)
+    }
+}
+
+private extension XCUIElement {
+    func waitForHittable(_ segundos: TimeInterval) -> Bool {
+        let fin = Date().addingTimeInterval(segundos)
+        while Date() < fin {
+            if exists && isHittable { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+        return exists && isHittable
     }
 }

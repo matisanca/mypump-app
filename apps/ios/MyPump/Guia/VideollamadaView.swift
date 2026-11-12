@@ -353,7 +353,9 @@ final class ReunionMeet: NSObject, @preconcurrency SFSafariViewControllerDelegat
         let w = UIWindow(windowScene: escena)
         w.windowLevel = .normal + 1
         w.overrideUserInterfaceStyle = anterior?.overrideUserInterfaceStyle ?? .unspecified
-        let raiz = UIViewController()
+        // La ventana se va cuando el navegador se cierra: por el delegado y, por si no llega (en el simulador de iOS 26 el
+        // «listo» cerraba sin avisar y la ventana vacía quedaba tapando los toques), cuando la raíz vuelve a aparecer.
+        let raiz = RaizReunion { [weak self] in self?.cerrar() }
         raiz.view.backgroundColor = .clear
         w.rootViewController = raiz
         w.makeKeyAndVisible()
@@ -366,10 +368,37 @@ final class ReunionMeet: NSObject, @preconcurrency SFSafariViewControllerDelegat
         raiz.present(c, animated: true)
     }
 
-    func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
-        ventana?.isHidden = true
+    func safariViewControllerDidFinish(_ controller: SFSafariViewController) { cerrar() }
+
+    private func cerrar() {
+        guard let w = ventana else { return }
+        w.isHidden = true
+        w.rootViewController = nil
         ventana = nil
         anterior?.makeKey()
+    }
+}
+
+/// La raíz vacía de la ventana de la reunión: avisa cuando vuelve a aparecer después de haber mostrado el navegador.
+private final class RaizReunion: UIViewController {
+    private let alVolver: () -> Void
+    private var mostro = false
+
+    init(alVolver: @escaping () -> Void) {
+        self.alVolver = alVolver
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if mostro && presentedViewController == nil { alVolver() }
+    }
+
+    override func present(_ vc: UIViewController, animated: Bool, completion: (() -> Void)? = nil) {
+        mostro = true
+        super.present(vc, animated: animated, completion: completion)
     }
 }
 
