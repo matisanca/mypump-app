@@ -1618,6 +1618,14 @@
 .vl-linea{display:flex;align-items:flex-start;gap:.5rem;font-size:.9375rem;font-weight:500}
 .vl-linea svg{width:1.0625rem;height:1.0625rem;flex:0 0 auto;margin-top:.0625rem;color:var(--color-brand-text)}
 .vl-admite{font-size:.9375rem}
+.vl-codigo{display:flex;flex-direction:column;gap:.5rem;padding:.875rem;border-radius:1rem;background:rgba(255,255,255,.14)}
+.vl-codigo-dato{display:flex;flex-direction:column;gap:.125rem;margin:0}
+.vl-codigo-titulo{font-size:.9375rem;font-weight:600;color:rgba(255,255,255,.9)}
+.vl-codigo-valor{font:700 1.75rem/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#fff;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
+.vl-codigo-copiar{display:flex;align-items:center;justify-content:center;gap:.5rem;min-height:3.25rem;width:100%;border:2px solid #fff;border-radius:999px;background:transparent;color:#fff;font:inherit;font-size:1.0625rem;font-weight:600;cursor:pointer}
+.vl-codigo-copiar svg{width:1.25rem;height:1.25rem}
+.vl-codigo-copiar:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.vl-codigo-pegar{margin:0;font-size:.9375rem;color:#fff}
 .vl-ayuda summary{list-style:none;min-height:2.75rem;display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.9375rem;font-weight:600;color:var(--color-brand-text)}
 .vl-ayuda summary::-webkit-details-marker{display:none}
 .vl-ayuda summary>svg{width:1.0625rem;height:1.0625rem;flex:0 0 auto}
@@ -1783,10 +1791,40 @@
     pregunta: svg('<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2.9-1.2 1.8v.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/>'),
     cambiar: svg('<path d="M4.5 9.5a7.5 7.5 0 0 1 13.2-3.2L19.5 8M19.5 4v4h-4M19.5 14.5a7.5 7.5 0 0 1-13.2 3.2L4.5 16M4.5 20v-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'),
     tilde: svg('<circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M7.5 12.3l3 3 6-6.3" fill="none" stroke="var(--color-brand)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'),
+    copiar: svg('<rect x="8.5" y="8.5" width="11" height="12" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 5.5V5a1.7 1.7 0 0 0-1.7-1.7H6A1.7 1.7 0 0 0 4.3 5v9.5A1.7 1.7 0 0 0 6 16.2h.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'),
     persona: svg('<circle cx="10" cy="8" r="3.6" fill="currentColor"/><path d="M3.5 19.5a6.5 6.5 0 0 1 13 0z" fill="currentColor"/><path d="M15.5 12.5l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'),
   };
   // «¿Cómo entro?» abierto o cerrado, por cliente (los repintados no lo cierran).
   const ayudaAbierta = new Map();
+  // «Código copiado»: hasta cuándo, por cliente (las tarjetas se repintan solas y no lo tienen que borrar).
+  const codigoCopiadoHasta = new Map();
+
+  // El respaldo de «Entrar» (2.3.1), siempre a la vista debajo del botón: el código de la reunión, «Copiar código» y
+  // dónde pegarlo, para cuando el link cae en Gmail o en la portada de Meet con otra cuenta.
+  function htmlCodigoReunion(m, codigo) {
+    if (!codigo) return '';
+    const copiado = (codigoCopiadoHasta.get(m.token) || 0) > Date.now();
+    const deletreado = codigo.split('').map(c => (c === '-' ? 'guion' : c)).join(' ');
+    return `<div class="vl-codigo"><p class="vl-codigo-dato" role="text" aria-label="${esc(`${RA.TITULO_CODIGO}: ${deletreado}`)}">
+        <span class="vl-codigo-titulo">${esc(RA.TITULO_CODIGO)}</span><span class="vl-codigo-valor">${esc(codigo)}</span></p>
+      <button type="button" class="vl-codigo-copiar" data-vl="copiar-codigo" data-codigo="${esc(codigo)}">${copiado ? I.check : VI.copiar}<span aria-live="polite">${
+        esc(copiado ? RA.TEXTO_CODIGO_COPIADO : RA.TEXTO_COPIAR_CODIGO)}</span></button>
+      <p class="vl-codigo-pegar">${esc(RA.TEXTO_PEGAR_CODIGO)}</p></div>`;
+  }
+
+  async function copiarCodigo(texto) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(texto); return true; }
+    } catch (_) { /* sigue con el respaldo */ }
+    try {
+      const t = document.createElement('textarea');
+      t.value = texto; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select(); t.setSelectionRange(0, texto.length);
+      const ok = document.execCommand('copy');
+      t.remove();
+      return ok;
+    } catch (_) { return false; }
+  }
 
   function htmlVideollamada(m, r, ahora, enEntreno) {
     const ag = m.agenda, desdeMin = ag.entrarDesdeMin;
@@ -1810,7 +1848,8 @@
       h += `<p class="vl-reservando" role="status"><span class="gu-girando gu-chico" aria-hidden="true"></span><span>${esc(ag.textos.pendiente)}</span></p>`;
     } else if (activa) {
       h += `<div class="vl-entrar-zona"><p class="vl-ya">${esc(ag.textos.entrar(r))}</p>
-        <a class="vl-boton vl-entrar" href="${esc(r.meetUrl)}" target="_blank" rel="noopener noreferrer" title="Abre Google Meet. Mati te admite en la sala">${I.video}<span>Entrar a la videollamada</span></a></div>`;
+        <a class="vl-boton vl-entrar" href="${esc(r.meetUrl)}" target="_blank" rel="noopener noreferrer" title="Abre la reunión de Google Meet. Mati te admite en la sala">${I.video}<span>Entrar a la videollamada</span></a>${
+        htmlCodigoReunion(m, RA.codigoMeet(r.meetUrl))}</div>`;
     } else {
       const cuenta = RA.textoCuenta(e, desdeMin);
       h += `<div class="vl-entrar-zona"><button type="button" class="vl-boton" disabled>${I.candado}<span>Entrar</span></button>${
@@ -1994,6 +2033,27 @@
         break;
       }
       case 'calendario': agregarAlCalendario(m.reservaTarjeta()); break;
+      case 'copiar-codigo': {
+        const codigo = b.dataset.codigo;
+        copiarCodigo(codigo).then(ok => {
+          if (!ok) {
+            // Sin portapapeles: el código queda seleccionado para copiarlo a mano.
+            const v = b.parentElement && b.parentElement.querySelector('.vl-codigo-valor');
+            if (v) { const rg = document.createRange(); rg.selectNodeContents(v); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rg); }
+            return;
+          }
+          // En el lugar (la tarjeta de la guía no pasa por repintarTarjetas) y en el mapa (por si se repinta antes).
+          codigoCopiadoHasta.set(m.token, Date.now() + 3000);
+          const poner = (el, copiado) => {
+            el.innerHTML = `${copiado ? I.check : VI.copiar}<span aria-live="polite">${esc(copiado ? RA.TEXTO_CODIGO_COPIADO : RA.TEXTO_COPIAR_CODIGO)}</span>`;
+          };
+          poner(b, true);
+          setTimeout(() => {
+            document.querySelectorAll(`[data-vl-token="${CSS.escape(m.token)}"] [data-vl="copiar-codigo"]`).forEach(el => poner(el, false));
+          }, 3000);
+        });
+        break;
+      }
       case 'elegir': abrirPantalla(m, null, b); break;
       case 'cambiar': {
         const r = m.agenda.reserva;
