@@ -1018,11 +1018,33 @@
     TEXTO_ADMITE: 'Mati te admite en la sala. Si tarda un poco, esperá ahí sin salir.',
     // «¿Cómo entro?», en el orden en que pasan las cosas.
     AYUDA_ENTRAR: [
-      'Tocás Entrar y se abre Google Meet. Si no lo tenés instalado, se abre en el navegador y funciona igual.',
+      'Tocás Entrar y se abre la reunión. Si te pide tu nombre, escribilo y tocá «Solicitar unirse».',
       'Mati te admite en la sala. Esperá ahí, no hace falta salir y volver a entrar.',
+      'Si se abre Gmail o la portada de Meet, copiá el código de abajo y pegalo en «Unirse con un código».',
       'Si se corta, volvé a la app y tocá Entrar de nuevo.',
       'Si no podés entrar, escribinos por el chat.',
     ],
+    // El código de la reunión (2.3.1): el respaldo de «Entrar».
+    TITULO_CODIGO: 'Código de la reunión',
+    TEXTO_COPIAR_CODIGO: 'Copiar código',
+    TEXTO_CODIGO_COPIADO: 'Código copiado',
+    // Dónde se pega el código si «Entrar» no abre la reunión (Gmail o la portada de Meet con otra cuenta).
+    TEXTO_PEGAR_CODIGO: 'Si no se abre la reunión, entrá a Google Meet, tocá «Unirse con un código» y pegalo.',
+    // El código de un link de Meet, «abc-defg-hij», o null (gemelo de iOS y Android). Acepta el código sin guiones y
+    // lo devuelve con guiones; ignora mayúsculas, la barra final y lo que venga después (`?authuser`, `#`).
+    codigoMeet: url => {
+      if (typeof url !== 'string') return null;
+      const m = /^https:\/\/(www\.)?meet\.google\.com(\/[^?#]*)?([?#].*)?$/i.exec(url.trim());
+      if (!m) return null;
+      const partes = (m[2] || '').split('/').filter(Boolean);
+      if (partes.length !== 1) return null;
+      const crudo = partes[0].toLowerCase();
+      let letras;
+      if (/^[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(crudo)) letras = crudo.replace(/-/g, '');
+      else if (/^[a-z]{10}$/.test(crudo)) letras = crudo;
+      else return null;
+      return `${letras.slice(0, 3)}-${letras.slice(3, 7)}-${letras.slice(7)}`;
+    },
     TEXTO_LISTO_AVISO: 'Mati te admite en la sala. Si tarda un poco, esperá ahí sin salir.',
     textoListoEntrar: desdeMin => `Vas a entrar a la videollamada desde la app, en Entreno. El botón se habilita ${desdeMin || RA.ENTRAR_DESDE_MIN} minutos antes.`,
 

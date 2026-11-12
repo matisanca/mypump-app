@@ -660,4 +660,25 @@ function cuadroLuma(ancho, alto, x0, x1, y0 = 0, y1 = alto) {
   ok(el.llamadas.concat(da.llamadas, pe.llamadas).every(l => l.p_token === 'tk'), 'el doble no sale a la red');
 }
 
+// ── 2.3.1: el código de la reunión, el respaldo de «Entrar» (gemelo de CodigoMeetTests de iOS y Android) ──
+{
+  const c = RA.codigoMeet;
+  eq(c('https://meet.google.com/abc-defg-hij'), 'abc-defg-hij', 'código: link común');
+  eq(c(' https://meet.google.com/abc-defg-hij/ '), 'abc-defg-hij', 'código: barra final y espacios');
+  eq(c('https://meet.google.com/ABC-DEFG-HIJ?authuser=1&hs=122'), 'abc-defg-hij', 'código: mayúsculas y authuser');
+  eq(c('https://MEET.google.com/abc-defg-hij#x'), 'abc-defg-hij', 'código: dominio en mayúsculas y #');
+  eq(c('https://www.meet.google.com/abc-defg-hij'), 'abc-defg-hij', 'código: www');
+  eq(c('https://meet.google.com/abcdefghij'), 'abc-defg-hij', 'código: sin guiones');
+  for (const u of [null, undefined, '', 'http://meet.google.com/abc-defg-hij', 'https://meet.google.com/', 'https://meet.google.com',
+    'https://meet.google.com/abc', 'https://meet.google.com/new', 'https://meet.google.com/lookup/abc-defg-hij',
+    'https://meet.google.com/abcd-efg-hij', 'https://meet.google.com/abc-defg-hi1', 'https://meet.google.com/abc-defg-hijk',
+    'https://meet.google.com.evil.com/abc-defg-hij', 'https://evil.com/abc-defg-hij', 'https://meet.google.com/abc-dé-fghij']) {
+    eq(c(u), null, `código: ${u} no es una reunión`);
+  }
+  for (const t of [RA.TITULO_CODIGO, RA.TEXTO_COPIAR_CODIGO, RA.TEXTO_CODIGO_COPIADO, RA.TEXTO_PEGAR_CODIGO, ...RA.AYUDA_ENTRAR]) {
+    ok(!/entrenador|whatsapp/i.test(t) && !/\bIA\b/.test(t), `texto sin «entrenador», WhatsApp ni IA: ${t}`);
+  }
+  ok(RA.AYUDA_ENTRAR.some(t => t.includes('Unirse con un código')), '«¿Cómo entro?» dice dónde pegar el código');
+}
+
 console.log(`test-guia-agenda: ${n} comprobaciones OK`);
