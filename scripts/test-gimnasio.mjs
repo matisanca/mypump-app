@@ -48,6 +48,10 @@ for (const c of V.respuestas) {
   const ps = V.paraEnviar.preguntas.map(G.decodificarPregunta);
   t('paraEnviar', igual(G.respuestasParaEnviar(ps, V.paraEnviar.borrador), V.paraEnviar.resultado));
   t('fotosPedidas', G.fotosPedidas(ps, V.paraEnviar.borrador) === V.paraEnviar.fotosPedidas);
+  // 2.3.1: la de opción múltiple que vio y no marcó va como []; «No sé» sigue como duda.
+  const pw = V.paraEnviarVistas.preguntas.map(G.decodificarPregunta);
+  t('paraEnviar con vistas', igual(G.respuestasParaEnviar(pw, V.paraEnviarVistas.borrador, V.paraEnviarVistas.vistas), V.paraEnviarVistas.resultado));
+  t('paraEnviar sin vistas', igual(G.respuestasParaEnviar(pw, V.paraEnviarVistas.borrador), V.paraEnviarVistas.sinVistas));
 }
 for (const c of V.kilos) t(`kilos ${JSON.stringify(c.s)}`, G.kilos(c.s) === c.n, G.kilos(c.s));
 for (const c of V.fechas) t(`fecha ${c.iso}`, G.fechaCorta(c.iso, c.zona) === c.texto, G.fechaCorta(c.iso, c.zona));

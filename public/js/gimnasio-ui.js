@@ -220,7 +220,7 @@
       ${fotos.length ? `<div class="gim-grilla">${fotos.map((f) => miniatura(f, m)).join('')}</div>` : ''}
       ${avisoFotoHtml(m)}${errorHtml()}
       <button type="button" class="btn-primary gim-mt" data-gim="agregar" data-z="${e(z.clave)}" id="gimAgregar"${puede ? '' : ' disabled'}>${IC.camara}<span>${e(T.agregarFoto)}</span></button>
-      ${z.clave !== G.ZONA_OPCIONAL && m.abierta.modo === 'completa' && !fotos.length ? opcion(T.noHay, no, `data-gim="nohay" data-z="${e(z.clave)}" id="gimNoHay"`) : ''}`;
+      ${m.abierta.modo === 'completa' && !fotos.length ? opcion(T.noHay, no, `data-gim="nohay" data-z="${e(z.clave)}" id="gimNoHay"`) : ''}`;
   }
 
   function pRevisar(m) {
@@ -302,6 +302,7 @@
     let c = '';
     if (p.clase === 'elegir') {
       if (p.multiple) {
+        if (typeof m.marcarVista === 'function') m.marcarVista(p.id);
         const sel = new Set(Array.isArray(v) ? v : []);
         c = nota(T.marcarTodas) + p.opciones.map((o, k) => opcion(o.texto, sel.has(o.valor), `data-gim="multi" data-k="${k}"`)).join('');
       } else {
