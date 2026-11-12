@@ -41,5 +41,8 @@ assert.match(html, /RK\.pideConfirmacion\(original\.kcal, sub\.kcal\)/);
 assert.match(html, /reemplazosKcal\.renglon\(_reemplazosDelDia\(\)\.suma\)/);
 assert.match(html, /data-reemp-deshacer/);
 assert.doesNotMatch(html, /origKcal > 0 \? Math\.round/);
-n += 7;
+// La revisión encontró window.MyPump.showConfirmModal (no existe: es MyPump.ui): la confirmación tiraba y no reemplazaba.
+assert.doesNotMatch(html, /window\.MyPump\.showConfirmModal/);
+assert.equal((html.match(/RK\.pideConfirmacion\(/g) || []).length, 2);   // elegir de la lista y «Crear y usar»
+n += 9;
 console.log(`test-reemplazos: ${n} casos OK`);

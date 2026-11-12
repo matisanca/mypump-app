@@ -9029,7 +9029,7 @@ function renderDiet() {
     ? `Comiste ${nHechas} de ${consumido.nComidas} comidas${nSalt ? ` · salteaste ${nSalt}` : ''}`
     : (esHoy ? 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.' : 'Tocá «Comí» en lo que comiste ese día y acá se va sumando.');
   // 2.3.1: los reemplazos son para todos los días; la cabecera dice cuánto mueven y deja volver al plan de Mati.
-  const _txtReemp = esHoy ? window.MyPump.reemplazosKcal.renglon(_reemplazosDelDia().suma) : null;
+  const _txtReemp = esHoy && vistaEditable() ? window.MyPump.reemplazosKcal.renglon(_reemplazosDelDia().suma) : null;
   const lineaReemplazos = _txtReemp ? `<div class="dz-linea dz-reemplazos" id="dzReemplazos"><span>${_txtReemp}</span><button type="button" class="dz-reemp-deshacer" data-reemp-deshacer>${window.MyPump.reemplazosKcal.DESHACER}</button></div>` : '';
   const lineaElegidas = lineaReemplazos + `<div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? (esHoy ? 'Con tus ajustes de hoy' : 'Con tus ajustes de ese día') : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>`;
   const cabecera = !_w ? `
@@ -10028,9 +10028,10 @@ function bindDietEvents() {
     e.stopPropagation();
     const { lugares } = _reemplazosDelDia();
     if (!lugares.length) return;
-    const ok = await window.MyPump.showConfirmModal({ title: '¿Volver a los alimentos de tu plan?', body: 'Se deshacen tus reemplazos y vuelven los alimentos que armó Mati, para todos tus días.', confirmLabel: 'Volver al plan', cancelLabel: 'Cancelar' });
+    const ok = await window.MyPump.ui.showConfirmModal({ title: '¿Volver a los alimentos de tu plan?', body: 'Se deshacen tus reemplazos y vuelven los alimentos que armó Mati, para todos tus días.', confirmLabel: 'Volver al plan', cancelLabel: 'Cancelar' });
     if (!ok) return;
-    for (const [comidaId, o, i] of lugares) _revertirSwap(comidaId, o, i, false);
+    try { for (const [comidaId, o, i] of lugares) await _revertirSwap(comidaId, o, i, false); }
+    catch (err) { console.warn('[swap] deshacer:', err); }
     renderDiet();
   }));
   // Revertir swap — local + backend
@@ -16221,7 +16222,7 @@ async function confirmSwap() {
   const RK = window.MyPump.reemplazosKcal;
   if (RK.pideConfirmacion(original.kcal, sub.kcal)) {
     const estado = Object.assign({}, _swapState);
-    const ok = await window.MyPump.showConfirmModal({ title: RK.textoConfirmacion(original.kcal, sub.kcal), confirmLabel: RK.USAR_IGUAL, cancelLabel: RK.ELEGIR_OTRO });
+    const ok = await window.MyPump.ui.showConfirmModal({ title: RK.textoConfirmacion(original.kcal, sub.kcal), confirmLabel: RK.USAR_IGUAL, cancelLabel: RK.ELEGIR_OTRO });
     _swapState = estado;
     if (!ok) { renderSwapModal(); return; }
   }
@@ -16781,6 +16782,14 @@ async function aplicarCustomFoodComoSwap(name) {
   const subs = window.MyPump.foodSwap.findSubstitutes(orig) || [];
   const sub  = subs.find(s => s.name.toLowerCase() === name.toLowerCase());
   if (!sub) { closeCustomFoodModal(); return; }  // fallback: queda en la lista para elegir
+  // 2.3.1: «Crear y usar» también confirma si suma más del 10 % o más de 60 kcal. «Elegir otro» vuelve a la lista.
+  const RK = window.MyPump.reemplazosKcal;
+  if (RK.pideConfirmacion(orig.kcal, sub.kcal)) {
+    const estado = Object.assign({}, _swapState, { selected: null });
+    const ok = await window.MyPump.ui.showConfirmModal({ title: RK.textoConfirmacion(orig.kcal, sub.kcal), confirmLabel: RK.USAR_IGUAL, cancelLabel: RK.ELEGIR_OTRO });
+    _swapState = estado;
+    if (!ok) { _invalidateSwapCache(); renderSwapModal(); return; }
+  }
 
   const { comidaId, optIdx, foodIdx } = _swapState;
   const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
