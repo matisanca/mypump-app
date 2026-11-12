@@ -166,13 +166,60 @@ class VideollamadaUiTest : PruebaUi() {
         assertTrue(p.existe(texto(ReglasAgenda.TEXTO_ADMITE)))
         assertTrue(p.existe(texto("Hoy")) || m == "grande")
         foto("and-entrar-$m")
+        // 2.3.1: el código de la reunión, siempre a la vista debajo de «Entrar», con «Copiar código» y dónde pegarlo.
+        assertTrue(p.existe(etiqueta("videollamada-codigo")))
+        assertTrue(p.existe(texto(ReglasAgenda.TITULO_PASOS_CODIGO)))
+        ReglasAgenda.PASOS_CODIGO.forEach { assertTrue(it, p.existe(texto(it))) }
+        p.tocar(etiqueta("videollamada-copiar-codigo"))
+        p.esperar("copiado") { p.existe(texto(ReglasAgenda.TEXTO_CODIGO_COPIADO)).takeIf { it } }
+        var copiado: String? = null
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val cm = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(android.content.ClipboardManager::class.java)
+            copiado = cm?.primaryClip?.getItemAt(0)?.text?.toString()
+        }
+        // Android 10+ solo deja leer el portapapeles a la app con foco; con el aviso de «copiado» del sistema (13+) a veces
+        // no lo tiene y da null. Si se pudo leer, tiene que ser el código.
+        copiado?.let { assertEquals("abc-defg-hij", it) }
+        foto("and-codigo-copiado-$m")
         val (monitor, links) = monitorDeLinks()
         try {
             p.tocar(etiqueta("agenda-entrar"))
-            assertEquals(DobleVideollamada.MEET, p.esperar("el link") { links.firstOrNull { it.action == Intent.ACTION_VIEW } }.dataString)
+            val ver = p.esperar("el link") { links.firstOrNull { it.action == Intent.ACTION_VIEW } }
+            assertEquals(DobleVideollamada.MEET, ver.dataString)
+            // Nunca un VIEW suelto que pueda tomar Gmail: la app de Meet fija o una Custom Tab con su navegador fijo.
+            assertTrue("va a ${ver.`package`}", ver.`package` == "com.google.android.apps.tachyon" ||
+                (ver.`package` != null && ver.`package` != "com.google.android.gm" && ver.hasExtra("android.support.customtabs.extra.SESSION")))
         } finally {
             InstrumentationRegistry.getInstrumentation().removeMonitor(monitor)
         }
+    }
+
+    /**
+     * Solo a mano, con `-e meetUrl <sala de prueba>`: «Entrar» de verdad, sin interceptar el link. Lo que queda adelante
+     * tiene que ser la app de Meet o el navegador con la reunión, nunca Gmail. Sin el argumento, se saltea.
+     */
+    @Test fun entrarDeVerdad() {
+        val url = InstrumentationRegistry.getArguments().getString("meetUrl")
+        org.junit.Assume.assumeTrue(url != null)
+        modo("claro")
+        lanzar("porEntrar", palanca = false)
+        p.nodo(etiqueta("agenda-entrar"), ms = 30_000)
+        foto("and-real-tarjeta")
+        p.tocar(etiqueta("agenda-entrar"))
+        // Destinos válidos: la app de Meet, la Custom Tab o, sin Meet instalada, Google Play (la web de Meet manda ahí). Nunca Gmail.
+        val validos = listOf("com.google.android.apps.tachyon", "chrome", "com.android.vending")
+        var arriba = ""
+        val hasta = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < hasta) {
+            arriba = Telefono.shell("dumpsys activity activities").lineSequence().firstOrNull { "topResumedActivity" in it }.orEmpty()
+            if ("com.google.android.gm" in arriba) break
+            if (validos.any { it in arriba }) { Thread.sleep(2_000); break }
+            Thread.sleep(500)
+        }
+        Telefono.captura("and-real-reunion")
+        arriba = Telefono.shell("dumpsys activity activities").lineSequence().firstOrNull { "topResumedActivity" in it }.orEmpty()
+        assertFalse(arriba, "com.google.android.gm" in arriba)
+        assertTrue(arriba, validos.any { it in arriba })
     }
 
     @Test fun porEntrarEnClaro() = porEntrar("claro")

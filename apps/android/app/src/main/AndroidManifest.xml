@@ -70,6 +70,8 @@
         <package android:name="com.google.android.apps.healthdata" />
         <!-- 2.3.1: el aviso de pasos abre Samsung Health si está instalado. -->
         <package android:name="com.sec.android.app.shealth" />
+        <!-- La app de Google Meet: «Entrar a la videollamada» la abre fija, sin pasar por Gmail (abrirMeet). -->
+        <package android:name="com.google.android.apps.tachyon" />
     </queries>
 
     <!-- Los navegadores con Custom Tabs (Android 11+ no los deja ver sin esto): abrirEnNavegador fija uno, porque el App

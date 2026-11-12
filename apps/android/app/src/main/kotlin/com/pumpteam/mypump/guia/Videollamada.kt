@@ -1,8 +1,11 @@
 package com.pumpteam.mypump.guia
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,10 +37,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -64,6 +69,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,6 +82,7 @@ import com.pumpteam.mypump.Entorno
 import com.pumpteam.mypump.avisos.CentroAvisos
 import com.pumpteam.mypump.datos.ModeloAgenda
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.datos.ModeloGuia
 import com.pumpteam.mypump.diseno.AccionHoja
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Archivo
@@ -91,14 +98,13 @@ import com.pumpteam.mypump.modelos.FranjaEntrega
 import com.pumpteam.mypump.modelos.ReservaEntrega
 import com.pumpteam.mypump.modelos.TipoVideollamada
 import com.pumpteam.mypump.raiz.LocalNavegacion
-import com.pumpteam.mypump.reglas.ReglasListaPrevia
-import com.pumpteam.mypump.datos.ModeloGuia
 import com.pumpteam.mypump.reglas.ReglasAgenda
+import com.pumpteam.mypump.reglas.ReglasListaPrevia
 import com.pumpteam.mypump.salud.PantallaSuperpuesta
-import java.time.Instant
-import java.time.ZoneId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
 
 // La videollamada (2.3.0, decisión de Mati del 10/11), gemelo de VideollamadaView.swift: el alumno entra desde la app,
 // nunca por un link de WhatsApp.
@@ -409,7 +415,7 @@ fun TarjetaVideollamada(
                 modifier = Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 56.dp)
-                    .semantics { contentDescription = "Entrar a la videollamada. Abre Google Meet. Mati te admite en la sala" }
+                    .semantics { contentDescription = "Entrar a la videollamada. Abre la reunión de Google Meet. Mati te admite en la sala" }
                     .testTag("agenda-entrar"),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = VerdeGuia),
@@ -420,6 +426,7 @@ fun TarjetaVideollamada(
                 Spacer(Modifier.size(Espacio.xs))
                 Text("Entrar a la videollamada", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
             }
+            ReglasAgenda.codigoMeet(reserva.meetUrl)?.let { CodigoReunion(it) }
             Text(ReglasAgenda.TEXTO_ADMITE, style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.testTag("videollamada-admite"))
         } else if (confirmada) {
             val cuenta = ReglasAgenda.textoCuenta(estado, desdeMin)
@@ -886,6 +893,106 @@ private fun Listo(r: ReservaEntrega, cambio: Boolean, conAvisos: Boolean, alCerr
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
                 BotonMarca("Listo", alTocar = alCerrar, modifier = Modifier.testTag("horario-listo-cerrar"))
                 Pildora(Iconos.Calendario, "Agregar a mi calendario", null, Modifier.fillMaxWidth().defaultMinSize(minHeight = 54.dp).testTag("horario-calendario"), alTocar = alCalendario)
+            }
+        }
+    }
+}
+
+/**
+ * El respaldo de «Entrar» (2.3.1), siempre a la vista debajo del botón: el código de la reunión, «Copiar código» y dónde
+ * pegarlo, para cuando el link cae en Gmail o en la portada de Meet con otra cuenta.
+ */
+@Composable
+private fun CodigoReunion(codigo: String) {
+    val contexto = LocalContext.current
+    var copiado by remember { mutableStateOf(false) }
+    LaunchedEffect(copiado) {
+        if (copiado) {
+            delay(3000)
+            copiado = false
+        }
+    }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.14f))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+    ) {
+        Column(
+            Modifier
+                .testTag("videollamada-codigo")
+                // TalkBack lo deletrea: «a b c guion d e f g…».
+                .clearAndSetSemantics {
+                    contentDescription = ReglasAgenda.TITULO_CODIGO + ": " + codigo.map { if (it == '-') "guion" else it.toString() }.joinToString(" ")
+                },
+        ) {
+            Text(ReglasAgenda.TITULO_CODIGO, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.9f))
+            Text(
+                codigo,
+                style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Monospace),
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+        }
+        OutlinedButton(
+            onClick = {
+                contexto.getSystemService(ClipboardManager::class.java)
+                    ?.setPrimaryClip(ClipData.newPlainText(ReglasAgenda.TITULO_CODIGO, codigo))
+                copiado = true
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 52.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite }
+                .testTag("videollamada-copiar-codigo"),
+            shape = CircleShape,
+            border = BorderStroke(2.dp, Color.White),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+        ) {
+            Icon(if (copiado) Iconos.TildeEnCirculo else Iconos.Pegar, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.size(Espacio.xs))
+            Text(
+                if (copiado) ReglasAgenda.TEXTO_CODIGO_COPIADO else ReglasAgenda.TEXTO_COPIAR_CODIGO,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        // Se vuelve a mirar al volver a la app: si la instaló desde Play, el aviso se va solo.
+        val ciclo by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+        val hayMeet = remember(ciclo.isAtLeast(Lifecycle.State.RESUMED)) { appDeMeetInstalada(contexto) }
+        if (!hayMeet) {
+            Text(
+                ReglasAgenda.TEXTO_SIN_APP_MEET,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                modifier = Modifier.testTag("videollamada-sin-app-meet"),
+            )
+        }
+        Column(Modifier.testTag("videollamada-pasos-codigo"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                ReglasAgenda.TITULO_PASOS_CODIGO,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.semantics { heading() },
+            )
+            ReglasAgenda.PASOS_CODIGO.forEachIndexed { i, t ->
+                Row(
+                    Modifier.semantics(mergeDescendants = true) {},
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(Espacio.xs),
+                ) {
+                    Box(
+                        Modifier.defaultMinSize(26.dp, 26.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.22f)).padding(horizontal = 4.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("${i + 1}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                    Text(t, style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                }
             }
         }
     }
