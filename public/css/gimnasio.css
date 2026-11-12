@@ -1,0 +1,62 @@
+/* «Gimnasio por fotos». Solo se ve con la palanca prendida; todo con los tokens de la app. */
+.gim{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:var(--space-3);padding-bottom:var(--space-8)}
+.gim .sd-volver{align-self:flex-start;padding-top:0;padding-bottom:0;min-height:32px}
+.gim-h{font-size:22px;line-height:1.2;font-weight:700;color:var(--color-text-primary);margin:0}
+.gim-h-chico{font-size:17px;line-height:1.3;font-weight:600}
+.gim-sub{font-size:15px;line-height:1.4;color:var(--color-text-secondary);margin:0}
+.gim-nota{font-size:13px;font-weight:500;line-height:1.4;color:var(--color-text-secondary);margin:0}
+.gim-nota.is-alerta,.gim .is-alerta{color:var(--color-alerta)}
+.gim-aviso{font-size:14px;line-height:1.45;color:var(--color-text-primary);padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-brand-subtle)}
+.gim-mt{margin-top:var(--space-2)}
+.gim .btn-primary{gap:var(--space-2);flex:none}
+.gim .btn-primary:not(:disabled){color:#0a0a0a}
+.gim .btn-primary svg{flex:none}
+.gim .btn-secondary{flex:none}
+.gim-tarjeta{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:var(--space-3);width:100%;padding:var(--space-3) var(--space-4);margin-bottom:var(--space-3);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer}
+.gim-tarjeta:focus-visible,.gim-op:focus-visible,.gim-zona:focus-visible{outline:2px solid var(--color-brand);outline-offset:2px}
+.gim-tarjeta-ic{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.gim-tarjeta-ic svg{width:22px;height:22px}
+.gim-tarjeta-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.gim-tarjeta-txt strong{font-size:16px;font-weight:600;color:var(--color-text-primary)}
+.gim-tarjeta-txt span{font-size:14px;line-height:1.35;color:var(--color-text-secondary)}
+.gim-zona{justify-content:flex-start}
+.gim-zona-ic{flex:none;color:var(--color-text-muted);display:grid;place-items:center}
+.gim-zona-ic.is-on{color:var(--color-brand-text)}
+.gim-zona-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.gim-zona-txt small{font-size:12px;color:var(--color-text-secondary)}
+.gim-grilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:var(--space-2)}
+.gim-mini{position:relative;aspect-ratio:1;border-radius:var(--radius-md);overflow:hidden;background:var(--color-bg-tertiary);display:grid;place-items:center;color:var(--color-text-muted)}
+.gim-mini img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gim-mini-est{position:absolute;left:0;right:0;bottom:0;padding:3px 4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:600;text-align:center}
+.gim-mini-x{position:absolute;top:0;right:0;width:44px;height:44px;padding:0;border:0;background:none;display:grid;place-items:center;color:#fff;cursor:pointer}
+.gim-mini-x svg{box-sizing:content-box;padding:7px;border-radius:50%;background:rgba(0,0,0,.6)}
+.gim-op{display:flex;align-items:center;gap:var(--space-2);width:100%;min-height:48px;padding:var(--space-2) var(--space-3);border:1px solid transparent;border-radius:var(--radius-md);background:var(--color-bg-tertiary);color:var(--color-text-primary);font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.gim-op svg{flex:none;color:var(--color-text-muted)}
+.gim-op.is-on{border-color:var(--color-brand);background:var(--color-brand-subtle)}
+.gim-op.is-on svg{color:var(--color-brand-text)}
+.gim-resumen-f{display:flex;justify-content:space-between;gap:var(--space-3);padding:10px var(--space-4);font-size:14px;color:var(--color-text-primary)}
+.gim-resumen-f + .gim-resumen-f{border-top:1px solid var(--color-border)}
+.gim-resumen-f span:last-child{color:var(--color-text-secondary);text-align:right}
+.gim-resumen-f span.is-alerta:last-child{color:var(--color-alerta)}
+.gim-area{box-sizing:border-box;width:100%;padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:16px;resize:vertical}
+.gim-cuenta{margin-top:-6px;font-size:12px;color:var(--color-text-secondary);text-align:right}
+.gim-centro{display:flex;flex-direction:column;align-items:center;gap:var(--space-4);padding:var(--space-10) var(--space-4);text-align:center}
+.gim-grande{color:var(--color-brand-text)}
+.gim-grande svg{width:48px;height:48px}
+.gim-q-num{font-size:14px;font-weight:600;color:var(--color-brand-text)}
+.gim-barra{height:4px;border-radius:99px;background:var(--color-bg-tertiary);overflow:hidden}
+.gim-barra span{display:block;height:100%;background:var(--color-brand)}
+.gim-nav{display:flex;gap:var(--space-2);margin-top:var(--space-3)}
+.gim-nav .btn-primary,.gim-nav .btn-secondary{flex:1 1 0;width:auto;min-width:0}
+.gim-refs{display:flex;gap:var(--space-2);overflow-x:auto}
+.gim-ref{flex:none;width:110px;height:110px;position:relative;border-radius:var(--radius-md);overflow:hidden;background:var(--color-bg-tertiary);display:grid;place-items:center;color:var(--color-text-muted)}
+.gim-ref img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gim-kilos{display:flex;align-items:center;gap:var(--space-2);color:var(--color-text-secondary)}
+.gim-kilos input{flex:1;min-width:0;box-sizing:border-box;height:48px;padding:0 var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:16px}
+.gim-item{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-primary)}
+.gim-item-t{font-size:15px;font-weight:600;color:var(--color-text-primary)}
+.gim-tres{display:flex;gap:6px}
+.gim-chip{flex:1;min-width:0;min-height:44px;border:1px solid transparent;border-radius:var(--radius-full);background:var(--color-bg-tertiary);color:var(--color-text-primary);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.gim-chip.is-on{background:var(--color-brand);color:var(--color-on-brand)}
+.gim .md-ceja{margin-left:var(--space-1)}
+.gim-sin-mayus{text-transform:none;letter-spacing:0;font-size:14px}

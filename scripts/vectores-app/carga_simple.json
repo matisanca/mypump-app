@@ -1,0 +1,1558 @@
+{
+ "nota": "Casos de la carga simple: los comparten el kit (CargaSimpleVectoresTests) y Android (CargaSimpleVectoresTest). A mano: las reglas son de las apps, no de la web.",
+ "corresponde": [
+  {
+   "caso": "bajan reps, mismas series",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "espera": true
+  },
+  {
+   "caso": "rango: tope baja",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "10-12"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "8-10"
+    }
+   ],
+   "semana": 2,
+   "espera": true
+  },
+  {
+   "caso": "primera semana: calibración",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 1,
+   "espera": false
+  },
+  {
+   "caso": "sin cambio",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "suben reps",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "8"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "más series y menos reps",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "menos series y menos reps",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "por tiempo",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "50 s"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "45 s"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "por distancia",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "30 m"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "25 m"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "amrap",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "8"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "AMRAP"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "unilateral c/lado",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "8 c/lado"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "6 c/lado"
+    }
+   ],
+   "semana": 2,
+   "espera": true
+  },
+  {
+   "caso": "título Fuerza sí",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "10",
+     "titulo": "Semana 1"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "6-8",
+     "titulo": "Semana 2 — Fuerza (compuestos 6-8) ★"
+    }
+   ],
+   "semana": 2,
+   "espera": true
+  },
+  {
+   "caso": "título Carga sí",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10",
+     "titulo": "Semana 1"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8",
+     "titulo": "Semana 2 — Carga ★"
+    }
+   ],
+   "semana": 2,
+   "espera": true
+  },
+  {
+   "caso": "título de calibración en semana 2",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10",
+     "titulo": "Semana 1"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8",
+     "titulo": "Semana 2 — Calibración"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "título descarga",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10",
+     "titulo": "Semana 1"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8",
+     "titulo": "Semana 2 — Descarga"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "re-entrada con menos carga, aunque diga carga",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10",
+     "titulo": "Semana 1"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8",
+     "titulo": "Semana 2 — Re-entrada (10 % menos de carga)"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "semana anterior fue descarga",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10",
+     "titulo": "Semana 1 — Descarga"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8",
+     "titulo": "Semana 2"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "semana anterior fue calibración: sí",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10",
+     "titulo": "Semana 1 — Calibración"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8",
+     "titulo": "Semana 2"
+    }
+   ],
+   "semana": 2,
+   "espera": true
+  },
+  {
+   "caso": "título con otro propósito",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10",
+     "titulo": "Semana 8"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8",
+     "titulo": "Semana 9 — Solo torso, RIR 2-3"
+    }
+   ],
+   "semana": 2,
+   "espera": false
+  },
+  {
+   "caso": "mensaje dice misma carga",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "mensaje": "Usá la misma carga de la semana pasada y bajá a 8.",
+   "espera": false
+  },
+  {
+   "caso": "mensaje mantené el peso",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "mensaje": "Si no sale, mantené el peso.",
+   "espera": false
+  },
+  {
+   "caso": "mensaje con subida",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "mensaje": "Subís carga 2,5 kg y bajás a 8 repeticiones.",
+   "espera": true
+  },
+  {
+   "caso": "cardio con progresión",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "tipo": "cardio",
+   "espera": false
+  },
+  {
+   "caso": "calentamiento",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "tipo": "calentamiento",
+   "espera": false
+  },
+  {
+   "caso": "pasada la última semana (se queda en la última)",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 5,
+   "espera": false
+  }
+ ],
+ "hasta": [
+  {
+   "desde": 80,
+   "equipo": "barra",
+   "espera": 82.5
+  },
+  {
+   "desde": 81,
+   "equipo": "barra",
+   "espera": 85
+  },
+  {
+   "desde": 60,
+   "equipo": "maquina",
+   "espera": 65
+  },
+  {
+   "desde": 42.5,
+   "equipo": "maquina",
+   "espera": 45
+  },
+  {
+   "desde": 43,
+   "equipo": "maquina",
+   "espera": null
+  },
+  {
+   "desde": 44,
+   "equipo": "maquina",
+   "espera": null
+  },
+  {
+   "desde": 21,
+   "equipo": "mancuerna",
+   "espera": 24
+  },
+  {
+   "desde": 12,
+   "equipo": "mancuerna",
+   "espera": 16
+  },
+  {
+   "desde": 8,
+   "equipo": "mancuerna",
+   "espera": 12
+  },
+  {
+   "desde": 9,
+   "equipo": "mancuerna",
+   "espera": 12
+  },
+  {
+   "desde": 6,
+   "equipo": "mancuerna",
+   "espera": 9
+  },
+  {
+   "desde": 70,
+   "equipo": "otro",
+   "espera": 72.5
+  },
+  {
+   "desde": 0,
+   "equipo": "barra",
+   "espera": null
+  }
+ ],
+ "mover": [
+  {
+   "desde": 80,
+   "pasos": 1,
+   "equipo": "barra",
+   "espera": 82.5
+  },
+  {
+   "desde": 81,
+   "pasos": 1,
+   "equipo": "barra",
+   "espera": 82.5
+  },
+  {
+   "desde": 81,
+   "pasos": -1,
+   "equipo": "barra",
+   "espera": 80
+  },
+  {
+   "desde": 60,
+   "pasos": 1,
+   "equipo": "maquina",
+   "espera": 65
+  },
+  {
+   "desde": 21,
+   "pasos": 1,
+   "equipo": "mancuerna",
+   "espera": 22
+  },
+  {
+   "desde": 8,
+   "pasos": -1,
+   "equipo": "mancuerna",
+   "espera": 7
+  },
+  {
+   "desde": 9,
+   "pasos": 1,
+   "equipo": "mancuerna",
+   "espera": 10
+  },
+  {
+   "desde": 10,
+   "pasos": 1,
+   "equipo": "mancuerna",
+   "espera": 12
+  },
+  {
+   "desde": 10,
+   "pasos": -1,
+   "equipo": "mancuerna",
+   "espera": 9
+  },
+  {
+   "desde": 1,
+   "pasos": -1,
+   "equipo": "mancuerna",
+   "espera": 0
+  }
+ ],
+ "moda": [
+  {
+   "kilos": [
+    80,
+    80,
+    80,
+    75
+   ],
+   "espera": 80
+  },
+  {
+   "kilos": [
+    80,
+    75
+   ],
+   "espera": 80
+  },
+  {
+   "kilos": [
+    0,
+    0,
+    40
+   ],
+   "espera": 40
+  },
+  {
+   "kilos": [],
+   "espera": null
+  },
+  {
+   "kilos": [
+    0
+   ],
+   "espera": null
+  }
+ ],
+ "guardia": [
+  {
+   "caso": "sin guardia levantada no hay segundo toque",
+   "desde": null,
+   "serie": 1,
+   "ahora": 1000,
+   "espera": {
+    "doble": false,
+    "segundo": false
+   }
+  },
+  {
+   "caso": "doble toque",
+   "desde": 1000,
+   "serie": 1,
+   "ahora": 1300,
+   "espera": {
+    "doble": true,
+    "segundo": false
+   }
+  },
+  {
+   "caso": "segundo toque válido",
+   "desde": 1000,
+   "serie": 1,
+   "ahora": 1600,
+   "espera": {
+    "doble": false,
+    "segundo": true
+   }
+  },
+  {
+   "caso": "vencida",
+   "desde": 1000,
+   "serie": 1,
+   "ahora": 4100,
+   "espera": {
+    "doble": false,
+    "segundo": false
+   }
+  },
+  {
+   "caso": "otra serie",
+   "desde": 1000,
+   "serie": 2,
+   "ahora": 1600,
+   "espera": {
+    "doble": false,
+    "segundo": false
+   }
+  }
+ ],
+ "escenarios": [
+  {
+   "caso": "repite exacto",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 9,
+     "kg": 80
+    },
+    {
+     "reps": 8,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "lista",
+      "reps": 10,
+      "kg": 80
+     }
+    },
+    {
+     "accion": "ok",
+     "i": 1,
+     "ahora": 120000,
+     "espera": {
+      "res": "lista",
+      "reps": 10,
+      "kg": 80
+     }
+    },
+    {
+     "accion": "ok",
+     "i": 2,
+     "ahora": 240000,
+     "espera": {
+      "res": "lista",
+      "reps": 9,
+      "kg": 80
+     }
+    },
+    {
+     "accion": "ok",
+     "i": 3,
+     "ahora": 360000,
+     "espera": {
+      "res": "lista",
+      "reps": 8,
+      "kg": 80
+     }
+    }
+   ],
+   "final": {
+    "carga": 80,
+    "confirmadas": 4
+   }
+  },
+  {
+   "caso": "sube la carga: todas juntas y reps del plan",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 9,
+     "kg": 80
+    },
+    {
+     "reps": 8,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "moverCarga",
+     "valor": 1
+    },
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "lista",
+      "reps": 10,
+      "kg": 82.5
+     }
+    },
+    {
+     "accion": "ok",
+     "i": 1,
+     "ahora": 120000,
+     "espera": {
+      "res": "lista",
+      "reps": 10,
+      "kg": 82.5
+     }
+    }
+   ],
+   "final": {
+    "carga": 82.5,
+    "reps": [
+     10,
+     10,
+     10,
+     10
+    ],
+    "kg": [
+     82.5,
+     82.5,
+     82.5,
+     82.5
+    ]
+   }
+  },
+  {
+   "caso": "aumento sugerido, aceptar",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "mirar",
+     "espera": {
+      "aumento": "sugerido:80:82.5",
+      "carga": 80
+     }
+    },
+    {
+     "accion": "aceptar"
+    }
+   ],
+   "final": {
+    "aumento": "aceptado:80:82.5",
+    "carga": 82.5,
+    "reps": [
+     8,
+     8,
+     8,
+     8
+    ]
+   }
+  },
+  {
+   "caso": "máquina sube 5",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "equipo": "maquina",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 60
+    },
+    {
+     "reps": 10,
+     "kg": 60
+    },
+    {
+     "reps": 10,
+     "kg": 60
+    },
+    {
+     "reps": 10,
+     "kg": 60
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "aceptar"
+    }
+   ],
+   "final": {
+    "aumento": "aceptado:60:65",
+    "carga": 65
+   }
+  },
+  {
+   "caso": "mancuerna sube a la marca de 2,5 o más",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "equipo": "mancuerna",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 12
+    },
+    {
+     "reps": 10,
+     "kg": 12
+    },
+    {
+     "reps": 10,
+     "kg": 12
+    },
+    {
+     "reps": 10,
+     "kg": 12
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "aceptar"
+    }
+   ],
+   "final": {
+    "aumento": "aceptado:12:16",
+    "carga": 16
+   }
+  },
+  {
+   "caso": "máquina fuera de grilla: sin sugerencia",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "equipo": "maquina",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 43
+    },
+    {
+     "reps": 10,
+     "kg": 43
+    },
+    {
+     "reps": 10,
+     "kg": 43
+    },
+    {
+     "reps": 10,
+     "kg": 43
+    }
+   ],
+   "pasos": [],
+   "final": {
+    "aumento": "noCorresponde",
+    "carga": 43
+   }
+  },
+  {
+   "caso": "dejar: no vuelve a ofrecer",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "descartar"
+    }
+   ],
+   "final": {
+    "aumento": "descartado",
+    "carga": 80
+   }
+  },
+  {
+   "caso": "tocar la carga a mano apaga la sugerencia",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "8"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "moverCarga",
+     "valor": 2
+    }
+   ],
+   "final": {
+    "aumento": "descartado",
+    "carga": 85
+   }
+  },
+  {
+   "caso": "calibración sin sugerir, con base",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 1,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    }
+   ],
+   "pasos": [],
+   "final": {
+    "aumento": "noCorresponde",
+    "carga": 80
+   }
+  },
+  {
+   "caso": "primera vez: elegí la carga, reps altas del plan",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "10-12"
+    }
+   ],
+   "semana": 1,
+   "equipo": "barra",
+   "ultimaVez": [],
+   "pasos": [
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "faltanDatos"
+     }
+    },
+    {
+     "accion": "fijarCarga",
+     "valor": 60
+    },
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "lista",
+      "reps": 12,
+      "kg": 60
+     }
+    }
+   ],
+   "final": {
+    "carga": 60,
+    "confirmadas": 1
+   }
+  },
+  {
+   "caso": "guardia: sin cambiar reps a menos de 10 s",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "lista",
+      "reps": 10,
+      "kg": 80
+     }
+    },
+    {
+     "accion": "ok",
+     "i": 1,
+     "ahora": 3000,
+     "espera": {
+      "res": "guardia"
+     }
+    },
+    {
+     "accion": "okInsistir",
+     "i": 1,
+     "ahora": 4000,
+     "espera": {
+      "res": "lista",
+      "reps": 10,
+      "kg": 80
+     }
+    },
+    {
+     "accion": "ajustarReps",
+     "i": 2,
+     "valor": -1
+    },
+    {
+     "accion": "ok",
+     "i": 2,
+     "ahora": 5000,
+     "espera": {
+      "res": "lista",
+      "reps": 9,
+      "kg": 80
+     }
+    },
+    {
+     "accion": "ok",
+     "i": 3,
+     "ahora": 120000,
+     "espera": {
+      "res": "lista",
+      "reps": 10,
+      "kg": 80
+     }
+    }
+   ]
+  },
+  {
+   "caso": "sumar y restar lo mismo no es mirar",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "lista",
+      "reps": 10,
+      "kg": 80
+     }
+    },
+    {
+     "accion": "ajustarReps",
+     "i": 1,
+     "valor": 1
+    },
+    {
+     "accion": "ajustarReps",
+     "i": 1,
+     "valor": -1
+    },
+    {
+     "accion": "ok",
+     "i": 1,
+     "ahora": 3000,
+     "espera": {
+      "res": "guardia"
+     }
+    }
+   ]
+  },
+  {
+   "caso": "más reps que el plan siempre vale",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "ajustarReps",
+     "i": 0,
+     "valor": 6
+    },
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "lista",
+      "reps": 16,
+      "kg": 80
+     }
+    }
+   ]
+  },
+  {
+   "caso": "AMRAP: hay que marcar",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 3,
+     "reps": "máx"
+    },
+    {
+     "semana": 2,
+     "series": 3,
+     "reps": "máx"
+    }
+   ],
+   "semana": 2,
+   "equipo": "otro",
+   "nombre": "Lagartijas",
+   "ultimaVez": [
+    {
+     "reps": 20,
+     "kg": null
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "faltanDatos"
+     }
+    },
+    {
+     "accion": "ajustarReps",
+     "i": 0,
+     "valor": 1
+    },
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "lista",
+      "reps": 21,
+      "kg": null
+     }
+    }
+   ]
+  },
+  {
+   "caso": "una serie con menos no corre la base y se recupera al destildar",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "equipo": "maquina",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 60
+    },
+    {
+     "reps": 10,
+     "kg": 60
+    },
+    {
+     "reps": 9,
+     "kg": 60
+    },
+    {
+     "reps": 10,
+     "kg": 55
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "mirar",
+     "espera": {
+      "carga": 60
+     }
+    },
+    {
+     "accion": "mismoPeso",
+     "valor": false
+    }
+   ],
+   "final": {
+    "kg": [
+     60,
+     60,
+     60,
+     55
+    ]
+   }
+  },
+  {
+   "caso": "lo marcado no se pisa al cambiar la carga",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 9,
+     "kg": 80
+    },
+    {
+     "reps": 8,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "ajustarReps",
+     "i": 0,
+     "valor": 2
+    },
+    {
+     "accion": "moverCarga",
+     "valor": 1
+    }
+   ],
+   "final": {
+    "reps": [
+     12,
+     10,
+     10,
+     10
+    ]
+   }
+  },
+  {
+   "caso": "las hechas siguen con su peso",
+   "progresion": [
+    {
+     "semana": 1,
+     "series": 4,
+     "reps": "10"
+    },
+    {
+     "semana": 2,
+     "series": 4,
+     "reps": "10"
+    }
+   ],
+   "semana": 2,
+   "equipo": "barra",
+   "ultimaVez": [
+    {
+     "reps": 10,
+     "kg": 80
+    },
+    {
+     "reps": 10,
+     "kg": 80
+    }
+   ],
+   "pasos": [
+    {
+     "accion": "ok",
+     "i": 0,
+     "ahora": 0,
+     "espera": {
+      "res": "lista",
+      "reps": 10,
+      "kg": 80
+     }
+    },
+    {
+     "accion": "moverCarga",
+     "valor": 1
+    }
+   ],
+   "final": {
+    "kg": [
+     80,
+     82.5,
+     82.5,
+     82.5
+    ],
+    "hechasConOtraCarga": 1
+   }
+  }
+ ]
+}

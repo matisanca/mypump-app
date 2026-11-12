@@ -15,7 +15,7 @@
   /* --- Texto --- */
   --color-text-primary:   #0a0a0a;
   --color-text-secondary: #4a4a4a;
-  --color-text-muted:     #888888;
+  --color-text-muted:     #888888;   /* con la palanca 2.3.0, #636369 (abajo, html.w230) */
 
   /* --- Bordes --- */
   --color-border:       #e5e5e5;
@@ -34,6 +34,22 @@
   --color-prot:         #e11d48;
   --color-carb:         #b45309;
   --color-fat:          #4f5bd5;
+
+  /* --- El sistema de la 2.3.0, con los nombres de la app (Diseno/Sistema.swift) ---
+     marca: el relleno del botón que avanza. avance: segmentos y barras. riel: lo que
+     falta de una barra. apoyo: notas y la línea de una fila (AA sobre blanco y sobre
+     el fondo). marca-suave: lo ya hecho y los azulejos de ícono. superficie-heroe: la
+     tarjeta principal, oscura en los dos modos (adentro rige el modo oscuro: .heroe). */
+  --marca:            var(--color-brand);
+  --sobre-marca:      var(--color-on-brand);
+  --marca-texto:      var(--color-brand-text);
+  --marca-suave:      var(--color-brand-subtle);
+  --avance:           #157a28;
+  --riel:             rgba(0, 0, 0, 0.10);
+  --apoyo:            #636369;
+  --campo:            var(--color-bg-tertiary);
+  --superficie-heroe: #17181a;
+  --guia-destacada:   #17852b;
 
   /* --- Estados semánticos --- */
   --color-success: #16a34a;
@@ -140,7 +156,7 @@
   /* --- Texto --- */
   --color-text-primary:   #f5f5f5;
   --color-text-secondary: #b5b5b5;
-  --color-text-muted:     #757575;
+  --color-text-muted:     #757575;   /* con la palanca 2.3.0, #99999e (abajo, html.w230) */
 
   /* --- Bordes --- */
   --color-border:       #2a2a2a;
@@ -158,6 +174,13 @@
   --color-carb:         #ffb020;
   --color-fat:          #7d8bff;
 
+  /* --- El sistema de la 2.3.0 en oscuro: el verde va lleno o no va --- */
+  --avance:           #5bbe62;
+  --riel:             rgba(255, 255, 255, 0.14);
+  --apoyo:            #99999e;
+  --superficie-heroe: #202223;
+  --guia-destacada:   #157a28;
+
   /* --- Estados semánticos --- */
   --color-success: #22c55e;
   --color-warning: #fbbf24;
@@ -168,3 +191,8 @@
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.32);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.48);
 }
+
+/* Sistema 2.3.0 (palanca web_230, clase w230 en <html>): el gris de apoyo pasa AA.
+   Claro: #636369, 6:1 sobre blanco (el #888 de antes, 3,5:1). Oscuro: #99999e, 6:1 sobre la tarjeta (el #757575, 3,7:1). */
+html.w230 { --color-text-muted: #636369; }
+html.w230[data-theme="dark"] { --color-text-muted: #99999e; }

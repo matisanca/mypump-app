@@ -1,0 +1,8780 @@
+[
+ {
+  "nombre": "sin cambios, solo sube la versión",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue",
+       "tomas": [
+        {
+         "momento": "desayuno",
+         "cantidad": "1 g"
+        }
+       ]
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "200 mg",
+       "momento": "dormir",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 4,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "dieta": {
+    "id": "dt-1",
+    "version": 6,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue",
+       "tomas": [
+        {
+         "momento": "desayuno",
+         "cantidad": "1 g"
+        }
+       ]
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "200 mg",
+       "momento": "dormir",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-09T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "solo avanza la semana",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 2,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "solo cambia el RIR, no se cuenta",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10",
+           "rir_objetivo": "0"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "reemplazo de un ejercicio",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e9",
+           "nombre": "Sentadilla hack",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu rutina",
+   "resumen": "En Pierna A cambia Prensa por Sentadilla hack",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "En Pierna A cambia Prensa por Sentadilla hack"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "series y repes distintas",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 4,
+           "reps": "6 - 8"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu rutina",
+   "resumen": "En Torso A, Press banca pasa a 4 series de 6 a 8",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "En Torso A, Press banca pasa a 4 series de 6 a 8"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "mismo ejercicio con otras mayúsculas o sin tilde",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "PRESS  BANCA",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillon de cuadriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "se suma uno y sale otro en días distintos",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          },
+          {
+           "id": "e7",
+           "nombre": "Vuelos laterales",
+           "series": 3,
+           "reps": "12-15"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu rutina",
+   "resumen": "En Torso A se suma Vuelos laterales",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "En Torso A se suma Vuelos laterales",
+      "En Pierna A sale Curl femoral"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "cambia la progresión de las semanas que vienen",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 2,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "progresion": [
+            {
+             "semana": 1,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 2,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 3,
+             "series": 4,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 4,
+             "series": 4,
+             "reps": "6-8",
+             "rir": "0"
+            }
+           ]
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 2,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "progresion": [
+            {
+             "semana": 1,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 2,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 3,
+             "series": 4,
+             "reps": "6-8",
+             "rir": "0"
+            },
+            {
+             "semana": 4,
+             "series": 5,
+             "reps": "6-8",
+             "rir": "0"
+            }
+           ]
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu rutina",
+   "resumen": "En Torso A, Remo con barra cambia en las próximas semanas",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "En Torso A, Remo con barra cambia en las próximas semanas"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "la progresión cambia en esta semana",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 3,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "progresion": [
+            {
+             "semana": 1,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 2,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 3,
+             "series": 4,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 4,
+             "series": 4,
+             "reps": "6-8",
+             "rir": "0"
+            }
+           ]
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 3,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "progresion": [
+            {
+             "semana": 1,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 2,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 3,
+             "series": 4,
+             "reps": "6-8",
+             "rir": "0"
+            },
+            {
+             "semana": 4,
+             "series": 5,
+             "reps": "6-8",
+             "rir": "0"
+            }
+           ]
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu rutina",
+   "resumen": "En Torso A, Remo con barra pasa a 4 series de 6 a 8",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "En Torso A, Remo con barra pasa a 4 series de 6 a 8"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "lo que cambió en semanas pasadas no se cuenta",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 2,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "progresion": [
+            {
+             "semana": 1,
+             "series": 2,
+             "reps": "10",
+             "rir": "0"
+            },
+            {
+             "semana": 2,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 3,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            }
+           ]
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 2,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "progresion": [
+            {
+             "semana": 1,
+             "series": 3,
+             "reps": "12",
+             "rir": "0"
+            },
+            {
+             "semana": 2,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            },
+            {
+             "semana": 3,
+             "series": 3,
+             "reps": "8-10",
+             "rir": "0"
+            }
+           ]
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "una serie y repes en texto",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 1,
+           "reps": "10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "AMRAP"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu rutina",
+   "resumen": "En Torso A, Press banca pasa a 1 serie de 10",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "En Torso A, Press banca pasa a 1 serie de 10",
+      "En Torso A, Press militar pasa a 3 series, AMRAP"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "se suma un día",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d3",
+       "n": 3,
+       "nombre": "Brazos",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e20",
+           "nombre": "Curl con barra",
+           "series": 3,
+           "reps": "10"
+          },
+          {
+           "id": "e21",
+           "nombre": "Fondos",
+           "series": 3,
+           "reps": "10"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu rutina",
+   "resumen": "Se suma un día nuevo, Brazos",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "Se suma un día nuevo, Brazos"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "sale un día",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d3",
+       "n": 3,
+       "nombre": "Brazos",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e20",
+           "nombre": "Curl con barra",
+           "series": 3,
+           "reps": "10"
+          },
+          {
+           "id": "e21",
+           "nombre": "Fondos",
+           "series": 3,
+           "reps": "10"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu rutina",
+   "resumen": "Sale el día Brazos",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "Sale el día Brazos"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "muchos cambios se recortan",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 5,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 5,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 5,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 5,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "15-20"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu rutina",
+   "resumen": "En Torso A, Press banca pasa a 5 series de 8 a 10",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "En Torso A, Press banca pasa a 5 series de 8 a 10",
+      "En Torso A, Remo con barra pasa a 5 series de 8 a 10",
+      "En Torso A, Press militar pasa a 5 series de 10 a 12",
+      "Y 2 cambios más"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "bloque nuevo",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "Empuje",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "x1",
+           "nombre": "Press inclinado con mancuernas",
+           "series": 4,
+           "reps": "8-10"
+          },
+          {
+           "id": "x2",
+           "nombre": "Fondos en paralelas",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "x3",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Tirón",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "x4",
+           "nombre": "Dominadas",
+           "series": 4,
+           "reps": "6-8"
+          },
+          {
+           "id": "x5",
+           "nombre": "Remo en máquina",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d3",
+       "n": 3,
+       "nombre": "Pierna",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "x6",
+           "nombre": "Sentadilla",
+           "series": 4,
+           "reps": "6-8"
+          },
+          {
+           "id": "x7",
+           "nombre": "Peso muerto rumano",
+           "series": 3,
+           "reps": "8-10"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati te armó un bloque nuevo",
+   "resumen": "3 días, Empuje, Tirón y Pierna",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati te armó un bloque nuevo",
+     "grande": true,
+     "lineas": [
+      "3 días, Empuje, Tirón y Pierna",
+      "6 ejercicios nuevos"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "bloque nuevo por fase",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "fase": 1
+    }
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "fase": 2
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati te armó un bloque nuevo",
+   "resumen": "2 días, Torso A y Pierna A",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati te armó un bloque nuevo",
+     "grande": true,
+     "lineas": [
+      "2 días, Torso A y Pierna A"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "la primera rutina",
+  "antes": {
+   "rutina": null
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati te armó tu rutina",
+   "resumen": "2 días, Torso A y Pierna A",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati te armó tu rutina",
+     "grande": true,
+     "lineas": [
+      "2 días, Torso A y Pierna A"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "sin lo de antes no se compara",
+  "antes": {},
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "Mati sacó la rutina, no se cuenta",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "rutina": null
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "cambia una cantidad",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu dieta",
+   "resumen": "En Almuerzo, Pollo pasa a 200 g",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "En Almuerzo, Pollo pasa a 200 g"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "opción B se suma un alimento y cambia unidades",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 2,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Frutillas",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu dieta",
+   "resumen": "En Desayuno, opción A, Huevos pasa a 2 unidades",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "En Desayuno, opción A, Huevos pasa a 2 unidades",
+      "En Desayuno, opción B, se suma Frutillas"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "reemplazo y alimento que sale",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Batata",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu dieta",
+   "resumen": "En Almuerzo sale Ensalada",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "En Almuerzo sale Ensalada",
+      "En Cena cambia Papa por Batata"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "solo cambian las calorías de un alimento, no se cuenta",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 999,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "cambia el objetivo de calorías",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2150.4,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu dieta",
+   "resumen": "Tu objetivo del día pasa a 2.150 kcal",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "Tu objetivo del día pasa a 2.150 kcal"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "un cambio chico de calorías no se cuenta",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2430,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "se suma una comida",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c4",
+       "name": "Merienda",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Yogur",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Granola",
+           "qty": 40,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu dieta",
+   "resumen": "Se suma Merienda",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "Se suma Merienda"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "sale una comida",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu dieta",
+   "resumen": "Sale Cena",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "Sale Cena"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "se suma una opción",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Atún",
+           "qty": 120,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Fideos",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu dieta",
+   "resumen": "En Almuerzo se suma una opción",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "En Almuerzo se suma una opción"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "dieta nueva",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2200,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Tostadas",
+           "qty": 60,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Palta",
+           "qty": 50,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Café con leche",
+           "qty": 250,
+           "unit": "ml",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Merluza",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Quinoa",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Brócoli",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pavo",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Calabaza",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati te armó una dieta nueva",
+   "resumen": "3 comidas por día",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati te armó una dieta nueva",
+     "grande": true,
+     "lineas": [
+      "3 comidas por día",
+      "Objetivo de 2.200 kcal por día"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "la primera dieta",
+  "antes": {
+   "dieta": null
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati te armó tu dieta",
+   "resumen": "3 comidas por día",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati te armó tu dieta",
+     "grande": true,
+     "lineas": [
+      "3 comidas por día",
+      "Objetivo de 2.400 kcal por día"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "tipos de día",
+  "antes": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 2,
+    "estructura": {
+     "tipos_dia": [
+      {
+       "id": "entreno",
+       "nombre": "Día de entreno",
+       "macros_target": {
+        "kcal": 2600
+       },
+       "comidas": [
+        {
+         "id": "c1",
+         "name": "Desayuno",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Avena",
+             "qty": 80,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Huevos",
+             "qty": 3,
+             "unit": "u",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Banana",
+             "qty": 1,
+             "unit": "u",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          },
+          {
+           "name": "B",
+           "foods": [
+            {
+             "name": "Pan integral",
+             "qty": 80,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Queso untable",
+             "qty": 30,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "c2",
+         "name": "Almuerzo",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Pollo",
+             "qty": 150,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Arroz",
+             "qty": 200,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Ensalada",
+             "qty": 150,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "c3",
+         "name": "Cena",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Carne magra",
+             "qty": 180,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Papa",
+             "qty": 250,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "descanso",
+       "nombre": "Día de descanso",
+       "macros_target": {
+        "kcal": 2200
+       },
+       "comidas": [
+        {
+         "id": "c1",
+         "name": "Desayuno",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Avena",
+             "qty": 80,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Huevos",
+             "qty": 3,
+             "unit": "u",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Banana",
+             "qty": 1,
+             "unit": "u",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          },
+          {
+           "name": "B",
+           "foods": [
+            {
+             "name": "Pan integral",
+             "qty": 80,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Queso untable",
+             "qty": 30,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "c2",
+         "name": "Almuerzo",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Pollo",
+             "qty": 150,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Arroz",
+             "qty": 200,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Ensalada",
+             "qty": 150,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "c3",
+         "name": "Cena",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Carne magra",
+             "qty": 180,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Papa",
+             "qty": 250,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "despues": {
+   "dieta": {
+    "id": "dt-1",
+    "version": 2,
+    "estructura": {
+     "tipos_dia": [
+      {
+       "id": "entreno",
+       "nombre": "Día de entreno",
+       "macros_target": {
+        "kcal": 2600
+       },
+       "comidas": [
+        {
+         "id": "c1",
+         "name": "Desayuno",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Avena",
+             "qty": 80,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Huevos",
+             "qty": 3,
+             "unit": "u",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Banana",
+             "qty": 1,
+             "unit": "u",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          },
+          {
+           "name": "B",
+           "foods": [
+            {
+             "name": "Pan integral",
+             "qty": 80,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Queso untable",
+             "qty": 30,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "c2",
+         "name": "Almuerzo",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Pollo",
+             "qty": 150,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Arroz",
+             "qty": 200,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Ensalada",
+             "qty": 150,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "c3",
+         "name": "Cena",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Carne magra",
+             "qty": 180,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Papa",
+             "qty": 250,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "descanso",
+       "nombre": "Día de descanso",
+       "macros_target": {
+        "kcal": 2000
+       },
+       "comidas": [
+        {
+         "id": "c1",
+         "name": "Desayuno",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Avena",
+             "qty": 80,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Huevos",
+             "qty": 3,
+             "unit": "u",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Banana",
+             "qty": 1,
+             "unit": "u",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          },
+          {
+           "name": "B",
+           "foods": [
+            {
+             "name": "Pan integral",
+             "qty": 80,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Queso untable",
+             "qty": 30,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "c2",
+         "name": "Almuerzo",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Pollo",
+             "qty": 150,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Arroz",
+             "qty": 200,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Ensalada",
+             "qty": 150,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "c3",
+         "name": "Cena",
+         "options": [
+          {
+           "name": "A",
+           "foods": [
+            {
+             "name": "Carne magra",
+             "qty": 180,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            },
+            {
+             "name": "Papa",
+             "qty": 150,
+             "unit": "g",
+             "kcal": 100,
+             "prot": 10,
+             "carb": 10,
+             "fat": 2
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu dieta",
+   "resumen": "En Día de descanso, tu objetivo pasa a 2.000 kcal",
+   "partes": [
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "En Día de descanso, tu objetivo pasa a 2.000 kcal",
+      "En Cena (Día de descanso), Papa pasa a 150 g"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "suplementación sin dosis en el texto",
+  "antes": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue",
+       "tomas": [
+        {
+         "momento": "desayuno",
+         "cantidad": "1 g"
+        }
+       ]
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "200 mg",
+       "momento": "dormir",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "despues": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sale"
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "400 mg",
+       "momento": "dormir",
+       "estado": "sube",
+       "antes": "200 mg"
+      },
+      {
+       "nombre": "Cafeína",
+       "cantidad": "200 mg",
+       "momento": "pre",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-09T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu suplementación",
+   "resumen": "Se suma Cafeína",
+   "partes": [
+    {
+     "area": "suplementacion",
+     "titular": "Mati actualizó tu suplementación",
+     "grande": false,
+     "lineas": [
+      "Se suma Cafeína",
+      "Dejás de tomar Omega 3",
+      "Cambia cómo tomás Magnesio glicinato"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "cambia solo el estado o el porqué, no se cuenta",
+  "antes": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue",
+       "tomas": [
+        {
+         "momento": "desayuno",
+         "cantidad": "1 g"
+        }
+       ]
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "200 mg",
+       "momento": "dormir",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "despues": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "nuevo",
+       "por_que": "Otra explicación"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue",
+       "tomas": [
+        {
+         "momento": "desayuno",
+         "cantidad": "1 g"
+        }
+       ]
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "200 mg",
+       "momento": "dormir",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-09T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": null
+ },
+ {
+  "nombre": "la primera suplementación",
+  "antes": {
+   "suplementacion": null
+  },
+  "despues": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue",
+       "tomas": [
+        {
+         "momento": "desayuno",
+         "cantidad": "1 g"
+        }
+       ]
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "200 mg",
+       "momento": "dormir",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": {
+   "titular": "Mati te armó tu suplementación",
+   "resumen": "3 suplementos para tu día",
+   "partes": [
+    {
+     "area": "suplementacion",
+     "titular": "Mati te armó tu suplementación",
+     "grande": true,
+     "lineas": [
+      "3 suplementos para tu día"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "rutina y dieta juntas",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue",
+       "tomas": [
+        {
+         "momento": "desayuno",
+         "cantidad": "1 g"
+        }
+       ]
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "200 mg",
+       "momento": "dormir",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e9",
+           "nombre": "Sentadilla hack",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue",
+       "tomas": [
+        {
+         "momento": "desayuno",
+         "cantidad": "1 g"
+        }
+       ]
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "200 mg",
+       "momento": "dormir",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu plan",
+   "resumen": "Hay cambios en tu rutina y tu dieta",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "En Pierna A cambia Prensa por Sentadilla hack"
+     ]
+    },
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "En Almuerzo, Pollo pasa a 200 g"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "las tres juntas",
+  "antes": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e4",
+           "nombre": "Prensa",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue",
+       "tomas": [
+        {
+         "momento": "desayuno",
+         "cantidad": "1 g"
+        }
+       ]
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "200 mg",
+       "momento": "dormir",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "despues": {
+   "rutina": {
+    "id": "r-1",
+    "version": 3,
+    "semana_actual": 1,
+    "estructura": {
+     "nombre_plan": "Plan de prueba",
+     "semanas_total": 8,
+     "dias": [
+      {
+       "id": "d1",
+       "n": 1,
+       "nombre": "TORSO A",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e1",
+           "nombre": "Press banca",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e2",
+           "nombre": "Remo con barra",
+           "series": 3,
+           "reps": "8-10"
+          },
+          {
+           "id": "e3",
+           "nombre": "Press militar",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "d2",
+       "n": 2,
+       "nombre": "Pierna A — Cuádriceps",
+       "bloques": [
+        {
+         "titulo": "BLOQUE 1",
+         "ejercicios": [
+          {
+           "id": "e9",
+           "nombre": "Sentadilla hack",
+           "series": 4,
+           "reps": "10-12"
+          },
+          {
+           "id": "e5",
+           "nombre": "Sillón de cuádriceps",
+           "series": 3,
+           "reps": "12-15"
+          },
+          {
+           "id": "e6",
+           "nombre": "Curl femoral",
+           "series": 3,
+           "reps": "10-12"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "dieta": {
+    "id": "dt-1",
+    "version": 5,
+    "estructura": {
+     "macros_target": {
+      "kcal": 2400,
+      "prot": 180,
+      "carb": 250,
+      "fat": 70
+     },
+     "comidas": [
+      {
+       "id": "c1",
+       "name": "Desayuno",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Avena",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Huevos",
+           "qty": 3,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Banana",
+           "qty": 1,
+           "unit": "u",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        },
+        {
+         "name": "B",
+         "foods": [
+          {
+           "name": "Pan integral",
+           "qty": 80,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Queso untable",
+           "qty": 30,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c2",
+       "name": "Almuerzo",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Pollo",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Arroz",
+           "qty": 200,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Ensalada",
+           "qty": 150,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "c3",
+       "name": "Cena",
+       "options": [
+        {
+         "name": "A",
+         "foods": [
+          {
+           "name": "Carne magra",
+           "qty": 180,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          },
+          {
+           "name": "Papa",
+           "qty": 250,
+           "unit": "g",
+           "kcal": 100,
+           "prot": 10,
+           "carb": 10,
+           "fat": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina monohidrato",
+       "cantidad": "5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sale"
+      },
+      {
+       "nombre": "Magnesio glicinato",
+       "cantidad": "400 mg",
+       "momento": "dormir",
+       "estado": "sube",
+       "antes": "200 mg"
+      },
+      {
+       "nombre": "Cafeína",
+       "cantidad": "200 mg",
+       "momento": "pre",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu plan",
+   "resumen": "Hay cambios en tu rutina, tu dieta y tu suplementación",
+   "partes": [
+    {
+     "area": "rutina",
+     "titular": "Mati actualizó tu rutina",
+     "grande": false,
+     "lineas": [
+      "En Pierna A cambia Prensa por Sentadilla hack"
+     ]
+    },
+    {
+     "area": "dieta",
+     "titular": "Mati actualizó tu dieta",
+     "grande": false,
+     "lineas": [
+      "En Almuerzo, Pollo pasa a 200 g"
+     ]
+    },
+    {
+     "area": "suplementacion",
+     "titular": "Mati actualizó tu suplementación",
+     "grande": false,
+     "lineas": [
+      "Se suma Cafeína",
+      "Dejás de tomar Omega 3",
+      "Cambia cómo tomás Magnesio glicinato"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "el nombre del suplemento trae la dosis: no se muestra",
+  "antes": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina 3 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Vitamina C (2 g)",
+       "estado": "sigue"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "despues": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina 5 g",
+       "momento": "desayuno",
+       "estado": "sube"
+      },
+      {
+       "nombre": "Omega 3",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "Magnesio 400 mg x día",
+       "momento": "dormir",
+       "estado": "nuevo"
+      },
+      {
+       "nombre": "Vitamina D 5.000 UI del almuerzo",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-09T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": {
+   "titular": "Mati actualizó tu suplementación",
+   "resumen": "Se suma Magnesio",
+   "partes": [
+    {
+     "area": "suplementacion",
+     "titular": "Mati actualizó tu suplementación",
+     "grande": false,
+     "lineas": [
+      "Se suma Magnesio",
+      "Se suma Vitamina D del almuerzo",
+      "Dejás de tomar Vitamina C",
+      "Cambia cómo tomás Creatina"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nombre": "el nombre trae la dosis y no cambió: no se cuenta",
+  "antes": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina 5 g",
+       "momento": "desayuno",
+       "estado": "nuevo"
+      },
+      {
+       "nombre": "5 g",
+       "estado": "sigue"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-01T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "despues": {
+   "suplementacion": {
+    "suplementacion": {
+     "titulo": "Tu suplementación",
+     "dia": [
+      {
+       "id": "desayuno"
+      },
+      {
+       "id": "dormir"
+      }
+     ],
+     "items": [
+      {
+       "nombre": "Creatina  5 g",
+       "momento": "desayuno",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "5 g",
+       "estado": "sigue"
+      },
+      {
+       "nombre": "200 mg",
+       "estado": "nuevo"
+      }
+     ]
+    },
+    "fase": "final",
+    "actualizado": "2026-11-09T10:00:00+00:00",
+    "esquema": 1
+   }
+  },
+  "esperado": null
+ }
+]

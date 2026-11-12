@@ -129,9 +129,9 @@ console.log('\n=== La app usa la clave en los lugares correctos ===\n');
 t('writeSet registra el nombre EFECTIVO (la fuente de la identidad)', () => {
   const i = HTML.indexOf('function writeSet(exId, setIdx)');
   const cuerpo = HTML.slice(i, i + 1500);
-  // El sustituto manda; si el swap ya expiró (día cerrado y reabierto) va el
-  // nombre con el que la serie se registró, y recién después el del slot.
-  if (!/ejercicioNombre\s*=\s*swap \? swap\.current\.nombre : \(s\.nombreRegistrado \|\| ex\.nombre\)/.test(cuerpo))
+  // Como la app 2.3.0: el nombre con que la serie se registró manda (corregir no la pasa al sustituto);
+  // si no hay, el del sustituto, y recién después el del slot.
+  if (!/ejercicioNombre\s*=\s*web230\(\)\s*\?\s*\(s\.nombreRegistrado \|\| \(swap \? swap\.current\.nombre : ex\.nombre\)\)\s*:\s*\(swap \? swap\.current\.nombre : \(s\.nombreRegistrado \|\| ex\.nombre\)\)/.test(cuerpo))
     throw new Error('writeSet ya no snapshotea el nombre del sustituto (ni el registrado): la clave dejaría de reflejar lo que se hizo');
   const j = HTML.indexOf('async function loadRegistrosCarga()');
   if (!HTML.slice(j, j + 2500).includes('setObj.nombreRegistrado = reg.ejercicio_nombre'))
@@ -186,7 +186,7 @@ t('cerrar el día NO expira el swap del día abierto (reabrir para corregir)', (
 });
 
 t('la pantalla de Progreso agrupa por ejercicio, no por slot', () => {
-  const i = HTML.indexOf('async function loadProgressAndRender()');
+  const i = HTML.indexOf('async function loadProgressAndRender(');
   const cuerpo = HTML.slice(i, i + 4500);
   if (cuerpo.includes('if (seen.has(ex.id)) continue;'))
     throw new Error('Progreso sigue deduplicando por ex.id: el mismo ejercicio en dos días sale dos veces');
@@ -257,7 +257,7 @@ t('un fallo de red NUNCA cae al historial por slot (mezclaría original y sustit
   if (!cuerpo.includes('porClave === false ? window.mypumpDB.getHistoricoEjercicio'))
     throw new Error('loadHistorico cae al slot con cualquier valor falsy, no solo con false');
   if (!cuerpo.includes('porClave === null  ? null')) throw new Error('un null de red no se propaga como "sin definir"');
-  const j = HTML.indexOf('async function loadProgressAndRender()');
+  const j = HTML.indexOf('async function loadProgressAndRender(');
   const prog = HTML.slice(j, j + 4000);
   if (!prog.includes('else if (porClave === null)')) throw new Error('Progreso cae al slot ante un fallo de red');
 });

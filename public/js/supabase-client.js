@@ -49,9 +49,26 @@ function clasificarError(error, status) {
 
 // Guarda el último error en window.mypumpDB._lastError para que el frontend
 // pueda distinguir "token inválido" (null sin error) de "servicio caído" (error existente).
-async function rpc(fn, params) {
+/* Auditoría 10/11, F2: ninguna lectura tenía tope. Con la señal «colgada» (el
+ * gimnasio) la web quedaba en «Cargando…» para siempre. Pasado el tope, la
+ * lectura se corta y cuenta como sin red: el arranque cae a la copia guardada. */
+const TOPE_LECTURA_MS = 15000;
+const SIN_RESPUESTA = { code: 'NETWORK', message: 'tiempo de espera agotado', status: 0, transitorio: true };
+
+async function rpc(fn, params, tope = TOPE_LECTURA_MS) {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  let reloj = null;
+  const vencido = new Promise((ok) => { reloj = setTimeout(() => { if (ctl) ctl.abort(); ok({ _vencido: true }); }, tope); });
   try {
-    const { data, error, status } = await getClient().rpc(fn, params);
+    let q = getClient().rpc(fn, params);
+    if (ctl && q && typeof q.abortSignal === 'function') q = q.abortSignal(ctl.signal);
+    const r = await Promise.race([q, vencido]);
+    if (r && r._vencido || (ctl && ctl.signal.aborted)) {
+      logDev(`RPC ${fn} sin respuesta en ${tope} ms`);
+      if (window.mypumpDB) window.mypumpDB._lastError = { ...SIN_RESPUESTA };
+      return null;
+    }
+    const { data, error, status } = r;
     if (error) {
       logDev(`RPC ${fn} error:`, error);
       if (window.mypumpDB) window.mypumpDB._lastError = clasificarError(error, status);
@@ -65,6 +82,8 @@ async function rpc(fn, params) {
       window.mypumpDB._lastError = { code: 'NETWORK', message: e.message || String(e), status: 0, transitorio: true };
     }
     return null;
+  } finally {
+    clearTimeout(reloj);
   }
 }
 
@@ -112,7 +131,14 @@ window.mypumpDB = {
   // Actualiza last_accessed_at en servidor.
   async getClienteInfo(token) {
     const rows = await rpc('mypump_get_cliente_info', { p_token: token });
-    if (!rows || rows.length === 0) return null;
+    // Un 200 que no es una lista no dice que el token no exista: es un fallo pasajero y no cierra la sesión (como las apps).
+    if (!Array.isArray(rows)) {
+      if (window.mypumpDB && !window.mypumpDB._lastError) {
+        window.mypumpDB._lastError = { code: 'RESPUESTA', message: 'respuesta inesperada', status: 200, transitorio: true };
+      }
+      return null;
+    }
+    if (rows.length === 0) return null;
     return rows[0];
   },
 
@@ -343,6 +369,29 @@ window.mypumpDB = {
     return rows && rows.length > 0 ? rows[0] : null;
   },
 
+  // El día de revisión del alumno (1 = lunes … 7 = domingo). null si no se pudo leer.
+  async getRevisionDia(token) {
+    return await rpc('mypump_get_revision_dia', { p_token: token });
+  },
+
+  // La palanca remota (mypump_get_app_config): null si no se pudo preguntar.
+  async getAppConfig() {
+    return await rpc('mypump_get_app_config', {});
+  },
+
+  // «Gimnasio por fotos»: la cola tiene que saber si fue red, servidor o «no existe la función», y no toca _lastError
+  // (el resto de la app no se entera de lo que le pase a esta sección).
+  async gimnasioRpc(fn, params) {
+    try {
+      const { data, error, status } = await getClient().rpc(fn, params);
+      if (!error) return { ok: true, data };
+      const c = clasificarError(error, status);
+      return { ok: false, status: c.status, codigo: c.code, clase: c.code === 'NETWORK' ? 'red' : c.transitorio ? 'transitorio' : 'permanente' };
+    } catch (e) {
+      return { ok: false, status: 0, codigo: 'NETWORK', clase: 'red' };
+    }
+  },
+
   // Todas las sesiones de una semana (una por día, la de más actividad).
   // Filas: {dia_id, iniciada_en, finalizada_en}. Para marcar días completados
   // en el day picker.
@@ -488,6 +537,13 @@ window.mypumpDB = {
   // Cero filas si el token no vale o no hay suplementación; una fila si hay.
   async getSuplementacion(token) {
     return await rpc('mypump_suplementacion', { p_token: token });
+  },
+
+  // ─── DOCUMENTOS (contrato y consentimiento, firma propia) ───
+  // {documentos:[{id,tipo,titulo,estado,firmado_en,revocado_en}], pendientes}. null si falló
+  // (token inválido, sin red, o la función todavía no está en la base): para la app, «sin documentos».
+  async getContrato(token) {
+    return await rpc('mypump_contrato_get', { p_token: token });
   },
 
   async getMostrarRecuperacion(token) {
@@ -831,6 +887,18 @@ window.mypumpDB = {
       return { success: true, data: { ok: false, motivo: 'error' }, error: null };
     }
     return await rpcMutation('entregas_app_reservar', { p_token: token, p_franja: franja, p_id: id });
+  },
+
+  // Cambia la reserva confirmada a otra franja (videollamada 2.3.0, palanca
+  // `elegir_horario`): {ok, reserva} o {ok:false, motivo} (tomada, franja,
+  // tope, plazo, sin_reserva, token, error). Atómica e idempotente por p_id: el
+  // servidor toma la nueva y recién ahí libera la vieja. MUEVE UN TURNO REAL:
+  // lo llama solo la cola de la reserva de guia.js.
+  async cambiarEntregaGuia(token, reserva, franja, id) {
+    if (!_esUuidGuia(id) || typeof franja !== 'string' || !franja || typeof reserva !== 'string' || !reserva) {
+      return { success: true, data: { ok: false, motivo: 'error' }, error: null };
+    }
+    return await rpcMutation('entregas_app_cambiar', { p_token: token, p_reserva: reserva, p_franja: franja, p_id: id });
   },
 
   // La subida del audio a la ruta que dio el ticket: POST con la anon key, el

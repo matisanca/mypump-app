@@ -47,6 +47,59 @@ for (const m of seccionFns.matchAll(/^(mypump_[a-z0-9_]+|_mypump_[a-z0-9_]+)\(([
   if (firmas.has(nombre)) for (const p of params) firmas.get(nombre).add(p);
   else firmas.set(nombre, params);
 }
+// Aplicada a mano desde supabase/propuestas de la rama nativa-230 (nativa_008b); todavía no está en el esquema volcado.
+firmas.set('mypump_get_revision_dia', new Set(['p_token']));
+// Gimnasio por fotos: propuesta sin aplicar (supabase/propuestas/nativa_gimnasio_fotos.sql, rama nativa-gimnasio). Si no existe, la web no muestra nada.
+firmas.set('mypump_gimnasio_get', new Set(['p_token']));
+firmas.set('mypump_gimnasio_nuevo', new Set(['p_token', 'p_modo']));
+firmas.set('mypump_gimnasio_enviar', new Set(['p_token', 'p_id', 'p_no_hay', 'p_nota', 'p_quitar']));
+firmas.set('mypump_gimnasio_responder', new Set(['p_token', 'p_id', 'p_respuestas']));
+// Cola B de la 2.3.0: propuestas sin aplicar (supabase/propuestas/nativa_fin_plan.sql, nativa_compras_pais.sql y nativa_casa.sql, rama
+// nativa-cola-b). Con la palanca apagada no se llaman; si no existen, la web no muestra nada.
+firmas.set('mypump_fin_plan_get', new Set(['p_token']));
+firmas.set('mypump_fin_plan_visto', new Set(['p_token']));
+firmas.set('mypump_fin_plan_pedir', new Set(['p_token', 'p_id', 'p_respuestas']));
+firmas.set('mypump_compras_get', new Set(['p_token']));
+firmas.set('mypump_casa_get', new Set(['p_token']));
+firmas.set('mypump_casa_elegir', new Set(['p_token', 'p_casa']));
+firmas.set('mypump_casa_enviar', new Set(['p_token', 'p_id', 'p_equipos', 'p_sin_equipo', 'p_nota']));
+// Técnica por video: propuesta sin aplicar (supabase/propuestas/nativa_tecnica.sql, rama nativa-tecnica).
+// propuesta nativa_contrato_firma.sql (sin aplicar): la web trata el error como «sin documentos»
+firmas.set('mypump_contrato_get', new Set(['p_token']));
+firmas.set('mypump_tecnica_get', new Set(['p_token']));
+// Devolución de Mati: propuesta sin aplicar (supabase/propuestas/nativa_devolucion_semanal.sql, rama nativa-devolucion).
+firmas.set('mypump_devolucion_get', new Set(['p_token']));
+// Récords y logros, y la lista previa a la videollamada: propuesta sin aplicar (supabase/propuestas/nativa_wins_lista_previa.sql, rama nativa-cola-a).
+firmas.set('mypump_wins_estado', new Set(['p_token']));
+firmas.set('mypump_wins_permiso', new Set(['p_token', 'p_otorga', 'p_version', 'p_plataforma']));
+firmas.set('mypump_wins_registrar', new Set(['p_token', 'p_id', 'p_tipo', 'p_clave', 'p_dia', 'p_datos']));
+firmas.set('mypump_lista_previa', new Set(['p_token']));
+firmas.set('mypump_tecnica_nuevo', new Set(['p_token', 'p_ejercicio_slug', 'p_ejercicio_nombre', 'p_nota']));
+firmas.set('mypump_tecnica_cancelar', new Set(['p_token', 'p_id']));
+// Fotos y audios en el chat: propuesta sin aplicar (supabase/propuestas/nativa_chat_adjuntos.sql, rama nativa-chat-adjuntos).
+firmas.set('mypump_chat_adjuntos_estado', new Set(['p_token']));
+// Feedback del alumno: propuesta sin aplicar (supabase/propuestas/nativa_feedback_alumno.sql, rama nativa-feedback).
+firmas.set('mypump_feedback_get', new Set(['p_token']));
+firmas.set('mypump_molestia_registrar', new Set(['p_token', 'p_id', 'p_ejercicio_id', 'p_ejercicio_nombre', 'p_dia_id', 'p_zona', 'p_lado',
+  'p_desde', 'p_cuando', 'p_tipo', 'p_intensidad', 'p_nota', 'p_plataforma', 'p_version']));
+firmas.set('mypump_suple_marcar', new Set(['p_token', 'p_item', 'p_estado', 'p_nota']));
+// Estudios y órdenes: propuesta sin aplicar (supabase/propuestas/nativa_estudios.sql, rama nativa-estudios). Si no existe, la web no muestra nada.
+firmas.set('mypump_estudios_get', new Set(['p_token']));
+firmas.set('mypump_estudios_envio_nuevo', new Set(['p_token', 'p_id', 'p_pedido_id']));
+firmas.set('mypump_estudios_enviar', new Set(['p_token', 'p_id', 'p_archivos']));
+firmas.set('mypump_estudios_hecho', new Set(['p_token', 'p_pedido_id', 'p_fecha']));
+firmas.set('mypump_estudios_novedades_vistas', new Set(['p_token', 'p_ids']));
+// Controles de salud: propuesta sin aplicar (supabase/propuestas/nativa_controles_salud.sql, rama nativa-controles). Sin ella, la web no muestra nada.
+firmas.set('mypump_controles_get', new Set(['p_token']));
+// Fotos de inicio: propuesta sin aplicar (supabase/propuestas/nativa_fotos_inicio*, rama de fotos de inicio). Hasta aplicarla contesta PGRST202 y la web no muestra nada.
+firmas.set('mypump_fotos_inicio_get', new Set(['p_token']));
+firmas.set('mypump_fotos_inicio_nota', new Set(['p_token', 'p_nota']));
+// Presión arterial: propuesta sin aplicar (presion/CONTRATO_APP.md, rama nativa-presion). Si no existe, la web no muestra nada.
+firmas.set('mypump_presion_get', new Set(['p_token', 'p_zona']));
+firmas.set('mypump_presion_aparato', new Set(['p_token', 'p_aparato']));
+firmas.set('mypump_presion_medida', new Set(['p_token', 'p_cm', 'p_zona']));
+firmas.set('mypump_presion_sesion', new Set(['p_token', 'p_sesion']));
+firmas.set('mypump_presion_sintoma', new Set(['p_token', 'p_sintoma']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.
@@ -95,6 +148,8 @@ const PATRONES = [
   /\.rpc\(\s*['"]([a-z_0-9]+)['"]\s*,\s*\{([^}]*)\}/g,
   /\brpc(?:Mutation)?\(\s*(?:env\s*,\s*)?['"]([a-z_0-9]+)['"]\s*,\s*\{([^}]*)\}/g,
   /rpc\/([a-z_0-9]+)["'][^{]{0,80}\{([^}]*)\}/g,
+  // this._rpc('fn', { p_x: ... }): los modelos de la web (el `p_token` lo suma el propio _rpc)
+  /\._rpc\(\s*['"]([a-z_0-9]+)['"]\s*,\s*\{([^}]*)\}/g,
 ];
 
 const problemas = [];

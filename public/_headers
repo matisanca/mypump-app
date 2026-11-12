@@ -28,6 +28,10 @@
 /js/*
   Cache-Control: no-cache
 
+# La historia de ejemplo de la demo sin cuenta: cambia con la app.
+/demo/*
+  Cache-Control: no-cache
+
 /css/*
   Cache-Control: no-cache
 
@@ -43,3 +47,8 @@
 /.well-known/apple-app-site-association
   Content-Type: application/json
   Cache-Control: no-cache
+
+# Auditoría del 10/11, F21: el link personal (?t=) no viaja a otros sitios en el Referer. Con «no-referrer» los videos de
+# YouTube embebidos dejan de andar (piden el origen), así que va la política que manda solo el origen afuera.
+/*
+  Referrer-Policy: strict-origin-when-cross-origin

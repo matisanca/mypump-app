@@ -1,0 +1,213 @@
+[
+ {
+  "nombre": "solo texto",
+  "titulo": "Mi objetivo",
+  "texto": "Uno.\n\nDos.",
+  "subtitulo": "Mi objetivo",
+  "parrafos": [
+   "Uno.",
+   "Dos."
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "titulo igual al bloque no va como subtitulo",
+  "titulo": "lo que mas te IMPORTA",
+  "texto": "Uno.",
+  "subtitulo": null,
+  "parrafos": [
+   "Uno."
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "titulo nulo",
+  "titulo": null,
+  "texto": "Uno.",
+  "subtitulo": null,
+  "parrafos": [
+   "Uno."
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "blanco es vacio",
+  "titulo": "x",
+  "texto": " \n  ﻿\n",
+  "vacio": true
+ },
+ {
+  "nombre": "solo marcas es vacio",
+  "titulo": null,
+  "texto": "---\n\n***",
+  "vacio": true
+ },
+ {
+  "nombre": "partes",
+  "titulo": null,
+  "texto": "Primero.\n\n## Tu plan\n\nA.\n\nB.\n\n## Otra\n\nC.",
+  "subtitulo": null,
+  "parrafos": [
+   "Primero."
+  ],
+  "partes": [
+   {
+    "titulo": "Tu plan",
+    "parrafos": [
+     "A.",
+     "B."
+    ]
+   },
+   {
+    "titulo": "Otra",
+    "parrafos": [
+     "C."
+    ]
+   }
+  ]
+ },
+ {
+  "nombre": "parte sin texto principal",
+  "titulo": null,
+  "texto": "## Tu plan\n\nA.",
+  "subtitulo": null,
+  "parrafos": [],
+  "partes": [
+   {
+    "titulo": "Tu plan",
+    "parrafos": [
+     "A."
+    ]
+   }
+  ]
+ },
+ {
+  "nombre": "windows y linea con espacios",
+  "titulo": null,
+  "texto": "Uno.\r\n \t\r\nDos.",
+  "subtitulo": null,
+  "parrafos": [
+   "Uno.",
+   "Dos."
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "salto simple es espacio",
+  "titulo": null,
+  "texto": "Una linea\nque sigue.",
+  "subtitulo": null,
+  "parrafos": [
+   "Una linea que sigue."
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "marcas inline",
+  "titulo": "**Negrita**",
+  "texto": "Esto es **fuerte**, *suave*, __doble__, _bajo_, ~~tachado~~, `codigo` y [un link](https://example.invalid/x).",
+  "subtitulo": "Negrita",
+  "parrafos": [
+   "Esto es fuerte, suave, doble, bajo, tachado, codigo y un link."
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "no toca lo que no es marca",
+  "titulo": null,
+  "texto": "Hago 3*4 series, 5 * 2, snake_case y a_b_c.",
+  "subtitulo": null,
+  "parrafos": [
+   "Hago 3*4 series, 5 * 2, snake_case y a_b_c."
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "encabezado con cuerpo",
+  "titulo": null,
+  "texto": "## Titulo\ncon cuerpo",
+  "subtitulo": null,
+  "parrafos": [
+   "Titulo con cuerpo"
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "tres numerales no abre parte",
+  "titulo": null,
+  "texto": "### Chico",
+  "subtitulo": null,
+  "parrafos": [
+   "Chico"
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "dos numerales solos",
+  "titulo": null,
+  "texto": "Uno.\n\n##",
+  "subtitulo": null,
+  "parrafos": [
+   "Uno."
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "lista",
+  "titulo": null,
+  "texto": "- uno\n* dos\n+ tres",
+  "subtitulo": null,
+  "parrafos": [
+   "• uno\n• dos\n• tres"
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "titulo de parte con negrita",
+  "titulo": null,
+  "texto": "A.\n\n## **Tu plan**\n\nB.",
+  "subtitulo": null,
+  "parrafos": [
+   "A."
+  ],
+  "partes": [
+   {
+    "titulo": "Tu plan",
+    "parrafos": [
+     "B."
+    ]
+   }
+  ]
+ },
+ {
+  "nombre": "cita y separador",
+  "titulo": null,
+  "texto": "> Dicho\n\n---\n\nFin.",
+  "subtitulo": null,
+  "parrafos": [
+   "Dicho",
+   "Fin."
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "mayor que seguido de numero no es cita",
+  "titulo": null,
+  "texto": "> 54 de hematocrito",
+  "subtitulo": null,
+  "parrafos": [
+   "> 54 de hematocrito"
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "marca partida en dos lineas",
+  "titulo": null,
+  "texto": "Esto es **muy\nimportante** y sigue.",
+  "subtitulo": null,
+  "parrafos": [
+   "Esto es muy importante y sigue."
+  ],
+  "partes": []
+ }
+]

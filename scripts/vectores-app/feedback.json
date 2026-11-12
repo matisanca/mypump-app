@@ -1,0 +1,78 @@
+{
+ "_comentario": "Feedback del alumno (2.3.0). Los mismos casos para iOS, Android y la web. La clave de un suplemento es la de mypump_suple_clave (SQL).",
+ "zonas": [
+  {"zona": "hombro", "lado": "derecho", "nombre": "Hombro derecho"},
+  {"zona": "hombro", "lado": "izquierdo", "nombre": "Hombro izquierdo"},
+  {"zona": "hombro", "lado": "ambos", "nombre": "Hombro, los dos lados"},
+  {"zona": "muneca", "lado": "izquierdo", "nombre": "Muñeca o mano izquierda"},
+  {"zona": "rodilla", "lado": "derecho", "nombre": "Rodilla derecha"},
+  {"zona": "muslo_frente", "lado": "derecho", "nombre": "Muslo derecho adelante"},
+  {"zona": "muslo_atras", "lado": "ambos", "nombre": "Muslo atrás, los dos lados"},
+  {"zona": "espalda_baja", "lado": "centro", "nombre": "Espalda baja"},
+  {"zona": "pecho", "lado": "centro", "nombre": "Pecho"},
+  {"zona": "tobillo", "lado": "izquierdo", "nombre": "Tobillo o pie izquierdo"},
+  {"zona": "cadera", "lado": "derecho", "nombre": "Cadera derecha"},
+  {"zona": "oreja", "lado": "derecho", "nombre": ""}
+ ],
+ "niveles": [[0, 2], [2, 2], [3, 2], [4, 5], [5, 5], [6, 7], [7, 7], [8, 9], [9, 9], [10, 9]],
+ "fuerte": [[5, false], [6, false], [7, true], [9, true]],
+ "claves": [
+  ["Creatina monohidrato", "creatina monohidrato"],
+  ["  Creatina   Monohidrato ", "creatina monohidrato"],
+  ["Cafeína", "cafeina"],
+  ["Ácido Fólico Ñ", "acido folico n"],
+  ["OMEGA 3", "omega 3"],
+  ["Vitamina D3 + K2", "vitamina d3 + k2"],
+  ["", ""]
+ ],
+ "suple": {
+  "items": [
+   {"nombre": "Creatina monohidrato", "estado": "nuevo"},
+   {"nombre": "Omega 3", "estado": "sigue"},
+   {"nombre": "omega  3", "estado": "sigue"},
+   {"nombre": "Telmisartán", "protector": true},
+   {"nombre": "Multivitamínico", "estado": "sale"},
+   {"nombre": "Zinc", "estado": "sale"},
+   {"nombre": " "}
+  ],
+  "marcas": {"omega 3": "comprado", "zinc": "lo_deje", "telmisartan": "tomando"},
+  "filas": [
+   {"id": "creatina monohidrato", "nombre": "Creatina monohidrato", "estado": null},
+   {"id": "omega 3", "nombre": "Omega 3", "estado": "comprado"},
+   {"id": "zinc", "nombre": "Zinc", "estado": "lo_deje"}
+  ],
+  "resumen": "2 de 3 marcados"
+ },
+ "toques": [
+  {"vista": "frente", "x": 64, "y": 84, "zona": "hombro", "lado": "derecho"},
+  {"vista": "frente", "x": 136, "y": 84, "zona": "hombro", "lado": "izquierdo"},
+  {"vista": "espalda", "x": 64, "y": 84, "zona": "hombro", "lado": "izquierdo"},
+  {"vista": "frente", "x": 100, "y": 90, "zona": "pecho", "lado": "centro"},
+  {"vista": "espalda", "x": 100, "y": 90, "zona": "espalda_alta", "lado": "centro"},
+  {"vista": "espalda", "x": 100, "y": 140, "zona": "espalda_baja", "lado": "centro"},
+  {"vista": "frente", "x": 83, "y": 240, "zona": "muslo_frente", "lado": "derecho"},
+  {"vista": "espalda", "x": 117, "y": 240, "zona": "muslo_atras", "lado": "derecho"},
+  {"vista": "frente", "x": 49, "y": 156, "zona": "codo", "lado": "derecho"},
+  {"vista": "frente", "x": 30, "y": 222, "zona": "muneca", "lado": "derecho"},
+  {"vista": "frente", "x": 100, "y": 27, "zona": null, "lado": null},
+  {"vista": "frente", "x": 5, "y": 5, "zona": null, "lado": null},
+  {"vista": "frente", "x": 150, "y": 300, "zona": null, "lado": null}
+ ],
+ "molestias": {
+  "respuesta": {
+   "me_duele": {"habilitado": true, "molestias": [
+    {"id": "a1", "ejercicio_id": "press-d1-0", "ejercicio_nombre": "Press", "zona": "hombro", "lado": "derecho", "desde": "hoy", "cuando": "al_subir", "tipo": "sordo", "intensidad": 5, "nota": null, "estado": "avisada"},
+    {"id": "a2", "ejercicio_id": "press-d1-0", "ejercicio_nombre": "Press", "zona": "codo", "lado": "izquierdo", "estado": "resuelta"},
+    {"id": "a3", "ejercicio_id": "remo-d1-1", "ejercicio_nombre": "Remo", "zona": "espalda_baja", "lado": "raro", "estado": "resuelta", "intensidad": 99},
+    {"id": "a4", "ejercicio_id": "x", "zona": "oreja", "lado": "derecho", "estado": "avisada"},
+    {"id": "a5", "ejercicio_id": "y", "zona": "codo", "lado": "derecho", "estado": "en_el_futuro"},
+    "basura"
+   ]},
+   "suple_estado": {"habilitado": false, "items": [{"item": "zinc", "estado": "comprado"}, {"item": "x", "estado": "inventado"}, {"item": "", "estado": "tomando"}]}
+  },
+  "ids": ["a1", "a2", "a3"],
+  "por_ejercicio": {"press-d1-0": "a1", "remo-d1-1": "a3", "nada": null},
+  "nombre_a3": "Espalda baja",
+  "marcas": {"zinc": "comprado"}
+ }
+}

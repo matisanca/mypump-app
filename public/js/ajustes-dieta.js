@@ -461,6 +461,16 @@
     if (bytesJsonb(ajustes) > MAX_BYTES) return 'No entran más alimentos agregados hoy.';
     return null;
   }
+  // Los tildes siguen a cada agregado: `antes` y `despues` son los _ts de los agregados, en orden.
+  function excluidosTrasCambio(excluidos, n, antes, despues) {
+    const r = new Set();
+    for (const i of excluidos) {
+      if (i < n) { r.add(i); continue; }
+      const j = i - n < antes.length ? despues.indexOf(antes[i - n]) : -1;
+      if (j >= 0) r.add(n + j);
+    }
+    return Array.from(r).sort((a, b) => a - b);
+  }
   function excluidosTrasBorrar(excluidos, n, j) {
     const k = n + j;
     return excluidos.filter(i => i !== k).map(i => (i > k ? i - 1 : i));
@@ -527,7 +537,7 @@
     leerAjuste, leerAjustes, clonarAjuste, nuevoAjuste, serializarAjuste,
     leerAgregado, comoAlimento, alimentosAgregados, medidas, medidaCasera, buscar, candidatoDeBase,
     candidatoDeAgregado, inicial, pasoAgregado, acotarAgregado, subirAgregado, bajarAgregado, agregado,
-    motivoNoEntra, bytesJsonb, bytesValor, gruposNumeric, excluidosTrasBorrar, resumenAgregados, normalizar,
+    motivoNoEntra, bytesJsonb, bytesValor, gruposNumeric, excluidosTrasBorrar, excluidosTrasCambio, resumenAgregados, normalizar,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.AjustesDieta = API;

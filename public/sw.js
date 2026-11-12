@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v52-20261107';
+const VERSION       = 'v70-20261111-230';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = '/js/vendor/supabase-js.min.js';   // vendorizada el 20-sep-2026 (antes CDN)
@@ -36,10 +36,61 @@ const SHELL = [
   '/js/supabase-client.js',
   '/js/food-db.js',
   '/js/ajustes-dieta.js',
+  '/js/dias-dieta.js',
   '/js/codigo-barras.js',
   '/js/reglas-guia.js',
   '/js/guia.js',
   '/js/reglas-entreno.js',
+  '/js/carga-simple.js',
+  '/js/gimnasio.js',
+  '/js/gimnasio-cola.js',
+  '/js/casa.js',
+  '/js/casa-ui.js',
+  '/js/gimnasio-ui.js',
+  '/js/metas.js',
+  '/css/gimnasio.css',
+  '/js/tecnica.js',
+  '/js/tecnica-cola.js',
+  '/js/tecnica-ui.js',
+  '/js/chat-adjuntos.js',
+  '/js/documentos.js',
+  '/css/tecnica.css',
+  '/js/novedades-plan.js',
+  '/js/novedades-ui.js',
+  '/css/novedades.css',
+  '/js/devolucion.js',
+  '/css/devolucion.css',
+  '/js/feedback.js',
+  '/js/feedback-ui.js',
+  '/css/feedback.css',
+  '/js/estudios.js',
+  '/js/controles.js',
+  '/js/estudios-cola.js',
+  '/js/estudios-ui.js',
+  '/css/estudios.css',
+  '/js/fotos-inicio.js',
+  '/js/fotos-inicio-cola.js',
+  '/js/fotos-inicio-ui.js',
+  '/css/fotos-inicio.css',
+  '/js/recorrido.js',
+  '/js/recorrido-ui.js',
+  '/js/compras.js',
+  '/js/compras-ui.js',
+  '/css/cola-b.css',
+  '/js/wins.js',
+  '/css/wins.css',
+  '/js/lista-previa.js',
+  '/css/lista-previa.css',
+  // La demo sin cuenta: su historia de ejemplo viaja con la app (sin red).
+  '/js/demo-historial.js',
+  '/demo/historial.json',
+  '/js/presion.js',
+  '/js/presion-dibujos.js',
+  '/js/presion-cola.js',
+  '/js/presion-ui.js',
+  '/css/presion.css',
+  '/js/mi-salud.js',
+  '/js/donde-entreno.js',
   '/js/healthkit-bridge.js',
   '/js/notificaciones.js',
   '/js/app.js',
@@ -73,6 +124,17 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;                       // POST/RPC → sin tocar
 
   const url = new URL(req.url);
+  // Gimnasio por fotos: ni las fotos ni sus llamadas pasan por un cache, tampoco si algún día se sirven del mismo origen.
+  // (Hoy ya no llegan acá: las subidas son POST y las URLs firmadas, de otro origen.)
+  if (url.pathname.startsWith('/gimnasio/')) return;
+  // Técnica por video: lo mismo. La subida es POST y el video firmado es de otro origen.
+  if (url.pathname.startsWith('/tecnica/')) return;
+  // Fotos y audios del chat: privados, nunca en un cache (la subida es POST y lo firmado vence en una hora).
+  if (url.pathname.startsWith('/chat/') || url.pathname.includes('/storage/v1/object/sign/chat-adjuntos/')) return;
+  // Estudios y órdenes: datos médicos. Sus llamadas son POST y los archivos firmados, de otro origen; nada de eso se guarda.
+  if (url.pathname.startsWith('/estudios/')) return;
+  // Fotos de inicio: lo mismo. Son fotos del cuerpo: nunca a un cache.
+  if (url.pathname.startsWith('/inicio/')) return;
   // Lib de Supabase (vendorizada, mismo origen) → cache-first: cambia solo
   // cuando se reemplaza el archivo (y con él, VERSION).
   if (url.origin === location.origin && url.pathname === SUPABASE_LIB) {
@@ -86,33 +148,70 @@ self.addEventListener('fetch', (e) => {
   const isCode = req.mode === 'navigate'
     || url.pathname === '/'
     || url.pathname === '/cliente'
-    || /\.(html|js|css)$/.test(url.pathname);
-  if (isCode) { e.respondWith(networkFirst(req)); return; }
+    || /\.(html|js|css)$/.test(url.pathname)
+    || url.pathname.startsWith('/demo/');                 // la historia de la demo cambia con la app
+  if (isCode) { e.respondWith(networkFirst(req, e)); return; }
 
   // Estáticos del mismo origen (iconos, imágenes de ejercicios) → cache-first.
   e.respondWith(cacheFirst(req, RUNTIME_CACHE));
 });
 
-async function networkFirst(req) {
-  try {
-    const res = await fetch(req);
+/* Auditoría 10/11, F2: con la señal «colgada» (ni responde ni corta) el fetch
+ * del código esperaba sin tope y la app no abría. Pasado este tope, si hay copia
+ * se sirve la copia; la red sigue por detrás y actualiza el caché para la próxima. */
+const TOPE_RED_CODIGO_MS = 6000;
+
+async function copiaDelCodigo(req) {
+  const cached = await caches.match(req, { ignoreSearch: true });
+  if (cached && !(req.mode === 'navigate' && cached.redirected)) return cached;
+  // Navegación offline sin match exacto (ej: /cliente?t=…) → servir el shell.
+  if (req.mode === 'navigate') {
+    const candidatos = ['/cliente', '/cliente.html'];
+    for (const u of candidatos) {
+      const shell = await caches.match(u);
+      if (shell && !shell.redirected) return shell;
+    }
+  }
+  return null;
+}
+
+// Si la página salió de la copia por el tope, lo que pide enseguida (sus .js y .css) también sale de la copia: si no, una
+// página vieja podía cargar código nuevo de la red (revisión 10/11).
+let paginaDeLaCopiaHasta = 0;
+
+async function networkFirst(req, e) {
+  if (req.mode !== 'navigate' && Date.now() < paginaDeLaCopiaHasta) {
+    const cached = await copiaDelCodigo(req);
+    if (cached) return cached;
+  }
+  let guardado = Promise.resolve();
+  const red = fetch(req).then((res) => {
     if (res && res.ok && !res.redirected) {
       const copy = res.clone();
-      caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
+      guardado = caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
     }
     return res;
-  } catch (err) {
-    const cached = await caches.match(req, { ignoreSearch: true });
-    if (cached && !(req.mode === 'navigate' && cached.redirected)) return cached;
-    // Navegación offline sin match exacto (ej: /cliente?t=…) → servir el shell.
-    if (req.mode === 'navigate') {
-      const candidatos = ['/cliente', '/cliente.html'];
-      for (const u of candidatos) {
-        const shell = await caches.match(u);
-        if (shell && !shell.redirected) return shell;
-      }
+  });
+  // La red sigue por detrás aunque se sirva la copia: que el navegador no corte el service worker antes de guardarla.
+  if (e && e.waitUntil) e.waitUntil(red.then(() => guardado).catch(() => {}));
+  let reloj = null;
+  const tope = new Promise((ok) => { reloj = setTimeout(() => ok(null), TOPE_RED_CODIGO_MS); });
+  try {
+    const res = await Promise.race([red, tope]);
+    if (res) return res;
+    // Tardó de más: con copia, la copia; sin copia no hay otra que esperar a la red.
+    const cached = await copiaDelCodigo(req);
+    if (cached) {
+      if (req.mode === 'navigate') paginaDeLaCopiaHasta = Date.now() + 30000;
+      return cached;
     }
+    return await red;
+  } catch (err) {
+    const cached = await copiaDelCodigo(req);
+    if (cached) return cached;
     throw err;
+  } finally {
+    clearTimeout(reloj);
   }
 }
 

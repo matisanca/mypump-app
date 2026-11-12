@@ -40,7 +40,7 @@ const ini = html.indexOf('const POSES = [');
 const fin = html.indexOf('\nasync function loadFotos()', ini);
 if (ini < 0 || fin < 0) { console.error('✗ no encontré la cola de fotos en cliente.html'); process.exit(1); }
 const fuente = html.slice(ini, fin).replace(funcion('_subirFoto'), '').replace(funcion('_fotoAJpeg'), '')
-  + '\n' + ['cargarFotosFirmadas', 'renderMydayFotos', '_tomarFoto', 'abrirGaleriaFotos'].map(funcion).join('\n');
+  + '\n' + ['cargarFotosFirmadas', '_avanceSegmentos', '_encabezadoAvance', 'renderMydayFotos', '_tomarFoto', 'abrirGaleriaFotos'].map(funcion).join('\n');
 
 let ok = 0, fail = 0;
 const t = async (nombre, fn) => {
@@ -147,6 +147,7 @@ function montar({ guion = [], fotos = [], cuota, jpeg } = {}) {
     window: { MYPUMP_CONFIG: { VISION_URL: 'https://fotos.test' } },
     document: pag.document,
     hoyLocal: () => HOY,
+    web230: () => false,
     FOTOS_URLS_TTL: 50 * 60 * 1000,
     _subirFoto: (...a) => s.subir(...a),
     _fotoAJpeg: jpeg || (async (archivo) => archivo.dataUrl),   // el "archivo" ya trae su JPEG
@@ -154,6 +155,8 @@ function montar({ guion = [], fotos = [], cuota, jpeg } = {}) {
     loadFotos: async () => { STATE.fotos = [...fotos, ...s.bucket]; },
     fotosFirmadas: () => new Promise(r => firmas.pedidos.push(r)),
     renderRecordatorio() {},
+    renderTuCambio() {},   // «Tu cambio» tiene su propio test (test-tucambio.mjs)
+    checkGuiadoPrendido: () => false,   // con la palanca apagada, la sección de siempre
     _pedirFoto() {},
   };
   const api = new Function(...Object.keys(ctx),

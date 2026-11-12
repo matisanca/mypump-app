@@ -1,0 +1,32 @@
+/* «Antes de la videollamada» (js/lista-previa.js): la lista siempre desplegada, arriba de Entreno. Sola, como tarjeta
+   propia; o dentro de la tarjeta de la videollamada (.vl-tarjeta), como un panel con su propio fondo para que se lea
+   igual cuando la tarjeta está en verde. El texto en rem: con la letra grande las filas crecen y el texto baja de línea,
+   nunca se corta; los márgenes y los íconos tienen tope en px para dejarle el ancho al texto. Claro y oscuro por tokens. */
+.lp-lista{container-type:inline-size;display:flex;flex-direction:column;gap:min(.75rem,12px);font-family:var(--font-sans);line-height:1.35;color:var(--color-text-primary);text-align:left}
+.lp-lista *{box-sizing:border-box}
+.lp-sola{padding:min(1.125rem,18px);margin:0 0 .75rem;border-radius:var(--radius-lg);background:var(--color-bg-primary);border:1px solid var(--color-border);box-shadow:var(--shadow-sm)}
+.lp-dentro{padding:min(.875rem,14px);border-radius:var(--radius-md);background:var(--color-bg-secondary);border:1px solid var(--color-border)}
+[data-theme="dark"] .lp-dentro{background:var(--color-bg-tertiary)}
+.lp-cab{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.25rem .75rem}
+.lp-titulo{margin:0;font-size:1.125rem;line-height:1.25;font-weight:700;color:var(--color-text-primary)}
+.lp-resumen{font-size:.9375rem;font-weight:600;color:var(--color-text-secondary)}
+.lp-resumen.is-listo{color:var(--color-brand-text)}
+.lp-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+.lp-fila{display:flex;align-items:center;gap:min(.75rem,12px);width:100%;min-height:3.5rem;padding:.625rem min(.875rem,14px);margin:0;border-radius:var(--radius-md);
+  font:inherit;color:inherit;text-align:left;background:transparent;border:1px solid var(--color-border)}
+.lp-boton{cursor:pointer;background:var(--color-bg-primary);border:1.5px solid var(--color-border-strong);-webkit-tap-highlight-color:transparent}
+.lp-dentro .lp-boton{background:var(--color-bg-primary)}
+.lp-boton:active{background:var(--color-brand-subtle)}
+.lp-boton:focus-visible{outline:3px solid var(--color-brand);outline-offset:2px}
+.lp-circulo{flex:none;display:grid;place-items:center;width:min(1.75rem,36px);height:min(1.75rem,36px);color:var(--color-text-muted)}
+.lp-lista .lp-circulo svg{width:100%;height:100%}
+.lp-circulo.is-hecho{color:var(--color-brand)}
+.lp-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:.125rem}
+.lp-tit{font-size:1.0625rem;line-height:1.25;font-weight:600;color:var(--color-text-primary);overflow-wrap:break-word}
+.lp-fila.is-hecha .lp-tit{color:var(--color-text-secondary)}
+.lp-det{font-size:.9375rem;line-height:1.3;color:var(--color-text-secondary)}
+.lp-lista .lp-flecha{flex:none;width:min(1.375rem,28px);height:min(1.375rem,28px);color:var(--color-brand-text)}
+.lp-consejo{margin:0;font-size:.9375rem;line-height:1.4;color:var(--color-text-secondary)}
+/* Con la letra muy grande (o un lugar muy angosto) el texto manda: la flecha se va y el borde fuerte sigue diciendo «se toca». */
+@container (max-width:17rem){.lp-flecha{display:none}}
+#listaPreviaHost[hidden]{display:none}
