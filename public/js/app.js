@@ -736,6 +736,30 @@ window.MyPump.exerciseSwap = {
       .slice(0, 30);
   },
 
+  // 2.3.1, port de sustitutosDeCardio de las apps: las máquinas de cardio se ofrecen entre sí, con su nombre en castellano
+  // (el catálogo no las traduce y las trae sin patrón). El orden es el de la lista; sin la del plan.
+  CARDIO: [
+    ['Walking_Treadmill', 'Cinta (caminata)'], ['Jogging_Treadmill', 'Cinta (trote)'],
+    ['Bicycling_Stationary', 'Bicicleta fija'], ['Recumbent_Bike', 'Bicicleta reclinada'],
+    ['Elliptical_Trainer', 'Elíptico'], ['Rowing_Stationary', 'Remo ergómetro'], ['Stairmaster', 'Escaladora'],
+  ],
+  cardioSubstitutes(originalEjercicio) {
+    const db = window.MYPUMP_EJERCICIO_DB;
+    if (!db || !db.length) return [];
+    const propio = this._resolve(originalEjercicio);
+    const out = [];
+    for (const [slug, nombre] of this.CARDIO) {
+      const e = db.find(x => x.slug_en === slug);
+      if (!e || (propio && propio.slug_en === e.slug_en)) continue;
+      out.push({
+        slug: e.slug_en, name: nombre, name_en: e.name_en, equipo: this._equipLabel(e), equipmentRaw: e.equipment,
+        primary_muscle: e.primary_muscle, patron_movimiento: e.patron_movimiento,
+        images: { eccentric: e.image_eccentric || null, concentric: e.image_concentric || null }, _sameEquip: true,
+      });
+    }
+    return out;
+  },
+
   // Búsqueda libre por nombre dentro de los sustitutos válidos
   // (mantiene todos los constraints de findSubstitutes).
   searchSubstitutes(originalEjercicio, query) {

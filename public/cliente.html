@@ -4476,8 +4476,14 @@ function escapeHtml(s) {
 // Cacheado por slug/nombre del original — se invalida al recargar el catálogo.
 function exGetSubs(ex) {
   if (!window.MyPump || !window.MyPump.exerciseSwap) return [];
-  if (ex.tipo === 'calentamiento' || ex.tipo === 'cardio') return [];
   const orig = { nombre: ex._origNombre || ex.nombre, images: ex._origImages || ex.images, catalogo_slug: ex._origSlug || ex.images?._matched_slug || null };
+  // 2.3.1, como las apps: el cardio ofrece las otras máquinas de cardio (cinta, bici, elíptico, remo, escaladora).
+  if (CS && CS.esCardio(orig.nombre, ex.tipo, [orig.catalogo_slug, ex.catalogo_slug, ex.matched_slug])) {
+    const k = `cardio:${orig.catalogo_slug || orig.nombre || ''}`;
+    if (!_exSwapCache[k]) _exSwapCache[k] = window.MyPump.exerciseSwap.cardioSubstitutes(orig);
+    return _exSwapCache[k];
+  }
+  if (ex.tipo === 'calentamiento' || ex.tipo === 'cardio') return [];
   const entry = window.MyPump.exerciseSwap._resolve(orig);
   const key = entry ? entry.slug_en : `n:${(orig.nombre||'').toLowerCase()}`;
   if (!_exSwapCache[key]) _exSwapCache[key] = window.MyPump.exerciseSwap.findSubstitutes(orig);
@@ -6067,8 +6073,12 @@ const _csKey = () => `mypump_cargas_${TOKEN || 'anon'}_${RUTINA_ID || 'demo'}`;
 const _csKeyOK = () => `mypump_ok_demorado_${TOKEN || 'anon'}`;
 
 function _csOn() { return !!(CS && web230()); }
+// La cinta, la bici o el elíptico van por tiempo, con la palanca 2.3.0 prendida o no (2.3.1): sin progresión, o con una
+// progresión cuyas reps de esta semana son una duración («10 min»), aunque el plan traiga `series`.
 function _csCardioPorTiempo(ex) {
-  return !!CS && !(ex.progresion && ex.progresion.length) && CS.esCardio(ex.nombre, ex.tipo, [ex.catalogo_slug, ex.matched_slug, ex._swapSlug]);
+  if (!CS || !ex || !CS.esCardio(ex.nombre, ex.tipo, [ex.catalogo_slug, ex.matched_slug, ex._swapSlug])) return false;
+  if (!(ex.progresion && ex.progresion.length)) return true;
+  return CS.repsEsTiempo(getProgresionActual(ex, DATA && DATA.rutina ? DATA.rutina.semana_actual : 1).reps);
 }
 function _csLeer() {
   _csCargas = {};
@@ -6852,7 +6862,7 @@ function renderExCard(ex, blockIdx) {
     const _diaFin = _diaFinalizado;
     const _prep = _preparacionDe(ex);
     const _csPanelS = _csDe(ex.id);
-    const _porTiempo = _csOn() && _csCardioPorTiempo(ex);   // la cinta va por tiempo: sin series, kg ni RIR
+    const _porTiempo = _csCardioPorTiempo(ex);   // la cinta va por tiempo: sin series, kg ni RIR (también sin la palanca 2.3.0)
     const _notaTecnica = ex.notas_tecnica ? ReglasEntreno.notaParaAlumno(ex.notas_tecnica, prog.rir).trim() : '';   // 2.3.1: sin RIR, salvo reserva clínica del plan
     const _leyendaRir = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'Al fallo' : null;   // 2.3.0: nunca «Dejando N en reserva»
     // Selector de NIVEL/variante para ejercicios que lo tienen (ej: rueda abdominal).
@@ -6866,7 +6876,7 @@ function renderExCard(ex, blockIdx) {
     panel = `
     <div class="ex-panel">
       <div class="divider"></div>
-      ${_metricasHtml(ex, prog)}
+      ${_metricasHtml(ex, _porTiempo ? Object.assign({}, prog, { series: null }) : prog)}
       ${_progNota ? `<div class="ex-prog-nota ${_progNota.cambia ? 'is-cambio' : (_progNota.calibracion ? 'is-calibracion' : 'is-mantener')}">
         <span class="ex-prog-nota-lbl">${_progNota.cambia ? 'Cambio de la semana' : (_progNota.calibracion ? 'Semana 1' : 'Esta semana')}</span>
         <span class="ex-prog-nota-txt">${_progNota.texto}</span>
@@ -7400,7 +7410,7 @@ function bindTrainEvents() {
     _csVaciarDeshacer();
     const confirmedCount = exState.sets.filter(s => s.confirmed).length;
     let confirmed = true;
-    if (confirmedCount === 0 && !(_csOn() && _csCardioPorTiempo(getEffectiveEx(_exPorSlot(id))))) {
+    if (confirmedCount === 0 && !_csCardioPorTiempo(getEffectiveEx(_exPorSlot(id)))) {
       confirmed = await MyPump.ui.showConfirmModal({
         title: 'Terminaste sin cargar datos',
         body: 'No confirmaste ninguna serie. ¿Querés marcar este ejercicio como terminado de todas formas?',
