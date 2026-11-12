@@ -61,13 +61,14 @@ import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.FormaHoja
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
+import com.pumpteam.mypump.diseno.abrirEnNavegador
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.modelos.AgendaEntrega
 import com.pumpteam.mypump.modelos.FranjaEntrega
 import com.pumpteam.mypump.modelos.ReservaEntrega
 import com.pumpteam.mypump.reglas.ReglasAgenda
-import java.time.ZoneId
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 
 // La agenda de la videollamada al final de «Tu guía» (2.2.0, ~/Desktop/Entregas-v2/app/spec.md §3): el contador de los
 // videos que faltan, la tarjeta bloqueada, las franjas por día, la hoja de confirmación y la reserva pendiente. La
@@ -347,16 +348,32 @@ private fun HojaConfirmar(texto: String, alConfirmar: () -> Unit, alCerrar: () -
  * sistema no deja elegir nada (un perfil de trabajo raro), se prueba directo con el navegador.
  */
 internal fun abrirMeet(contexto: Context, url: String) {
-    val link = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
-    try {
-        contexto.startActivity(link)
-    } catch (_: ActivityNotFoundException) {
+    // 1) La app de Meet, FIJA: un VIEW implícito al link lo podía tomar Gmail (o el diálogo de elegir app), y con otra cuenta
+    //    o sin sesión el alumno caía en la bandeja o en la portada de Meet, no en la reunión (lo reportó Mati, 12/11). Con el
+    //    paquete fijo va directo a ESA reunión; Meet deja entrar con la cuenta que tenga o como invitado, con su nombre.
+    if (appDeMeetInstalada(contexto)) {
+        val enMeet = Intent(Intent.ACTION_VIEW, Uri.parse(url)).setPackage(PAQUETE_MEET)
+        if (contexto !is android.app.Activity) enMeet.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
-            contexto.startActivity(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_BROWSER).setData(Uri.parse(url)))
+            contexto.startActivity(enMeet)
+            return
         } catch (_: ActivityNotFoundException) {
-            // Sin nada que abra un link: no hay mucho que hacer.
+        } catch (_: SecurityException) {
         }
     }
+    // 2) Sin la app: la web de Meet en una Custom Tab dentro de MyPump (pide el nombre y «Solicitar unirse»). La pestaña no le
+    //    pasa el link a otra app al cargar, así que tampoco cae en Gmail. 3) Sin Custom Tabs: el navegador (nunca Gmail).
+    abrirEnNavegador(contexto, url)
+}
+
+/** La app de Google Meet de hoy (la que era Duo). La «Meet (original)», `com.google.android.apps.meetings`, ya no entra. */
+internal const val PAQUETE_MEET = "com.google.android.apps.tachyon"
+
+/** Si la app de Meet está instalada y prendida. Verla necesita el `<queries>` del manifest (Android 11+). */
+internal fun appDeMeetInstalada(contexto: Context): Boolean = try {
+    contexto.packageManager.getApplicationInfo(PAQUETE_MEET, 0).enabled
+} catch (_: Exception) {
+    false
 }
 
 /**
