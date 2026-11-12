@@ -332,27 +332,44 @@ struct TarjetaVideollamada: View {
 /// ESA reunión en la web de Meet, que desde junio de 2026 deja entrar en el iPhone sin app ni cuenta: el alumno escribe
 /// su nombre, toca «Solicitar unirse» y Mati lo admite (Meet en TRUSTED, sin moderación).
 ///
-/// Se presenta con UIKit desde el controlador de arriba de todo y no con un `.fullScreenCover` de la tarjeta: la tarjeta se
-/// va cuando termina el horario de la reserva o cuando se rearma, y la llamada no se puede cortar por eso. Pantalla
-/// completa para que un deslizamiento hacia abajo no la cierre sin querer; se sale con «OK».
+/// Va en una ventana propia, encima de la de la app, y no con un `.fullScreenCover` de la tarjeta ni presentado desde el
+/// controlador de arriba: la tarjeta se va cuando termina el horario de la reserva o cuando se rearma, una hoja de SwiftUI
+/// que estuviera abierta se puede cerrar por un cambio de estado, y mientras dura la llamada las hojas y alertas de la app
+/// tienen que poder abrirse debajo sin chocar («already presenting»). Pantalla completa para que un deslizamiento hacia
+/// abajo no la cierre sin querer; se sale con el botón de listo y la ventana se va.
 @MainActor
-enum ReunionMeet {
-    static func abrir(_ url: URL) {
-        guard let arriba = controladorDeArriba() else { return }
-        if arriba is SFSafariViewController { return }  // Un segundo toque mientras se abre.
+final class ReunionMeet: NSObject, @preconcurrency SFSafariViewControllerDelegate {
+    private static let shared = ReunionMeet()
+    private var ventana: UIWindow?
+    private weak var anterior: UIWindow?
+
+    static func abrir(_ url: URL) { shared.abrir(url) }
+
+    private func abrir(_ url: URL) {
+        guard ventana == nil else { return }  // Un segundo toque mientras se abre o con la reunión abierta.
+        let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let escena = escenas.first(where: { $0.activationState == .foregroundActive }) ?? escenas.first else { return }
+        anterior = escena.windows.first { $0.isKeyWindow }
+        let w = UIWindow(windowScene: escena)
+        w.windowLevel = .normal + 1
+        w.overrideUserInterfaceStyle = anterior?.overrideUserInterfaceStyle ?? .unspecified
+        let raiz = UIViewController()
+        raiz.view.backgroundColor = .clear
+        w.rootViewController = raiz
+        w.makeKeyAndVisible()
+        ventana = w
         let c = SFSafariViewController(url: url)
+        c.delegate = self
         c.preferredControlTintColor = UIColor(Color.marcaTexto)
         c.dismissButtonStyle = .done
         c.modalPresentationStyle = .fullScreen
-        arriba.present(c, animated: true)
+        raiz.present(c, animated: true)
     }
 
-    private static func controladorDeArriba() -> UIViewController? {
-        let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let ventana = escenas.flatMap(\.windows).first { $0.isKeyWindow } ?? escenas.first?.windows.first
-        var c = ventana?.rootViewController
-        while let p = c?.presentedViewController, !p.isBeingDismissed { c = p }
-        return c
+    func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
+        ventana?.isHidden = true
+        ventana = nil
+        anterior?.makeKey()
     }
 }
 
@@ -389,11 +406,27 @@ private struct CodigoReunion: View {
             .buttonStyle(.plain)
             .sensoryFeedback(.success, trigger: copiado) { _, nuevo in nuevo }
             .accessibilityIdentifier("videollamada-copiar-codigo")
-            Text(ReglasAgenda.textoPegarCodigo)
-                .font(.subheadline)
-                .foregroundStyle(Color.sobreMarca)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("videollamada-pegar-codigo")
+            VStack(alignment: .leading, spacing: 6) {
+                Text(ReglasAgenda.tituloPasosCodigo)
+                    .font(.body.weight(.bold))
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(Array(ReglasAgenda.pasosCodigo.enumerated()), id: \.offset) { i, t in
+                    HStack(alignment: .firstTextBaseline, spacing: Espacio.xs) {
+                        Text("\(i + 1)")
+                            .font(.subheadline.weight(.bold)).monospacedDigit()
+                            .frame(width: 26, height: 26)
+                            .background(Color.sobreMarca.opacity(0.22), in: .circle)
+                            .accessibilityHidden(true)
+                        Text(t).font(.body).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Paso \(i + 1): \(t)")
+                }
+            }
+            .foregroundStyle(Color.sobreMarca)
+            .padding(.top, 2)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("videollamada-pasos-codigo")
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

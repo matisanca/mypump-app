@@ -107,7 +107,9 @@ final class VideollamadaUITests: XCTestCase {
             XCTAssertTrue(codigo.exists, "El código tiene que estar a la vista debajo de «Entrar»")
             XCTAssertTrue(codigo.label.contains("Código de la reunión"))
             XCTAssertTrue(app.staticTexts["abc-defg-hij"].exists || codigo.label.contains("a b c"))
-            XCTAssertTrue(id("videollamada-pegar-codigo").label.contains("Unirse con un código"))
+            let conTexto = { (t: String) in self.app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", t)).firstMatch }
+            XCTAssertTrue(conTexto("Si no se abre la reunión:").exists, "Los pasos para pegar el código")
+            XCTAssertTrue(conTexto("Unirse con un código").exists)
             let copiar = app.buttons["videollamada-copiar-codigo"]
             XCTAssertTrue(copiar.label.contains("Copiar código"))
             copiar.tap()
