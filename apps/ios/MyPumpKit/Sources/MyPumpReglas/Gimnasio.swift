@@ -132,9 +132,16 @@ public enum Gimnasio {
     }
 
     /// Lo que se manda a `responder`: solo preguntas que existen y respuestas válidas. Puede quedar incompleto.
-    public static func respuestasParaEnviar(_ preguntas: [PreguntaGimnasio], _ borrador: [String: JSONValue]) -> [String: JSONValue] {
+    ///
+    /// `vistas`: las preguntas que el alumno tuvo en pantalla. Una de opción múltiple que vio y no marcó va como `[]`
+    /// («Marcá todas las que haya: lo que no marques cuenta como que no está»); «No sé» sigue yendo como duda.
+    public static func respuestasParaEnviar(_ preguntas: [PreguntaGimnasio], _ borrador: [String: JSONValue],
+                                            vistas: Set<String> = []) -> [String: JSONValue] {
         var r: [String: JSONValue] = [:]
-        for p in preguntas { if let v = borrador[p.id], respuestaValida(p, v) { r[p.id] = v } }
+        for p in preguntas {
+            if let v = borrador[p.id], respuestaValida(p, v) { r[p.id] = v }
+            else if p.clase == .elegir, p.multiple, vistas.contains(p.id) { r[p.id] = .lista([]) }
+        }
         return r
     }
 

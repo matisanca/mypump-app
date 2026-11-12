@@ -103,6 +103,12 @@ final class GimnasioVectoresTests: XCTestCase {
         guard case .objeto(let b)? = e["borrador"], case .objeto(let r)? = e["resultado"] else { return XCTFail() }
         XCTAssertEqual(Gimnasio.respuestasParaEnviar(ps, b), r)
         XCTAssertEqual(Gimnasio.fotosPedidas(ps, b), entero(e["fotosPedidas"]))
+        // 2.3.1: la de opción múltiple que vio y no marcó va como []; «No sé» sigue como duda.
+        let w = v["paraEnviarVistas"]!
+        let pw = lista(w["preguntas"]).compactMap(PreguntaGimnasio.init)
+        guard case .objeto(let bw)? = w["borrador"], case .objeto(let rw)? = w["resultado"], case .objeto(let sw)? = w["sinVistas"] else { return XCTFail() }
+        XCTAssertEqual(Gimnasio.respuestasParaEnviar(pw, bw, vistas: Set(textos(w["vistas"]))), rw)
+        XCTAssertEqual(Gimnasio.respuestasParaEnviar(pw, bw), sw)
         for c in lista(v["kilos"]) {
             var n: Double?; if case .numero(let x)? = c["n"] { n = x }
             XCTAssertEqual(Gimnasio.kilos(c["s"]!.comoTexto!), n)

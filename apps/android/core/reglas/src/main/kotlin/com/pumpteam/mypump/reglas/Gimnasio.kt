@@ -92,9 +92,19 @@ object Gimnasio {
         }
     }
 
-    fun respuestasParaEnviar(preguntas: List<PreguntaGimnasio>, borrador: Map<String, ValorJson>): Map<String, ValorJson> {
+    /**
+     * Lo que se manda a `responder`. [vistas]: las preguntas que el alumno tuvo en pantalla; una de opción múltiple que vio
+     * y no marcó va como `[]` («lo que no marques cuenta como que no está»). «No sé» sigue yendo como duda.
+     */
+    fun respuestasParaEnviar(
+        preguntas: List<PreguntaGimnasio>, borrador: Map<String, ValorJson>, vistas: Set<String> = emptySet(),
+    ): Map<String, ValorJson> {
         val r = LinkedHashMap<String, ValorJson>()
-        for (p in preguntas) borrador[p.id]?.takeIf { respuestaValida(p, it) }?.let { r[p.id] = it }
+        for (p in preguntas) {
+            val v = borrador[p.id]?.takeIf { respuestaValida(p, it) }
+            if (v != null) r[p.id] = v
+            else if (p.clase == PreguntaGimnasio.Clase.ELEGIR && p.multiple && p.id in vistas) r[p.id] = ValorJson.Lista(emptyList())
+        }
         return r
     }
 

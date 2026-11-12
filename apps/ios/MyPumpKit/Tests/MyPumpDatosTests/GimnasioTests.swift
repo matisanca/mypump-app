@@ -219,6 +219,34 @@ struct GimnasioTests {
         #expect(m.pantalla == .recibido)
     }
 
+    @Test func multipleVistaSinMarcarVaVacia() async {
+        let d = DobleGimnasio.escenario("preguntas")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        let multiple = m.abierta!.preguntas.first { $0.clase == .elegir && $0.multiple }!
+        m.marcarVista(multiple.id)
+        m.marcarVista(multiple.id)
+        _ = m.agregar(zona: "bancos", jpeg: jpeg, pregunta: "foto_1")
+        await m.enviarRespuestas()
+        await m.drenar()
+        guard case .objeto(let r)? = d.ultimoResponder else { Issue.record("no respondió"); return }
+        #expect(r[multiple.id] == .lista([]))
+    }
+
+    @Test func noSeSigueYendoComoDuda() async {
+        let d = DobleGimnasio.escenario("preguntas")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        let multiple = m.abierta!.preguntas.first { $0.clase == .elegir && $0.multiple }!
+        m.marcarVista(multiple.id)
+        m.responder(multiple.id, .texto("no_se"))
+        _ = m.agregar(zona: "bancos", jpeg: jpeg, pregunta: "foto_1")
+        await m.enviarRespuestas()
+        await m.drenar()
+        guard case .objeto(let r)? = d.ultimoResponder else { Issue.record("no respondió"); return }
+        #expect(r[multiple.id] == .texto("no_se"))
+    }
+
     @Test func listoYParcial() async {
         let d = DobleGimnasio.escenario("listo")
         let (m, _) = armar(d)

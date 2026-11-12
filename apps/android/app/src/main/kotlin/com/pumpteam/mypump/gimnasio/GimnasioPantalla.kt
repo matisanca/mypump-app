@@ -472,7 +472,7 @@ private fun ZonaGimnasio(m: ModeloGimnasio, zona: Gimnasio.Zona, relleno: Paddin
                 ModeloGimnasio.Foto.NO_SE_GUARDO -> error = T.noSeGuardo
             }
         }
-        if (zona.clave != Gimnasio.ZONA_OPCIONAL && m.abierta?.modo == "completa" && fotos.isEmpty()) {
+        if (m.abierta?.modo == "completa" && fotos.isEmpty()) {   // también en «Otros» (2.3.1)
             OpcionFila(T.noHay, noHay, "gimnasio-no-hay") { m.marcarNoHay(zona.clave, !noHay) }
         }
     }
@@ -801,6 +801,7 @@ private fun ColumnScope.PreguntaVista(m: ModeloGimnasio, p: PreguntaGimnasio) {
     val c = MyPump.colores
 
     LaunchedEffect(p.id) {
+        if (p.clase == PreguntaGimnasio.Clase.ELEGIR && p.multiple) m.marcarVista(p.id)
         val a = m.abierta ?: return@LaunchedEffect
         val ids = p.fotos + p.items.flatMap { it.fotos }
         if (ids.isNotEmpty()) m.firmar(a.id, ids)

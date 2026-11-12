@@ -76,12 +76,15 @@ data class BorradorGimnasio(
     val quitar: List<String> = emptyList(),
     val respuestas: Map<String, ValorJson> = emptyMap(),
     val envio: EnvioGimnasio? = null,
+    /** Las preguntas que el alumno tuvo en pantalla (un borrador de la 2.3.0 no lo trae: vacío). */
+    val vistas: List<String> = emptyList(),
 ) {
     fun aValor(): ValorJson = ValorJson.Objeto(
         buildMap {
             gimnasioId?.let { put("gimnasioId", ValorJson.Texto(it)) }
             put("noHay", textos(noHay)); put("nota", ValorJson.Texto(nota)); put("quitar", textos(quitar)); put("respuestas", ValorJson.Objeto(respuestas))
             envio?.let { put("envio", it.aValor()) }
+            if (vistas.isNotEmpty()) put("vistas", textos(vistas))
         },
     )
 
@@ -90,7 +93,7 @@ data class BorradorGimnasio(
 
         fun desde(v: ValorJson): BorradorGimnasio = BorradorGimnasio(
             v["gimnasioId"]?.comoTexto, listaTextos(v["noHay"]), v["nota"]?.comoTexto ?: "", listaTextos(v["quitar"]),
-            (v["respuestas"] as? ValorJson.Objeto)?.campos ?: emptyMap(), EnvioGimnasio.desde(v["envio"]),
+            (v["respuestas"] as? ValorJson.Objeto)?.campos ?: emptyMap(), EnvioGimnasio.desde(v["envio"]), listaTextos(v["vistas"]),
         )
     }
 }
@@ -350,6 +353,12 @@ class ModeloGimnasio(
         guardar(_borrador.value.copy(respuestas = if (valor == null) r - id else r + (id to valor)))
     }
 
+    /** El alumno vio la pregunta (una de opción múltiple que no marque nada va como «no hay ninguna»). */
+    fun marcarVista(id: String) {
+        val b = _borrador.value
+        if (id !in b.vistas) guardar(b.copy(vistas = b.vistas + id))
+    }
+
     // ── Cola ──
 
     private sealed interface EnvioFoto {
@@ -514,7 +523,7 @@ class ModeloGimnasio(
                 )
                 EnvioGimnasio.Tipo.RESPONDER -> cliente.llamar(
                     "mypump_gimnasio_responder",
-                    base + mapOf("p_respuestas" to ValorJson.Objeto(Gimnasio.respuestasParaEnviar(abierta?.preguntas ?: emptyList(), _borrador.value.respuestas))),
+                    base + mapOf("p_respuestas" to ValorJson.Objeto(Gimnasio.respuestasParaEnviar(abierta?.preguntas ?: emptyList(), _borrador.value.respuestas, _borrador.value.vistas.toSet()))),
                 )
             }
             when (r) {
@@ -535,7 +544,10 @@ class ModeloGimnasio(
         if (j == ValorJson.Nulo) return   // token caído: queda guardado para el link nuevo
         if (j["ok"] == ValorJson.Booleano(true)) {
             val b = _borrador.value
-            guardar(b.copy(envio = null, respuestas = if (e.tipo == EnvioGimnasio.Tipo.RESPONDER) emptyMap() else b.respuestas))
+            guardar(
+                if (e.tipo == EnvioGimnasio.Tipo.RESPONDER) b.copy(envio = null, respuestas = emptyMap(), vistas = emptyList())
+                else b.copy(envio = null),
+            )
             refrescar()
             return
         }

@@ -323,7 +323,7 @@ struct ZonaGimnasio: View {
                 }
                 .accessibilityIdentifier("gimnasio-agregar-foto")
 
-                if zona.clave != Gimnasio.zonaOpcional, modelo.abierta?.modo == "completa", fotos.isEmpty {
+                if modelo.abierta?.modo == "completa", fotos.isEmpty {   // también en «Otros» (2.3.1)
                     Button { modelo.marcarNoHay(zona.clave, !noHay) } label: {
                         Label(T.noHay, systemImage: noHay ? "checkmark.circle.fill" : "circle")
                     }
@@ -698,6 +698,7 @@ private struct PreguntaGimnasioVista: View {
             }
         }
         .task { await firmarReferencias() }
+        .onAppear { if pregunta.clase == .elegir && pregunta.multiple { modelo.marcarVista(pregunta.id) } }
         .onAppear { if case .numero(let n)? = valor { kilos = n == n.rounded() ? String(Int(n)) : String(n).replacingOccurrences(of: ".", with: ",") } }
     }
 

@@ -66,6 +66,13 @@ class GimnasioVectoresTest {
         val b = (e["borrador"] as ValorJson.Objeto).campos
         assertEquals((e["resultado"] as ValorJson.Objeto).campos, Gimnasio.respuestasParaEnviar(ps, b))
         assertEquals(entero(e["fotosPedidas"]), Gimnasio.fotosPedidas(ps, b))
+        // 2.3.1: la de opción múltiple que vio y no marcó va como []; «No sé» sigue como duda.
+        val w = v["paraEnviarVistas"]!!
+        val pw = lista(w["preguntas"]).mapNotNull(PreguntaGimnasio::desde)
+        val bw = (w["borrador"] as ValorJson.Objeto).campos
+        val vistas = lista(w["vistas"]).mapNotNull { it.comoTexto }.toSet()
+        assertEquals((w["resultado"] as ValorJson.Objeto).campos, Gimnasio.respuestasParaEnviar(pw, bw, vistas))
+        assertEquals((w["sinVistas"] as ValorJson.Objeto).campos, Gimnasio.respuestasParaEnviar(pw, bw))
         for (c in lista(v["kilos"])) assertEquals(c["n"]?.comoNumero, Gimnasio.kilos(c["s"]!!.comoTexto!!), c["s"]!!.comoTexto)
     }
 

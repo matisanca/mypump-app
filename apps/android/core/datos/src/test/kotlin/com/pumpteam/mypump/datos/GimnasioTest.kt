@@ -197,6 +197,24 @@ class GimnasioTest {
         assertEquals(Gimnasio.Pantalla.RECIBIDO, m.pantalla)
     }
 
+    @Test fun multipleVistaSinMarcarVaVacia(): Unit = runBlocking {
+        val d = DobleGimnasio.escenario("preguntas")
+        val m = armar(d)
+        m.refrescar()
+        val multiple = m.abierta!!.preguntas.first { it.clase == com.pumpteam.mypump.reglas.PreguntaGimnasio.Clase.ELEGIR && it.multiple }
+        m.marcarVista(multiple.id)
+        m.marcarVista(multiple.id)
+        assertEquals(listOf(multiple.id), m.borrador.value.vistas)
+        // Un borrador de la 2.3.0 (sin «vistas») se sigue leyendo; las vistas sobreviven a guardar y leer.
+        assertEquals(listOf(multiple.id), BorradorGimnasio.desde(m.borrador.value.aValor()).vistas)
+        assertEquals(emptyList<String>(), BorradorGimnasio.desde(ValorJson.parsear("""{"gimnasioId":"g","respuestas":{}}""")).vistas)
+        m.agregar("bancos", jpeg, "foto_1")
+        m.enviarRespuestas()
+        m.drenar()
+        assertEquals(ValorJson.Lista(emptyList()), d.ultimoResponder?.get(multiple.id))
+        assertEquals(emptyList<String>(), m.borrador.value.vistas)
+    }
+
     @Test fun listoYParcial(): Unit = runBlocking {
         val d = DobleGimnasio.escenario("listo")
         val m = armar(d)

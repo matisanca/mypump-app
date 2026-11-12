@@ -33,6 +33,8 @@ struct BorradorGimnasio: Codable, Equatable {
     var nota = ""
     var quitar: [String] = []
     var respuestas: [String: JSONValue] = [:]
+    /// Las preguntas que el alumno tuvo en pantalla (opcional: un borrador de la 2.3.0 no lo trae).
+    var vistas: [String]?
     var envio: EnvioGimnasio?
     static let archivo = "gimnasio-borrador.json"
 }
@@ -271,6 +273,13 @@ public final class ModeloGimnasio {
         guardarBorrador()
     }
 
+    /// El alumno vio la pregunta (una de opción múltiple que no marque nada va como «no hay ninguna»).
+    public func marcarVista(_ id: String) {
+        guard !(borrador.vistas ?? []).contains(id) else { return }
+        borrador.vistas = (borrador.vistas ?? []) + [id]
+        guardarBorrador()
+    }
+
     public func limpiarAvisoFoto() { avisoFoto = nil }
 
     // MARK: Cola
@@ -422,7 +431,7 @@ public final class ModeloGimnasio {
             let preguntas = abierta?.preguntas ?? []
             r = await cliente.llamar("mypump_gimnasio_responder", [
                 "p_token": .texto(token), "p_id": .texto(e.gimnasioId),
-                "p_respuestas": .objeto(Gimnasio.respuestasParaEnviar(preguntas, borrador.respuestas)),
+                "p_respuestas": .objeto(Gimnasio.respuestasParaEnviar(preguntas, borrador.respuestas, vistas: Set(borrador.vistas ?? []))),
             ])
         }
         switch r {
@@ -431,7 +440,7 @@ public final class ModeloGimnasio {
         case .success(let j):
             if j["ok"] == .bool(true) {
                 borrador.envio = nil
-                if e.tipo == .responder { borrador.respuestas = [:] }
+                if e.tipo == .responder { borrador.respuestas = [:]; borrador.vistas = nil }
                 guardarBorrador()
                 await refrescar()
                 return
