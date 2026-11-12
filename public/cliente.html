@@ -5958,6 +5958,8 @@ function ocultarPreparacion(exId, ocultar) {
   renderTrain();
 }
 function _preparacionHtml(ex, series, noKg) {
+  const _rirPlan = getProgresionActual(ex, DATA.rutina.semana_actual).rir;
+  const _notaPrep = (n) => (n ? ReglasEntreno.notaParaAlumno(n, _rirPlan).trim() : '');   // 2.3.1: sin RIR, salvo reserva clínica
   if (!series.length) return '';
   const titulo = 'Calentamiento y aproximación';
   if (_preparacionOculta(ex.id)) {
@@ -5973,7 +5975,7 @@ function _preparacionHtml(ex, series, noKg) {
       <span class="prep-nombre">${ReglasEntreno.etiquetaPreparacion(s)}${s.opcional ? ' <small>opcional</small>' : ''}</span>
       <span class="prep-cant">${kg ? `${reps} × <b>${kg}</b>` : `${reps} reps`}</span>
       ${hecha ? '<span class="prep-ok">✓</span>' : ''}
-    </button>${s.nota ? `<div class="prep-nota">${escapeHtml(s.nota)}</div>` : ''}`;
+    </button>${_notaPrep(s.nota) ? `<div class="prep-nota">${escapeHtml(_notaPrep(s.nota))}</div>` : ''}`;
   }).join('');
   return `<div class="prep">
     <div class="prep-head"><span>${titulo}</span><button class="prep-ocultar" data-prep-ocultar="${ex.id}|1">Ocultar</button></div>
@@ -6849,6 +6851,7 @@ function renderExCard(ex, blockIdx) {
     const _prep = _preparacionDe(ex);
     const _csPanelS = _csDe(ex.id);
     const _porTiempo = _csOn() && _csCardioPorTiempo(ex);   // la cinta va por tiempo: sin series, kg ni RIR
+    const _notaTecnica = ex.notas_tecnica ? ReglasEntreno.notaParaAlumno(ex.notas_tecnica, prog.rir).trim() : '';   // 2.3.1: sin RIR, salvo reserva clínica del plan
     const _leyendaRir = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? 'Al fallo' : null;   // 2.3.0: nunca «Dejando N en reserva»
     // Selector de NIVEL/variante para ejercicios que lo tienen (ej: rueda abdominal).
     const variantePicker = _variantes ? `
@@ -6937,11 +6940,11 @@ function renderExCard(ex, blockIdx) {
           </div>
         </div>`;
       })()}
-      ${(ex.notas_tecnica || ex.video_url) ? `
+      ${(_notaTecnica || ex.video_url) ? `
         <div class="ex-extras">
-          ${ex.notas_tecnica ? `
+          ${_notaTecnica ? `
             <button class="ex-extra-row is-note" data-acc="note-${ex.id}">${ICONS.note}<span class="label">Nota técnica de Mati</span><span class="chev">${ICONS.chevron}</span></button>
-            <div class="ex-extra-content" id="note-${ex.id}" hidden>${ex.notas_tecnica}</div>` : ''}
+            <div class="ex-extra-content" id="note-${ex.id}" hidden>${escapeHtml(_notaTecnica).replace(/\n/g, '<br>')}</div>` : ''}
           ${ex.video_url ? `
             <button class="ex-extra-row" data-acc="video-${ex.id}">${ICONS.video}<span class="label">Ver video tutorial</span><span class="chev">${ICONS.chevron}</span></button>
             <div class="ex-extra-content video" id="video-${ex.id}" hidden>

@@ -273,6 +273,78 @@
     return { semana: lunes, filas: ordenadas, total: suma('semana'), totalAnterior: suma('anterior'), totalHoy: suma('hoy'), tope };
   }
 
+  /* ---------------- sinRIR (2.3.1) ----------------
+     REGLA DURA: «RIR» y «reps en reserva» no aparecen NUNCA en una pantalla del alumno (todo al fallo). El texto libre
+     del plan (notas_tecnica, notas de la preparación) pasa por acá antes de dibujarse: se saca la mención sin romper la
+     frase y, si queda alguna que no se entienda, se saca la oración entera. «cerca del fallo» pasa a «al fallo».
+     Mismo algoritmo en MyPumpModelos/TextoAlumno.swift y modelos/TextoAlumno.kt; vectores: sin_rir.json. */
+  const SR_N = String.raw`\d+(?:[.,]\d+)?(?:\s*(?:[-–]|a|o)\s*\d+(?:[.,]\d+)?)?`;
+  const SR_RES = String.raw`(?:en reserva|en la recámara|en el tanque)`;
+  const SR_REPS = String.raw`(?:repeticiones|repes|reps|rep)`;
+  const SR_DETECTA = /\bRIR\b|en reserva|en la recámara|en el tanque|cerca del fallo/i;
+  const SR_QUEDA = /\bRIR\b|en reserva|en la recámara|en el tanque/i;
+  const SR_PASOS = [
+    [/\bcerca del fallo\b/gi, 'al fallo'],
+    [/\bno calcules\s+(?:el\s+)?RIR\b\s*[:.,;]?\s*/gi, ''],
+    [new RegExp(String.raw`,\s*([^\s,.;:()]+(?:\s+[^\s,.;:()]+)?)\s+y\s+(?:con\s+)?RIR\s*` + SR_N, 'gi'), ' y $1'],
+    [new RegExp(String.raw`\s*[·,;]\s*(?:con\s+)?RIR\s*` + SR_N, 'gi'), ''],
+    [new RegExp(String.raw`\s+y\s+(?:con\s+)?RIR\s*` + SR_N, 'gi'), ''],
+    [/\s*\([^()]*(?:\bRIR\b|en reserva|en la recámara|en el tanque|te sobra|que te queden|quedar\s+\d)[^()]*\)/gi, ''],
+    [new RegExp(String.raw`\s*\b(?:con\s+)?RIR\s*` + SR_N, 'gi'), ''],
+    [new RegExp(String.raw`(?:\s+y\s+|\s*,\s*)?\b(?:dejá|deja|quedate con)\s+` + SR_N + String.raw`\s*` + SR_REPS + String.raw`?\s*` + SR_RES + String.raw`(?:\s+en todo)?\s*(?:y\s+|,\s*)?`, 'gi'), ' '],
+    [new RegExp(String.raw`\s*,?\s*(?:\by\s+)?(?:solo\s+)?(?:\b(?:dejando|dejar|con|que te queden?)\s+)?(?:solo\s+)?` + SR_N + String.raw`\s*` + SR_REPS + String.raw`?\s*` + SR_RES + String.raw`(?:\s+en todo)?`, 'gi'), ''],
+  ];
+  const SR_LIMPIEZA = [
+    [/[ \t]{2,}/g, ' '],
+    [/\(\s*\)/g, ''],
+    [/\s+([,.;:)])/g, '$1'],
+    [/\(\s+/g, '('],
+    [/[,;:]\s*([.!?])/g, '$1'],
+    [/([,;:])\s*[,;:]/g, '$1'],
+    [/\s*[·—–]\s*([.!?)]|$)/g, '$1'],
+  ];
+  function srOracion(o) {
+    let x = o.replace(/^[\s,;:·—–-]+/, '').trim();
+    if (!x || /^[.!?]+$/.test(x)) return '';
+    if (SR_QUEDA.test(x)) return '';
+    return x.charAt(0).toUpperCase() + x.slice(1);
+  }
+  function srLinea(l) {
+    let x = l;
+    for (const [re, por] of SR_PASOS) x = x.replace(re, por);
+    for (const [re, por] of SR_LIMPIEZA) x = x.replace(re, por);
+    return x.split(/(?<=[.!?])\s+/).map(srOracion).filter(Boolean).join(' ');
+  }
+  function sinRIR(texto) {
+    if (texto == null) return texto;
+    const t = String(texto);
+    if (!SR_DETECTA.test(t)) return t;
+    const lineas = [];
+    for (const l of t.split('\n')) {
+      if (!SR_DETECTA.test(l)) { lineas.push(l); continue; }
+      const r = srLinea(l);
+      if (r) lineas.push(r);
+    }
+    return lineas.join('\n').trim();
+  }
+
+  /* El plan con reserva a propósito (decisión clínica de Mati: lumbar, cardiopatía, excepciones): el rir de esa semana
+     tiene un número mayor que 0. Ahí la nota es una indicación clínica y se muestra entera, sin sinRIR. Sin dato, 0,
+     «al fallo» o un RPE: al fallo. */
+  function conReserva(rir) {
+    if (rir == null) return false;
+    const o = String(rir);
+    if (rpeRE.test(o)) return false;
+    const rango = o.match(rangoRE);
+    if (!rango) return false;
+    return (rango[0].match(numeroRE) || []).some(x => Number(x.replace(',', '.')) > 0);
+  }
+  /** La nota del plan como la ve el alumno: entera si esa semana lleva reserva; si no, sin RIR. */
+  function notaParaAlumno(texto, rir) {
+    if (texto == null) return texto;
+    return conReserva(rir) ? String(texto) : sinRIR(String(texto));
+  }
+
   const API = {
     P, TEXTO_SIN_KG, esPrincipal, sinPreparacion, equipoDe, redondearKg, primero, aproximacionesDelPlan, preparacion,
     etiquetaPreparacion, textoKgPreparacion, kgEfectivo,
@@ -280,6 +352,7 @@
     llevaRir, rirAGuardar, leyendaRir,
     evaluarRecord, historiaSuficiente, TOPE_HISTORIAL,
     volumenMusculo, VOL_VACIO,
+    sinRIR, conReserva, notaParaAlumno,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.ReglasEntreno = API;
