@@ -313,6 +313,7 @@ struct DietaView: View {
                 botonDeshacer
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16).padding(.vertical, 12)
         .background(Color.tarjeta, in: .rect(cornerRadius: 16, style: .continuous))
         .accessibilityElement(children: .contain)
