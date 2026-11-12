@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -958,7 +959,10 @@ private fun CodigoReunion(codigo: String) {
                 fontWeight = FontWeight.SemiBold,
             )
         }
-        if (!remember { appDeMeetInstalada(contexto) }) {
+        // Se vuelve a mirar al volver a la app: si la instaló desde Play, el aviso se va solo.
+        val ciclo by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+        val hayMeet = remember(ciclo.isAtLeast(Lifecycle.State.RESUMED)) { appDeMeetInstalada(contexto) }
+        if (!hayMeet) {
             Text(
                 ReglasAgenda.TEXTO_SIN_APP_MEET,
                 style = MaterialTheme.typography.bodyMedium,
@@ -982,7 +986,7 @@ private fun CodigoReunion(codigo: String) {
                     horizontalArrangement = Arrangement.spacedBy(Espacio.xs),
                 ) {
                     Box(
-                        Modifier.size(26.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.22f)),
+                        Modifier.defaultMinSize(26.dp, 26.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.22f)).padding(horizontal = 4.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text("${i + 1}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White)

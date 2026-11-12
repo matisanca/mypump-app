@@ -206,11 +206,20 @@ class VideollamadaUiTest : PruebaUi() {
         p.nodo(etiqueta("agenda-entrar"), ms = 30_000)
         foto("and-real-tarjeta")
         p.tocar(etiqueta("agenda-entrar"))
-        Thread.sleep(9_000)
+        // Destinos válidos: la app de Meet, la Custom Tab o, sin Meet instalada, Google Play (la web de Meet manda ahí). Nunca Gmail.
+        val validos = listOf("com.google.android.apps.tachyon", "chrome", "com.android.vending")
+        var arriba = ""
+        val hasta = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < hasta) {
+            arriba = Telefono.shell("dumpsys activity activities").lineSequence().firstOrNull { "topResumedActivity" in it }.orEmpty()
+            if ("com.google.android.gm" in arriba) break
+            if (validos.any { it in arriba }) { Thread.sleep(2_000); break }
+            Thread.sleep(500)
+        }
         Telefono.captura("and-real-reunion")
-        val arriba = Telefono.shell("dumpsys activity activities").lineSequence().firstOrNull { "topResumedActivity" in it }.orEmpty()
+        arriba = Telefono.shell("dumpsys activity activities").lineSequence().firstOrNull { "topResumedActivity" in it }.orEmpty()
         assertFalse(arriba, "com.google.android.gm" in arriba)
-        assertTrue(arriba, "com.google.android.apps.tachyon" in arriba || "chrome" in arriba)
+        assertTrue(arriba, validos.any { it in arriba })
     }
 
     @Test fun porEntrarEnClaro() = porEntrar("claro")
