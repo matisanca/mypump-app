@@ -574,3 +574,46 @@ struct VideollamadaReglasTests {
         #expect(ReglasAgenda.textoAhoraEs(r, zona: ba) == "Ahora es el jueves 12 a las 10:00.")
     }
 }
+
+@Suite("Videollamada: el código de la reunión (2.3.1)")
+struct CodigoMeetTests {
+    private func codigo(_ s: String) -> String? { ReglasAgenda.codigoMeet(URL(string: s)) }
+
+    @Test func elCodigoSaleDelLink() {
+        #expect(codigo("https://meet.google.com/abc-defg-hij") == "abc-defg-hij")
+        #expect(codigo("https://meet.google.com/abc-defg-hij/") == "abc-defg-hij")
+        #expect(codigo("https://meet.google.com/ABC-DEFG-HIJ?authuser=1&hs=122") == "abc-defg-hij")
+        #expect(codigo("https://MEET.google.com/abc-defg-hij#x") == "abc-defg-hij")
+        #expect(codigo("https://www.meet.google.com/abc-defg-hij") == "abc-defg-hij")
+    }
+
+    @Test func sinGuionesLosPone() {
+        #expect(codigo("https://meet.google.com/abcdefghij") == "abc-defg-hij")
+    }
+
+    @Test func loQueNoEsUnaReunionDaNil() {
+        #expect(ReglasAgenda.codigoMeet(nil) == nil)
+        #expect(codigo("http://meet.google.com/abc-defg-hij") == nil)
+        #expect(codigo("https://meet.google.com/") == nil)
+        #expect(codigo("https://meet.google.com/abc") == nil)
+        #expect(codigo("https://meet.google.com/new") == nil)
+        #expect(codigo("https://meet.google.com/lookup/abc-defg-hij") == nil)
+        #expect(codigo("https://meet.google.com/abcd-efg-hij") == nil)
+        #expect(codigo("https://meet.google.com/abc-defg-hi1") == nil)
+        #expect(codigo("https://meet.google.com/abc-defg-hijk") == nil)
+        #expect(codigo("https://meet.google.com.evil.com/abc-defg-hij") == nil)
+        #expect(codigo("https://evil.com/abc-defg-hij") == nil)
+        #expect(codigo("https://meet.google.com/abc-dé-fghij") == nil)
+    }
+
+    @Test func losTextosDelRespaldoNombranAMati() {
+        let todos = [ReglasAgenda.tituloCodigo, ReglasAgenda.textoCopiarCodigo, ReglasAgenda.textoCodigoCopiado,
+                     ReglasAgenda.textoPegarCodigo] + ReglasAgenda.ayudaEntrar
+        for t in todos {
+            #expect(!t.lowercased().contains("entrenador"))
+            #expect(!t.lowercased().contains("whatsapp"))
+            #expect(!t.contains("IA"))
+        }
+        #expect(ReglasAgenda.ayudaEntrar.contains { $0.contains("Unirse con un código") })
+    }
+}
