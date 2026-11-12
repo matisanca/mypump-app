@@ -402,11 +402,42 @@ object ReglasAgenda {
 
     /** «¿Cómo entro?», en el orden en que pasan las cosas. */
     val AYUDA_ENTRAR = listOf(
-        "Tocás Entrar y se abre Google Meet. Si no lo tenés instalado, se abre en el navegador y funciona igual.",
+        "Tocás Entrar y se abre la reunión. Si te pide tu nombre, escribilo y tocá «Solicitar unirse».",
         "Mati te admite en la sala. Esperá ahí, no hace falta salir y volver a entrar.",
+        "Si se abre Gmail o la portada de Meet, copiá el código de abajo y pegalo en «Unirse con un código».",
         "Si se corta, volvé a la app y tocá Entrar de nuevo.",
         "Si no podés entrar, escribinos por el chat.",
     )
+
+    // El código de la reunión (2.3.1): el respaldo de «Entrar».
+
+    const val TITULO_CODIGO = "Código de la reunión"
+    const val TEXTO_COPIAR_CODIGO = "Copiar código"
+    const val TEXTO_CODIGO_COPIADO = "Código copiado"
+    /** Dónde se pega el código si «Entrar» no abre la reunión (Gmail o la portada de Meet con otra cuenta). */
+    const val TEXTO_PEGAR_CODIGO = "Si no se abre la reunión, entrá a Google Meet, tocá «Unirse con un código» y pegalo."
+
+    private val CODIGO_CON_GUIONES = Regex("^[a-z]{3}-[a-z]{4}-[a-z]{3}$")
+    private val CODIGO_SIN_GUIONES = Regex("^[a-z]{10}$")
+
+    /**
+     * El código de un link de Meet, «abc-defg-hij», o null si el link no es de una reunión de Meet (gemelo de
+     * `ReglasAgenda.codigoMeet` de iOS). Acepta el código sin guiones y lo devuelve con guiones; ignora mayúsculas, la barra
+     * final y lo que venga después (`?authuser`, `#`).
+     */
+    fun codigoMeet(url: String?): String? {
+        val u = url?.trim() ?: return null
+        val m = Regex("^https://(www\\.)?meet\\.google\\.com(/[^?#]*)?([?#].*)?$", RegexOption.IGNORE_CASE).matchEntire(u) ?: return null
+        val partes = (m.groupValues[2]).split('/').filter { it.isNotEmpty() }
+        if (partes.size != 1) return null
+        val crudo = partes[0].lowercase()
+        val letras = when {
+            CODIGO_CON_GUIONES.matches(crudo) -> crudo.replace("-", "")
+            CODIGO_SIN_GUIONES.matches(crudo) -> crudo
+            else -> return null
+        }
+        return "${letras.substring(0, 3)}-${letras.substring(3, 7)}-${letras.substring(7)}"
+    }
 
     /** En qué está el botón «Entrar». */
     sealed interface EstadoEntrar {
