@@ -39,7 +39,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(vp.protectores)), V.protectores, 'pes
 const vp0 = ctx._vistaSupl(sinCampo(V.suplementacion));
 assert.deepEqual(JSON.parse(JSON.stringify(vp0.protectores)), []);
 assert.deepEqual(JSON.parse(JSON.stringify(momentos(vp0))), V.sinCampo.momentos, 'pestaña sin el campo: como antes');
-assert.ok(html.includes('Protectores, indicados por Mati'), 'el bloque en la pestaña');
+assert.ok(html.includes('Protectores'), 'el bloque en la pestaña');
 n += 5;
 
 // «¿Ya lo tenés?» no ofrece marcar un protector, venga como venga.

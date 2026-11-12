@@ -796,7 +796,7 @@
   function tituloMomento(m, definido) {
     return (definido && noVacio(definido.nombre)) || NOMBRES_MOMENTOS[m] || mayuscula(m.replace(/_/g, ' ')) || m;
   }
-  const TITULO_PROTECTORES = 'Protectores, indicados por Mati';
+  const TITULO_PROTECTORES = 'Protectores';
   function vistaSuplementacion(s) {
     if (!s || !s.items.length) return null;
     const def = new Map();

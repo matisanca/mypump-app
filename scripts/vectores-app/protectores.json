@@ -1,6 +1,6 @@
 {
-  "_": "2.3.1: los protectores (fármacos que indica Mati: protector true o tipo \"protector\") van aparte de «Tu día», en «Protectores, indicados por Mati», con cantidad y momento, sin compra y sin marcar. Sin el campo, la vista queda como antes.",
-  "titulo": "Protectores, indicados por Mati",
+  "_": "2.3.1: los protectores (fármacos que indica Mati: protector true o tipo \"protector\") van aparte de «Tu día», en «Protectores», con cantidad y momento, sin compra y sin marcar. Sin el campo, la vista queda como antes.",
+  "titulo": "Protectores",
   "suplementacion": {
     "dia": [{"id": "desayuno", "nombre": "Desayuno"}, {"id": "cena"}],
     "items": [

@@ -14266,7 +14266,7 @@ function renderSupl() {
     ${(v.titulo || v.accion) ? `<div class="supl-cab">${v.titulo ? `<div class="supl-cab-tit">${E(v.titulo)}</div>` : ''}${v.accion ? `<div class="supl-cab-acc">${E(v.accion)}</div>` : ''}</div>` : ''}
     ${v.momentos.length ? `<div class="supl-ceja">Tu día</div>${v.momentos.map(m => `
       <div class="supl-momento"><div class="supl-momento-tit">${E(m.titulo)}</div>${m.filas.map(filaHtml).join('')}</div>`).join('')}` : ''}
-    ${v.protectores.length ? `<div class="supl-ceja">Protectores, indicados por Mati</div><div class="supl-momento" id="suplProtectores">${v.protectores.map(p => `
+    ${v.protectores.length ? `<div class="supl-ceja">Protectores</div><div class="supl-momento" id="suplProtectores">${v.protectores.map(p => `
       <div class="supl-fila supl-protector"><div class="supl-fila-top"><span class="supl-nombre">${E(p.nombre)}</span>${p.cantidad ? `<span class="supl-cant">${E(p.cantidad)}</span>` : ''}</div>
       ${p.momento ? `<div class="supl-nota supl-protector-momento">${E(p.momento)}</div>` : ''}${p.nota ? `<div class="supl-nota">${E(p.nota)}</div>` : ''}</div>`).join('')}</div>` : ''}
     ${window.FeedbackUI ? window.FeedbackUI.supleHtml(s.items) : ''}
