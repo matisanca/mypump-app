@@ -121,7 +121,7 @@ try {
     comprobar(await evaluar('!!document.querySelector(".vl-tarjeta button.vl-boton[disabled]")'), '«Entrar» apagado');
     await clic('.vl-ayuda summary');
     await sleep(300);
-    comprobar(await evaluar('document.querySelector(".vl-ayuda").open && document.querySelectorAll(".vl-ayuda li").length === 4'), '«¿Cómo entro?» con los 4 pasos');
+    comprobar(await evaluar('document.querySelector(".vl-ayuda").open && document.querySelectorAll(".vl-ayuda li").length === 5'), '«¿Cómo entro?» con los 5 pasos');
     await capturar(`web-tarjeta-dias-antes-${tema}`);
     await clic('[data-vl="cambiar"]');
     await sleep(400);
@@ -146,7 +146,16 @@ try {
     comprobar(!!a && a.href === 'https://meet.google.com/abc-defg-hij' && a.target === '_blank' && /noopener/.test(a.rel), '«Entrar a la videollamada» abre el link de mentira en otra pestaña (noopener)');
     comprobar((await texto('.vl-ya')) === 'Ya podés entrar', '«Ya podés entrar»');
     comprobar((await texto('.vl-admite')) === 'Mati te admite en la sala. Si tarda un poco, esperá ahí sin salir.', 'texto de la sala');
+    // 2.3.1: el código de la reunión debajo de «Entrar», con «Copiar código» y dónde pegarlo.
+    comprobar((await texto('.vl-codigo-valor')) === 'abc-defg-hij', 'el código de la reunión a la vista');
+    comprobar((await texto('.vl-codigo-pegar')).includes('«Unirse con un código»'), 'dónde pegar el código');
+    comprobar((await texto('.vl-codigo-copiar')) === 'Copiar código', '«Copiar código»');
     await capturar(`web-tarjeta-entrar-${tema}`);
+    await clic('[data-vl="copiar-codigo"]');
+    await sleep(400);
+    comprobar((await texto('.vl-codigo-copiar')) === 'Código copiado' || (await evaluar('String(getSelection())')) === 'abc-defg-hij',
+      '«Copiar código» copia (o deja el código seleccionado si no hay portapapeles)');
+    await capturar(`web-codigo-copiado-${tema}`);
 
     // 4. Palanca apagada: sin «Agendá» ni la pantalla nueva; nunca se llama a cambiar.
     await abrir('diasAntes', t, '&palanca=0');

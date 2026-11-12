@@ -1621,7 +1621,7 @@
 .vl-codigo{display:flex;flex-direction:column;gap:.5rem;padding:.875rem;border-radius:1rem;background:rgba(255,255,255,.14)}
 .vl-codigo-dato{display:flex;flex-direction:column;gap:.125rem;margin:0}
 .vl-codigo-titulo{font-size:.9375rem;font-weight:600;color:rgba(255,255,255,.9)}
-.vl-codigo-valor{font:700 1.75rem/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#fff;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
+.vl-codigo-valor{font:700 1.75rem/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#fff;user-select:all;-webkit-user-select:all;overflow-wrap:break-word}
 .vl-codigo-copiar{display:flex;align-items:center;justify-content:center;gap:.5rem;min-height:3.25rem;width:100%;border:2px solid #fff;border-radius:999px;background:transparent;color:#fff;font:inherit;font-size:1.0625rem;font-weight:600;cursor:pointer}
 .vl-codigo-copiar svg{width:1.25rem;height:1.25rem}
 .vl-codigo-copiar:focus-visible{outline:3px solid #fff;outline-offset:2px}
