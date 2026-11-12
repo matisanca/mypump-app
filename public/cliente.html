@@ -672,6 +672,8 @@ main{padding:var(--space-4)}
 .supl-momento-tit{font-size:14px;font-weight:600;color:var(--color-brand-text);padding:var(--space-3) var(--space-4) 2px}
 .supl-fila{all:unset;box-sizing:border-box;display:block;width:100%;padding:var(--space-3) var(--space-4);cursor:pointer}
 .supl-fila + .supl-fila{border-top:1px solid var(--color-border)}
+.supl-protector{cursor:default}
+.supl-protector-momento{color:var(--color-brand-text)}
 .supl-fila-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:15px;color:var(--color-text-primary)}
 .supl-nombre{font-weight:600}
 .supl-cant{font-weight:600;font-family:var(--font-num);white-space:nowrap}
@@ -14072,9 +14074,15 @@ function _vistaSupl(s) {
   const dia = Array.isArray(s.dia) ? s.dia.filter(m => m && _suplTxt(m.id)) : [];
   const def = {};
   dia.forEach(m => { if (!def[m.id]) def[m.id] = m; });
-  const tomas = {}, ordenAparicion = [], sueltos = [], sale = [];
+  const tomas = {}, ordenAparicion = [], sueltos = [], sale = [], protectores = [];
   items.forEach((it, i) => {
     if (it.estado === 'sale') { sale.push({ nombre: it.nombre, porQue: _suplTxt(it.por_que), item: i }); return; }
+    // 2.3.1: un fármaco que indicó Mati (protector true o tipo "protector") va aparte, sin compra y sin marcar.
+    if (it.protector === true || it.protector === 1 || it.protector === 'true' || it.tipo === 'protector') {
+      const pts = Array.isArray(it.tomas) && it.tomas.some(x => x && typeof x === 'object') ? it.tomas.filter(x => x && typeof x === 'object') : [it];
+      pts.forEach(x => protectores.push({ nombre: _suplTxt(x.nombre) || it.nombre, cantidad: _suplTxt(x.cantidad), momento: _suplTxt(x.momento), nota: _suplMayus(_suplTxt(x.nota)), item: i }));
+      return;
+    }
     const ts = Array.isArray(it.tomas) ? it.tomas.filter(x => x && typeof x === 'object') : [];
     let lista = null, momentos = [];
     if (ts.length) { lista = ts.map(x => ({ item: i, nombre: _suplTxt(x.nombre), cantidad: _suplTxt(x.cantidad), nota: _suplTxt(x.nota) })); momentos = ts.map(x => _suplTxt(x.momento) || ''); }
@@ -14099,7 +14107,8 @@ function _vistaSupl(s) {
   const grupos = [];
   orden.forEach(m => { if (tomas[m]) grupos.push({ id: m, titulo: titulo(m), filas: tomas[m].map(fila) }); });
   if (sueltos.length) grupos.push({ id: '_ademas', titulo: 'Además', filas: sueltos.map(fila) });
-  return { titulo: _suplTxt(s.titulo), accion: _suplTxt(s.accion), momentos: grupos, sigue: _suplTxt(s.sigue_texto), sale, items, dia, tituloMomento: titulo };
+  protectores.forEach(p => { p.momento = p.momento ? titulo(p.momento) : null; });
+  return { titulo: _suplTxt(s.titulo), accion: _suplTxt(s.accion), momentos: grupos, sigue: _suplTxt(s.sigue_texto), sale, items, dia, tituloMomento: titulo, protectores };
 }
 
 /* `dias` para el cliente (ReglasSuplementacion.textoDias): null = todos los días. */
@@ -14183,6 +14192,9 @@ function renderSupl() {
     ${(v.titulo || v.accion) ? `<div class="supl-cab">${v.titulo ? `<div class="supl-cab-tit">${E(v.titulo)}</div>` : ''}${v.accion ? `<div class="supl-cab-acc">${E(v.accion)}</div>` : ''}</div>` : ''}
     ${v.momentos.length ? `<div class="supl-ceja">Tu día</div>${v.momentos.map(m => `
       <div class="supl-momento"><div class="supl-momento-tit">${E(m.titulo)}</div>${m.filas.map(filaHtml).join('')}</div>`).join('')}` : ''}
+    ${v.protectores.length ? `<div class="supl-ceja">Protectores, indicados por Mati</div><div class="supl-momento" id="suplProtectores">${v.protectores.map(p => `
+      <div class="supl-fila supl-protector"><div class="supl-fila-top"><span class="supl-nombre">${E(p.nombre)}</span>${p.cantidad ? `<span class="supl-cant">${E(p.cantidad)}</span>` : ''}</div>
+      ${p.momento ? `<div class="supl-nota supl-protector-momento">${E(p.momento)}</div>` : ''}${p.nota ? `<div class="supl-nota">${E(p.nota)}</div>` : ''}</div>`).join('')}</div>` : ''}
     ${window.FeedbackUI ? window.FeedbackUI.supleHtml(s.items) : ''}
     ${v.sigue ? `<div class="supl-sigue"><b>Sigue igual.</b> ${E(v.sigue)}</div>` : ''}
     ${v.sale.length ? `<div class="supl-ceja">Dejás de tomar</div><div class="supl-momento">${v.sale.map(x => `

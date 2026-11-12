@@ -101,7 +101,7 @@
   // Sin ese archivo (un caché viejo a medio actualizar) la guía no arranca.
   const RG = window.ReglasGuia;
   if (!RG) return;
-  const { MAX_TEXTO, MAX_SEGUNDOS, texto, esObjeto, lista, largo, R, RD, RA, RV, AvanceVideo, vistaSuplementacion,
+  const { MAX_TEXTO, MAX_SEGUNDOS, texto, esObjeto, lista, largo, R, RD, RA, RV, AvanceVideo, vistaSuplementacion, TITULO_PROTECTORES,
           normalizarGuia, normalizarResumen, normalizarAgenda, normalizarReserva } = RG;
 
   // ─── Textos del audio (ReglasAudioDuda) ─────────────────────────
@@ -2823,6 +2823,16 @@
           for (const d of f.detalle) h += `<p class="gu-detalle">${neg(d)}</p>`;
           const c = R.clipDeSuplemento(this.m.guia, f.videoId);
           if (c) h += this.htmlVerPorQue(c, f.nombre, despues);
+          h += '</div>';
+        }
+        h += '</div>';
+      }
+      if (s.protectores && s.protectores.length) {
+        h += `<div class="gu-momento" id="guProtectores"><div class="gu-momento-titulo" role="heading" aria-level="4">${esc(TITULO_PROTECTORES)}</div>`;
+        for (const p of s.protectores) {
+          h += `<div class="gu-item"><div class="gu-item-linea"><span class="gu-item-nombre">${esc(p.nombre)}</span>${p.cantidad ? `<span class="gu-cant">${esc(p.cantidad)}</span>` : ''}</div>`;
+          if (p.momento) h += `<p class="gu-sub">${esc(p.momento)}</p>`;
+          if (p.nota) h += `<p class="gu-sub">${esc(p.nota)}</p>`;
           h += '</div>';
         }
         h += '</div>';

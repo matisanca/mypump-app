@@ -109,6 +109,8 @@
       antes: noVacio(texto(o.antes)),
       cambio: noVacio(texto(o.cambio)),
       comprar: normalizarComprar(o.comprar),
+      // Un fármaco que indicó Mati (2.3.1): `protector: true` o `tipo: "protector"`. Va aparte, sin compra y sin marcar.
+      protector: booleano(o.protector) === true || texto(o.tipo) === 'protector',
     };
   }
 
@@ -794,14 +796,24 @@
   function tituloMomento(m, definido) {
     return (definido && noVacio(definido.nombre)) || NOMBRES_MOMENTOS[m] || mayuscula(m.replace(/_/g, ' ')) || m;
   }
+  const TITULO_PROTECTORES = 'Protectores, indicados por Mati';
   function vistaSuplementacion(s) {
     if (!s || !s.items.length) return null;
     const def = new Map();
     for (const m of s.dia) if (!def.has(m.id)) def.set(m.id, m);
     const tomas = new Map();
-    const ordenAparicion = [], sueltos = [], sale = [];
+    const ordenAparicion = [], sueltos = [], sale = [], protectores = [];
     s.items.forEach((it, i) => {
       if (it.estado === 'sale') { sale.push({ nombre: it.nombre, porQue: it.porQue, detalle: it.detalle, item: i }); return; }
+      if (it.protector) {
+        const pts = it.tomas.length ? it.tomas : [{ momento: it.momento, cantidad: it.cantidad, nota: it.nota, nombre: null }];
+        pts.forEach((t, n) => {
+          const m = noVacio(t.momento);
+          protectores.push({ id: `protector-${i}-${n}`, nombre: noVacio(t.nombre) || it.nombre, cantidad: noVacio(t.cantidad),
+            momento: m ? tituloMomento(m, def.get(m)) : null, nota: mayuscula(t.nota), item: i });
+        });
+        return;
+      }
       let ts = null;
       if (it.tomas.length) ts = it.tomas.map(t => ({ item: i, nombre: t.nombre, cantidad: t.cantidad, nota: t.nota }));
       else if (it.momento) ts = [{ item: i, nombre: null, cantidad: it.cantidad, nota: it.nota }];
@@ -846,7 +858,7 @@
       grupos.push({ id: m, titulo: tituloMomento(m, def.get(m)), filas: ts.map((t, n) => fila(t, n, m)) });
     }
     if (sueltos.length) grupos.push({ id: '_ademas', titulo: 'Además', filas: sueltos.map((t, n) => fila(t, n, '_ademas')) });
-    return { titulo: noVacio(s.titulo) || 'Tu suplementación', accion: s.accion, momentos: grupos, sigue: s.sigueTexto, sale };
+    return { titulo: noVacio(s.titulo) || 'Tu suplementación', accion: s.accion, momentos: grupos, sigue: s.sigueTexto, sale, protectores };
   }
 
   // ─── Fechas en una zona (la del teléfono o la de Argentina) ─────
@@ -1329,7 +1341,7 @@
     MAX_TEXTO, MAX_SEGUNDOS, HORAS_TARJETA, ZONA_BA, largo,
     texto, booleano, decimal, entero, lista, esObjeto, noVacio, textos, trimServidor,
     normalizarClip, normalizarGuia, normalizarResumen, normalizarAgenda, normalizarReserva, normalizarFranja,
-    R, RD, RA, RV, AvanceVideo, vistaSuplementacion, diaBA, desfase, esUuid,
+    R, RD, RA, RV, AvanceVideo, vistaSuplementacion, TITULO_PROTECTORES, diaBA, desfase, esUuid,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.ReglasGuia = API;
