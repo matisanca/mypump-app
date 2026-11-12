@@ -134,15 +134,27 @@ public enum ReglasEjercicio {
     /// kg y RIR porque `normalizarRutina` le pone `series = 1` a todo). Es cardio el `tipo: "cardio"` y, si el tipo es
     /// «calentamiento» o no viene, el que por slug o por nombre es una máquina de cardio. El calentamiento de fuerza
     /// (movilidad, banda, rotaciones) sigue con sus series.
+    ///
+    /// 2.3.1: el slug de una máquina de cardio gana sobre el tipo (una cinta cargada como «compuesto» va por tiempo). El
+    /// nombre solo sigue respetando el tipo.
     public static func esCardio(nombre: String?, tipo: String?, slugs: [String?] = []) -> Bool {
         let t = tipoNormalizado(tipo)
         if t == "cardio" { return true }
-        guard t == nil || t == "calentamiento" else { return false }
         if slugs.contains(where: { s in s.map { slugsCardio.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) } ?? false }) {
             return true
         }
+        guard t == nil || t == "calentamiento" else { return false }
         let n = (nombre ?? "").folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "es")).lowercased()
         return cardioRE.prueba(n) && !noCardioRE.prueba(n)
+    }
+
+    /// Las reps del plan son una duración pura («10 min», «20'», «30 s», «1 h»). Los intervalos («6 × 30 s / 30 s») no.
+    nonisolated(unsafe) static let tiempoRE = try! NSRegularExpression(
+        pattern: #"^\s*\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?\s*(?:min(?:utos?|s)?|'|′|s|seg(?:undos?)?|h(?:oras?|s)?)\.?\s*$"#,
+        options: [.caseInsensitive])
+    public static func repsEsTiempo(_ reps: String?) -> Bool {
+        guard let r = reps else { return false }
+        return tiempoRE.firstMatch(in: r, range: NSRange(r.startIndex..., in: r)) != nil
     }
 
     public static func esCardio(_ ex: Ejercicio) -> Bool {

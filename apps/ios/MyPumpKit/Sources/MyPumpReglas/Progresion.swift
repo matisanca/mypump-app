@@ -31,6 +31,8 @@ public enum Progresiones {
         if !e.progresion.isEmpty {
             let idx = max(0, min(semanaJS(semana) - 1, e.progresion.count - 1))
             let p = e.progresion[idx]
+            // 2.3.1: el cardio con una progresión por tiempo («10 min») no arma filas aunque el plan traiga `series`.
+            if ReglasEjercicio.repsEsTiempo(p.reps) && ReglasEjercicio.esCardio(e) { return Pauta(series: nil, reps: p.reps, rir: nil) }
             return Pauta(series: p.series, reps: p.reps, rir: p.rir)
         }
         if ReglasEjercicio.esCardio(e) { return Pauta(series: nil, reps: e.reps, rir: nil) }

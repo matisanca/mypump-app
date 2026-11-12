@@ -23,6 +23,8 @@ object Progresiones {
         if (e.progresion.isNotEmpty()) {
             val idx = maxOf(0, minOf(semanaJs(semana) - 1, e.progresion.size - 1))
             val p = e.progresion[idx]
+            // 2.3.1: el cardio con una progresión por tiempo («10 min») no arma filas aunque el plan traiga `series`.
+            if (ReglasEjercicio.repsEsTiempo(p.reps) && ReglasEjercicio.esCardio(e)) return Pauta(null, p.reps, null)
             return Pauta(p.series, p.reps, p.rir)
         }
         if (ReglasEjercicio.esCardio(e)) return Pauta(null, e.reps, null)

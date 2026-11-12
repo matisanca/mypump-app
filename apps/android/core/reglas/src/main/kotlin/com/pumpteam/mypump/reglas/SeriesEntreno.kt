@@ -152,15 +152,21 @@ object ReglasEjercicio {
      * «calentamiento» o no viene, el que por slug o por nombre es una máquina de cardio. El calentamiento de fuerza
      * (movilidad, banda, rotaciones) sigue con sus series.
      */
+    // 2.3.1: el slug de una máquina de cardio gana sobre el tipo (una cinta cargada como «compuesto» va por tiempo). El
+    // nombre solo sigue respetando el tipo.
     fun esCardio(nombre: String?, tipo: String?, slugs: List<String?> = emptyList()): Boolean {
         val t = tipoNormalizado(tipo)
         if (t == "cardio") return true
-        if (t != null && t != "calentamiento") return false
         if (slugs.any { s -> s != null && s.trim().lowercase() in slugsCardio }) return true
+        if (t != null && t != "calentamiento") return false
         val n = java.text.Normalizer.normalize((nombre ?: "").lowercase(), java.text.Normalizer.Form.NFD)
             .replace(Regex("\\p{Mn}+"), "")
         return cardioRE.prueba(n) && !noCardioRE.prueba(n)
     }
+
+    /** Las reps del plan son una duración pura («10 min», «20'», «30 s», «1 h»). Los intervalos («6 × 30 s / 30 s») no. */
+    private val tiempoRE = Regex("""^\s*\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?\s*(?:min(?:utos?|s)?|'|′|s|seg(?:undos?)?|h(?:oras?|s)?)\.?\s*${'$'}""", RegexOption.IGNORE_CASE)
+    fun repsEsTiempo(reps: String?): Boolean = reps != null && tiempoRE.matches(reps)
 
     fun esCardio(ex: Ejercicio): Boolean = esCardio(ex.nombre, ex.tipo, listOf(ex.catalogoSlug, ex.matchedSlug, ex.imagenes?.matchedSlug))
 
