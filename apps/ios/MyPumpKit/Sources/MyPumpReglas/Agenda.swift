@@ -220,7 +220,7 @@ public enum ReglasAgenda {
     public static let ayudaEntrar = [
         "Tocás Entrar y se abre la reunión. Si te pide tu nombre, escribilo y tocá «Solicitar unirse».",
         "Mati te admite en la sala. Esperá ahí, no hace falta salir y volver a entrar.",
-        "Si se abre Gmail o la portada de Meet, copiá el código de abajo y pegalo en «Unirse con un código».",
+        "Si se abre Gmail o la portada de Meet, copiá el código de la reunión, que aparece junto a Entrar, y pegalo en «Unirse con un código».",
         "Si se corta, volvé a la app y tocá Entrar de nuevo.",
         "Si no podés entrar, escribinos por el chat.",
     ]
@@ -230,15 +230,24 @@ public enum ReglasAgenda {
     public static let tituloCodigo = "Código de la reunión"
     public static let textoCopiarCodigo = "Copiar código"
     public static let textoCodigoCopiado = "Código copiado"
-    /// Dónde se pega el código si «Entrar» no abre la reunión (Gmail o la portada de Meet con otra cuenta).
-    public static let textoPegarCodigo = "Si no se abre la reunión, entrá a Google Meet, tocá «Unirse con un código» y pegalo."
+    /// Dónde se pega el código si «Entrar» no abre la reunión (Gmail o la portada de Meet con otra cuenta), en pasos
+    /// cortos para gente mayor (Mati, 12/11).
+    public static let tituloPasosCodigo = "Si no se abre la reunión:"
+    public static let pasosCodigo = [
+        "Tocá «Copiar código».",
+        "Abrí Google Meet.",
+        "Tocá «Unirse con un código».",
+        "Pegá el código y tocá «Unirse».",
+    ]
 
     /// El código de un link de Meet, «abc-defg-hij», o nil si el link no es de una reunión de Meet. Acepta el código sin
     /// guiones («abcdefghij») y lo devuelve con guiones; ignora mayúsculas, la barra final y lo que venga después (`?authuser`).
     public static func codigoMeet(_ url: URL?) -> String? {
-        guard let url, url.scheme?.lowercased() == "https",
-              let host = url.host?.lowercased(), host == "meet.google.com" || host == "www.meet.google.com" else { return nil }
-        let partes = url.path.split(separator: "/")
+        guard let url, url.scheme?.lowercased() == "https", url.port == nil, url.user == nil, url.password == nil,
+              let host = url.host?.lowercased(), host == "meet.google.com" || host == "www.meet.google.com",
+              let c = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+        // La ruta tal cual vino (sin decodificar): un «%2D» no cuenta como guion, igual que en Android y la web.
+        let partes = c.percentEncodedPath.split(separator: "/")
         guard partes.count == 1 else { return nil }
         let letras = String(partes[0]).lowercased().replacingOccurrences(of: "-", with: "")
         guard letras.count == 10, letras.unicodeScalars.allSatisfy({ ("a"..."z").contains($0) }) else { return nil }

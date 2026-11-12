@@ -604,16 +604,21 @@ struct CodigoMeetTests {
         #expect(codigo("https://meet.google.com.evil.com/abc-defg-hij") == nil)
         #expect(codigo("https://evil.com/abc-defg-hij") == nil)
         #expect(codigo("https://meet.google.com/abc-dé-fghij") == nil)
+        #expect(codigo("https://meet.google.com:443/abc-defg-hij") == nil)
+        #expect(codigo("https://x@meet.google.com/abc-defg-hij") == nil)
+        #expect(codigo("https://meet.google.com/abc%2Ddefg-hij") == nil)
     }
 
     @Test func losTextosDelRespaldoNombranAMati() {
         let todos = [ReglasAgenda.tituloCodigo, ReglasAgenda.textoCopiarCodigo, ReglasAgenda.textoCodigoCopiado,
-                     ReglasAgenda.textoPegarCodigo] + ReglasAgenda.ayudaEntrar
+                     ReglasAgenda.tituloPasosCodigo] + ReglasAgenda.pasosCodigo + ReglasAgenda.ayudaEntrar
         for t in todos {
             #expect(!t.lowercased().contains("entrenador"))
             #expect(!t.lowercased().contains("whatsapp"))
             #expect(!t.contains("IA"))
         }
         #expect(ReglasAgenda.ayudaEntrar.contains { $0.contains("Unirse con un código") })
+        #expect(ReglasAgenda.pasosCodigo.count == 4 && ReglasAgenda.pasosCodigo[0].contains("Copiar código")
+                && ReglasAgenda.pasosCodigo.contains { $0.contains("Unirse con un código") })
     }
 }
