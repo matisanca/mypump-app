@@ -29,6 +29,7 @@ class CodigoMeetTest {
             "https://meet.google.com/abc", "https://meet.google.com/new", "https://meet.google.com/lookup/abc-defg-hij",
             "https://meet.google.com/abcd-efg-hij", "https://meet.google.com/abc-defg-hi1", "https://meet.google.com/abc-defg-hijk",
             "https://meet.google.com.evil.com/abc-defg-hij", "https://evil.com/abc-defg-hij", "https://meet.google.com/abc-dé-fghij",
+            "https://meet.google.com:443/abc-defg-hij", "https://x@meet.google.com/abc-defg-hij", "https://meet.google.com/abc%2Ddefg-hij",
         ).forEach { assertNull(codigo(it), "$it") }
     }
 
@@ -36,13 +37,15 @@ class CodigoMeetTest {
     fun losTextosDelRespaldoNombranAMati() {
         val todos = listOf(
             ReglasAgenda.TITULO_CODIGO, ReglasAgenda.TEXTO_COPIAR_CODIGO, ReglasAgenda.TEXTO_CODIGO_COPIADO,
-            ReglasAgenda.TEXTO_PEGAR_CODIGO,
-        ) + ReglasAgenda.AYUDA_ENTRAR
+            ReglasAgenda.TITULO_PASOS_CODIGO, ReglasAgenda.TEXTO_SIN_APP_MEET,
+        ) + ReglasAgenda.PASOS_CODIGO + ReglasAgenda.AYUDA_ENTRAR
         todos.forEach {
             assertFalse(it.lowercase().contains("entrenador"), it)
             assertFalse(it.lowercase().contains("whatsapp"), it)
             assertFalse(it.contains("IA"), it)
         }
         assertTrue(ReglasAgenda.AYUDA_ENTRAR.any { it.contains("Unirse con un código") })
+        assertEquals(4, ReglasAgenda.PASOS_CODIGO.size)
+        assertTrue(ReglasAgenda.PASOS_CODIGO[0].contains("Copiar código") && ReglasAgenda.PASOS_CODIGO.any { it.contains("Unirse con un código") })
     }
 }

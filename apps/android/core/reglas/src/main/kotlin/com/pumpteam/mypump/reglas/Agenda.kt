@@ -404,7 +404,7 @@ object ReglasAgenda {
     val AYUDA_ENTRAR = listOf(
         "Tocás Entrar y se abre la reunión. Si te pide tu nombre, escribilo y tocá «Solicitar unirse».",
         "Mati te admite en la sala. Esperá ahí, no hace falta salir y volver a entrar.",
-        "Si se abre Gmail o la portada de Meet, copiá el código de abajo y pegalo en «Unirse con un código».",
+        "Si se abre Gmail o la portada de Meet, copiá el código de la reunión, que aparece junto a Entrar, y pegalo en «Unirse con un código».",
         "Si se corta, volvé a la app y tocá Entrar de nuevo.",
         "Si no podés entrar, escribinos por el chat.",
     )
@@ -414,8 +414,19 @@ object ReglasAgenda {
     const val TITULO_CODIGO = "Código de la reunión"
     const val TEXTO_COPIAR_CODIGO = "Copiar código"
     const val TEXTO_CODIGO_COPIADO = "Código copiado"
-    /** Dónde se pega el código si «Entrar» no abre la reunión (Gmail o la portada de Meet con otra cuenta). */
-    const val TEXTO_PEGAR_CODIGO = "Si no se abre la reunión, entrá a Google Meet, tocá «Unirse con un código» y pegalo."
+    /**
+     * Solo Android, sin la app de Meet: la web de Meet en el celular manda a instalar la app (Google Play) en vez de dejar
+     * entrar en el navegador, como sí pasa en el iPhone.
+     */
+    const val TEXTO_SIN_APP_MEET = "Si te pide instalar Google Meet, instalala y volvé a tocar Entrar."
+    /** Dónde se pega el código si «Entrar» no abre la reunión, en pasos cortos para gente mayor (Mati, 12/11). */
+    const val TITULO_PASOS_CODIGO = "Si no se abre la reunión:"
+    val PASOS_CODIGO = listOf(
+        "Tocá «Copiar código».",
+        "Abrí Google Meet.",
+        "Tocá «Unirse con un código».",
+        "Pegá el código y tocá «Unirse».",
+    )
 
     private val CODIGO_CON_GUIONES = Regex("^[a-z]{3}-[a-z]{4}-[a-z]{3}$")
     private val CODIGO_SIN_GUIONES = Regex("^[a-z]{10}$")

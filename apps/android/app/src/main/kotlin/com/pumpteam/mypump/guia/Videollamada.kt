@@ -933,7 +933,6 @@ private fun CodigoReunion(codigo: String) {
                 style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Monospace),
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                maxLines = 1,
             )
         }
         OutlinedButton(
@@ -959,11 +958,38 @@ private fun CodigoReunion(codigo: String) {
                 fontWeight = FontWeight.SemiBold,
             )
         }
-        Text(
-            ReglasAgenda.TEXTO_PEGAR_CODIGO,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
-            modifier = Modifier.testTag("videollamada-pegar-codigo"),
-        )
+        if (!remember { appDeMeetInstalada(contexto) }) {
+            Text(
+                ReglasAgenda.TEXTO_SIN_APP_MEET,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                modifier = Modifier.testTag("videollamada-sin-app-meet"),
+            )
+        }
+        Column(Modifier.testTag("videollamada-pasos-codigo"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                ReglasAgenda.TITULO_PASOS_CODIGO,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.semantics { heading() },
+            )
+            ReglasAgenda.PASOS_CODIGO.forEachIndexed { i, t ->
+                Row(
+                    Modifier.semantics(mergeDescendants = true) {},
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(Espacio.xs),
+                ) {
+                    Box(
+                        Modifier.size(26.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.22f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("${i + 1}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                    Text(t, style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                }
+            }
+        }
     }
 }

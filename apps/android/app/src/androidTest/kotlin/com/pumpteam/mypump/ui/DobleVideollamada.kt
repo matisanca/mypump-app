@@ -43,7 +43,7 @@ class DobleVideollamada(private val escenario: String, private val base: Transpo
     }
 
     private fun conf(inicio: String, fin: String) = JSONObject().put("id", "r1").put("inicio", inicio).put("fin", fin)
-        .put("estado", "confirmada").put("tipo", "comienzo").put("meet_url", MEET)
+        .put("estado", "confirmada").put("tipo", "comienzo").put("meet_url", meet)
 
     fun a(funcion: String): List<String> = llamadas.filter { it.first == funcion }.map { it.second }
 
@@ -92,5 +92,7 @@ class DobleVideollamada(private val escenario: String, private val base: Transpo
 
     companion object {
         const val MEET = "https://meet.google.com/abc-defg-hij"
+        /** `-e meetUrl <link>`: otra sala de prueba para abrirla de verdad (VideollamadaUiTest.entrarDeVerdad), sin escribirla acá. */
+        val meet: String get() = androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("meetUrl") ?: MEET
     }
 }

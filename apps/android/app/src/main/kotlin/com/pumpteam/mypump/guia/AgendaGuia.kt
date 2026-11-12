@@ -361,8 +361,10 @@ internal fun abrirMeet(contexto: Context, url: String) {
         } catch (_: SecurityException) {
         }
     }
-    // 2) Sin la app: la web de Meet en una Custom Tab dentro de MyPump (pide el nombre y «Solicitar unirse»). La pestaña no le
-    //    pasa el link a otra app al cargar, así que tampoco cae en Gmail. 3) Sin Custom Tabs: el navegador (nunca Gmail).
+    // 2) Sin la app: la web de Meet en una Custom Tab dentro de MyPump. La pestaña no le pasa el link a otra app al cargar,
+    //    así que no cae en Gmail; en el celular Android la web de Meet manda a instalar la app desde Google Play (probado en
+    //    el emulador, 12/11), y la tarjeta lo avisa (TEXTO_SIN_APP_MEET): instalada, el próximo toque va por 1).
+    //    3) Sin Custom Tabs: el navegador (nunca Gmail).
     abrirEnNavegador(contexto, url)
 }
 
