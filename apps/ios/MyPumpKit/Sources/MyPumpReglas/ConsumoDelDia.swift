@@ -142,8 +142,10 @@ public enum PliegueComida {
     /// Plegada: tiene marca y no está entre las abiertas. Sin marca, siempre abierta.
     public static func plegada(marca: MarcaComida?, abierta: Bool) -> Bool { marca != nil && !abierta }
 
-    /// El botón que abre la plegada: con «Comí», destildar; con «Salté», cambiar la marca.
-    public static func rotuloAbrir(_ estado: MarcaComida.Estado) -> String {
+    /// El botón que abre la plegada: con «Comí», destildar; con «Salté», cambiar la marca. Fuera de la ventana de «Comí»
+    /// (un día anterior), adentro no se destilda ni se desmarca: solo se ve.
+    public static func rotuloAbrir(_ estado: MarcaComida.Estado, puedeMarcar: Bool = true) -> String {
+        guard puedeMarcar else { return "Ver la comida" }
         switch estado {
         case .comido: return "Destildar lo que no comiste o desmarcar"
         case .saltado: return "Ver la comida o desmarcar"

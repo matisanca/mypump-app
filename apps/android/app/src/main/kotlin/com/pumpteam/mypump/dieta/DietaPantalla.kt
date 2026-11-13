@@ -922,6 +922,9 @@ private fun TarjetaComida(
     val nombreOpcion = comida.opciones.getOrNull(opcion)?.nombre ?: letra(opcion)
     // «Comí» / «Salté» (D25). La que hoy no come no se marca.
     val estado = if (omitida) null else marca?.estado
+    // Plegada solo si tiene una marca que se ve (como en iOS): la que hoy no come con una marca vieja quedaba plegada sin
+    // título que la abra ni botón, con todo escondido.
+    val enPliegue = plegada && estado != null
     // Fuera de la ventana de «Comí», los agregados de una comida marcada quedan fijos: sus tildes no se podrían guardar.
     val agregadosFijos = estado == MarcaComida.Estado.COMIDO && !puedeMarcar
     // Los tildes por alimento son índices de la opción con que marcó «Comí»: solo se ven mirando esa opción (la web guardaba
@@ -941,7 +944,7 @@ private fun TarjetaComida(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
-                .clickable(enabled = estado != null, role = Role.Button, onClickLabel = if (plegada) "ver el detalle" else "plegarla", onClick = alAlternar)
+                .clickable(enabled = estado != null, role = Role.Button, onClickLabel = if (enPliegue) "ver el detalle" else "plegarla", onClick = alAlternar)
                 .semantics(mergeDescendants = true) {
                     when (estado) {
                         MarcaComida.Estado.COMIDO -> stateDescription = "La comiste"
@@ -983,18 +986,25 @@ private fun TarjetaComida(
             }
         }
         // Plegada, un botón a la vista la abre (bug del 13-nov): solo con el título, nadie sabía que ahí se destildaba.
-        if (plegada && estado != null) {
+        if (enPliegue && estado != null) {
             TextButton(
                 onClick = alAlternar,
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 modifier = Modifier.heightIn(min = 44.dp).testTag("abrir-${comida.id}"),
             ) {
-                Text(PliegueComida.rotuloAbrir(estado), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
+                // Con letra grande el texto baja de renglón y la flecha sigue a la vista (sin el peso, la Row la dejaba sin ancho).
+                Text(
+                    PliegueComida.rotuloAbrir(estado, puedeMarcar),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = c.marcaTexto,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
                 Spacer(Modifier.width(2.dp))
                 Icon(Iconos.Chevron, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp).rotate(90f))
             }
         }
-        if (!plegada) {
+        if (!enPliegue) {
             if (comida.opciones.size > 1) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Opción", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = c.textoSecundario)

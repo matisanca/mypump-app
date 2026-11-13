@@ -193,9 +193,13 @@ object PliegueComida {
     /** Plegada: tiene marca y no está entre las abiertas. Sin marca, siempre abierta. */
     fun plegada(marca: MarcaComida?, abierta: Boolean): Boolean = marca != null && !abierta
 
-    /** El botón que abre la plegada: con «Comí», destildar; con «Salté», cambiar la marca. */
-    fun rotuloAbrir(estado: MarcaComida.Estado): String = when (estado) {
-        MarcaComida.Estado.COMIDO -> "Destildar lo que no comiste o desmarcar"
-        MarcaComida.Estado.SALTADO -> "Ver la comida o desmarcar"
+    /**
+     * El botón que abre la plegada: con «Comí», destildar; con «Salté», cambiar la marca. Fuera de la ventana de «Comí»
+     * (un día anterior), adentro no se destilda ni se desmarca: solo se ve.
+     */
+    fun rotuloAbrir(estado: MarcaComida.Estado, puedeMarcar: Boolean = true): String = when {
+        !puedeMarcar -> "Ver la comida"
+        estado == MarcaComida.Estado.COMIDO -> "Destildar lo que no comiste o desmarcar"
+        else -> "Ver la comida o desmarcar"
     }
 }

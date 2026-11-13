@@ -28,4 +28,10 @@ class PliegueComidaTest {
         assertEquals("Destildar lo que no comiste o desmarcar", PliegueComida.rotuloAbrir(MarcaComida.Estado.COMIDO))
         assertEquals("Ver la comida o desmarcar", PliegueComida.rotuloAbrir(MarcaComida.Estado.SALTADO))
     }
+
+    @Test
+    fun fueraDeLaVentanaDeComiSoloSeVe() {
+        assertEquals("Ver la comida", PliegueComida.rotuloAbrir(MarcaComida.Estado.COMIDO, puedeMarcar = false))
+        assertEquals("Ver la comida", PliegueComida.rotuloAbrir(MarcaComida.Estado.SALTADO, puedeMarcar = false))
+    }
 }

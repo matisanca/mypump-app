@@ -425,12 +425,13 @@ struct DietaView: View {
                     withAnimation(.snappy) { alternarPlegada(c.id, plegada: true) }
                 } label: {
                     HStack(spacing: 4) {
-                        Text(PliegueComida.rotuloAbrir(estado))
+                        Text(PliegueComida.rotuloAbrir(estado, puedeMarcar: puedeMarcar))
                         Image(systemName: "chevron.down").accessibilityHidden(true)
                     }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.marcaTexto)
                     .frame(minHeight: 44)
+                    .contentShape(.rect)   // con estilo plano, sin esto solo el texto toma el toque y no los 44 pt
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("abrir-\(c.id)")

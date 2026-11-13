@@ -21,4 +21,9 @@ struct PliegueComidaTests {
         #expect(PliegueComida.rotuloAbrir(.comido) == "Destildar lo que no comiste o desmarcar")
         #expect(PliegueComida.rotuloAbrir(.saltado) == "Ver la comida o desmarcar")
     }
+
+    @Test func fueraDeLaVentanaDeComiSoloSeVe() {
+        #expect(PliegueComida.rotuloAbrir(.comido, puedeMarcar: false) == "Ver la comida")
+        #expect(PliegueComida.rotuloAbrir(.saltado, puedeMarcar: false) == "Ver la comida")
+    }
 }
