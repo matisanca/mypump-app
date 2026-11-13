@@ -55,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -130,6 +131,7 @@ import com.pumpteam.mypump.reglas.ConsumoDelDia
 import com.pumpteam.mypump.reglas.DiasDieta
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.MarcaComida
+import com.pumpteam.mypump.reglas.PliegueComida
 import com.pumpteam.mypump.reglas.PorcionCasera
 import com.pumpteam.mypump.reglas.ReemplazosKcal
 import com.pumpteam.mypump.reglas.ComoSeLee
@@ -349,7 +351,7 @@ fun DietaPantalla(modelo: ModeloApp) {
                                             alElegir = { nueva -> elegir(c, nueva) },
                                             marca = marcas[c.id],
                                             // U4: la marcada se pliega; la que se acaba de marcar queda abierta para destildar.
-                                            plegada = marcas[c.id] != null && c.id !in abiertas,
+                                            plegada = PliegueComida.plegada(marcas[c.id], c.id in abiertas),
                                             alAlternar = { abiertas = if (c.id in abiertas) abiertas - c.id else abiertas + c.id },
                                             // Con el alcance de la app: la marca sale aunque se cambie de pestaña al toque.
                                             alMarcar = { e ->
@@ -920,6 +922,9 @@ private fun TarjetaComida(
     val nombreOpcion = comida.opciones.getOrNull(opcion)?.nombre ?: letra(opcion)
     // «Comí» / «Salté» (D25). La que hoy no come no se marca.
     val estado = if (omitida) null else marca?.estado
+    // Plegada solo si tiene una marca que se ve (como en iOS): la que hoy no come con una marca vieja quedaba plegada sin
+    // título que la abra ni botón, con todo escondido.
+    val enPliegue = plegada && estado != null
     // Fuera de la ventana de «Comí», los agregados de una comida marcada quedan fijos: sus tildes no se podrían guardar.
     val agregadosFijos = estado == MarcaComida.Estado.COMIDO && !puedeMarcar
     // Los tildes por alimento son índices de la opción con que marcó «Comí»: solo se ven mirando esa opción (la web guardaba
@@ -939,7 +944,7 @@ private fun TarjetaComida(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
-                .clickable(enabled = estado != null, role = Role.Button, onClickLabel = if (plegada) "ver el detalle" else "plegarla", onClick = alAlternar)
+                .clickable(enabled = estado != null, role = Role.Button, onClickLabel = if (enPliegue) "ver el detalle" else "plegarla", onClick = alAlternar)
                 .semantics(mergeDescendants = true) {
                     when (estado) {
                         MarcaComida.Estado.COMIDO -> stateDescription = "La comiste"
@@ -980,7 +985,26 @@ private fun TarjetaComida(
                 Text("kcal", style = MaterialTheme.typography.labelSmall, color = c.textoSecundario)
             }
         }
-        if (!plegada) {
+        // Plegada, un botón a la vista la abre (bug del 13-nov): solo con el título, nadie sabía que ahí se destildaba.
+        if (enPliegue && estado != null) {
+            TextButton(
+                onClick = alAlternar,
+                contentPadding = PaddingValues(horizontal = 4.dp),
+                modifier = Modifier.heightIn(min = 44.dp).testTag("abrir-${comida.id}"),
+            ) {
+                // Con letra grande el texto baja de renglón y la flecha sigue a la vista (sin el peso, la Row la dejaba sin ancho).
+                Text(
+                    PliegueComida.rotuloAbrir(estado, puedeMarcar),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = c.marcaTexto,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Spacer(Modifier.width(2.dp))
+                Icon(Iconos.Chevron, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp).rotate(90f))
+            }
+        }
+        if (!enPliegue) {
             if (comida.opciones.size > 1) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Opción", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = c.textoSecundario)

@@ -327,7 +327,11 @@ final class DietaUITests: XCTestCase {
         for _ in 0..<15 where !encabezado.exists { app.swipeUp() }
         XCTAssertTrue(encabezado.waitForExistence(timeout: 10), "Sin el título de la comida")
         XCTAssertEqual(encabezado.value as? String, "La comiste", "«Comí» no sobrevivió a reabrir la app")
-        encabezado.tap()
+        // Bug del 13-nov: plegada, se abre con un botón a la vista que dice que adentro se destilda y se desmarca.
+        let abrir = app.buttons["abrir-\(comidaId)"]
+        XCTAssertTrue(abrir.waitForExistence(timeout: 5), "Plegada, sin el botón para abrirla")
+        XCTAssertEqual(abrir.label, "Destildar lo que no comiste o desmarcar")
+        abrir.tap()
         let comi = app.buttons["comi-\(comidaId)"]
         for _ in 0..<15 where !comi.exists { app.swipeUp() }
         esperar(comi, seleccionado: true, "«Comí» no sobrevivió a reabrir la app")
