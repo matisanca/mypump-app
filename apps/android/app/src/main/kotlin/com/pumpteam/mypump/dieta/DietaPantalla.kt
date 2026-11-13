@@ -55,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -130,6 +131,7 @@ import com.pumpteam.mypump.reglas.ConsumoDelDia
 import com.pumpteam.mypump.reglas.DiasDieta
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.MarcaComida
+import com.pumpteam.mypump.reglas.PliegueComida
 import com.pumpteam.mypump.reglas.PorcionCasera
 import com.pumpteam.mypump.reglas.ReemplazosKcal
 import com.pumpteam.mypump.reglas.ComoSeLee
@@ -349,7 +351,7 @@ fun DietaPantalla(modelo: ModeloApp) {
                                             alElegir = { nueva -> elegir(c, nueva) },
                                             marca = marcas[c.id],
                                             // U4: la marcada se pliega; la que se acaba de marcar queda abierta para destildar.
-                                            plegada = marcas[c.id] != null && c.id !in abiertas,
+                                            plegada = PliegueComida.plegada(marcas[c.id], c.id in abiertas),
                                             alAlternar = { abiertas = if (c.id in abiertas) abiertas - c.id else abiertas + c.id },
                                             // Con el alcance de la app: la marca sale aunque se cambie de pestaña al toque.
                                             alMarcar = { e ->
@@ -978,6 +980,18 @@ private fun TarjetaComida(
             Column(horizontalAlignment = Alignment.End) {
                 Text(Formato.miles(total.kcal), style = Numeros.mediano)
                 Text("kcal", style = MaterialTheme.typography.labelSmall, color = c.textoSecundario)
+            }
+        }
+        // Plegada, un botón a la vista la abre (bug del 13-nov): solo con el título, nadie sabía que ahí se destildaba.
+        if (plegada && estado != null) {
+            TextButton(
+                onClick = alAlternar,
+                contentPadding = PaddingValues(horizontal = 4.dp),
+                modifier = Modifier.heightIn(min = 44.dp).testTag("abrir-${comida.id}"),
+            ) {
+                Text(PliegueComida.rotuloAbrir(estado), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
+                Spacer(Modifier.width(2.dp))
+                Icon(Iconos.Chevron, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp).rotate(90f))
             }
         }
         if (!plegada) {

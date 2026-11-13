@@ -372,7 +372,7 @@ struct DietaView: View {
         // Con letra de accesibilidad lo de cada renglón va uno debajo del otro: lado a lado se cortaban las palabras
         // ("Op-ción A · 3 ali-men-tos") y el total quedaba ilegible ("T / OT / AL").
         let apilada = tamañoLetra.isAccessibilitySize
-        let plegada = marca != nil && !abiertas.contains(c.id)
+        let plegada = PliegueComida.plegada(marca: marca, abierta: abiertas.contains(c.id))
         let titulo = VStack(alignment: .leading, spacing: 1) {
             Text(c.nombre ?? "Comida \(numero)").font(.title3.weight(.semibold))
             Text("Opción \(nombreOpcion) · \(alimentos.count) \(alimentos.count == 1 ? "alimento" : "alimentos")"
@@ -419,6 +419,22 @@ struct DietaView: View {
             .accessibilityHint(marca != nil ? (plegada ? "Tocá para ver el detalle" : "Tocá para plegarla") : "")
             .accessibilityAddTraits(marca != nil ? .isButton : [])
             .accessibilityIdentifier("encabezado-\(c.id)")
+            // Plegada, un botón a la vista la abre (bug del 13-nov): solo con el título, nadie sabía que ahí se destildaba.
+            if plegada, let estado = marca?.estado {
+                Button {
+                    withAnimation(.snappy) { alternarPlegada(c.id, plegada: true) }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(PliegueComida.rotuloAbrir(estado))
+                        Image(systemName: "chevron.down").accessibilityHidden(true)
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.marcaTexto)
+                    .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("abrir-\(c.id)")
+            }
             if !plegada {
                 if c.opciones.count > 1 {
                     let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))

@@ -133,3 +133,20 @@ public enum ConsumoDelDia {
         return t
     }
 }
+
+/// La comida marcada plegada (U4, auditoría del 10/11) y cómo se vuelve a abrir. En 2.3.0 la marcada se plegaba y solo se
+/// abría tocando el título, sin nada a la vista que lo dijera: al volver a Dieta, los tildes y «Comí» / «Salté» quedaban
+/// escondidos y una alumna real no pudo destildar lo que no comió ni desmarcar (13-nov). Plegada, ahora se ve un botón que la
+/// abre, con lo que se puede hacer adentro. Gemelo de `PliegueComida` en Android.
+public enum PliegueComida {
+    /// Plegada: tiene marca y no está entre las abiertas. Sin marca, siempre abierta.
+    public static func plegada(marca: MarcaComida?, abierta: Bool) -> Bool { marca != nil && !abierta }
+
+    /// El botón que abre la plegada: con «Comí», destildar; con «Salté», cambiar la marca.
+    public static func rotuloAbrir(_ estado: MarcaComida.Estado) -> String {
+        switch estado {
+        case .comido: return "Destildar lo que no comiste o desmarcar"
+        case .saltado: return "Ver la comida o desmarcar"
+        }
+    }
+}

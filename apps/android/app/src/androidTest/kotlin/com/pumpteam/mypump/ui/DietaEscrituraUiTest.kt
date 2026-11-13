@@ -650,7 +650,10 @@ class DietaEscrituraUiTest : PruebaUi() {
         irA("0-c1")
         // U4: al reabrir, la marcada se ve plegada («La comiste»); tocando el título se abre con «Comí» marcado.
         p.esperar("«Comí» sigue") { p.estado(etiqueta("encabezado-c1")) == "La comiste" }
-        p.tocar(etiqueta("encabezado-c1"))
+        // Bug del 13-nov: plegada, se abre con un botón a la vista que dice que adentro se destilda y se desmarca.
+        assertEquals("Destildar lo que no comiste o desmarcar", p.textosBajo(etiqueta("abrir-c1")).joinToString(" "))
+        p.tocar(etiqueta("abrir-c1"))
+        p.esperar("sin el botón, ya abierta") { !p.existe(etiqueta("abrir-c1")) }
         p.esperar("abierta con «Comí»") { p.existe(etiqueta("comi-c1")) && p.seleccionado(etiqueta("comi-c1")) }
         irA("cabecera")
         assertEquals("544 de 2.373 kcal", consumido())
