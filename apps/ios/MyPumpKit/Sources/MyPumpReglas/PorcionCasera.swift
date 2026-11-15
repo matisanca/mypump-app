@@ -53,8 +53,11 @@ public enum PorcionCasera {
             return contar(g / 30, "puñado")
         }
         if has("whey", "proteina en polvo", "caseina") || (has("proteina") && g <= 60) {
-            let scoops = max(1, jsRound(g / 30))
-            return scoops == 1 ? "1 scoop (1 medida)" : "\(entero(scoops)) scoops"
+            // De a media medida: 15 g → "½ scoop", 45 g → "1½ scoops". `contar` no sirve porque `plural` daría "scoopes".
+            let scoops = jsRound((g / 30) * 2) / 2
+            if scoops <= 0 { return nil }
+            if scoops == 1 { return "1 scoop (1 medida)" }
+            return "\(medio(scoops)) \(scoops < 1 ? "scoop" : "scoops")"
         }
         if has("atun") {
             let n = g / 120

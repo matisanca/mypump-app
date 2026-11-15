@@ -60,8 +60,11 @@ object PorcionCasera {
             return contar(g / 30, "puñado")
         }
         if (has("whey", "proteina en polvo", "caseina") || (has("proteina") && g <= 60)) {
-            val scoops = maxJs(1.0, jsRound(g / 30))
-            return if (scoops == 1.0) "1 scoop (1 medida)" else "${num(scoops)} scoops"
+            // De a media medida: 15 g → "½ scoop", 45 g → "1½ scoops". `contar` no sirve porque `plural` daría "scoopes".
+            val scoops = jsRound((g / 30) * 2) / 2
+            if (scoops <= 0) return null
+            if (scoops == 1.0) return "1 scoop (1 medida)"
+            return "${medio(scoops)} ${if (scoops < 1) "scoop" else "scoops"}"
         }
         if (has("atun")) {
             val n = g / 120
