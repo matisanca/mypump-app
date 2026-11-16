@@ -228,6 +228,8 @@ struct TomaPresionView: View {
     @State private var entreno: Bool?
     @State private var queEvitar = false
     @State private var esperaTerminada = false
+    /// El aviso de que sin los 5 minutos de reposo la toma no cuenta, antes de dejar salir.
+    @State private var avisoSalir = false
     @State private var sintoma = false
     /// Lo marcado en la hoja de síntomas de después de la toma.
     @State private var sintomasHoja: Set<String> = []
@@ -492,16 +494,32 @@ struct TomaPresionView: View {
                 TextoPresion(NP.reposo, fuente: .headline).accessibilityIdentifier("presion-reposo")
                 if let fin = enCurso?.finTemporizador {
                     TemporizadorPresion(fin: fin, voz: NP.reposo) {
-                        modelo.cambiar { $0.sesion.reposoCumplido = true; $0.sesion.temporizadorSalteado = false; $0.etapa = EtapaPresion.anotar; $0.finTemporizador = nil }
+                        avisoSalir = false
+                        modelo.terminarReposo(salteado: false, etapa: EtapaPresion.anotar)
                         AccessibilityNotification.Announcement(NP.anotar).post()
                     }
                     .tarjeta()
                 }
-                Button(NP.saltear) {
-                    modelo.cambiar { $0.sesion.reposoCumplido = false; $0.sesion.temporizadorSalteado = true; $0.etapa = EtapaPresion.anotar; $0.finTemporizador = nil }
+                // Sin los 5 minutos la toma no cuenta: el botón no dice «ya esperé», primero avisa y lo principal es seguir esperando.
+                if avisoSalir {
+                    TextoPresion(TA.reposoAviso, fuente: .headline).tarjeta().accessibilityIdentifier("presion-saltear-aviso")
+                    Button(TA.seguirEsperando) { avisoSalir = false }
+                        .buttonStyle(BotonPresion())
+                        .accessibilityIdentifier("presion-seguir-esperando")
+                    Button(TA.anotarIgual) {
+                        avisoSalir = false
+                        modelo.terminarReposo(salteado: true, etapa: EtapaPresion.anotar)
+                    }
+                    .buttonStyle(BotonPresion(secundario: true))
+                    .accessibilityIdentifier("presion-anotar-igual")
+                } else {
+                    Button(TA.reposoSalir) {
+                        avisoSalir = true
+                        AccessibilityNotification.Announcement(TA.reposoAviso).post()
+                    }
+                    .buttonStyle(BotonPresion(secundario: true))
+                    .accessibilityIdentifier("presion-saltear")
                 }
-                .buttonStyle(BotonPresion(secundario: true))
-                .accessibilityIdentifier("presion-saltear")
                 BotonesFlujoPresion()
             }
             .padding(Espacio.m)
@@ -573,7 +591,7 @@ struct TomaPresionView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: Espacio.m) {
                 VStack(alignment: .leading, spacing: Espacio.s) {
-                    if ev?.texto == "toma_no_cuenta" { TextoPresion(TP.noCuenta).accessibilityIdentifier("presion-no-cuenta") }
+                    if let m = modelo.mensajeNoCuenta(ev) { TextoPresion(m).accessibilityIdentifier("presion-no-cuenta") }
                     if ev?.texto == "sentate_agua" { TextoPresion(TP.sentateAgua).accessibilityIdentifier("presion-sentate-agua") }
                     if enCurso?.sesion.tomas.contains(where: \.latidoIrregular) == true { TextoPresion(TP.latidoIrregular).accessibilityIdentifier("presion-latido-irregular") }
                     if sigue == nil {

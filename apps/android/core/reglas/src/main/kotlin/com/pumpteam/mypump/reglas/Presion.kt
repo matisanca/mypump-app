@@ -424,6 +424,24 @@ object Presion {
         return Evaluacion(paso, texto, cuenta, motivo, valor, validaBajoEfecto, urgencia = urgSintomas || conf180, ortostatica = orto, reglas = reglas.sorted())
     }
 
+    /**
+     * Por qué no cuenta una toma, para decírselo al alumno con [TextosPresion.T.noCuentaPor]. Solo lo que se sabe: un reposo sin
+     * dato (null) no es un motivo. En la de bajo efecto las previas no se preguntan (el estimulante ya está), sí si entrenó entre la
+     * dosis y la toma. Orden fijo: cafeina, fumo, comida, ejercicio, entreno_entre_dosis, reposo. Gemelo de Presion.swift y de
+     * `apps/shared/vectores/presion_no_cuenta.json`.
+     */
+    fun motivosNoCuenta(s: Sesion): List<String> = buildList {
+        if (s.tipo == "bajo_efecto") {
+            if (s.entrenoEntreDosisYToma == true) add("entreno_entre_dosis")
+        } else {
+            if (s.previo.cafeina) add("cafeina")
+            if (s.previo.fumo) add("fumo")
+            if (s.previo.comida) add("comida")
+            if (s.previo.ejercicio) add("ejercicio")
+        }
+        if (s.temporizadorSalteado == true || s.reposoCumplido == false) add("reposo")
+    }
+
     /** Para Mati y el servidor. NUNCA se le muestra al alumno. */
     fun categoria(sis: Int, dia: Int): String = when {
         sis >= 150 || dia >= 95 -> "hipertension_casa_estadio_2"

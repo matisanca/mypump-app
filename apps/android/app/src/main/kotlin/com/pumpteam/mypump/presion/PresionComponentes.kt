@@ -76,6 +76,7 @@ import kotlinx.coroutines.delay
 
 internal typealias TP = TextosPresion.T
 internal typealias NP = TextosPresion.N
+internal typealias TA = TextosPresion.A
 
 /** Tiempos de las esperas. Las pruebas de interfaz los acortan con [segundosDePrueba]; en la app siempre es 0. */
 object TiemposPresion {

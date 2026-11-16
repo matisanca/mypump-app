@@ -3,6 +3,7 @@ import MyPumpReglas
 
 typealias TP = TextosPresion.T
 typealias NP = TextosPresion.N
+typealias TA = TextosPresion.A
 
 /// Tiempos de las esperas. En las pruebas de interfaz `-presionSegundos <n>` las acorta (solo Debug).
 enum TiemposPresion {

@@ -84,7 +84,7 @@ final class PresionUITests: XCTestCase {
         tocar("mi-salud-ver-presion")
     }
 
-    /// De Inicio hasta la pantalla de anotar. `esperando`: deja correr el reposo (la toma cuenta); si no, «Ya esperé».
+    /// De Inicio hasta la pantalla de anotar. `esperando`: deja correr el reposo (la toma cuenta); si no, «No puedo esperar» y «Anotar igual».
     private func hastaAnotar(esperando: Bool = false) {
         tocar("presion-toma")
         desdeCuando(esperando: esperando)
@@ -99,8 +99,15 @@ final class PresionUITests: XCTestCase {
         for k in ["cafeina", "fumo", "comida", "ejercicio"] { elegirNo("presion-previa-\(k)") }
         tocar("presion-previa-seguir")
         esperar("presion-reposo")
-        if !esperando { tocar("presion-saltear") }
+        if !esperando { saltearReposo() }
         esperar("presion-alta", 30)
+    }
+
+    /// Dejar el reposo antes de tiempo: primero el aviso de que así no cuenta, después «Anotar igual».
+    private func saltearReposo() {
+        tocar("presion-saltear")
+        esperar("presion-saltear-aviso")
+        tocar("presion-anotar-igual")
     }
 
     private func anotar(_ sis: String, _ dia: String, _ pulso: String) {
@@ -142,14 +149,35 @@ final class PresionUITests: XCTestCase {
         hastaAnotar()
         anotar("124", "78", "62")
         esperar("presion-no-cuenta")
-        XCTAssertEqual(texto("presion-no-cuenta"), "Esta no cuenta. Hacé otra otro día, antes del café y del preentreno.")
+        XCTAssertEqual(texto("presion-no-cuenta"), "Esta toma no cuenta. No esperaste los 5 minutos sentado. La próxima, quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día.")
         tocar("presion-cerrar")
         esperar("presion-toma")
         XCTAssertEqual(texto("presion-avance-texto"), "Te faltan 3 tomas")
     }
 
+    /// «No puedo esperar» no saltea: avisa que así no cuenta y lo principal es seguir esperando.
+    func testElReposoAvisaAntesDeSaltear() {
+        abrir("serie0", segundos: 3, reposo: 240)
+        tocar("presion-toma")
+        esperar("presion-cuando")
+        tocar("presion-cuando-seguir")
+        esperar("presion-como")
+        tocar("presion-empezar")
+        for k in ["cafeina", "fumo", "comida", "ejercicio"] { elegirNo("presion-previa-\(k)") }
+        tocar("presion-previa-seguir")
+        esperar("presion-reposo")
+        XCTAssertEqual(e("presion-saltear").label, "No puedo esperar")
+        tocar("presion-saltear")
+        esperar("presion-saltear-aviso")
+        XCTAssertEqual(texto("presion-saltear-aviso"), "Si no esperás los 5 minutos sentado, esta toma no cuenta para el promedio.")
+        tocar("presion-seguir-esperando")
+        esperar("presion-saltear")
+        XCTAssertFalse(e("presion-saltear-aviso").exists)
+        XCTAssertFalse(e("presion-alta").exists, "seguir esperando no deja anotar")
+    }
+
     func testToma160PideConfirmarYRepetir() {
-        // La espera de la repetición, corta; el reposo, largo: «Ya esperé» no corre contra un temporizador de 3 segundos.
+        // La espera de la repetición, corta; el reposo, largo: «No puedo esperar» no corre contra un temporizador de 3 segundos.
         abrir("serie0", segundos: 3, reposo: 240)
         hastaAnotar()
         anotar("160", "100", "70")
@@ -430,6 +458,9 @@ final class PresionUITests: XCTestCase {
         esperar("presion-reposo")
         foto("reposo")
         tocar("presion-saltear")
+        esperar("presion-saltear-aviso")
+        foto("reposo-aviso")
+        tocar("presion-anotar-igual")
         esperar("presion-alta")
         escribir("presion-alta", "182")
         escribir("presion-baja", "121")

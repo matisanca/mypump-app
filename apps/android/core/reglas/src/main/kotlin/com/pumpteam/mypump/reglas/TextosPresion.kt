@@ -64,6 +64,7 @@ object TextosPresion {
         val latidoIrregular = "Gracias, seguí como siempre."
         val revisarNumero = "Revisá el número que anotaste. Si podés, sacale una foto a la pantalla del aparato."
         val revisarNumeroSinFoto = "Revisá el número que anotaste."
+        /** El de la web (`presion.json` lo trae así). La app no lo muestra: dice el motivo con [noCuentaPor]. */
         val noCuenta = "Esta no cuenta. Hacé otra otro día, antes del café y del preentreno."
         val recordatorioManana = "Buen día, te toca la presión antes de desayunar."
 
@@ -77,6 +78,35 @@ object TextosPresion {
             "Si sale error, revisá el manguito, esperá un minuto y repetí.",
             "Listo por hoy. La próxima, otro día."
         )
+
+        /**
+         * «Esta toma no cuenta» con el motivo real de esa sesión ([Presion.motivosNoCuenta]) y qué hacer la próxima vez. Sin motivos
+         * conocidos, solo que no cuenta y que haga otra. Lo fijan `apps/shared/vectores/presion_no_cuenta.json` y el gemelo de iOS.
+         */
+        fun noCuentaPor(motivos: List<String>): String {
+            fun unir(xs: List<String>): String = if (xs.size == 1) xs[0] else xs.dropLast(1).joinToString(", ") + " y " + xs.last()
+            val frases = mutableListOf("Esta toma no cuenta.")
+            val mediaHora = listOfNotNull(
+                "tomaste café, mate, energizante o preentreno".takeIf { "cafeina" in motivos },
+                "fumaste o vapeaste".takeIf { "fumo" in motivos },
+                "comiste".takeIf { "comida" in motivos },
+            )
+            if (mediaHora.isNotEmpty()) frases += "En la última media hora ${unir(mediaHora)}."
+            if ("ejercicio" in motivos) frases += "Entrenaste en la última hora."
+            if ("entreno_entre_dosis" in motivos) frases += "Entrenaste entre la dosis y la toma."
+            val reposo = "reposo" in motivos
+            if (reposo) frases += "No esperaste los 5 minutos sentado."
+            val antes = listOfNotNull(
+                "tomar café, mate, energizante o preentreno".takeIf { "cafeina" in motivos },
+                "fumar o vapear".takeIf { "fumo" in motivos },
+                "comer".takeIf { "comida" in motivos },
+                "entrenar".takeIf { "ejercicio" in motivos || "entreno_entre_dosis" in motivos },
+            )
+            if (antes.isNotEmpty()) frases += "La próxima, medite antes de ${unir(antes.mapIndexed { i, x -> if (i == 0) x else "de $x" })}."
+            if (reposo) frases += if (antes.isEmpty()) "La próxima, quedate sentado y quieto hasta que terminen los 5 minutos." else "Quedate sentado y quieto hasta que terminen los 5 minutos."
+            frases += "Hacé otra toma otro día."
+            return frases.joinToString(" ")
+        }
 
         fun ortostatica(sentado: Boolean): List<String> = buildList {
             add("Hacela a la mañana, después de la toma sentado, con el mismo manguito puesto.")
@@ -194,6 +224,7 @@ object TextosPresion {
         val esperar = "Esperar"
         val medirIgual = "Medirme igual"
         val reposo = "Quedate 5 minutos quieto, sin hablar ni mirar el celular"
+        /** El de la web (`presion.json` lo trae así). La app no lo muestra: el reposo se deja con [A.reposoSalir] y su aviso. */
         val saltear = "Ya esperé"
         val alta = "Alta"
         val baja = "Baja"
@@ -296,6 +327,25 @@ object TextosPresion {
             "minutoParado1" to ValorJson.Texto(minutoParado(1)),
             "minutoParado3" to ValorJson.Texto(minutoParado(3)),
             "graficoAlt3" to ValorJson.Texto(graficoAlt(3)),
+        )
+    }
+
+    /**
+     * Propios de la app que la web todavía no tiene, así que no están en `presion.json`: los fija
+     * `apps/shared/vectores/presion_no_cuenta.json`. El reposo no se saltea con un toque, primero avisa que la toma no va a contar.
+     */
+    object A {
+        val reposoSalir = "No puedo esperar"
+        val reposoAviso = "Si no esperás los 5 minutos sentado, esta toma no cuenta para el promedio."
+        val seguirEsperando = "Seguir esperando"
+        val anotarIgual = "Anotar igual"
+
+        /** Todo, con la forma de `propios` en `presion_no_cuenta.json`. */
+        val todos: ValorJson get() = ValorJson.objeto(
+            "reposoSalir" to ValorJson.Texto(reposoSalir),
+            "reposoAviso" to ValorJson.Texto(reposoAviso),
+            "seguirEsperando" to ValorJson.Texto(seguirEsperando),
+            "anotarIgual" to ValorJson.Texto(anotarIgual),
         )
     }
 }

@@ -90,7 +90,35 @@ public enum TextosPresion {
         public static let latidoIrregular = "Gracias, seguí como siempre."
         public static let revisarNumero = "Revisá el número que anotaste. Si podés, sacale una foto a la pantalla del aparato."
         public static let revisarNumeroSinFoto = "Revisá el número que anotaste."
+        /// El de la web (`presion.json` lo trae así). La app no lo muestra: dice el motivo con `noCuentaPor`.
         public static let noCuenta = "Esta no cuenta. Hacé otra otro día, antes del café y del preentreno."
+
+        /// «Esta toma no cuenta» con el motivo real de esa sesión (`Presion.motivosNoCuenta`) y qué hacer la próxima vez. Sin motivos
+        /// conocidos, solo que no cuenta y que haga otra. Lo fijan `apps/shared/vectores/presion_no_cuenta.json` y el gemelo de Android.
+        public static func noCuentaPor(_ motivos: [String]) -> String {
+            func unir(_ xs: [String]) -> String { xs.count == 1 ? xs[0] : xs.dropLast().joined(separator: ", ") + " y " + xs[xs.count - 1] }
+            var frases = ["Esta toma no cuenta."]
+            var mediaHora: [String] = []
+            if motivos.contains("cafeina") { mediaHora.append("tomaste café, mate, energizante o preentreno") }
+            if motivos.contains("fumo") { mediaHora.append("fumaste o vapeaste") }
+            if motivos.contains("comida") { mediaHora.append("comiste") }
+            if !mediaHora.isEmpty { frases.append("En la última media hora \(unir(mediaHora)).") }
+            if motivos.contains("ejercicio") { frases.append("Entrenaste en la última hora.") }
+            if motivos.contains("entreno_entre_dosis") { frases.append("Entrenaste entre la dosis y la toma.") }
+            let reposo = motivos.contains("reposo")
+            if reposo { frases.append("No esperaste los 5 minutos sentado.") }
+            var antes: [String] = []
+            if motivos.contains("cafeina") { antes.append("tomar café, mate, energizante o preentreno") }
+            if motivos.contains("fumo") { antes.append("fumar o vapear") }
+            if motivos.contains("comida") { antes.append("comer") }
+            if motivos.contains("ejercicio") || motivos.contains("entreno_entre_dosis") { antes.append("entrenar") }
+            if !antes.isEmpty { frases.append("La próxima, medite antes de \(unir(antes.enumerated().map { $0.offset == 0 ? $0.element : "de \($0.element)" })).") }
+            if reposo {
+                frases.append(antes.isEmpty ? "La próxima, quedate sentado y quieto hasta que terminen los 5 minutos." : "Quedate sentado y quieto hasta que terminen los 5 minutos.")
+            }
+            frases.append("Hacé otra toma otro día.")
+            return frases.joined(separator: " ")
+        }
         public static let recordatorioManana = "Buen día, te toca la presión antes de desayunar."
 
         /// Todo, con la forma de `textos` en los vectores.
@@ -147,6 +175,7 @@ public enum TextosPresion {
         public static let esperar = "Esperar"
         public static let medirIgual = "Medirme igual"
         public static let reposo = "Quedate 5 minutos quieto, sin hablar ni mirar el celular"
+        /// El de la web (`presion.json` lo trae así). La app no lo muestra: el reposo se deja con `A.reposoSalir` y su aviso.
         public static let saltear = "Ya esperé"
         public static let alta = "Alta"
         public static let baja = "Baja"
@@ -201,6 +230,20 @@ public enum TextosPresion {
             "minutoParado3": .texto(minutoParado(3)), "graficoAlt3": .texto(graficoAlt(3)),
             "brazoIzq": .texto(brazoIzq), "brazoDer": .texto(brazoDer), "noGuardo": .texto(noGuardo),
             "tarjeta": .texto(tarjeta), "tarjetaPreparar": .texto(tarjetaPreparar), "tarjetaSerie": .texto(tarjetaSerie),
+        ])
+    }
+
+    /// Propios de la app que la web todavía no tiene, así que no están en `presion.json`: los fija
+    /// `apps/shared/vectores/presion_no_cuenta.json`. El reposo no se saltea con un toque, primero avisa que la toma no va a contar.
+    public enum A {
+        public static let reposoSalir = "No puedo esperar"
+        public static let reposoAviso = "Si no esperás los 5 minutos sentado, esta toma no cuenta para el promedio."
+        public static let seguirEsperando = "Seguir esperando"
+        public static let anotarIgual = "Anotar igual"
+
+        /// Todo, con la forma de `propios` en `presion_no_cuenta.json`.
+        public static let todos: JSONValue = .objeto([
+            "reposoSalir": .texto(reposoSalir), "reposoAviso": .texto(reposoAviso), "seguirEsperando": .texto(seguirEsperando), "anotarIgual": .texto(anotarIgual),
         ])
     }
 }

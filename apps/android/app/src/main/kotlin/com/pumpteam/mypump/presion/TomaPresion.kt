@@ -29,9 +29,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -513,18 +516,30 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
                     Tarjeta { TextoPresion(NP.esperarMejor, Modifier.testTag("presion-esperar-mejor"), estilo = MaterialTheme.typography.titleLarge, fuerte = true) }
                 }
 
-                EtapaPresion.REPOSO -> Paso("presion-paso-reposo") {
-                    TextoPresion(NP.reposo, Modifier.testTag("presion-reposo"), estilo = MaterialTheme.typography.titleMedium, fuerte = true)
-                    enCurso.finTemporizador?.let { fin ->
-                        TemporizadorPresion(fin, voz = NP.reposo, vozFin = NP.anotar) {
-                            modelo.cambiar {
-                                it.copy(sesion = it.sesion.copy(reposoCumplido = true, temporizadorSalteado = false), etapa = EtapaPresion.ANOTAR, finTemporizador = null)
-                            }
-                        }
+                EtapaPresion.REPOSO -> {
+                    // Sin los 5 minutos la toma no cuenta: el botón no dice «ya esperé», primero avisa y lo principal es seguir esperando.
+                    var avisoSalir by rememberSaveable { mutableStateOf(false) }
+                    val pieAviso: @Composable ColumnScope.() -> Unit = {
+                        BotonPresion(TA.seguirEsperando, "presion-seguir-esperando") { avisoSalir = false }
+                        BotonPresionSecundario(TA.anotarIgual, "presion-anotar-igual") { modelo.terminarReposo(salteado = true, etapa = EtapaPresion.ANOTAR) }
                     }
-                    BotonPresionSecundario(NP.saltear, "presion-saltear") {
-                        modelo.cambiar {
-                            it.copy(sesion = it.sesion.copy(reposoCumplido = false, temporizadorSalteado = true), etapa = EtapaPresion.ANOTAR, finTemporizador = null)
+                    Paso("presion-paso-reposo", pie = if (avisoSalir) pieAviso else null) {
+                        TextoPresion(NP.reposo, Modifier.testTag("presion-reposo"), estilo = MaterialTheme.typography.titleMedium, fuerte = true)
+                        enCurso.finTemporizador?.let { fin ->
+                            TemporizadorPresion(fin, voz = NP.reposo, vozFin = NP.anotar) { modelo.terminarReposo(salteado = false, etapa = EtapaPresion.ANOTAR) }
+                        }
+                        if (avisoSalir) {
+                            Tarjeta {
+                                // TalkBack lo lee al aparecer: el botón que se tocó ya no está.
+                                TextoPresion(
+                                    TA.reposoAviso,
+                                    Modifier.testTag("presion-saltear-aviso").semantics { liveRegion = LiveRegionMode.Polite },
+                                    estilo = MaterialTheme.typography.titleMedium,
+                                    fuerte = true,
+                                )
+                            }
+                        } else {
+                            BotonPresionSecundario(TA.reposoSalir, "presion-saltear") { avisoSalir = true }
                         }
                     }
                 }
@@ -613,7 +628,7 @@ internal fun TomaPresionPantalla(modelo: ModeloPresion, alCerrar: () -> Unit) {
                         Tarjeta {
                             // Una repetición retomada no sabe el reposo ni las previas: no se le dice que no cuenta.
                             val noCuenta = modelo.noCuenta(ev)
-                            if (noCuenta) TextoPresion(TP.noCuenta, Modifier.testTag("presion-no-cuenta"))
+                            if (noCuenta) modelo.mensajeNoCuenta(ev)?.let { TextoPresion(it, Modifier.testTag("presion-no-cuenta")) }
                             if (ev?.texto == "sentate_agua") TextoPresion(TP.sentateAgua, Modifier.testTag("presion-sentate-agua"))
                             if (e.sesion.tomas.any { it.latidoIrregular }) TextoPresion(TP.latidoIrregular, Modifier.testTag("presion-latido-irregular"))
                             val titular = MaterialTheme.typography.titleMedium

@@ -551,6 +551,7 @@ struct PresionModeloTests {
         #expect(ev?.paso == .listo)
         #expect(ev?.texto != "toma_no_cuenta")
         #expect(m.evaluar()?.texto != "toma_no_cuenta")
+        #expect(m.mensajeNoCuenta(ev) == nil)
         await asentar(m)
         #expect(d.recibidas.last?["texto_alumno"]?.comoTexto == "ninguno")
         // Una sesión común que se salteó el reposo sí lo dice.
@@ -560,6 +561,50 @@ struct PresionModeloTests {
         m2.empezar(tipo: "estandar", serieId: DoblePresion.idSerie, brazo: nil, etapa: "anotar")
         m2.cambiar { $0.sesion.reposoCumplido = false; $0.sesion.temporizadorSalteado = true }
         #expect(m2.anotarToma(sis: 124, dia: 78, pulso: 62, latidoIrregular: false)?.texto == "toma_no_cuenta")
+    }
+
+    /// El botón del reposo: «Anotar igual» después del aviso marca el reposo salteado y lo que lee el alumno es ese motivo, no el café
+    /// (Marcelo Serra, 2.3.0). Con los 5 minutos cumplidos cuenta y no hay texto; con una previa marcada nombra esa previa.
+    @Test func elReposoSalteadoDiceSuMotivo() async {
+        let d = DoblePresion.escenario("serie0")
+        let (m, _) = armar(d)
+        await m.refrescar()
+        m.empezar(tipo: "estandar", serieId: DoblePresion.idSerie, brazo: nil, etapa: "reposo")
+        m.cambiar { $0.finTemporizador = Date() }
+        m.terminarReposo(salteado: true, etapa: "anotar")
+        #expect(m.enCurso?.etapa == "anotar")
+        #expect(m.enCurso?.finTemporizador == nil)
+        #expect(m.enCurso?.sesion.reposoCumplido == false)
+        #expect(m.enCurso?.sesion.temporizadorSalteado == true)
+        let ev = m.anotarToma(sis: 124, dia: 78, pulso: 62, latidoIrregular: false)
+        #expect(ev?.texto == "toma_no_cuenta")
+        let texto = m.mensajeNoCuenta(ev)
+        #expect(texto == "Esta toma no cuenta. No esperaste los 5 minutos sentado. La próxima, quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día.")
+        #expect(texto?.contains("café") == false)
+        await asentar(m)
+        #expect(d.recibidas.last?["texto_alumno"]?.comoTexto == "toma_no_cuenta")
+
+        // Con el temporizador cumplido, cuenta y no se le dice nada.
+        let d2 = DoblePresion.escenario("serie0")
+        let (m2, _) = armar(d2)
+        await m2.refrescar()
+        m2.empezar(tipo: "estandar", serieId: DoblePresion.idSerie, brazo: nil, etapa: "reposo")
+        m2.terminarReposo(salteado: false, etapa: "anotar")
+        #expect(m2.enCurso?.sesion.reposoCumplido == true)
+        #expect(m2.enCurso?.sesion.temporizadorSalteado == false)
+        let ev2 = m2.anotarToma(sis: 124, dia: 78, pulso: 62, latidoIrregular: false)
+        #expect(ev2?.cuenta == true)
+        #expect(m2.mensajeNoCuenta(ev2) == nil)
+
+        // Con el reposo cumplido y una previa marcada, nombra esa previa y no el reposo.
+        let d3 = DoblePresion.escenario("serie0")
+        let (m3, _) = armar(d3)
+        await m3.refrescar()
+        m3.empezar(tipo: "estandar", serieId: DoblePresion.idSerie, brazo: nil, etapa: "reposo")
+        m3.cambiar { $0.sesion.previo = Presion.Previo(comida: true) }
+        m3.terminarReposo(salteado: false, etapa: "anotar")
+        let t3 = m3.mensajeNoCuenta(m3.anotarToma(sis: 124, dia: 78, pulso: 62, latidoIrregular: false))
+        #expect(t3 == "Esta toma no cuenta. En la última media hora comiste. La próxima, medite antes de comer. Hacé otra toma otro día.")
     }
 
     /// 6. Sin la sesión en lo último que se supo, se refresca antes de retomar; si sigue sin estar, no se retoma.

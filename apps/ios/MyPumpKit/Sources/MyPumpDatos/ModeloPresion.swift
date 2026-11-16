@@ -433,6 +433,19 @@ public final class ModeloPresion {
         return e.retomada == true ? ev.sinNoCuenta : ev
     }
 
+    /// Lo que lee el alumno cuando no cuenta: el motivo real de esta sesión (reposo salteado, previas marcadas o ambas). nil si cuenta
+    /// o en una repetición retomada.
+    public func mensajeNoCuenta(_ ev: Presion.Evaluacion?) -> String? {
+        guard let e = local.enCurso, ev?.texto == "toma_no_cuenta", e.retomada != true else { return nil }
+        return TextosPresion.T.noCuentaPor(Presion.motivosNoCuenta(e.sesion))
+    }
+
+    /// Fin del reposo de 5 minutos: con el temporizador cumplido, o salteado después del aviso de que así la toma no cuenta
+    /// («Anotar igual»). Pasa a `etapa` y apaga el temporizador.
+    public func terminarReposo(salteado: Bool, etapa: String) {
+        cambiar { $0.sesion.reposoCumplido = !salteado; $0.sesion.temporizadorSalteado = salteado; $0.etapa = etapa; $0.finTemporizador = nil }
+    }
+
     /// Anota una toma ya validada, la deja en la cola con la sesión entera y devuelve qué toca. Se decide acá, sin esperar al servidor.
     @discardableResult
     public func anotarToma(sis: Int, dia: Int, pulso: Int, latidoIrregular: Bool, posicion: String = "sentado", minutosDePie: Int? = nil, brazo: String? = nil,

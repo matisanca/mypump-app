@@ -460,6 +460,24 @@ public enum Presion {
                           urgencia: urgSintomas || conf180, ortostatica: orto, reglas: reglas.sorted())
     }
 
+    /// Por qué no cuenta una toma, para decírselo al alumno con `TextosPresion.T.noCuentaPor`. Solo lo que se sabe: un reposo sin
+    /// dato (nil) no es un motivo. En la de bajo efecto las previas no se preguntan (el estimulante ya está), sí si entrenó entre la
+    /// dosis y la toma. Orden fijo: cafeina, fumo, comida, ejercicio, entreno_entre_dosis, reposo. Gemelo de Presion.kt y de
+    /// `apps/shared/vectores/presion_no_cuenta.json`.
+    public static func motivosNoCuenta(_ s: Sesion) -> [String] {
+        var m: [String] = []
+        if s.tipo == "bajo_efecto" {
+            if s.entrenoEntreDosisYToma == true { m.append("entreno_entre_dosis") }
+        } else {
+            if s.previo.cafeina { m.append("cafeina") }
+            if s.previo.fumo { m.append("fumo") }
+            if s.previo.comida { m.append("comida") }
+            if s.previo.ejercicio { m.append("ejercicio") }
+        }
+        if s.temporizadorSalteado == true || s.reposoCumplido == false { m.append("reposo") }
+        return m
+    }
+
     /// Para Mati y el servidor. NUNCA se le muestra al alumno.
     public static func categoria(sis: Int, dia: Int) -> String {
         if sis >= 150 || dia >= 95 { return "hipertension_casa_estadio_2" }

@@ -601,6 +601,7 @@ class PresionModeloTest {
         assertEquals(Presion.Paso.LISTO, ev?.paso)
         assertEquals("toma_no_cuenta", ev?.texto)
         assertFalse(m.noCuenta(ev))
+        assertNull(m.mensajeNoCuenta(ev))
         a.asentar()
         assertEquals("ninguno", d.recibidas.last()["texto_alumno"]?.comoTexto)
         // Una sesión común con el reposo salteado sí lo dice.
@@ -613,6 +614,56 @@ class PresionModeloTest {
         assertTrue(a2.m.noCuenta(ev2))
         a2.asentar()
         assertEquals("toma_no_cuenta", d2.recibidas.last()["texto_alumno"]?.comoTexto)
+    }
+
+    /**
+     * El botón del reposo: «Anotar igual» después del aviso marca el reposo salteado y lo que lee el alumno es ese motivo, no el café
+     * (Marcelo Serra, 2.3.0). Con los 5 minutos cumplidos cuenta y no hay texto; con una previa marcada nombra esa previa.
+     */
+    @Test fun elReposoSalteadoDiceSuMotivo(): Unit = runBlocking {
+        val d = DoblePresion.escenario("serie0")
+        val a = armar(d)
+        val m = a.m
+        m.refrescar()
+        m.empezar("estandar", DoblePresion.ID_SERIE, null, "reposo")
+        m.cambiar { it.copy(finTemporizador = 123L) }
+        m.terminarReposo(salteado = true, etapa = "anotar")
+        assertEquals("anotar", m.enCurso?.etapa)
+        assertNull(m.enCurso?.finTemporizador)
+        assertEquals(false, m.enCurso?.sesion?.reposoCumplido)
+        assertEquals(true, m.enCurso?.sesion?.temporizadorSalteado)
+        val ev = m.anotarToma(124, 78, 62, false)
+        assertTrue(m.noCuenta(ev))
+        val texto = m.mensajeNoCuenta(ev)
+        assertEquals(
+            "Esta toma no cuenta. No esperaste los 5 minutos sentado. La próxima, quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día.",
+            texto,
+        )
+        assertFalse("café" in texto!!)
+        a.asentar()
+        assertEquals("toma_no_cuenta", d.recibidas.last()["texto_alumno"]?.comoTexto)
+
+        // Con el temporizador cumplido, cuenta y no se le dice nada.
+        val d2 = DoblePresion.escenario("serie0")
+        val a2 = armar(d2)
+        a2.m.refrescar()
+        a2.m.empezar("estandar", DoblePresion.ID_SERIE, null, "reposo")
+        a2.m.terminarReposo(salteado = false, etapa = "anotar")
+        assertEquals(true, a2.m.enCurso?.sesion?.reposoCumplido)
+        assertEquals(false, a2.m.enCurso?.sesion?.temporizadorSalteado)
+        val ev2 = a2.m.anotarToma(124, 78, 62, false)
+        assertTrue(ev2?.cuenta == true)
+        assertNull(a2.m.mensajeNoCuenta(ev2))
+
+        // Con el reposo cumplido y una previa marcada, nombra esa previa y no el reposo.
+        val d3 = DoblePresion.escenario("serie0")
+        val a3 = armar(d3)
+        a3.m.refrescar()
+        a3.m.empezar("estandar", DoblePresion.ID_SERIE, null, "reposo")
+        a3.m.cambiar { it.copy(sesion = it.sesion.copy(previo = Presion.Previo(comida = true))) }
+        a3.m.terminarReposo(salteado = false, etapa = "anotar")
+        val t3 = a3.m.mensajeNoCuenta(a3.m.anotarToma(124, 78, 62, false))
+        assertEquals("Esta toma no cuenta. En la última media hora comiste. La próxima, medite antes de comer. Hacé otra toma otro día.", t3)
     }
 
     /** Punto 7: sin la sesión guardada se refresca antes de anotar; si sigue sin estar, no se retoma (toma nueva normal). */

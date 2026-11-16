@@ -3,6 +3,7 @@ package com.pumpteam.mypump.datos
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.Presion
+import com.pumpteam.mypump.reglas.TextosPresion
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -591,6 +592,20 @@ class ModeloPresion(
 
     /** «Esta no cuenta» al alumno: nunca en una repetición retomada (reposo y previas sin dato no son una condición incumplida). */
     fun noCuenta(ev: Presion.Evaluacion?): Boolean = ev?.texto == "toma_no_cuenta" && enCurso?.retomada != true
+
+    /** Lo que lee el alumno cuando no cuenta: el motivo real de esta sesión (reposo salteado, previas marcadas o ambas). null si cuenta. */
+    fun mensajeNoCuenta(ev: Presion.Evaluacion?): String? {
+        val e = enCurso ?: return null
+        return if (noCuenta(ev)) TextosPresion.T.noCuentaPor(Presion.motivosNoCuenta(e.sesion)) else null
+    }
+
+    /**
+     * Fin del reposo de 5 minutos: con el temporizador cumplido, o salteado después del aviso de que así la toma no cuenta
+     * («Anotar igual»). Pasa a [etapa] y apaga el temporizador.
+     */
+    fun terminarReposo(salteado: Boolean, etapa: String) = cambiar {
+        it.copy(sesion = it.sesion.copy(reposoCumplido = !salteado, temporizadorSalteado = salteado), etapa = etapa, finTemporizador = null)
+    }
 
     /** El id de la sesión en curso para un síntoma: solo si ya tiene alguna toma (ya viajó o espera en la cola), si no el servidor lo rechaza. */
     val sesionParaSintoma: String? get() = enCurso?.takeIf { it.sesion.tomas.isNotEmpty() }?.sesion?.id
