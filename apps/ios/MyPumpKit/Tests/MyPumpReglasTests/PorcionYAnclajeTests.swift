@@ -74,6 +74,25 @@ struct PorcionYAnclajeTests {
         #expect(fallas.isEmpty, "\(fallas.count) de \(n): \(fallas.prefix(6))")
     }
 
+    // Caso real: 15 g de whey decían "1 scoop (1 medida)", que son 30 g, y el cliente se servía el doble.
+    @Test func scoopCuentaDeAMediaMedida() {
+        func ref(_ g: Double, _ nombre: String = "Proteína whey (polvo)") -> String? {
+            PorcionCasera.referencia(nombre: nombre, qty: g, unidad: "g", gramosPorUnidad: nil)
+        }
+        #expect(ref(15) == "½ scoop")
+        #expect(ref(30) == "1 scoop (1 medida)")
+        #expect(ref(45) == "1½ scoops")
+        #expect(ref(60) == "2 scoops")
+        // Bordes del redondeo a media medida.
+        #expect(ref(7.5) == "½ scoop")
+        #expect(ref(22.4) == "½ scoop")
+        #expect(ref(22.5) == "1 scoop (1 medida)")
+        #expect(ref(37.5) == "1½ scoops")
+        // Menos de 7,5 g no llega a media medida: sin referencia.
+        #expect(ref(5) == nil)
+        #expect(ref(15, "Caseína") == "½ scoop")
+    }
+
     @Test(.enabled(if: FileManager.default.fileExists(atPath: carpetaPrivada.appendingPathComponent("porcion_casera.json").path)))
     func porcionDietasReales() throws {
         let (n, fallas) = try fallasPorcion(carpetaPrivada.appendingPathComponent("porcion_casera.json"))

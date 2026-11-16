@@ -11,6 +11,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -66,6 +67,24 @@ class PorcionYAnclajeTest {
         val (n, fallas) = fallasPorcion(Vectores.publico("porcion_casera"))
         assertTrue(n > 1000, "$n casos")
         assertEquals(emptyList<String>(), fallas.take(6), "${fallas.size} de $n")
+    }
+
+    // Caso real: 15 g de whey decían "1 scoop (1 medida)", que son 30 g, y el cliente se servía el doble.
+    @Test
+    fun scoopCuentaDeAMediaMedida() {
+        fun ref(g: Double, nombre: String = "Proteína whey (polvo)") = PorcionCasera.referencia(nombre, g, "g", null)
+        assertEquals("½ scoop", ref(15.0))
+        assertEquals("1 scoop (1 medida)", ref(30.0))
+        assertEquals("1½ scoops", ref(45.0))
+        assertEquals("2 scoops", ref(60.0))
+        // Bordes del redondeo a media medida.
+        assertEquals("½ scoop", ref(7.5))
+        assertEquals("½ scoop", ref(22.4))
+        assertEquals("1 scoop (1 medida)", ref(22.5))
+        assertEquals("1½ scoops", ref(37.5))
+        // Menos de 7,5 g no llega a media medida: sin referencia.
+        assertNull(ref(5.0))
+        assertEquals("½ scoop", ref(15.0, "Caseína"))
     }
 
     @Test
