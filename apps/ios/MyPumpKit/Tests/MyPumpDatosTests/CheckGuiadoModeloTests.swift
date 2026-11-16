@@ -203,6 +203,8 @@ struct CheckGuiadoModeloTests {
     @Test func elBorradorSeGuardaSeRetomaYElDeOtraSemanaSeDescarta() async {
         let s = Servidor(), disco = discoNuevo()
         let (a, _, _) = armar(s, disco: disco)
+        // `fecha` nace con la fecha real: se carga con el día fijo de `armar` (semana del 9/11) para que la prueba no cambie de semana sola.
+        await a.cargarRevision()
         var b = a.abrirGuiado()
         #expect(b == CheckGuiado.Borrador(semana: "2026-11-09"))
         b.peso = "78,4"; b.valores = llenas; b.paso = .senales
@@ -210,6 +212,7 @@ struct CheckGuiadoModeloTests {
 
         // Se cierra la app: al volver está donde quedó.
         let (c, _, _) = armar(s, disco: disco)
+        await c.cargarRevision()
         #expect(c.borradorGuiado == b)
         // El peso del borrador no está cargado hoy (quedó de otro día o sin confirmar): no vuelve, para no mandarlo con la fecha de hoy.
         var sinPeso = b; sinPeso.peso = ""

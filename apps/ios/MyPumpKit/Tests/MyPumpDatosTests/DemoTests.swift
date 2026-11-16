@@ -11,7 +11,11 @@ struct DemoTests {
 
     @Test func demoSinRedNiToken() async throws {
         struct SinRed: Transporte { func enviar(_ p: URLRequest) async throws -> (Data, URLResponse) { throw URLError(.notConnectedToInternet) } }
-        let m = ModeloApp(cliente: ClienteRPC(transporte: SinRed()), almacen: TokenEnMemoria(nil), raizDisco: raiz)
+        // Preferencias propias: una cuenta dada de baja que quedó en la Mac no cambia la fase de arranque.
+        let suite = "mypump-demo-\(UUID().uuidString)"
+        let preferencias = try #require(UserDefaults(suiteName: suite))
+        defer { preferencias.removePersistentDomain(forName: suite) }
+        let m = ModeloApp(cliente: ClienteRPC(transporte: SinRed()), almacen: TokenEnMemoria(nil), raizDisco: raiz, preferencias: preferencias)
         #expect(m.fase == .sinToken)
         let base = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../../../shared/demo")
         m.entrarEnDemo(rutina: try Data(contentsOf: base.appendingPathComponent("rutina.json")),

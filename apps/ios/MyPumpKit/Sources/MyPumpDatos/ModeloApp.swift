@@ -98,6 +98,8 @@ public final class ModeloApp {
     /// Dónde se recuerda la palanca entre arranques. En la app, siempre `.standard`; las pruebas pasan uno propio para no
     /// pisarse con las que corren en paralelo.
     @ObservationIgnored private let palancaDefaults: UserDefaults
+    /// Las preferencias del teléfono (tipo de día y la cuenta dada de baja). Las pruebas pasan unas propias, aisladas de la Mac.
+    @ObservationIgnored private let preferencias: UserDefaults
 
     /// Cuántas cargas terminaron con todo traído del servidor. `cargar()` sobre una cuenta ya cargada no pasa por
     /// `.cargando`: quien espera "la próxima carga con red" (la Fase R después de un corte) mira esto.
@@ -162,7 +164,7 @@ public final class ModeloApp {
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet {
-            UserDefaults.standard.set(tipoDia, forKey: "mypump_tipo_dia")
+            preferencias.set(tipoDia, forKey: "mypump_tipo_dia")
             // Otro tipo de día es otro plan: el resumen de los ajustes que ve Mati se rehace.
             if oldValue != tipoDia, !ajustesDeHoy.isEmpty { Task { await encolarAjustes(opciones: [:]) } }
         }
@@ -189,15 +191,16 @@ public final class ModeloApp {
     @ObservationIgnored private var cargaDelMotor: Task<Void, Never>?
 
     public init(cliente: ClienteRPC = ClienteRPC(), almacen: AlmacenToken = TokenEnKeychain(), raizDisco: URL? = nil,
-                palancaDefaults: UserDefaults = .standard) {
+                palancaDefaults: UserDefaults = .standard, preferencias: UserDefaults = .standard) {
         self.palancaDefaults = palancaDefaults
+        self.preferencias = preferencias
         palanca = PalancaRemota.arranque(defaults: palancaDefaults)
         self.cliente = cliente
         self.almacen = almacen
         self.raizDisco = raizDisco
         token = almacen.leer()
-        fase = token == nil ? Self.faseSinCuenta : .cargando
-        tipoDia = UserDefaults.standard.string(forKey: "mypump_tipo_dia")
+        fase = token == nil ? Self.faseSinCuenta(preferencias) : .cargando
+        tipoDia = preferencias.string(forKey: "mypump_tipo_dia")
         // Antes que nada, y sin mirar la palanca ni si hay sesión: lo médico que venció o quedó suelto no sigue en el teléfono.
         ModeloEstudios.barrerTelefono(raizDisco: raizDisco, raizCache: raizDisco?.appendingPathComponent("Caches", isDirectory: true))
         if let token { prepararCuenta(token) }
@@ -217,8 +220,8 @@ public final class ModeloApp {
 
     /// Sin cuenta guardada: si la última que hubo la dio de baja la base, se sigue explicando (F10, auditoría del 10/11).
     /// Antes, al volver a abrir la app después de «Este link ya no sirve», se veía la bienvenida vacía sin decir qué pasó.
-    static var faseSinCuenta: Fase {
-        UserDefaults.standard.string(forKey: "mypump_token_invalido") == nil ? .sinToken : .tokenInvalido
+    static func faseSinCuenta(_ preferencias: UserDefaults) -> Fase {
+        preferencias.string(forKey: "mypump_token_invalido") == nil ? .sinToken : .tokenInvalido
     }
 
     /// Lo muestra la raíz y lo borra al cerrarlo.
@@ -240,7 +243,7 @@ public final class ModeloApp {
         // Un link viejo que ya se sabe inválido no pisa una cuenta que anda (ACC-02): pasa al tocar un link de
         // WhatsApp de hace meses.
         // No depende de la fase: al abrir la app tocando el link, la cuenta guardada todavía está cargando.
-        if t != token, t == UserDefaults.standard.string(forKey: "mypump_token_invalido"), token != nil, !esDemo {
+        if t != token, t == preferencias.string(forKey: "mypump_token_invalido"), token != nil, !esDemo {
             if avisar { avisoLink = .vencido }
             return false
         }
@@ -267,7 +270,7 @@ public final class ModeloApp {
                     return false
                 }
                 guard !filas.isEmpty else {
-                    UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
+                    preferencias.set(t, forKey: "mypump_token_invalido")
                     // La cuenta que anda es la que queda guardada (la migración pudo haber dejado el otro en el Keychain).
                     if almacen.leer() != actual { almacen.guardar(actual) }
                     if avisar { avisoLink = .vencido }
@@ -287,7 +290,7 @@ public final class ModeloApp {
 
     public func salir() {
         almacen.guardar(nil)
-        UserDefaults.standard.removeObject(forKey: "mypump_token_invalido")   // salió él: la próxima vez, la bienvenida
+        preferencias.removeObject(forKey: "mypump_token_invalido")   // salió él: la próxima vez, la bienvenida
         borrarCodigosDelDisco()
         // Lo médico tampoco se queda: ni los estudios que esperaban salir, ni lo elegido, ni lo que se bajó para ver.
         estudios?.borrarTodo()
@@ -380,7 +383,7 @@ public final class ModeloApp {
             fase = .cargando
             await cargar()
         } else {
-            fase = Self.faseSinCuenta
+            fase = Self.faseSinCuenta(preferencias)
         }
     }
 
@@ -414,7 +417,7 @@ public final class ModeloApp {
     /// La base dice que el link ya no sirve: se olvida (la cola y la carpeta quedan para el link nuevo de la misma persona).
     private func marcarLinkCaido(_ t: String) {
         if almacen.leer() == t { almacen.guardar(nil) }
-        UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
+        preferencias.set(t, forKey: "mypump_token_invalido")
         chat?.pararSondeo()
         fase = .tokenInvalido
     }
