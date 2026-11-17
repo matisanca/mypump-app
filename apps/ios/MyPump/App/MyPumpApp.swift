@@ -232,6 +232,8 @@ struct Raiz: View {
             guard let destino else { return }
             withAnimation(.snappy) { navegacion.ir(a: destino) }
             CentroAvisos.shared.destino = nil
+            // Lo que trae el aviso (la devolución, un estudio, el chat) se lee ya, sin la espera de la vuelta.
+            Task { await modelo.alLlegarAviso(destino) }
         }
         // R2 de la 2.0.3: completar la semana de revisión (o terminar de cargarla al abrir) vuelve a armar el aviso del
         // domingo, que se saltea si ya está todo.

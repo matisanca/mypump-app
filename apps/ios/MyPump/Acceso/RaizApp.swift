@@ -104,6 +104,8 @@ struct RaizApp<Contenido: View>: View {
             // Con una cuenta: la local del domingo al día y el token de push refrescado (si ya hay permiso). Sin cuenta o
             // con el link vencido, el domingo se cancela (hallazgo 8 de la revisión del 15-oct).
             if modelo.fase == .listo && !modelo.esDemo {
+                // La cuenta recién lista (arranque u otro link): el token se pide de nuevo para registrarlo con ella.
+                CentroAvisos.shared.olvidarTokenPedido()
                 await CentroAvisos.shared.alEntrar()
             } else if modelo.fase == .tokenInvalido || modelo.fase == .sinToken {
                 CentroAvisos.shared.cancelarDomingo()

@@ -136,12 +136,15 @@ struct MarcasComidasTests {
         s.poner("almuerzo", ["comida_id": .texto("almuerzo"), "opcion_elegida": .texto("A"), "estado": .texto("comido"),
                              "foods_excluidos": .lista([.numero(1)])])
         let m = modelo(s)
+        var ahora = Date()
+        m.relojRelecturas = { ahora }
         await m.cargar()
         #expect(m.marcasDeHoy["almuerzo"] == MarcaComida(opcion: "A", estado: .comido, excluidos: [1]))
         #expect(m.consumo(opciones: [:]).kcal == 330)
-        // La web la desmarca y marca el desayuno: al volver a la app se ve.
+        // La web la desmarca y marca el desayuno: al volver a la app se ve (pasada la espera de la vuelta, batería 2.3.2).
         s.poner("almuerzo", nil)
         s.poner("desayuno", ["comida_id": .texto("desayuno"), "opcion_elegida": .texto("A"), "estado": .texto("saltado")])
+        ahora += ModeloApp.Relectura.vuelta.cada
         await m.alVolverAPrimerPlano()
         #expect(m.marcasDeHoy == ["desayuno": MarcaComida(opcion: "A", estado: .saltado)])
     }

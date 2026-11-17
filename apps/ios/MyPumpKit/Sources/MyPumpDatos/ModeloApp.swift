@@ -984,6 +984,7 @@ public final class ModeloApp {
             await cargarComidasLibres()
             await revision?.cargarRevision()
             diaCargado = hoy
+            olvidar(.vuelta)   // lo de hoy es otro día: se relee ya, sin esperar el intervalo
             // Cambió el día: se vuelve a hoy (el que se miraba pudo salir de la ventana del servidor).
             await irADia(nil)
         }
@@ -1003,36 +1004,70 @@ public final class ModeloApp {
                 nov.observar(rutina: .noLlego, dieta: .noLlego, suplementacion: suplementacion.entradaNovedades, soloConBase: true)
             }
         }
-        // Documentos, cada vez: quien firmó en el navegador vuelve y ve «Firmado» (y el aviso se va).
-        if let documentos { Task { await documentos.cargar() } }
-        Task { await self.sincronizarRecorrido() }
-        await outbox?.drenar()
-        // Las marcas de hoy se releen en cada vuelta: las pudo cambiar la web u otro teléfono (DIE-05, D25) y es un pedido chico.
-        await hidratarMarcas()
-        await refrescarDiaPasado()
-        await chat?.sondear()
-        await fotos?.drenar()
-        if toca(.gimnasio) {
-            await sincronizarGimnasio()
-            await sincronizarTecnica()
-            await chat?.consultarAdjuntos(palanca: palanca.chatAdjuntos)
-            await sincronizarFeedback()
-        } else {
-            // Lo que quedó «Esperando señal» sale en cada vuelta: el intervalo es para releer, no para subir (como
-            // `alVolverLaRed`). Sin nada en la cola no hay pedido.
-            if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
-            if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
+        // Batería (2.3.2): bloquear el teléfono entre series cuenta como una vuelta, y eran 8 a 12 pedidos en fila cada vez.
+        // Ahora lo que solo lee espera `Relectura.vuelta` entre una vuelta y otra; lo pendiente de subir sale siempre, y
+        // todo va a la vez (la radio se prende una sola vez y la app se pone al día antes).
+        await leerAlVolver(releer: toca(.vuelta))
+    }
+
+    /// Tocaron un aviso (o llegó un push con la app abierta, o un link con `?scene=`): lo que trae ese aviso tiene que
+    /// verse ya, sin esperar el intervalo de la vuelta. Con el chat, alcanza con consultarlo.
+    public func alLlegarAviso(_ destino: DestinoAviso) async {
+        guard fase == .listo, !esDemo, token != nil, !cargando, !desdeCache else { return }
+        if destino == .chat { await chat?.sondear(); return }
+        olvidar(.vuelta)
+        await leerAlVolver(releer: toca(.vuelta))
+    }
+
+    /// Lo de cada vuelta. `releer`: además de subir lo pendiente, se relee lo liviano (marcas, chat, devolución, estudios,
+    /// fotos de inicio, logros, lista previa, presión, documentos, recorrido). Sin `releer` solo salen las colas, y lo que
+    /// no puede esperar: el chat abierto y un documento que se fue a firmar al navegador.
+    private func leerAlVolver(releer: Bool) async {
+        // Quien firmó en el navegador vuelve y ve «Firmado» (y el aviso se va): eso no espera el intervalo.
+        if let documentos, releer || documentos.hayQueMirarAlVolver { Task { await documentos.cargar() } }
+        if releer { Task { await self.sincronizarRecorrido() } }
+        let gimnasioToca = toca(.gimnasio), saludToca = toca(.salud)
+        await withTaskGroup(of: Void.self) { g in
+            g.addTask { _ = await self.entreno?.alVolverAPrimerPlano() }   // el descanso al día y su parte de la cola
+            g.addTask {
+                await self.outbox?.drenar()
+                // Las marcas de hoy: las pudo cambiar la web u otro teléfono (DIE-05, D25). Después de la cola, como antes.
+                if releer { await self.hidratarMarcas() }
+            }
+            g.addTask { await self.fotos?.drenar() }
+            // Con el chat a la vista se consulta siempre; cerrado, el número rojo lo trae el push (`alLlegarAviso`).
+            if releer || self.chat?.abierto == true { g.addTask { await self.chat?.sondear() } }
+            if gimnasioToca {
+                g.addTask {
+                    await self.sincronizarGimnasio()
+                    await self.sincronizarTecnica()
+                    await self.chat?.consultarAdjuntos(palanca: self.palanca.chatAdjuntos)
+                    await self.sincronizarFeedback()
+                }
+            } else {
+                // Lo que quedó «Esperando señal» sale en cada vuelta: el intervalo es para releer, no para subir (como
+                // `alVolverLaRed`). Sin nada en la cola no hay pedido.
+                if palanca.gimnasioFotos { gimnasio?.drenarEnFondo() }
+                if palanca.tecnicaVideo { tecnica?.drenarEnFondo() }
+            }
+            if saludToca { g.addTask { await self.salud?.alVolver() } }   // con Apple Health conectada: 7 días y el historial
+            if releer {
+                g.addTask { await self.refrescarDiaPasado() }
+                // La devolución y los estudios llegan con un aviso: tocarlo los trae ya (`alLlegarAviso`).
+                g.addTask { await self.sincronizarDevolucion() }
+                g.addTask { await self.sincronizarEstudios() }
+                g.addTask { await self.sincronizarFotosInicio() }
+                g.addTask { await self.sincronizarWins() }
+                g.addTask { await self.sincronizarListaPreviaYa() }
+                g.addTask { await self.sincronizarPresion() }
+            } else {
+                // Sin releer, lo encolado de cada uno igual sale.
+                if palanca.fotosInicio { fotosInicio?.drenarEnFondo() }
+                if let estudios, estudios.palanca == true, estudios.habilitado { estudios.drenarEnFondo() }
+                if palanca.winsApp, let wins { g.addTask { await wins.vaciar() } }
+                if palanca.presionApp { presion?.drenarEnFondo() }
+            }
         }
-        // La devolución y los estudios llegan con un aviso que trae al alumno: se releen en cada vuelta (un pedido chico
-        // cada uno, y solo con su palanca prendida), sin esperar el intervalo.
-        await sincronizarDevolucion()
-        await sincronizarEstudios()
-        await sincronizarFotosInicio()
-        if toca(.salud) { await salud?.alVolver() }   // con Apple Health conectada: 7 días y retomar el historial
-        await sincronizarWins()
-        await sincronizarListaPreviaYa()
-        await sincronizarPresion()
-        _ = await entreno?.alVolverAPrimerPlano()
     }
 
     // MARK: - F7 y F11: cada cuánto se relee al volver a la app
@@ -1040,9 +1075,12 @@ public final class ModeloApp {
     /// Lo que se relee al volver a la app, con su tiempo mínimo entre una lectura y la siguiente.
     public enum Relectura: CaseIterable, Sendable {
         case plan, guia, suplementacion, gimnasio, salud
+        /// Las lecturas livianas de cada vuelta (batería, 2.3.2): bloquear y desbloquear entre series no las repite.
+        case vuelta
 
         public var cada: TimeInterval {
             switch self {
+            case .vuelta: 90
             case .plan: 5 * 60
             case .guia, .suplementacion, .gimnasio: 10 * 60
             case .salud: 60 * 60

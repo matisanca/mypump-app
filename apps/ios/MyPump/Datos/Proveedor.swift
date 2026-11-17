@@ -13,11 +13,18 @@ enum Proveedor {
         // Al volver al frente con la cuenta: el domingo al día y el token de push (un permiso dado desde Ajustes se
         // registra ahí, no en el próximo arranque; hallazgo 9).
         m.conAvisos = { @MainActor in
-            await CentroAvisos.shared.alEntrar()
-            DatosCalibracion.subirSiCorresponde()   // lo grabado que falte, si el servidor lo habilita
+            await CentroAvisos.shared.alEntrar()   // el domingo (local) en cada vuelta; el token, una vez por arranque
+            // Lo grabado que falte, si el servidor lo habilita. Pregunta al servidor cada vez: con la espera de las lecturas
+            // livianas (batería, 2.3.2), no en cada desbloqueo entre series. Las grabaciones no apuran: esperan quietas.
+            if let u = ultimaCalibracion, Date().timeIntervalSince(u) < ModeloApp.Relectura.vuelta.cada, Date() >= u { return }
+            ultimaCalibracion = Date()
+            DatosCalibracion.subirSiCorresponde()
         }
         return m
     }()
+
+    /// La última vez que se miró si había grabaciones de calibración para subir.
+    private static var ultimaCalibracion: Date?
 
     private static func crear() -> ModeloApp {
         #if DEBUG

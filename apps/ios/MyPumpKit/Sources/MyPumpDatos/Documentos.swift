@@ -35,6 +35,11 @@ public final class ModeloDocumentos {
     public var hay: Bool { !documentos.isEmpty }
     /// Un contrato de coaching sin firmar: el aviso de la pantalla principal.
     public var contratoPendiente: Bool { TextosDocumentos.hayContratoPendiente(documentos) }
+    /// Se abrió un documento en el navegador desde la app (para firmarlo o verlo).
+    @ObservationIgnored private var salioAlNavegador = false
+    /// Al volver a la app, los documentos se releen sin esperar el intervalo de la vuelta (batería, 2.3.2): quien fue a
+    /// firmar vuelve y ve «Firmado», y con un contrato pendiente el aviso se va apenas lo firma (también desde el mail).
+    public var hayQueMirarAlVolver: Bool { prendida && (salioAlNavegador || contratoPendiente) }
 
     /// Prende o apaga la palanca `contrato_app`. Apagada, lo que había se va de la pantalla.
     public func usarPalanca(_ on: Bool) {
@@ -64,6 +69,8 @@ public final class ModeloDocumentos {
             nuevos = []
         case .success(let j):
             nuevos = (try? JSONEncoder().encode(j)).flatMap { try? JSONDecoder().decode(RespuestaDocumentos.self, from: $0) }?.documentos ?? []
+            // Ya no queda nada por firmar: la próxima vuelta espera el intervalo, como lo demás.
+            if !nuevos.contains(where: { $0.estado == .pendiente }) { salioAlNavegador = false }
         }
         // Se apagó mientras se esperaba la respuesta: no se muestra.
         guard prendida else { apagar(); return }
@@ -73,6 +80,7 @@ public final class ModeloDocumentos {
     /// El enlace personal del documento (firmar, o ver y bajar el PDF si ya está firmado). nil si el servicio no contesta,
     /// no lo conoce o devuelve algo que no es una página https del propio servicio de firma.
     public func enlace(de documento: DocumentoFirma) async -> URL? {
+        salioAlNavegador = true
         guard case .success(let r) = await cliente.enlacesDocumentos(token: token),
               let crudo = r.documentos.first(where: { $0.id == documento.id })?.url else { return nil }
         return Self.enlaceSeguro(crudo, servicio: cliente.config.firma)

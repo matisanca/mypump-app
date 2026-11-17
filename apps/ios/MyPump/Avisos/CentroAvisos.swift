@@ -144,12 +144,24 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         centro.removeDeliveredNotifications(withIdentifiers: [Self.idRepetirPresion])
     }
 
-    /// Al arrancar con una cuenta: si ya hay permiso, reprograma y refresca el token de push.
+    /// Cuándo se pidió el token de APNs en este arranque (nil: todavía no, o se perdió el permiso).
+    private var tokenPedido: Date?
+
+    /// Al arrancar con una cuenta y en cada vuelta al frente: si ya hay permiso, reprograma el aviso del domingo (local,
+    /// sin red) y pide el token de push. El token se pide una vez por arranque (batería, 2.3.2): antes iba en cada
+    /// desbloqueo. Un permiso dado desde Ajustes igual se registra al volver (hallazgo 9), porque sin permiso se olvida
+    /// lo pedido; y con la app viva días se pide de nuevo una vez por día (`registrarPush` ya no llama al servidor si el
+    /// token y la cuenta son los mismos y no pasó la semana).
     func alEntrar() async {
-        guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { return }
+        guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { tokenPedido = nil; return }
         await reprogramar()
+        if let t = tokenPedido, Date().timeIntervalSince(t) < 24 * 3600, Date() >= t { return }
+        tokenPedido = Date()
         UIApplication.shared.registerForRemoteNotifications()
     }
+
+    /// Cambió la cuenta (otro link): el token se vuelve a pedir para registrarlo con la nueva.
+    func olvidarTokenPedido() { tokenPedido = nil }
 
     // MARK: - UNUserNotificationCenterDelegate
 
