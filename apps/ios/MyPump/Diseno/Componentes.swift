@@ -55,8 +55,9 @@ struct Miniatura: View {
     var body: some View {
         Group {
             if let url, let u = URL(string: url) {
-                AsyncImage(url: u, transaction: Transaction(animation: .easeOut(duration: 0.25))) { fase in
-                    if let img = fase.image { img.resizable().scaledToFill() } else { marcador }
+                // Guardada en el teléfono (batería, 2.3.2): la que ya se vio aparece al instante.
+                FotoCatalogo(url: u) { fase in
+                    if let img = fase.imagen { img.resizable().scaledToFill() } else { marcador }
                 }
             } else { marcador }
         }

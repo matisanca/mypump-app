@@ -631,10 +631,10 @@ struct ImagenesMovimiento: View {
                 ZStack {
                     ForEach(0..<2, id: \.self) { i in
                         if let u = urls[i] {
-                            AsyncImage(url: u, transaction: Transaction(animation: .easeOut(duration: 0.25))) { f in
-                                if let img = f.image {
+                            FotoCatalogo(url: u) { f in
+                                if let img = f.imagen {
                                     img.resizable().scaledToFill()
-                                } else if f.error != nil {
+                                } else if case .error = f {
                                     Image(systemName: "photo").font(compacto ? .title3 : .largeTitle).foregroundStyle(.tertiary)
                                 } else {
                                     Color.campo
