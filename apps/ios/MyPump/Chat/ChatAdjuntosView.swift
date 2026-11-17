@@ -242,13 +242,22 @@ private struct BarraAudio: View {
 // MARK: - El reproductor del chat (uno a la vez)
 
 @MainActor @Observable
-final class ReproductorChat: NSObject, AVAudioPlayerDelegate {
+final class ReproductorChat: NSObject, AVAudioPlayerDelegate, SuenaAudio {
     private(set) var idSonando: String?
     private(set) var idCargado: String?
     private(set) var actual: Double = 0
     @ObservationIgnored private var player: AVAudioPlayer?
     @ObservationIgnored private var tics: Task<Void, Never>?
     @ObservationIgnored private var duraciones: [String: Double] = [:]
+    /// Una llamada, Siri o irse a segundo plano: pausa y suelta (el `AVAudioPlayer` se corta sin avisar).
+    @ObservationIgnored private var cortes: AlCortarAudio?
+
+    override init() {
+        super.init()
+        cortes = AlCortarAudio { [weak self] in if self?.idSonando != nil { self?.pausar() } }
+    }
+
+    var suenaAudio: Bool { player?.isPlaying == true }
 
     func duracion(_ id: String) -> Double? { duraciones[id] }
 

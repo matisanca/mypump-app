@@ -9,6 +9,8 @@ public enum AccionSesionAudio: Equatable, Sendable {
     /// Ya no suena nada de la app: `.ambient` con `.mixWithOthers` y se desactiva con `.notifyOthersOnDeactivation`,
     /// así la música vuelve a su volumen (o a sonar).
     case soltar
+    /// El pitido con el grabador de dudas activo: no suena (quedaría grabado en la duda) y la sesión no se toca.
+    case callar
     case nada
 }
 
@@ -18,13 +20,18 @@ public enum AccionSesionAudio: Equatable, Sendable {
 ///
 /// · Reproductores (videos de técnica, videos y audios de la guía y del chat): `tomar` al sonar, `soltar` al frenar,
 ///   terminar o irse. Repetir cualquiera de los dos no cambia la cuenta. Al soltarse el último, `.soltar`.
-/// · Grabador: `contar` (fija su propia categoría) y `soltar`.
-/// · Pitido: con algún reproductor o grabador activo suena sobre esa sesión sin tocarla (no lo corta ni lo silencia);
-///   si no, arma la suya `.ambient` y la suelta al terminar, salvo que en el medio la haya tomado un reproductor.
+/// · Grabador: `contar` (fija su propia categoría) y `soltarGrabador`: si queda otro dueño, la sesión vuelve a la de
+///   ese reproductor (`.reproducir`), nunca se desactiva debajo de él.
+/// · Pitido: con el grabador activo no suena (`.callar`). Con algún reproductor activo suena sobre esa sesión sin tocarla
+///   (no lo corta ni lo silencia); si no, arma la suya `.ambient` y la suelta al terminar, salvo que en el medio la haya
+///   tomado un reproductor. Antes de decidir, cada dueño se re-confirma (`siguen`): el que quedó contado pero ya no suena
+///   (lo cortó una llamada o Siri, o la app se fue con él sonando) se descarta y nunca bloquea al pitido.
 public struct CuentaSesionAudio<Dueño: Hashable & Sendable>: Sendable {
     public private(set) var activos: Set<Dueño> = []
     /// La sesión activa la armó el pitido y nadie la tomó después.
     public private(set) var pitidoArmoLaSuya = false
+    /// Los dueños que son el grabador de dudas (también están en `activos`).
+    public private(set) var grabadores: Set<Dueño> = []
 
     public init() {}
 
@@ -39,15 +46,33 @@ public struct CuentaSesionAudio<Dueño: Hashable & Sendable>: Sendable {
     /// Solo cuenta: el grabador fija `.playAndRecord` por su lado.
     public mutating func contar(_ dueño: Dueño) {
         activos.insert(dueño)
+        grabadores.insert(dueño)
         pitidoArmoLaSuya = false
     }
 
     public mutating func soltar(_ dueño: Dueño) -> AccionSesionAudio {
+        grabadores.remove(dueño)
         guard activos.remove(dueño) != nil, activos.isEmpty else { return .nada }
         return .soltar
     }
 
-    public mutating func alSonarPitido() -> AccionSesionAudio {
+    /// El grabador terminó (o no pudo empezar). Repetirlo no hace nada: nunca dos `setActive(false)` seguidos. Si queda
+    /// otro dueño, la sesión vuelve a la suya (`.playback`), sin desactivarse.
+    public mutating func soltarGrabador(_ dueño: Dueño) -> AccionSesionAudio {
+        grabadores.remove(dueño)
+        guard activos.remove(dueño) != nil else { return .nada }
+        return activos.isEmpty ? .soltar : .reproducir
+    }
+
+    /// Nadie la usa: un reintento de desactivarla (después de `isBusy`) todavía corresponde.
+    public var libre: Bool { activos.isEmpty && !pitidoArmoLaSuya }
+
+    /// `siguen` dice si el dueño de verdad sigue sonando o grabando; los que no, se descartan antes de decidir.
+    public mutating func alSonarPitido(siguen: (Dueño) -> Bool = { _ in true }) -> AccionSesionAudio {
+        let muertos = activos.filter { !siguen($0) }
+        activos.subtract(muertos)
+        grabadores.subtract(muertos)
+        guard grabadores.isEmpty else { return .callar }
         guard activos.isEmpty else { return .nada }
         pitidoArmoLaSuya = true
         return .mezclar

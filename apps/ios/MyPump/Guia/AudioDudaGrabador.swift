@@ -4,13 +4,13 @@ import MyPumpDatos
 import MyPumpReglas
 
 /// El micrófono de las dudas en audio: AVAudioRecorder con AAC en m4a, mono, 64 kbps y 44,1 kHz. Mientras graba, la sesión
-/// de audio es `.playAndRecord`; al terminar vuelve a la que tenía la app (la del reproductor de la guía, o la de fábrica).
+/// de audio es `.playAndRecord`; al terminar vuelve a la de la app según la cuenta de `SesionAudio` (la de un video o
+/// audio que siga sonando, o `.ambient` desactivada).
 /// El permiso se pide recién al tocar «Grabar».
 @MainActor
-final class GrabadorAV: NSObject, GrabadorAudio {
+final class GrabadorAV: NSObject, GrabadorAudio, SuenaAudio {
     var alInterrumpir: (@MainActor () -> Void)?
     private var grabador: AVAudioRecorder?
-    private var previa: (AVAudioSession.Category, AVAudioSession.Mode, AVAudioSession.CategoryOptions)?
     private var observador: NSObjectProtocol?
 
     var permiso: PermisoMicrofono {
@@ -23,9 +23,10 @@ final class GrabadorAV: NSObject, GrabadorAudio {
 
     func pedirPermiso() async -> Bool { await AVAudioApplication.requestRecordPermission() }
 
+    var suenaAudio: Bool { grabador?.isRecording == true }
+
     func empezar(en archivo: URL) -> AvisoAudio? {
         let s = AVAudioSession.sharedInstance()
-        previa = (s.category, s.mode, s.categoryOptions)
         // Cuenta como un reproductor más: el pitido del descanso no toca la sesión mientras graba.
         SesionAudio.contar(self)
         do {
@@ -69,13 +70,9 @@ final class GrabadorAV: NSObject, GrabadorAudio {
         volverALaSesionDeLaApp()
     }
 
-    private func volverALaSesionDeLaApp() {
-        let s = AVAudioSession.sharedInstance()
-        try? s.setActive(false, options: .notifyOthersOnDeactivation)
-        if let (c, m, o) = previa { try? s.setCategory(c, mode: m, options: o) }
-        previa = nil
-        SesionAudio.soltar(self)
-    }
+    /// Lo decide la cuenta: si era el último dueño, se desactiva y vuelve a `.ambient`; si queda un video o un audio de la
+    /// app, vuelve a su `.playback` sin desactivarse. Repetirlo (un `empezar` fallido y después `terminar`) no hace nada.
+    private func volverALaSesionDeLaApp() { SesionAudio.soltarGrabador(self) }
 }
 
 #if DEBUG
@@ -125,12 +122,21 @@ final class GrabadorDobleUI: GrabadorAudio {
 
 /// El reproductor de la revisión: play y pausa, con el avance.
 @MainActor @Observable
-final class ReproductorRevision: NSObject, AVAudioPlayerDelegate {
+final class ReproductorRevision: NSObject, AVAudioPlayerDelegate, SuenaAudio {
     private(set) var sonando = false
     private(set) var actual: Double = 0
     @ObservationIgnored private var player: AVAudioPlayer?
     @ObservationIgnored private var archivo: URL?
     @ObservationIgnored private var tics: Task<Void, Never>?
+    /// Una llamada, Siri o irse a segundo plano: pausa y suelta (el `AVAudioPlayer` se corta sin avisar).
+    @ObservationIgnored private var cortes: AlCortarAudio?
+
+    override init() {
+        super.init()
+        cortes = AlCortarAudio { [weak self] in if self?.sonando == true { self?.pausar() } }
+    }
+
+    var suenaAudio: Bool { player?.isPlaying == true }
 
     func alternar(_ url: URL) {
         if sonando { pausar(); return }

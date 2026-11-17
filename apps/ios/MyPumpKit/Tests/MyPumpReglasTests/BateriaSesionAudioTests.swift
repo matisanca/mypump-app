@@ -29,11 +29,60 @@ struct BateriaSesionAudioTests {
         #expect(c.soltar("guia") == .soltar)
     }
 
-    @Test func conElGrabadorElPitidoNoTocaLaSesion() {
+    @Test func conElGrabadorElPitidoNoSuena() {
+        // Quedaría grabado en la duda.
         var c = CuentaSesionAudio<String>()
         c.contar("grabador")
-        #expect(c.alSonarPitido() == .nada)
-        #expect(c.soltar("grabador") == .soltar)
+        #expect(c.alSonarPitido() == .callar)
+        #expect(c.alTerminarPitido() == .nada)
+        #expect(c.soltarGrabador("grabador") == .soltar)
+        #expect(c.alSonarPitido() == .mezclar)
+    }
+
+    @Test func elGrabadorNoDesactivaDebajoDeOtroDueño() {
+        var c = CuentaSesionAudio<String>()
+        _ = c.tomar("guia")
+        c.contar("grabador")
+        #expect(c.soltarGrabador("grabador") == .reproducir)
+        #expect(c.soltar("guia") == .soltar)
+    }
+
+    @Test func soltarElGrabadorDosVecesNoDesactivaDosVeces() {
+        // Un `empezar` fallido ya soltó; el `terminar` de después no hace nada.
+        var c = CuentaSesionAudio<String>()
+        c.contar("grabador")
+        #expect(c.soltarGrabador("grabador") == .soltar)
+        #expect(c.soltarGrabador("grabador") == .nada)
+    }
+
+    @Test func unDueñoQueYaNoSuenaNoBloqueaAlPitido() {
+        // Una llamada cortó el audio del chat y quedó contado: el pitido lo descarta y vuelve a mezclarse.
+        var c = CuentaSesionAudio<String>()
+        _ = c.tomar("chat")
+        _ = c.tomar("guia")
+        #expect(c.alSonarPitido(siguen: { $0 == "guia" }) == .nada)
+        #expect(c.activos == ["guia"])
+        #expect(c.alSonarPitido(siguen: { _ in false }) == .mezclar)
+        #expect(c.alTerminarPitido() == .soltar)
+        #expect(c.soltar("guia") == .nada)
+    }
+
+    @Test func unGrabadorQueYaNoGrabaNoCallaAlPitido() {
+        var c = CuentaSesionAudio<String>()
+        c.contar("grabador")
+        #expect(c.alSonarPitido(siguen: { _ in false }) == .mezclar)
+        #expect(c.grabadores.isEmpty)
+    }
+
+    @Test func libreSoloSinDueñosNiPitido() {
+        var c = CuentaSesionAudio<String>()
+        #expect(c.libre)
+        _ = c.alSonarPitido()
+        #expect(!c.libre)
+        _ = c.alTerminarPitido()
+        #expect(c.libre)
+        _ = c.tomar("video")
+        #expect(!c.libre)
     }
 
     @Test func soloElUltimoSuelta() {

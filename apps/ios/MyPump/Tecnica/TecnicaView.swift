@@ -759,6 +759,7 @@ private struct VideoTecnica: View {
             guard let u = await modelo.urlVideo(id: envioId) else { fallo = true; return }
             let p = AVPlayer(url: u)
             player = p
+            dueñoAudio.player = p
             // Un `seek` antes de estar listo se puede perder y arrancaría en cero. Si no llega a estar listo, igual queda el reproductor.
             if let item = p.currentItem {
                 for await s in item.publisher(for: \.status).values where s != .unknown { _ = s; break }

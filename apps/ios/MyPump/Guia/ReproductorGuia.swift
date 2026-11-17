@@ -13,7 +13,7 @@ import MyPumpDatos
 /// Como la web: tocar una fila arranca directo; «Anterior», «Siguiente» y el final de un video pasan al otro con la
 /// placa de 2,6 s («Otro tema · Video N de M»), y mientras está la placa el video no corre.
 @MainActor @Observable
-final class ControlReproductor {
+final class ControlReproductor: SuenaAudio {
     /// El video cargado, por id: si una guía nueva cambia la lista, el índice sale de acá y nunca apunta a otro video.
     private(set) var actualId: String?
     /// La placa que se ve (id del video que viene).
@@ -72,7 +72,14 @@ final class ControlReproductor {
                 // También cuando lo arrancan los controles del sistema. Frenado o terminado suelta la sesión: la
                 // música vuelve a su volumen.
                 if corre && !self.reproduciendo { SesionAudio.activar(self); self.alArrancar() }
-                if !corre && self.reproduciendo { SesionAudio.soltar(self) }
+                // Durante la placa entre videos (2,6 s) no se suelta: la música no sube y baja. Se mira un rato después
+                // porque el fin del video llega por otro lado (puede llegar después de la pausa) y ahí arma la placa.
+                if !corre && self.reproduciendo {
+                    Task { @MainActor [weak self] in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        self?.soltarSiQuieto()
+                    }
+                }
                 self.reproduciendo = corre
             }
         }
@@ -97,6 +104,14 @@ final class ControlReproductor {
     private func indice(_ id: String?) -> Int? {
         guard let id else { return nil }
         return clips().firstIndex { $0.id == id }
+    }
+
+    var suenaAudio: Bool { player.timeControlStatus != .paused || placaId != nil }
+
+    /// Si quedó quieto sin placa (se fue la placa sin arrancar, o se cargó sin reproducir), la sesión vuelve a los demás.
+    /// Repetirlo no hace nada.
+    private func soltarSiQuieto() {
+        if placaId == nil && player.timeControlStatus == .paused { SesionAudio.soltar(self) }
     }
 
     var clipActual: ClipGuia? {
@@ -178,7 +193,7 @@ final class ControlReproductor {
     func frenarPorOtro() {
         tareaPlaca?.cancel()
         placaId = nil
-        if player.timeControlStatus != .paused { pausar() }
+        if player.timeControlStatus != .paused { pausar() } else { soltarSiQuieto() }
     }
 
     // MARK: - Carga
@@ -203,6 +218,7 @@ final class ControlReproductor {
             if forzarSinRed || !hayRed {
                 player.replaceCurrentItem(with: nil)
                 sinConexion = reproducir
+                soltarSiQuieto()
                 return
             }
             let item = AVPlayerItem(url: url)
@@ -225,12 +241,14 @@ final class ControlReproductor {
             arrancar()
         } else {
             player.pause()
+            soltarSiQuieto()
         }
     }
 
     private func arrancar() {
         if forzarSinRed || (player.currentItem == nil && !hayRed) {
             sinConexion = true
+            soltarSiQuieto()
             return
         }
         if player.currentItem == nil, let i = actual { videoCargado = nil; cargar(i, reproducir: true, conPlaca: false); return }
@@ -481,7 +499,7 @@ struct SinConexionVideo: View {
 /// su avance por la misma cola (`guia_avance`) y tocar el botón de nuevo lo cierra. Hay uno abierto a la vez y un solo
 /// video suena: al arrancar este se frena el reproductor de arriba y al revés.
 @MainActor @Observable
-final class ControlVerPorQue {
+final class ControlVerPorQue: SuenaAudio {
     /// El clip abierto (su id).
     private(set) var abierto: String?
     private(set) var reproduciendo = false
@@ -526,6 +544,8 @@ final class ControlVerPorQue {
         player.replaceCurrentItem(with: nil)
         SesionAudio.soltar(self)
     }
+
+    var suenaAudio: Bool { player.timeControlStatus != .paused }
 
     /// El botón: abre y arranca, o cierra si ya estaba abierto.
     func alternar(_ id: String) {
@@ -623,26 +643,107 @@ final class ControlVerPorQue {
 /// (`CuentaSesionAudio`, en el kit): al soltarse el último vuelve a `.ambient` con `.mixWithOthers` y se desactiva con
 /// `.notifyOthersOnDeactivation`. El pitido del descanso decide por esa cuenta, nunca por la categoría.
 /// Quién toma la sesión cuando el reproductor es una vista (el video de técnica).
-final class DueñoAudio {}
+final class DueñoAudio: SuenaAudio {
+    weak var player: AVPlayer?
+    var suenaAudio: Bool { player.map { $0.timeControlStatus != .paused } ?? false }
+}
+
+/// Un dueño de la sesión que puede decir si de verdad sigue sonando (o grabando): el pitido lo re-confirma, así uno que
+/// quedó contado (lo cortó una llamada o Siri) nunca lo bloquea. El que no lo dice cuenta como que sigue.
+protocol SuenaAudio: AnyObject {
+    @MainActor var suenaAudio: Bool { get }
+}
+
+/// Una llamada o Siri cortan el audio, o la app se va a segundo plano: los reproductores de audio (`AVAudioPlayer`, que
+/// no avisan solos) pausan y sueltan la sesión.
+@MainActor
+final class AlCortarAudio {
+    nonisolated(unsafe) private var observadores: [NSObjectProtocol] = []
+
+    init(_ accion: @escaping @MainActor () -> Void) {
+        let nc = NotificationCenter.default
+        observadores = [
+            nc.addObserver(forName: AVAudioSession.interruptionNotification, object: AVAudioSession.sharedInstance(), queue: .main) { n in
+                let tipo = (n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt).flatMap(AVAudioSession.InterruptionType.init(rawValue:))
+                guard tipo == .began else { return }
+                MainActor.assumeIsolated { accion() }
+            },
+            nc.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { accion() }
+            },
+        ]
+    }
+
+    deinit { observadores.forEach(NotificationCenter.default.removeObserver) }
+}
 
 enum SesionAudio {
+    /// Cuenta y aplicación van juntas bajo el lock: un `soltar` desde un deinit y un `activar` nunca llegan al revés.
     private static let lock = NSLock()
     nonisolated(unsafe) private static var cuenta = CuentaSesionAudio<ObjectIdentifier>()
+    /// Para re-confirmar a cada dueño al sonar el pitido (débil: el que se fue, ya no suena).
+    nonisolated(unsafe) private static var dueños: [ObjectIdentifier: Debil] = [:]
+
+    private final class Debil: @unchecked Sendable {
+        weak var objeto: AnyObject?
+        init(_ o: AnyObject) { objeto = o }
+    }
 
     static var hayReproductor: Bool { lock.withLock { cuenta.hayReproductor } }
 
     /// Al reproducir (también de nuevo después de una interrupción): fija `.playback` y activa.
-    static func activar(_ dueño: AnyObject) { aplicar(lock.withLock { cuenta.tomar(ObjectIdentifier(dueño)) }) }
+    static func activar(_ dueño: AnyObject) {
+        lock.withLock {
+            dueños[ObjectIdentifier(dueño)] = Debil(dueño)
+            aplicar(cuenta.tomar(ObjectIdentifier(dueño)))
+        }
+    }
 
     /// El grabador fija su categoría por su lado: solo se cuenta.
-    static func contar(_ dueño: AnyObject) { lock.withLock { cuenta.contar(ObjectIdentifier(dueño)) } }
+    static func contar(_ dueño: AnyObject) {
+        lock.withLock {
+            dueños[ObjectIdentifier(dueño)] = Debil(dueño)
+            cuenta.contar(ObjectIdentifier(dueño))
+        }
+    }
 
     /// Al frenar, terminar o irse. Repetirlo no hace nada.
-    static func soltar(_ dueño: AnyObject) { aplicar(lock.withLock { cuenta.soltar(ObjectIdentifier(dueño)) }) }
+    static func soltar(_ dueño: AnyObject) {
+        let id = ObjectIdentifier(dueño)
+        lock.withLock {
+            dueños[id] = nil
+            aplicar(cuenta.soltar(id))
+        }
+    }
 
-    static func alSonarPitido() { aplicar(lock.withLock { cuenta.alSonarPitido() }) }
-    static func alTerminarPitido() { aplicar(lock.withLock { cuenta.alTerminarPitido() }) }
+    /// El grabador terminó o no pudo empezar: si queda otro dueño, vuelve a la sesión de ese reproductor sin desactivarla.
+    /// Repetirlo no hace nada.
+    static func soltarGrabador(_ dueño: AnyObject) {
+        lock.withLock {
+            dueños[ObjectIdentifier(dueño)] = nil
+            aplicar(cuenta.soltarGrabador(ObjectIdentifier(dueño)))
+        }
+    }
 
+    /// Antes de decidir, cada dueño se re-confirma. Devuelve si el pitido tiene que sonar (con el grabador, no).
+    @MainActor static func alSonarPitido() -> Bool {
+        let vistos = lock.withLock { dueños }
+        var siguen: Set<ObjectIdentifier> = []
+        for (id, d) in vistos {
+            guard let o = d.objeto else { continue }
+            if (o as? SuenaAudio)?.suenaAudio ?? true { siguen.insert(id) }
+        }
+        return lock.withLock {
+            let accion = cuenta.alSonarPitido(siguen: { vistos[$0] == nil || siguen.contains($0) })
+            dueños = dueños.filter { cuenta.activos.contains($0.key) }
+            aplicar(accion)
+            return accion != .callar
+        }
+    }
+
+    static func alTerminarPitido() { lock.withLock { aplicar(cuenta.alTerminarPitido()) } }
+
+    /// Siempre con el lock tomado.
     private static func aplicar(_ accion: AccionSesionAudio) {
         let s = AVAudioSession.sharedInstance()
         switch accion {
@@ -653,11 +754,27 @@ enum SesionAudio {
             try? s.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
             try? s.setActive(true)
         case .soltar:
-            try? s.setActive(false, options: .notifyOthersOnDeactivation)
+            if !desactivar(s) {
+                // Con algo de I/O todavía corriendo (el final de un video) iOS contesta `isBusy`: un reintento corto, si
+                // para entonces nadie la tomó.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    lock.withLock { if cuenta.libre { _ = desactivar(AVAudioSession.sharedInstance()) } }
+                }
+            }
             try? s.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
-        case .nada:
+        case .callar, .nada:
             break
         }
+    }
+
+    /// `false` solo si iOS contestó `isBusy`.
+    private static func desactivar(_ s: AVAudioSession) -> Bool {
+        do {
+            try s.setActive(false, options: .notifyOthersOnDeactivation)
+        } catch let e as NSError where e.code == AVAudioSession.ErrorCode.isBusy.rawValue {
+            return false
+        } catch {}
+        return true
     }
 }
 

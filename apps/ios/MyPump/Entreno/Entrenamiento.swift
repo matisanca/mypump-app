@@ -62,9 +62,10 @@ final class SonidoDescanso: NSObject, AVAudioPlayerDelegate {
     /// Decide por la cuenta de reproductores de `SesionAudio`, nunca por la categoría (que queda `.playback` después
     /// de un video). Sin nada de la app sonando arma `.ambient` con `.mixWithOthers`: se mezcla con la música del
     /// alumno, nunca la pausa y respeta el silencio. Con un video, un audio o una grabación en curso suena sobre esa
-    /// sesión sin tocarla, así no la corta ni la silencia.
+    /// sesión sin tocarla, así no la corta ni la silencia. El que quedó contado pero ya no suena no lo bloquea.
     func reproducir() {
-        SesionAudio.alSonarPitido()
+        // Con el grabador de dudas activo no suena: quedaría grabado en la duda (la vibración sigue).
+        guard SesionAudio.alSonarPitido() else { return }
         if reproductor == nil {
             reproductor = try? AVAudioPlayer(data: Self.pitido, fileTypeHint: AVFileType.wav.rawValue)
             reproductor?.delegate = self
