@@ -13,6 +13,8 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
 
     /// El destino del último aviso tocado; la raíz lo consume y cambia de pestaña (también en un arranque en frío).
     var destino: DestinoAviso?
+    /// Cuándo llegó el aviso tocado (nil con un link `?scene=`): `ModeloApp.alLlegarAviso` no relee si la vuelta ya lo hizo.
+    var llegadoDestino: Date?
     /// `?diag=health` en el link (SAL-13, ACC-09): la raíz abre el diagnóstico de Salud. Es la herramienta de soporte de la
     /// web: a quien no puede conectar Salud, Mati le manda ese link.
     var diagnosticoSalud = false
@@ -204,7 +206,7 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
             let fecha = notification.date
             Task { @MainActor in
                 self.yaAtendido(fecha)
-                await Proveedor.modelo.alLlegarAviso(destino)
+                await Proveedor.modelo.alLlegarAviso(destino, llegado: fecha)
             }
         }
         completionHandler([.banner, .list, .sound])
@@ -218,6 +220,7 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         nonisolated(unsafe) let terminar = completionHandler
         Task { @MainActor in
             self.yaAtendido(fecha)
+            self.llegadoDestino = fecha
             self.destino = DestinoAviso(destino: destino)
             terminar()
         }

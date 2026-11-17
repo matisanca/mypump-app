@@ -1023,9 +1023,12 @@ public final class ModeloApp {
 
     /// Tocaron un aviso (o llegó un push con la app abierta, o un link con `?scene=`): lo que trae ese aviso tiene que
     /// verse ya, sin esperar el intervalo de la vuelta. Con el chat, alcanza con consultarlo.
-    public func alLlegarAviso(_ destino: DestinoAviso) async {
+    /// `llegado`: cuándo llegó el aviso (`UNNotification.date`). Si la vuelta ya releyó después (tocarlo con la app en el
+    /// fondo trae la app al frente y la vuelta corre primero), no se relee todo otra vez. Un link no lo trae: relee.
+    public func alLlegarAviso(_ destino: DestinoAviso, llegado: Date? = nil) async {
         guard fase == .listo, !esDemo, token != nil, !cargando, !desdeCache else { return }
         if destino == .chat { await chat?.sondear(); return }
+        if let llegado, let u = ultimaRelectura[.vuelta], u >= llegado { return }
         olvidar(.vuelta)
         await leerAlVolver(releer: toca(.vuelta))
     }

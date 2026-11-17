@@ -112,6 +112,36 @@ struct BateriaVueltaTests {
         #expect(marcas(t) == marcasAntes + 1)
     }
 
+    /// Revisión del punto 4: tocar un aviso con la app en el fondo la trae al frente; si la vuelta corre primero y ya
+    /// releyó después de que llegó el aviso, el aviso no relee todo otra vez. En el otro orden tampoco se repite.
+    @Test func tocarUnAvisoJustoDespuesDeLaVueltaNoReleeDosVeces() async {
+        let (m, t) = modelo(Red())
+        var ahora = Date()
+        m.relojRelecturas = { ahora }
+        await m.cargar()
+        let marcasAntes = marcas(t)
+        // Llegó un push con la app en el fondo; pasado el intervalo, se toca.
+        ahora += ModeloApp.Relectura.vuelta.cada + 10
+        let llegado = ahora - 5
+        // La vuelta primero, el aviso después.
+        await m.alVolverAPrimerPlano()
+        await m.alLlegarAviso(.revision, llegado: llegado)
+        #expect(marcas(t) == marcasAntes + 1, "una sola relectura")
+        // El aviso primero, la vuelta después.
+        ahora += 5
+        await m.alLlegarAviso(.estudios, llegado: ahora - 1)
+        await m.alVolverAPrimerPlano()
+        #expect(marcas(t) == marcasAntes + 2, "una sola relectura")
+        // Un push con la app a la vista, después de la última lectura: relee.
+        ahora += 5
+        await m.alLlegarAviso(.revision, llegado: ahora)
+        #expect(marcas(t) == marcasAntes + 3)
+        // Un link (sin fecha) relee como antes.
+        ahora += 5
+        await m.alLlegarAviso(.revision)
+        #expect(marcas(t) == marcasAntes + 4)
+    }
+
     /// Revisión del punto 1: de lo que quedó en el centro de notificaciones solo cuentan los push llegados después de la
     /// última vuelta; los locales (descanso, domingo, presión) quedan en la lista y no cuentan.
     @Test func soloCuentanLosPushNuevos() {
