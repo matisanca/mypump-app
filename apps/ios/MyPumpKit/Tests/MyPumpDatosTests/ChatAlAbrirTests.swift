@@ -59,3 +59,30 @@ struct ChatAlAbrirTests {
         #expect(p.chats == 2)
     }
 }
+
+/// Batería (2.3.2): con el chat cerrado el respaldo va cada 150 s, así que al abrirlo se consulta lo nuevo en el momento
+/// (antes se esperaba al sondeo de 15 s). Recién consultado no se repite.
+@Suite("Abrir el chat trae lo nuevo sin esperar el sondeo", .serialized)
+@MainActor
+struct ChatAlAbrirConsultaTests {
+    @Test func alAbrirConsultaSiPasaronMasDeQuinceSegundos() async {
+        let t = TransporteProgramado { fn, _ in
+            switch fn {
+            case "mypump_get_chat":
+                return (200, #"[{"id":"m1","autor":"coach","contenido":"Hola","leido_por_cliente":true,"created_at":"2026-11-17T10:00:00Z"}]"#)
+            default: return (200, "[]")
+            }
+        }
+        let c = ModeloChat(cliente: ClienteRPC(config: .produccion, transporte: t), token: "tokenDePrueba_0000000000", outbox: nil)
+        var ahora = Date(timeIntervalSince1970: 1_792_000_000)
+        c.ahora = { [ahora] in ahora }
+        func nuevos() -> Int { t.llamadas.filter { $0 == "mypump_chat_nuevos" }.count }
+        await c.cargar()
+        await c.alAbrir()
+        #expect(nuevos() == 0, "recién traído no se consulta de nuevo")
+        ahora += 20
+        c.ahora = { [ahora] in ahora }
+        await c.alAbrir()
+        #expect(nuevos() == 1, "pasados 15 s, abrirlo consulta lo nuevo")
+    }
+}

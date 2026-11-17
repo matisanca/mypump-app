@@ -172,6 +172,13 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
     /// Con la app abierta también se ve el aviso (como `presentationOptions` de la Capacitor).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
                                             withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // Un push con la app a la vista (un mensaje de Mati, la devolución, un estudio): lo suyo se trae ya. Con el chat
+        // cerrado el sondeo de respaldo va cada 150 s (batería, 2.3.2): el número rojo lo pone este push, no la espera.
+        // Los avisos locales (descanso, domingo, presión) no traen nada del servidor.
+        if notification.request.trigger is UNPushNotificationTrigger {
+            let destino = DestinoAviso(destino: notification.request.content.userInfo["destino"] as? String)
+            Task { @MainActor in await Proveedor.modelo.alLlegarAviso(destino) }
+        }
         completionHandler([.banner, .list, .sound])
     }
 

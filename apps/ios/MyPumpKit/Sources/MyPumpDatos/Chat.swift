@@ -248,14 +248,24 @@ public final class ModeloChat {
     /// cuenta ve que ya llegó y no lo vuelve a pedir. Después, lo de Mati queda leído.
     public func alAbrir() async {
         if !cargado { await cargar() }
+        // Con el sondeo de respaldo a 150 s, lo último se trae al abrir (más rápido que antes, que esperaba hasta 15 s).
+        else if hilo.cursor != nil, ultimaConsulta.map({ ahora().timeIntervalSince($0) >= Self.esperaAbierto || ahora() < $0 }) ?? true {
+            await sondear()
+        }
         await marcarLeido()
     }
+
+    /// La última consulta que salió (carga o sondeo), para no repetirla al abrir el chat recién consultado.
+    @ObservationIgnored private var ultimaConsulta: Date?
+    /// El reloj de `ultimaConsulta` (las pruebas lo mueven).
+    @ObservationIgnored var ahora: @Sendable () -> Date = { Date() }
 
     /// `loadChat`: la última página, o una más hacia atrás. Sin red no toca nada.
     public func cargar(masViejos: Bool = false) async {
         guard !cargando else { return }
         cargando = true
         defer { cargando = false }
+        if !masViejos { ultimaConsulta = ahora() }
         let antes: JSONValue = masViejos ? (hilo.primeroReal.map { .texto($0.createdAt) } ?? .null) : .null
         let r = await cliente.filas("mypump_get_chat", ["p_token": .texto(token), "p_antes": antes, "p_limite": .numero(Double(Self.pagina))],
                                     como: MensajeChat.self)
@@ -279,6 +289,7 @@ public final class ModeloChat {
     /// campo).
     public func sondear() async {
         guard let desde = hilo.cursor else { await cargar(); return }
+        ultimaConsulta = ahora()
         guard case .success(let filas) = await cliente.filas("mypump_chat_nuevos", ["p_token": .texto(token), "p_desde": .texto(desde)],
                                                              como: MensajeChat.self), !filas.isEmpty else { return }
         guard hilo.mezclar(filas) > 0 else { return }
@@ -346,13 +357,19 @@ public final class ModeloChat {
     /// La espera entre consultas, en segundos. Los tests la cambian para ver los intervalos sin esperarlos.
     @ObservationIgnored var dormir: @Sendable (Double) async -> Void = { s in try? await Task.sleep(for: .seconds(s)) }
 
-    /// Sondeo en cadena (nunca dos a la vez): 15 s abierto, 45 s cerrado. Se corta con la app en segundo plano.
+    /// Con el chat a la vista, cada cuánto se consulta.
+    public static let esperaAbierto: Double = 15
+    /// Con el chat cerrado (batería, 2.3.2; antes 45 s): es solo el respaldo del número rojo. Lo de Mati llega por push y
+    /// el push dispara la consulta (`ModeloApp.alLlegarAviso`); al abrir el chat se consulta en el momento (`alAbrir`).
+    public static let esperaCerrado: Double = 150
+
+    /// Sondeo en cadena (nunca dos a la vez): 15 s abierto, 150 s cerrado. Se corta con la app en segundo plano.
     public func empezarSondeo() {
         sondeo?.cancel()
         sondeo = Task { [weak self] in
             while !Task.isCancelled {
                 guard let abierto = self?.abierto, let dormir = self?.dormir else { return }   // el modelo ya no existe
-                let espera: Double = abierto ? 15 : 45
+                let espera: Double = abierto ? Self.esperaAbierto : Self.esperaCerrado
                 await dormir(espera)
                 if Task.isCancelled { return }
                 await self?.sondear()

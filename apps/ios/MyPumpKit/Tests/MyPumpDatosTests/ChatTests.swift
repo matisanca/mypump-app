@@ -203,8 +203,9 @@ actor BanderaRed {
     func poner(_ v: Bool) { caida = v }
 }
 
-/// CHA-04: el sondeo va cada 45 s con el chat cerrado y cada 15 s abierto (al abrirlo arranca de nuevo), y parado no
-/// consulta más (la app en segundo plano lo para). Las esperas se registran en vez de dormirlas.
+/// CHA-04: el sondeo va cada 150 s con el chat cerrado (batería, 2.3.2: antes 45 s; lo de Mati llega por push) y cada
+/// 15 s abierto (al abrirlo arranca de nuevo), y parado no consulta más (la app en segundo plano lo para). Las esperas se
+/// registran en vez de dormirlas.
 @Suite("Chat: los intervalos del sondeo")
 @MainActor
 struct SondeoChatTests {
@@ -221,7 +222,7 @@ struct SondeoChatTests {
         return await condicion()
     }
 
-    @Test func cuarentaYCincoCerradoQuinceAbiertoYNadaParado() async {
+    @Test func cientoCincuentaCerradoQuinceAbiertoYNadaParado() async {
         struct Vacio: Transporte {
             func enviar(_ p: URLRequest) async throws -> (Data, URLResponse) {
                 (Data("[]".utf8), HTTPURLResponse(url: p.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -232,7 +233,8 @@ struct SondeoChatTests {
         m.dormir = { s in await esperas.anotar(s); try? await Task.sleep(for: .milliseconds(5)) }
         m.empezarSondeo()
         #expect(await esperar { await esperas.pedidas.count >= 2 })
-        #expect(await esperas.pedidas.allSatisfy { $0 == 45 })
+        #expect(await esperas.pedidas.allSatisfy { $0 == 150 })
+        #expect(ModeloChat.esperaCerrado >= 120 && ModeloChat.esperaCerrado <= 180)
         m.abierto = true
         let antes = await esperas.pedidas.count
         #expect(await esperar { await esperas.pedidas.count >= antes + 2 })
