@@ -37,6 +37,26 @@ public enum DestinoAviso: String, Sendable, Equatable {
     }
 }
 
+/// Un aviso que está en el centro de notificaciones al volver a la app (`getDeliveredNotifications`), sin UIKit.
+public struct AvisoEntregado: Sendable, Equatable {
+    public let fecha: Date
+    /// Vino por APNs (`UNPushNotificationTrigger`). Los locales (descanso, domingo, presión, pump lleno) no traen nada
+    /// del servidor.
+    public let esPush: Bool
+    public let destino: String?
+    public init(fecha: Date, esPush: Bool, destino: String?) {
+        self.fecha = fecha
+        self.esPush = esPush
+        self.destino = destino
+    }
+
+    /// Batería (2.3.2): los push que llegaron con la app en el fondo después de la última vuelta y no se tocaron (se
+    /// abrió desde el ícono). El número del ícono no sirve: `push.py` no lo manda.
+    public static func nuevos(_ lista: [AvisoEntregado], desde: Date) -> [DestinoAviso] {
+        lista.filter { $0.esPush && $0.fecha > desde }.map { DestinoAviso(destino: $0.destino) }
+    }
+}
+
 /// El aviso del domingo (pedido de Mati, 14-oct): no se configura y llega como un mensaje suyo, con el título de sus
 /// mensajes del chat ("Mati", mig 057) y su forma de escribirles a los clientes (sin dos puntos, guiones ni emojis).
 /// Reusa el id 1002 de la Capacitor: reprogramar pisa el que dejó la app vieja.

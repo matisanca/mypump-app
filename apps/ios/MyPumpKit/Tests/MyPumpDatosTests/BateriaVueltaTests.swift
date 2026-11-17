@@ -112,6 +112,55 @@ struct BateriaVueltaTests {
         #expect(marcas(t) == marcasAntes + 1)
     }
 
+    /// Revisión del punto 1: de lo que quedó en el centro de notificaciones solo cuentan los push llegados después de la
+    /// última vuelta; los locales (descanso, domingo, presión) quedan en la lista y no cuentan.
+    @Test func soloCuentanLosPushNuevos() {
+        let desde = Date(timeIntervalSince1970: 1_000_000)
+        let lista = [
+            AvisoEntregado(fecha: desde + 10, esPush: false, destino: "train"),       // fin del descanso
+            AvisoEntregado(fecha: desde + 20, esPush: false, destino: "revision"),    // el domingo
+            AvisoEntregado(fecha: desde - 5, esPush: true, destino: "revision"),      // ya lo trajo la vuelta anterior
+            AvisoEntregado(fecha: desde + 30, esPush: true, destino: "estudios"),
+            AvisoEntregado(fecha: desde + 40, esPush: true, destino: nil),            // sin destino: chat
+        ]
+        #expect(AvisoEntregado.nuevos(lista, desde: desde) == [.estudios, .chat])
+        #expect(AvisoEntregado.nuevos(lista.filter { !$0.esPush }, desde: desde).isEmpty)
+    }
+
+    /// Un push (no de chat) que llegó con la app en el fondo y se abrió desde el ícono: la vuelta no espera los 90 s.
+    @Test func unPushSinTocarHaceQueLaVueltaRelea() async {
+        let (m, t) = modelo(Red())
+        var ahora = Date()
+        m.relojRelecturas = { ahora }
+        await m.cargar()
+        let marcasAntes = marcas(t)
+        ahora += 15
+        await m.alVolverConAvisos([.estudios])
+        await m.alVolverAPrimerPlano()
+        #expect(marcas(t) == marcasAntes + 1, "relee sin esperar el intervalo")
+        // La siguiente, sin avisos nuevos, vuelve a esperar.
+        ahora += 15
+        await m.alVolverAPrimerPlano()
+        #expect(marcas(t) == marcasAntes + 1)
+    }
+
+    /// Si los push nuevos son solo del chat, alcanza con consultarlo: lo demás sigue esperando.
+    @Test func unPushDeChatSinTocarSoloConsultaElChat() async {
+        let (m, t) = modelo(Red())
+        var ahora = Date()
+        m.relojRelecturas = { ahora }
+        await m.cargar()
+        let marcasAntes = marcas(t), chatAntes = chat(t)
+        ahora += 15
+        await m.alVolverConAvisos([.chat, .chat])
+        await m.alVolverAPrimerPlano()
+        #expect(chat(t) == chatAntes + 1)
+        #expect(marcas(t) == marcasAntes)
+        // Sin avisos, nada.
+        await m.alVolverConAvisos([])
+        #expect(chat(t) == chatAntes + 1)
+    }
+
     /// Punto 6: sin red la cola no reintenta sola; al volver la red (`alVolverLaRed`) sale.
     @Test func sinRedLaColaEsperaAQueVuelvaLaRed() async {
         let red = Red()

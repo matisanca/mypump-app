@@ -154,10 +154,34 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
     /// token y la cuenta son los mismos y no pasó la semana).
     func alEntrar() async {
         guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { tokenPedido = nil; return }
+        await revisarEntregados()
         await reprogramar()
         if let t = tokenPedido, Date().timeIntervalSince(t) < 24 * 3600, Date() >= t { return }
         tokenPedido = Date()
         UIApplication.shared.registerForRemoteNotifications()
+    }
+
+    /// Hasta cuándo se miraron los avisos entregados (nil: todavía no; la primera vez viene pegada a la carga completa).
+    private var entregadosHasta: Date?
+
+    /// Batería (2.3.2): un push que llegó con la app en el fondo y no se tocó (se abrió desde el ícono) no esperaba los
+    /// 90 s de la vuelta. Se mira el centro de notificaciones: solo los push (los locales no traen nada del servidor)
+    /// llegados después de la última vuelta. Va antes de que la vuelta mire su espera (`conAvisos`).
+    private func revisarEntregados() async {
+        let ahora = Date()
+        guard let desde = entregadosHasta else { entregadosHasta = ahora; return }
+        entregadosHasta = ahora
+        let lista = await UNUserNotificationCenter.current().deliveredNotifications().map {
+            AvisoEntregado(fecha: $0.date, esPush: $0.request.trigger is UNPushNotificationTrigger,
+                           destino: $0.request.content.userInfo["destino"] as? String)
+        }
+        let nuevos = AvisoEntregado.nuevos(lista, desde: desde)
+        if !nuevos.isEmpty { await Proveedor.modelo.alVolverConAvisos(nuevos) }
+    }
+
+    /// Un aviso que ya se atendió (llegó con la app a la vista o se tocó) no vuelve a contar en la próxima vuelta.
+    private func yaAtendido(_ fecha: Date) {
+        if let h = entregadosHasta, h < fecha { entregadosHasta = fecha }
     }
 
     /// Cambió la cuenta (otro link): el token se vuelve a pedir para registrarlo con la nueva.
@@ -177,7 +201,11 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         // Los avisos locales (descanso, domingo, presión) no traen nada del servidor.
         if notification.request.trigger is UNPushNotificationTrigger {
             let destino = DestinoAviso(destino: notification.request.content.userInfo["destino"] as? String)
-            Task { @MainActor in await Proveedor.modelo.alLlegarAviso(destino) }
+            let fecha = notification.date
+            Task { @MainActor in
+                self.yaAtendido(fecha)
+                await Proveedor.modelo.alLlegarAviso(destino)
+            }
         }
         completionHandler([.banner, .list, .sound])
     }
@@ -186,8 +214,10 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                             withCompletionHandler completionHandler: @escaping () -> Void) {
         let destino = response.notification.request.content.userInfo["destino"] as? String
+        let fecha = response.notification.date
         nonisolated(unsafe) let terminar = completionHandler
         Task { @MainActor in
+            self.yaAtendido(fecha)
             self.destino = DestinoAviso(destino: destino)
             terminar()
         }

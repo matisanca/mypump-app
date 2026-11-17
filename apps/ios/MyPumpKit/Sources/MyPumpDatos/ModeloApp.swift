@@ -1030,6 +1030,17 @@ public final class ModeloApp {
         await leerAlVolver(releer: toca(.vuelta))
     }
 
+    /// Al volver con push que llegaron en el fondo y no se tocaron (`AvisoEntregado.nuevos`, lo llama `CentroAvisos.alEntrar`
+    /// antes de que la vuelta mire su espera): uno que no es del chat (la devolución, un estudio) hace que esta vuelta
+    /// relea ya; si son solo del chat, alcanza con consultarlo.
+    public func alVolverConAvisos(_ destinos: [DestinoAviso]) async {
+        guard fase == .listo, !esDemo, token != nil, !destinos.isEmpty else { return }
+        if destinos.contains(where: { $0 != .chat }) { olvidarEsperaDeVuelta() } else { await chat?.sondear() }
+    }
+
+    /// La próxima vuelta relee lo liviano sin esperar `Relectura.vuelta`.
+    public func olvidarEsperaDeVuelta() { olvidar(.vuelta) }
+
     /// Lo de cada vuelta. `releer`: además de subir lo pendiente, se relee lo liviano (marcas, chat, devolución, estudios,
     /// fotos de inicio, logros, lista previa, presión, documentos, recorrido). Sin `releer` solo salen las colas, y lo que
     /// no puede esperar: el chat abierto y un documento que se fue a firmar al navegador.
