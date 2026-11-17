@@ -112,6 +112,23 @@ struct BateriaVueltaTests {
         #expect(marcas(t) == marcasAntes + 1)
     }
 
+    /// Punto 6: sin red la cola no reintenta sola; al volver la red (`alVolverLaRed`) sale.
+    @Test func sinRedLaColaEsperaAQueVuelvaLaRed() async {
+        let red = Red()
+        let (m, t) = modelo(red)
+        await m.cargar()
+        m.hayRed = false
+        red.sinRed = true
+        await m.marcar("almuerzo", .comido, opcion: 0)
+        await m.outbox?.drenar()
+        #expect(await m.outbox?.pendientes == 1)
+        red.sinRed = false
+        m.hayRed = true
+        await m.alVolverLaRed()
+        #expect(await m.outbox?.pendientes == 0)
+        #expect(t.llamadas.contains("mypump_marcar_comida"))
+    }
+
     @Test func enLaDemoUnAvisoNoLlamaANada() async {
         let (m, t) = modelo(Red())
         await m.alLlegarAviso(.revision)

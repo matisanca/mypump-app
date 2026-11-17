@@ -89,7 +89,7 @@ struct RaizApp<Contenido: View>: View {
             default: break
             }
         }
-        .background { MonitorDeRed { Task { await modelo.alVolverLaRed() } } }
+        .background { MonitorDeRed(alCambiar: { modelo.hayRed = $0 }) { Task { await modelo.alVolverLaRed() } } }
         // Cerrada como sea (también deslizando), queda vista (hallazgo 12).
         .sheet(isPresented: $onboarding, onDismiss: { OnboardingPermisos.marcarVista() }) {
             OnboardingPermisos(modelo: modelo) { onboarding = false }
@@ -133,12 +133,14 @@ private struct Arranque: View {
 /// Avisa cuando la red VUELVE (pasa de no disponible a disponible), no en el primer aviso del sistema: así un
 /// reintento automático no se gasta apenas aparece la pantalla.
 struct MonitorDeRed: View {
+    /// Cada cambio: hay red o no (la cola no reintenta sin red).
+    var alCambiar: (Bool) -> Void = { _ in }
     let alVolver: () -> Void
     @State private var vigia: VigiaDeRed?
 
     var body: some View {
         Color.clear
-            .onAppear { vigia = VigiaDeRed(alVolver: alVolver) }
+            .onAppear { vigia = VigiaDeRed(alCambiar: alCambiar, alVolver: alVolver) }
             .onDisappear { vigia?.parar(); vigia = nil }
             .accessibilityHidden(true)
     }
@@ -149,9 +151,11 @@ final class VigiaDeRed {
     private let monitor = NWPathMonitor()
     private var anterior: NWPath.Status?
     private let alVolver: () -> Void
+    private let alCambiar: (Bool) -> Void
 
-    init(alVolver: @escaping () -> Void) {
+    init(alCambiar: @escaping (Bool) -> Void = { _ in }, alVolver: @escaping () -> Void) {
         self.alVolver = alVolver
+        self.alCambiar = alCambiar
         monitor.pathUpdateHandler = { [weak self] camino in
             let estado = camino.status
             Task { @MainActor in self?.cambio(estado) }
@@ -161,6 +165,7 @@ final class VigiaDeRed {
 
     private func cambio(_ estado: NWPath.Status) {
         defer { anterior = estado }
+        if estado != anterior { alCambiar(estado == .satisfied) }
         guard let previo = anterior, previo != .satisfied, estado == .satisfied else { return }
         alVolver()
     }

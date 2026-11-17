@@ -126,6 +126,10 @@ public actor Outbox {
     /// Los ids que intentó la última pasada (su copia de la cola). Lo encolado durante el vuelo no está acá.
     private var ultimaTanda: Set<String> = []
     private var rachaSinRed = 0
+    /// El teléfono dice que no hay red (`NWPathMonitor`, lo pasa la app con `usarRed`). Sin red, un corte no programa
+    /// reintento: lo dispara la vuelta de la red (`ModeloApp.alVolverLaRed`), la vuelta a la app o lo próximo que se encole
+    /// (batería, 2.3.2: antes reintentaba cada 30 s para siempre con la radio buscando señal).
+    private var redCaida = false
     /// El carril de los audios: su pasada en curso, su temporizador y su racha (el backoff).
     private var enVueloAudios: Task<Void, Never>?
     private var temporizadorAudios: Task<Void, Never>?
@@ -352,6 +356,20 @@ public actor Outbox {
         }
     }
 
+    /// Lo dice la app cuando cambia la red. Al volver no hace falta nada más: la app llama a `drenar`.
+    public func usarRed(_ hay: Bool) { redCaida = !hay }
+
+    /// El tope de la espera entre reintentos con mala señal.
+    public static let topeReintento = 120_000
+    /// La espera antes de reintentar (ms): como siempre (2 s por intento, hasta 30 s) las primeras 10 pasadas fallidas
+    /// seguidas, que es cuando más importa salir rápido; después 60 s y desde la 12.ª, 120 s. Con señal mala pero
+    /// «satisfecha», cada intento prende la radio y espera el timeout (batería, 2.3.2).
+    public static func demoraReintento(base: Int, racha: Int) -> Int {
+        let normal = min(30_000, 2_000 * max(1, base))
+        guard racha > 10 else { return normal }
+        return min(topeReintento, max(normal, 30_000 << min(2, racha - 10)))
+    }
+
     private func programar(en demora: Duration) {
         guard reintentoAutomatico else { return }
         if temporizador != nil { return }
@@ -467,9 +485,9 @@ public actor Outbox {
         } else if abandonadasVisibles.isEmpty {
             avisar(.quieto)
         }
-        if algunaFallo {
+        if algunaFallo && !(ultimaCorte && redCaida) {
             let base = max(1, estado.ops.first(where: { !Self.esAudio($0) })?.tries ?? 1, rachaSinRed)
-            programar(en: .milliseconds(min(30_000, 2_000 * base)))
+            programar(en: .milliseconds(Self.demoraReintento(base: base, racha: rachaSinRed)))
         }
         // Lo encolado DURANTE esta pasada quedó sin procesar: otra vuelta.
         if estado.ops.contains(where: { !Self.esAudio($0) }) && !algunaFallo { programar(en: .zero) }
@@ -592,7 +610,7 @@ public actor Outbox {
         // Silenciosas: el carril nunca avisa «guardando» ni «sin conexión»; la fila del audio lo dice.
         if espera {
             rachaAudios += 1
-            programarAudios(en: .milliseconds(min(30_000, 2_000 * max(1, rachaAudios))))
+            if !redCaida { programarAudios(en: .milliseconds(Self.demoraReintento(base: rachaAudios, racha: rachaAudios))) }
         } else {
             rachaAudios = 0
             if estado.ops.contains(where: { Self.esAudio($0) && mandable($0) }) { programarAudios(en: .zero) }

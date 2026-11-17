@@ -45,6 +45,14 @@ public final class ModeloApp {
         }
     }
 
+    /// Lo pone la raíz con `NWPathMonitor`. Sin red, la cola no reintenta sola: sale con `alVolverLaRed` (batería, 2.3.2).
+    public var hayRed = true {
+        didSet {
+            guard hayRed != oldValue, !hayRed, let outbox else { return }
+            Task { await outbox.usarRed(false) }
+        }
+    }
+
     public enum Parte: Sendable, Hashable { case rutina, dieta }
 
     /// Lo que le falta a la dieta publicada (`normalizarDieta`): para el aviso "a tu plan le falta información".
@@ -451,6 +459,7 @@ public final class ModeloApp {
         }
         UltimaCuenta.anotar(t)
         outbox = cola
+        if !hayRed { Task { await cola.usarRed(false) } }
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         chat = ModeloChat(cliente: cliente, token: t, outbox: cola, carpetaAdjuntos: disco.url(ModeloChat.carpetaAdjuntosNombre))
         if enPrimerPlano { chat?.empezarSondeo() }
@@ -834,6 +843,8 @@ public final class ModeloApp {
 
     /// Volvió la red (el monitor de la raíz): sale lo pendiente y, si se estaba mostrando la copia guardada, se trae todo.
     public func alVolverLaRed() async {
+        hayRed = true
+        await outbox?.usarRed(true)   // antes de todo: si algo falla ahora, que vuelva a reintentar solo
         guard fase == .listo, !esDemo, token != nil, !cargando else { return }
         if desdeCache { await cargar(); return }
         await outbox?.drenar()
