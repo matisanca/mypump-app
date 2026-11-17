@@ -31,6 +31,9 @@ final class EntrenoSalud: NSObject {
     private static let fc = HKQuantityType(.heartRate)
     private static let energia = HKQuantityType(.activeEnergyBurned)
 
+    /// Hay una sesión de entreno abierta (o pedida y esperando el permiso).
+    var abierto: Bool { sesion != nil || quiereAbrir }
+
     /// Arranca la sesión de entreno (una sola vez por entreno).
     func empezar() {
         guard sesion == nil, HKHealthStore.isHealthDataAvailable() else { return }
@@ -40,7 +43,8 @@ final class EntrenoSalud: NSObject {
         // HealthKit llama a estas closures en su cola. El SDK ya las declara `@Sendable` (no heredan el MainActor); se
         // escribe igual para que quede a la vista.
         tienda.requestAuthorization(toShare: aCompartir, read: aLeer) { @Sendable [weak self] ok, _ in
-            guard ok else { return }
+            // Sin permiso no queda una sesión «pedida» para siempre (el vigía la daría por abierta).
+            guard ok else { Task { @MainActor in self?.quiereAbrir = false }; return }
             Task { @MainActor in self?.abrir() }
         }
     }
@@ -50,7 +54,7 @@ final class EntrenoSalud: NSObject {
         let config = HKWorkoutConfiguration()
         config.activityType = .traditionalStrengthTraining
         config.locationType = .indoor
-        guard let s = try? HKWorkoutSession(healthStore: tienda, configuration: config) else { return }
+        guard let s = try? HKWorkoutSession(healthStore: tienda, configuration: config) else { quiereAbrir = false; return }
         let b = s.associatedWorkoutBuilder()
         b.dataSource = HKLiveWorkoutDataSource(healthStore: tienda, workoutConfiguration: config)
         b.delegate = self

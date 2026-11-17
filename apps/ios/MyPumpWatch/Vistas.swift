@@ -411,7 +411,7 @@ struct EjercicioVista: View {
                 if sinDescanso { recuperarCorona() }
             }
             .onChange(of: fase) { _, f in
-                if f == .active { estado.actividad(); recuperarCorona() }
+                if f == .active { estado.actividad(mirada: true); recuperarCorona() }
             }
             .navigationTitle(e.bloque ?? "Serie")
         }
@@ -558,8 +558,11 @@ struct LineaCalibracion: View {
 
 struct DescansoVista: View {
     @Environment(EstadoReloj.self) private var estado
+    /// Con la muñeca baja (Always On) la pantalla se ve atenuada: un redibujo por segundo alcanza para el reloj del descanso.
+    @Environment(\.isLuminanceReduced) private var atenuada
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.25)) { contexto in
+        // Medio segundo con la pantalla prendida: los segundos y el anillo se ven igual de fluidos que a 4 por segundo.
+        TimelineView(.periodic(from: .now, by: atenuada ? 1 : 0.5)) { contexto in
             let ahora = contexto.date.timeIntervalSince1970 * 1000
             if let d = estado.sesion.descansoEnCurso(ahora: ahora) {
                 let termino = ahora >= d.fin

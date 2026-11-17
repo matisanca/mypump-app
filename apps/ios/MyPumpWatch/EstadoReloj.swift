@@ -73,7 +73,11 @@ final class EstadoReloj {
         }
         conexion.alFallarVersion = { [weak self] v in self?.cambiar(enviar: false) { $0.marcarIncompatible(version: v) } }
         entreno.alMedir = { [weak self] s in self?.salud = s }
-        entreno.alCambiarViva = { [weak self] viva in self?.entrenoVivo = viva }
+        entreno.alCambiarViva = { [weak self] viva in
+            self?.entrenoVivo = viva
+            // Una sesión que se abrió sin un toque (recuperada tras un cierre, por ejemplo) también queda vigilada.
+            if viva { self?.cerradoPorOlvido = false; self?.vigilar() }
+        }
         entreno.alCortarse = { [weak self] in self?.sesion.cierreSalud(ahora: Self.ahoraMs) ?? .descartar }
         calibracion.transferir = { [weak self] url, metadatos in self?.conexion.transferirArchivo(url, metadatos: metadatos) }
         calibracion.alContar = { [weak self] r in self?.proponer(r) }
@@ -129,17 +133,53 @@ final class EstadoReloj {
     private static let toleranciaInactivoMs: Double = 20 * 60 * 1_000
     @ObservationIgnored private var ultimaActividad = EstadoReloj.ahoraMs
     @ObservationIgnored private var vigiaInactividad: Task<Void, Never>?
+    /// Cada cuánto mira el vigía (s): despertar una vez por minuto no pesa.
+    private static let cadaVigia: Double = 60
+    /// El entreno de HealthKit lo cerró el vigía (olvidado): si el alumno vuelve al reloj con el día en curso, se reabre.
+    @ObservationIgnored private var cerradoPorOlvido = false
 
-    /// El alumno tocó, giró o miró el reloj.
-    func actividad() {
+    /// El último toque, giro o serie (sin contar las miradas): con la app al frente, cada vez que se levanta la muñeca la
+    /// pantalla pasa a activa, y eso no puede mantener abierto un entreno olvidado.
+    @ObservationIgnored private var ultimoToque = EstadoReloj.ahoraMs
+
+    /// El alumno tocó, giró o miró el reloj (`mirada`: solo levantó la muñeca, sin tocar).
+    func actividad(mirada: Bool = false) {
         ultimaActividad = Self.ahoraMs
-        ajustarSensores()
-        vigiaInactividad?.cancel()
-        vigiaInactividad = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(Int(Self.toleranciaInactivoMs) + 1_000))
-            guard !Task.isCancelled else { return }
-            self?.ajustarSensores()
+        if !mirada { ultimoToque = ultimaActividad }
+        if !mirada, cerradoPorOlvido, conSalud, sesion.iniciada, !sesion.terminada, !sesion.todoHecho {
+            cerradoPorOlvido = false
+            entreno.empezar()
         }
+        ajustarSensores()
+        vigilar()
+    }
+
+    /// Un solo vigía mientras haya algo prendido (sensores o entreno de HealthKit): apaga los sensores a los 20 min sin
+    /// actividad y cierra el entreno de HealthKit a los 30 min sin toques ni series (`olvidoTrasUltimaSerie`, la misma
+    /// regla con la que se calcula su fin). Sin esto, un entreno sin «Terminar» dejaba la FC midiendo y la app viva hasta
+    /// que se agotaba la batería. Se rearma solo: antes, girar la corona después del último toque lo dejaba sin vigía.
+    private func vigilar() {
+        guard vigiaInactividad == nil else { return }
+        vigiaInactividad = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(Self.cadaVigia))
+                guard !Task.isCancelled, let self else { return }
+                if !self.revisarOlvido() { self.vigiaInactividad = nil; return }
+            }
+        }
+    }
+
+    /// Lo que mira el vigía. Devuelve si hay que seguir mirando.
+    private func revisarOlvido() -> Bool {
+        ajustarSensores()
+        let ahora = Self.ahoraMs
+        let ultima = max(ultimoToque, sesion.ultimaSerie ?? 0)
+        if entreno.abierto, ahora - ultima > SesionReloj.olvidoTrasUltimaSerie {
+            // Va a Salud con la misma regla que un cierre normal (fin = última serie + margen; sin series, se descarta).
+            entreno.terminar(sesion.cierreSalud(ahora: ahora))
+            cerradoPorOlvido = sesion.iniciada && !sesion.terminada
+        }
+        return calibracion.grabando || entreno.abierto
     }
 
     // La propuesta sobrevive a un relanzamiento: si no, se perdería que el alumno giró (y se le pisaría) o que el número
@@ -282,11 +322,15 @@ final class EstadoReloj {
     /// El alumno giró las reps con la corona (la propuesta del reloj no pasa por acá).
     func girarReps(_ n: Int) {
         ultimaActividad = Self.ahoraMs
+        ultimoToque = ultimaActividad
+        vigilar()
         propuestaSerie.girar()
         cambiar(enviar: false) { $0.girarReps(n) }
     }
     func girarKg(_ n: Int) {
         ultimaActividad = Self.ahoraMs
+        ultimoToque = ultimaActividad
+        vigilar()
         cambiar(enviar: false) { $0.girarKg(n) }
     }
 
@@ -355,8 +399,11 @@ final class EstadoReloj {
         tick?.cancel()
         tick = Task { [weak self] in
             while !Task.isCancelled, let self, self.sesion.descanso != nil {
-                var termino = false
-                self.sesion = { var s = self.sesion; termino = s.tickDescanso(ahora: Self.ahoraMs); return s }()
+                var s = self.sesion
+                let termino = s.tickDescanso(ahora: Self.ahoraMs)
+                // Solo se reasigna si cambió algo (sonó o se cerró): asignar `sesion` invalida todas las pantallas, y
+                // hacerlo 4 veces por segundo durante cada descanso redibujaba todo el árbol para nada.
+                if s != self.sesion { self.sesion = s }
                 if termino {
                     self.calibracion.finDescanso()
                     WKInterfaceDevice.current().play(.notification)
