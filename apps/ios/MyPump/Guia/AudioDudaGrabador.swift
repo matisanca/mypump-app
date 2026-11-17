@@ -26,6 +26,8 @@ final class GrabadorAV: NSObject, GrabadorAudio {
     func empezar(en archivo: URL) -> AvisoAudio? {
         let s = AVAudioSession.sharedInstance()
         previa = (s.category, s.mode, s.categoryOptions)
+        // Cuenta como un reproductor más: el pitido del descanso no toca la sesión mientras graba.
+        SesionAudio.contar(self)
         do {
             try s.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
             try s.setActive(true)
@@ -72,6 +74,7 @@ final class GrabadorAV: NSObject, GrabadorAudio {
         try? s.setActive(false, options: .notifyOthersOnDeactivation)
         if let (c, m, o) = previa { try? s.setCategory(c, mode: m, options: o) }
         previa = nil
+        SesionAudio.soltar(self)
     }
 }
 
@@ -128,8 +131,6 @@ final class ReproductorRevision: NSObject, AVAudioPlayerDelegate {
     @ObservationIgnored private var player: AVAudioPlayer?
     @ObservationIgnored private var archivo: URL?
     @ObservationIgnored private var tics: Task<Void, Never>?
-    /// La sesión la tomó este reproductor (y nadie la soltó todavía).
-    @ObservationIgnored private var sesionTomada = false
 
     func alternar(_ url: URL) {
         if sonando { pausar(); return }
@@ -139,8 +140,7 @@ final class ReproductorRevision: NSObject, AVAudioPlayerDelegate {
             archivo = url
         }
         guard let player else { return }
-        SesionAudio.activar()
-        sesionTomada = true
+        SesionAudio.activar(self)
         player.play()
         sonando = true
         tics?.cancel()
@@ -153,10 +153,12 @@ final class ReproductorRevision: NSObject, AVAudioPlayerDelegate {
         }
     }
 
+    /// En pausa suelta la sesión: la música del cliente vuelve a su volumen.
     func pausar() {
         player?.pause()
         sonando = false
         tics?.cancel()
+        soltarSesion()
     }
 
     /// Al mandar, grabar de nuevo, borrar o salir: se suelta el archivo y la sesión, así la música del cliente vuelve.
@@ -168,11 +170,7 @@ final class ReproductorRevision: NSObject, AVAudioPlayerDelegate {
         soltarSesion()
     }
 
-    private func soltarSesion() {
-        guard sesionTomada else { return }
-        sesionTomada = false
-        SesionAudio.soltar()
-    }
+    private func soltarSesion() { SesionAudio.soltar(self) }
 
     /// Al terminar de escucharse, la sesión se suelta con `.notifyOthersOnDeactivation` (revisión del 4-nov, punto 8).
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {

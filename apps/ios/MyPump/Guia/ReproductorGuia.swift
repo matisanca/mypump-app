@@ -69,8 +69,10 @@ final class ControlReproductor {
             let corre = p.timeControlStatus != .paused
             Task { @MainActor in
                 guard let self else { return }
-                // También cuando lo arrancan los controles del sistema.
-                if corre && !self.reproduciendo { self.alArrancar() }
+                // También cuando lo arrancan los controles del sistema. Frenado o terminado suelta la sesión: la
+                // música vuelve a su volumen.
+                if corre && !self.reproduciendo { SesionAudio.activar(self); self.alArrancar() }
+                if !corre && self.reproduciendo { SesionAudio.soltar(self) }
                 self.reproduciendo = corre
             }
         }
@@ -89,7 +91,7 @@ final class ControlReproductor {
         if let o = observadorTiempo { player.removeTimeObserver(o) }
         player.pause()
         player.replaceCurrentItem(with: nil)
-        SesionAudio.soltar()
+        SesionAudio.soltar(self)
     }
 
     private func indice(_ id: String?) -> Int? {
@@ -236,7 +238,7 @@ final class ControlReproductor {
         if let item = player.currentItem, ReglasGuia.estaAlFinal(player.currentTime().seconds, duracion: item.duration.seconds) {
             player.seek(to: .zero)
         }
-        SesionAudio.activar()
+        SesionAudio.activar(self)
         player.defaultRate = velocidad
         player.play()
         player.rate = velocidad
@@ -510,7 +512,8 @@ final class ControlVerPorQue {
             let corre = p.timeControlStatus != .paused
             Task { @MainActor in
                 guard let self else { return }
-                if corre && !self.reproduciendo { self.alArrancar() }
+                if corre && !self.reproduciendo { SesionAudio.activar(self); self.alArrancar() }
+                if !corre && self.reproduciendo { SesionAudio.soltar(self) }
                 self.reproduciendo = corre
             }
         }
@@ -521,7 +524,7 @@ final class ControlVerPorQue {
         if let o = observadorTiempo { player.removeTimeObserver(o) }
         player.pause()
         player.replaceCurrentItem(with: nil)
-        SesionAudio.soltar()
+        SesionAudio.soltar(self)
     }
 
     /// El botón: abre y arranca, o cierra si ya estaba abierto.
@@ -539,7 +542,7 @@ final class ControlVerPorQue {
         observar(item)
         forma.observar(item, id: id)
         player.replaceCurrentItem(with: item)
-        SesionAudio.activar()
+        SesionAudio.activar(self)
         player.play()
     }
 
@@ -615,16 +618,46 @@ final class ControlVerPorQue {
     }
 }
 
-/// La sesión de audio de los videos de la guía: se activa al reproducir y se suelta al salir (o al irse a segundo plano),
-/// así la música u otra app vuelven a sonar.
-enum SesionAudio {
-    static func activar() {
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        try? AVAudioSession.sharedInstance().setActive(true)
-    }
+/// La sesión de audio de la app (batería, 2.3.2). Los videos y audios con voz (técnica, guía, chat) van con `.playback`
+/// y `.duckOthers`: la música del alumno sigue más baja y vuelve sola. Lleva la cuenta de los reproductores activos
+/// (`CuentaSesionAudio`, en el kit): al soltarse el último vuelve a `.ambient` con `.mixWithOthers` y se desactiva con
+/// `.notifyOthersOnDeactivation`. El pitido del descanso decide por esa cuenta, nunca por la categoría.
+/// Quién toma la sesión cuando el reproductor es una vista (el video de técnica).
+final class DueñoAudio {}
 
-    static func soltar() {
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+enum SesionAudio {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var cuenta = CuentaSesionAudio<ObjectIdentifier>()
+
+    static var hayReproductor: Bool { lock.withLock { cuenta.hayReproductor } }
+
+    /// Al reproducir (también de nuevo después de una interrupción): fija `.playback` y activa.
+    static func activar(_ dueño: AnyObject) { aplicar(lock.withLock { cuenta.tomar(ObjectIdentifier(dueño)) }) }
+
+    /// El grabador fija su categoría por su lado: solo se cuenta.
+    static func contar(_ dueño: AnyObject) { lock.withLock { cuenta.contar(ObjectIdentifier(dueño)) } }
+
+    /// Al frenar, terminar o irse. Repetirlo no hace nada.
+    static func soltar(_ dueño: AnyObject) { aplicar(lock.withLock { cuenta.soltar(ObjectIdentifier(dueño)) }) }
+
+    static func alSonarPitido() { aplicar(lock.withLock { cuenta.alSonarPitido() }) }
+    static func alTerminarPitido() { aplicar(lock.withLock { cuenta.alTerminarPitido() }) }
+
+    private static func aplicar(_ accion: AccionSesionAudio) {
+        let s = AVAudioSession.sharedInstance()
+        switch accion {
+        case .reproducir:
+            try? s.setCategory(.playback, mode: .moviePlayback, options: [.duckOthers])
+            try? s.setActive(true)
+        case .mezclar:
+            try? s.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try? s.setActive(true)
+        case .soltar:
+            try? s.setActive(false, options: .notifyOthersOnDeactivation)
+            try? s.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+        case .nada:
+            break
+        }
     }
 }
 

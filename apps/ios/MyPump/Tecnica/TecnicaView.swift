@@ -738,7 +738,7 @@ private struct VideoTecnica: View {
     @Environment(\.dismiss) private var cerrar
     @State private var player: AVPlayer?
     @State private var fallo = false
-    @State private var sesionTomada = false
+    @State private var dueñoAudio = DueñoAudio()
 
     var body: some View {
         NavigationStack {
@@ -766,15 +766,22 @@ private struct VideoTecnica: View {
             guard !Task.isCancelled else { return }
             await p.seek(to: CMTime(seconds: desde, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
             guard !Task.isCancelled else { return }
-            // Su propia sesión, como los videos de la guía y los audios del chat: así el pitido del descanso no la
-            // corta ni la silencia al soltar la suya (batería, 2.3.2).
-            SesionAudio.activar()
-            sesionTomada = true
+            // Con voz, como los videos de la guía y los audios del chat: `.playback` con `.duckOthers` (la música sigue
+            // más baja) y cuenta como reproductor, así el pitido del descanso no lo corta ni lo silencia.
+            SesionAudio.activar(dueñoAudio)
             p.play()
+            // Pausa o fin (también con los controles del sistema) suelta la sesión y la música vuelve; play la toma de nuevo.
+            var sonando = true
+            for await s in p.publisher(for: \.timeControlStatus).values {
+                let corre = s != .paused
+                guard corre != sonando else { continue }
+                sonando = corre
+                if corre { SesionAudio.activar(dueñoAudio) } else { SesionAudio.soltar(dueñoAudio) }
+            }
         }
         .onDisappear {
             player?.pause()
-            if sesionTomada { sesionTomada = false; SesionAudio.soltar() }
+            SesionAudio.soltar(dueñoAudio)
         }
     }
 }

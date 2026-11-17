@@ -98,7 +98,7 @@ struct GuiaView: View {
         .onChange(of: fase) { _, f in
             // Primero se corta el grabador y después se suelta la sesión (revisión del 4-nov, punto 7).
             if f == .background {
-                control.pausar(); verPorQue.pausar(); modelo.audios.cortar(); SesionAudio.soltar(); modelo.audios.cerrarSeccion()
+                control.pausar(); verPorQue.pausar(); modelo.audios.cortar(); SesionAudio.soltar(control); SesionAudio.soltar(verPorQue); modelo.audios.cerrarSeccion()
                 modelo.agenda.pararSondeo()
             }
             // La agenda también, con la guía abierta (la pendiente la consulta el resumen aunque esté cerrada).
@@ -116,7 +116,7 @@ struct GuiaView: View {
             aLaVista = false
             if !control.pantallaCompleta && !verPorQue.pantallaCompleta {
                 control.pausar(); verPorQue.pausar()
-                modelo.audios.cortar(); SesionAudio.soltar(); modelo.audios.cerrarSeccion()
+                modelo.audios.cortar(); SesionAudio.soltar(control); SesionAudio.soltar(verPorQue); modelo.audios.cerrarSeccion()
             }
         }
         .sensoryFeedback(.selection, trigger: control.cambios)

@@ -249,7 +249,6 @@ final class ReproductorChat: NSObject, AVAudioPlayerDelegate {
     @ObservationIgnored private var player: AVAudioPlayer?
     @ObservationIgnored private var tics: Task<Void, Never>?
     @ObservationIgnored private var duraciones: [String: Double] = [:]
-    @ObservationIgnored private var sesionTomada = false
 
     func duracion(_ id: String) -> Double? { duraciones[id] }
 
@@ -264,8 +263,7 @@ final class ReproductorChat: NSObject, AVAudioPlayerDelegate {
             if let d = player?.duration, d.isFinite { duraciones[id] = d }
         }
         guard let player else { idCargado = nil; return }
-        SesionAudio.activar()
-        sesionTomada = true
+        SesionAudio.activar(self)
         player.play()
         idSonando = id
         tics?.cancel()
@@ -278,10 +276,12 @@ final class ReproductorChat: NSObject, AVAudioPlayerDelegate {
         }
     }
 
+    /// En pausa suelta la sesión: la música del cliente vuelve a su volumen.
     func pausar() {
         player?.pause()
         idSonando = nil
         tics?.cancel()
+        SesionAudio.soltar(self)
     }
 
     /// Al salir del chat o al grabar: se suelta todo, así la música del cliente vuelve.
@@ -290,7 +290,7 @@ final class ReproductorChat: NSObject, AVAudioPlayerDelegate {
         player = nil
         idCargado = nil
         actual = 0
-        if sesionTomada { sesionTomada = false; SesionAudio.soltar() }
+        SesionAudio.soltar(self)
     }
 
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
@@ -298,7 +298,7 @@ final class ReproductorChat: NSObject, AVAudioPlayerDelegate {
             self.idSonando = nil
             self.actual = 0
             self.tics?.cancel()
-            if self.sesionTomada { self.sesionTomada = false; SesionAudio.soltar() }
+            SesionAudio.soltar(self)
         }
     }
 }
