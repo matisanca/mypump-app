@@ -53,15 +53,25 @@ final class Entrenamiento {
 
 /// El pitido del fin del descanso: dos tonos cortos, con la sesión `.ambient` que se mezcla con la música (no la corta)
 /// y respeta el silencio del teléfono.
-/// Al terminar de sonar suelta la sesión de audio (batería, 2.3.2): antes quedaba activa todo el entreno.
+/// Al terminar de sonar suelta la sesión de audio (batería, 2.3.2): antes quedaba activa todo el entreno. Nunca la de un
+/// video o un audio de la app.
 @MainActor
 final class SonidoDescanso: NSObject, AVAudioPlayerDelegate {
     private var reproductor: AVAudioPlayer?
+    /// La sesión la armó el pitido (`.ambient`): solo así se suelta al terminar.
+    private var sesionPropia = false
 
     func reproducir() {
         let sesion = AVAudioSession.sharedInstance()
-        try? sesion.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
-        try? sesion.setActive(true)
+        // Con un video, un audio o una grabación de la app en curso (`.playback`, `.playAndRecord`), el pitido suena
+        // sobre esa sesión sin tocarla: cambiarla o soltarla cortaba o silenciaba el video de técnica.
+        if [.playback, .playAndRecord].contains(sesion.category) {
+            sesionPropia = false
+        } else {
+            try? sesion.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try? sesion.setActive(true)
+            sesionPropia = true
+        }
         if reproductor == nil {
             reproductor = try? AVAudioPlayer(data: Self.pitido, fileTypeHint: AVFileType.wav.rawValue)
             reproductor?.delegate = self
@@ -74,13 +84,15 @@ final class SonidoDescanso: NSObject, AVAudioPlayerDelegate {
         Task { @MainActor in self.soltar() }
     }
 
-    /// Solo si la sesión sigue siendo la del pitido (`.ambient`) y no volvió a sonar: si otra parte de la app la tomó
-    /// (un audio o un video), no se toca. La música de otra app no se entera (`mixWithOthers`).
+    /// Solo si la armó el pitido, sigue siendo `.ambient` y no volvió a sonar: si otra parte de la app la tomó (un audio
+    /// o un video, que fijan `.playback` con `SesionAudio`), no se toca. La música de otra app no se entera
+    /// (`mixWithOthers`) y se le avisa al soltar.
     private func soltar() {
-        guard reproductor?.isPlaying != true else { return }
+        guard sesionPropia, reproductor?.isPlaying != true else { return }
         let sesion = AVAudioSession.sharedInstance()
-        guard sesion.category == .ambient else { return }
-        try? sesion.setActive(false)
+        guard sesion.category == .ambient else { sesionPropia = false; return }
+        sesionPropia = false
+        try? sesion.setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     /// Un WAV de 16 bits armado en memoria: 880 Hz y 1320 Hz, 120 ms cada uno, con rampas para que no haga clic.

@@ -738,6 +738,7 @@ private struct VideoTecnica: View {
     @Environment(\.dismiss) private var cerrar
     @State private var player: AVPlayer?
     @State private var fallo = false
+    @State private var sesionTomada = false
 
     var body: some View {
         NavigationStack {
@@ -765,8 +766,15 @@ private struct VideoTecnica: View {
             guard !Task.isCancelled else { return }
             await p.seek(to: CMTime(seconds: desde, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
             guard !Task.isCancelled else { return }
+            // Su propia sesión, como los videos de la guía y los audios del chat: así el pitido del descanso no la
+            // corta ni la silencia al soltar la suya (batería, 2.3.2).
+            SesionAudio.activar()
+            sesionTomada = true
             p.play()
         }
-        .onDisappear { player?.pause() }
+        .onDisappear {
+            player?.pause()
+            if sesionTomada { sesionTomada = false; SesionAudio.soltar() }
+        }
     }
 }
