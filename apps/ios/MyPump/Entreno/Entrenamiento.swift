@@ -53,17 +53,34 @@ final class Entrenamiento {
 
 /// El pitido del fin del descanso: dos tonos cortos, con la sesión `.ambient` que se mezcla con la música (no la corta)
 /// y respeta el silencio del teléfono.
+/// Al terminar de sonar suelta la sesión de audio (batería, 2.3.2): antes quedaba activa todo el entreno.
 @MainActor
-final class SonidoDescanso {
+final class SonidoDescanso: NSObject, AVAudioPlayerDelegate {
     private var reproductor: AVAudioPlayer?
 
     func reproducir() {
         let sesion = AVAudioSession.sharedInstance()
         try? sesion.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
         try? sesion.setActive(true)
-        if reproductor == nil { reproductor = try? AVAudioPlayer(data: Self.pitido, fileTypeHint: AVFileType.wav.rawValue) }
+        if reproductor == nil {
+            reproductor = try? AVAudioPlayer(data: Self.pitido, fileTypeHint: AVFileType.wav.rawValue)
+            reproductor?.delegate = self
+        }
         reproductor?.currentTime = 0
         reproductor?.play()
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in self.soltar() }
+    }
+
+    /// Solo si la sesión sigue siendo la del pitido (`.ambient`) y no volvió a sonar: si otra parte de la app la tomó
+    /// (un audio o un video), no se toca. La música de otra app no se entera (`mixWithOthers`).
+    private func soltar() {
+        guard reproductor?.isPlaying != true else { return }
+        let sesion = AVAudioSession.sharedInstance()
+        guard sesion.category == .ambient else { return }
+        try? sesion.setActive(false)
     }
 
     /// Un WAV de 16 bits armado en memoria: 880 Hz y 1320 Hz, 120 ms cada uno, con rampas para que no haga clic.

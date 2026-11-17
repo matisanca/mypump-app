@@ -345,7 +345,13 @@ private struct ListaEntreno: View {
                 }
                 // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre).
                 if !motor.vacio && !motor.todoHecho {
-                    TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    // Solo «En curso» cambia con el reloj (batería, 2.3.2): «Empezar» y «Sin cerrar» son fijos y no se
+                    // rearman cada segundo. El paso a «En curso» llega por el motor (Empezar o la primera serie).
+                    if case .enCurso = motor.cronometro() {
+                        TimelineView(.periodic(from: .now, by: 1)) { _ in
+                            cronometro(motor.cronometro())
+                        }
+                    } else {
                         cronometro(motor.cronometro())
                     }
                 }
@@ -424,7 +430,7 @@ private struct ListaEntreno: View {
                     .frame(maxWidth: .infinity)
             }
         case .enCurso(let texto, let porBoton):
-            CronometroSesion(texto: texto, detalle: porBoton ? nil : "Arrancó con tu primera serie") { cerrando = true }
+            CronometroSesion(texto: texto, detalle: porBoton ? nil : "Arrancó con tu primera serie", aLaVista: !tituloEnBarra) { cerrando = true }
         case .sinCerrar:
             VStack(alignment: .leading, spacing: Espacio.s) {
                 Label("Sin cerrar", systemImage: "clock.badge.exclamationmark")
@@ -569,9 +575,27 @@ private struct AvisoProgresion: View {
 private struct CronometroSesion: View {
     let texto: String
     let detalle: String?
+    /// El encabezado está en la pantalla (no quedó arriba del scroll).
+    var aLaVista = true
     let cerrar: () -> Void
     @State private var late = false
+    /// La pantalla está a la vista (no hay otra pestaña delante ni la página de un ejercicio encima).
+    @State private var presente = false
     @Environment(\.accessibilityReduceMotion) private var reducir
+
+    /// El punto late solo cuando se lo puede ver (batería, 2.3.2): antes animaba a la frecuencia de la pantalla todo el
+    /// entreno, también fuera de la vista. A la vista es el mismo latido.
+    private var latiendo: Bool { presente && aLaVista && !reducir }
+
+    private func latir(_ si: Bool) {
+        if si {
+            withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { late = true }
+        } else {
+            // Sin animación: corta el `repeatForever` y deja el punto quieto.
+            var t = Transaction(); t.disablesAnimations = true
+            withTransaction(t) { late = false }
+        }
+    }
 
     var body: some View {
         HStack(spacing: Espacio.s) {
@@ -582,10 +606,9 @@ private struct CronometroSesion: View {
                     Circle().stroke(Color.marcaVivo.opacity(0.5), lineWidth: 2)
                         .scaleEffect(late ? 2.2 : 1).opacity(late ? 0 : 1)
                 }
-                .onAppear {
-                    guard !reducir else { return }
-                    withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { late = true }
-                }
+                .onAppear { presente = true; latir(latiendo) }
+                .onDisappear { presente = false; latir(false) }
+                .onChange(of: latiendo) { _, si in latir(si) }
             VStack(alignment: .leading, spacing: 0) {
                 Text("En curso").textoCeja()
                 Text(texto)

@@ -1320,7 +1320,11 @@ public final class ModeloEntreno {
     /// El tick de la barra (cada 250 ms y al volver a primer plano). true la vez que termina: la app suena y vibra.
     @discardableResult
     public func tickDescanso() -> Bool {
-        let termino = descanso.tick(ahora: ahoraMs)
+        // El tick va cada 250 ms (la precisión del pitido), pero el texto y la barra cambian 1 vez por segundo: se
+        // asigna solo si cambió algo, para no redibujar a quien lo mira 3 de cada 4 veces (batería, 2.3.2).
+        var barra = descanso
+        let termino = barra.tick(ahora: ahoraMs)
+        if barra != descanso { descanso = barra }
         guardarDescanso()
         return termino
     }

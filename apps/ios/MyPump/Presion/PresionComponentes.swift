@@ -243,7 +243,8 @@ struct TemporizadorPresion: View {
     let alTerminar: () -> Void
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.5)) { t in
+        // Una vez por segundo, alineado al fin (batería, 2.3.2; antes cada 0,5 s): el número cambia en el mismo instante.
+        TimelineView(.periodic(from: fin.addingTimeInterval(-max(0, fin.timeIntervalSinceNow).rounded(.up)), by: 1)) { t in
             let falta = max(0, Int(fin.timeIntervalSince(t.date).rounded(.up)))
             Text(String(format: "%d:%02d", falta / 60, falta % 60))
                 .font(Archivo.fuente(56, relativoA: .largeTitle).monospacedDigit())

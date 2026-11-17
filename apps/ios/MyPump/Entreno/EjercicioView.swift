@@ -618,6 +618,9 @@ struct ImagenesMovimiento: View {
     var compacto = false
     @State private var fase = 0
     @State private var automatico = true
+    /// Se ve en la pantalla (batería, 2.3.2): fuera de la vista no se alternan. La página del ejercicio no es perezosa y
+    /// el bucle seguía mientras se cargaban las series o corría el descanso.
+    @State private var aLaVista = true
     @Environment(\.accessibilityReduceMotion) private var reducir
 
     private var urls: [URL?] { [inicio, pico] }
@@ -653,8 +656,9 @@ struct ImagenesMovimiento: View {
             .overlay(alignment: .bottom) {
                 if !compacto, inicio != nil, pico != nil { selector.padding(Espacio.s) }
             }
-            .task(id: automatico && !reducir && inicio != nil && pico != nil) {
-                guard automatico, !reducir, inicio != nil, pico != nil else { return }
+            .alVerse { aLaVista = $0 }
+            .task(id: automatico && !reducir && aLaVista && inicio != nil && pico != nil) {
+                guard automatico, !reducir, aLaVista, inicio != nil, pico != nil else { return }
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(1.6))
                     guard !Task.isCancelled else { return }
@@ -689,5 +693,33 @@ struct ImagenesMovimiento: View {
         .padding(3)
         .vidrio(Capsule())
         .frame(minHeight: 44)
+    }
+}
+
+private extension View {
+    /// Si la vista está en la pantalla: dentro del scroll (iOS 18) y con su página a la vista (otra pestaña o una página
+    /// encima la sacan). En iOS 17, solo lo segundo.
+    func alVerse(_ accion: @escaping (Bool) -> Void) -> some View {
+        modifier(AlVerse(accion: accion))
+    }
+}
+
+private struct AlVerse: ViewModifier {
+    let accion: (Bool) -> Void
+    @State private var enElScroll = true
+    @State private var presente = true
+
+    func body(content: Content) -> some View {
+        let base = content
+            .onAppear { presente = true; accion(enElScroll) }
+            .onDisappear { presente = false; accion(false) }
+        if #available(iOS 18, *) {
+            base.onScrollVisibilityChange(threshold: 0.01) { v in
+                enElScroll = v
+                accion(v && presente)
+            }
+        } else {
+            base
+        }
     }
 }
