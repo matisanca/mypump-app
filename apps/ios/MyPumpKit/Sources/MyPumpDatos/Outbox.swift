@@ -127,7 +127,8 @@ public actor Outbox {
     private var ultimaTanda: Set<String> = []
     private var rachaSinRed = 0
     /// El teléfono dice que no hay red (`NWPathMonitor`, lo pasa la app con `usarRed`). Sin red, un corte no programa
-    /// reintento: lo dispara la vuelta de la red (`ModeloApp.alVolverLaRed`), la vuelta a la app o lo próximo que se encole
+    /// reintento: lo dispara la vuelta de la red (`ModeloApp.alVolverLaRed`), la vuelta a la app o lo próximo que se encole (`encolar`
+    /// cancela el temporizador pendiente y sale ya)
     /// (batería, 2.3.2: antes reintentaba cada 30 s para siempre con la radio buscando señal).
     private var redCaida = false
     /// El carril de los audios: su pasada en curso, su temporizador y su racha (el backoff).
@@ -238,7 +239,13 @@ public actor Outbox {
         let op = Operacion(id: "\(Int64(ahora))_\(secuencia)", kind: kind, payload: payload.sinNoFinitos, dedupeKey: dedupeKey, ts: ahora)
         estado.ops.append(op)
         guardar()
-        if Self.esAudio(op) { reintentarAudiosAhora() } else { programar(en: .zero) }
+        if Self.esAudio(op) {
+            reintentarAudiosAhora()
+        } else {
+            // Una serie nueva sale ya: no espera el reintento que quedó programado (con mala señal, hasta 120 s).
+            temporizador?.cancel(); temporizador = nil
+            programar(en: .zero)
+        }
         return op
     }
 

@@ -71,4 +71,23 @@ struct BateriaOutboxTests {
         #expect(await o.pendientes == 0, "con red el reintento sale solo, como antes")
         #expect(await c.n == 2)
     }
+
+    /// Revisión del punto 6: con un reintento programado (acá 2 s; con mala señal hasta 120 s), una serie nueva no lo
+    /// espera: `encolar` lo cancela y sale ya, con lo que había pendiente.
+    @Test func loQueSeEncolaNoEsperaElReintentoProgramado() async {
+        let c = Contador()
+        let o = Outbox(archivo: nil, reintentoAutomatico: true) { _ in
+            await c.sumar()
+            if await c.caida { throw URLError(.timedOut) }
+            return .respuesta(.success(.texto("row-id")))
+        }
+        await o.encolar("carga", .objeto(["serie": .numero(1)]), dedupeKey: "k1")
+        await o.drenar()
+        for _ in 0..<20 where await c.n == 0 { try? await Task.sleep(for: .milliseconds(20)) }
+        #expect(await o.pendientes == 1, "la primera falló y quedó con el reintento programado")
+        await c.poner(false)
+        await o.encolar("carga", .objeto(["serie": .numero(2)]), dedupeKey: "k2")
+        for _ in 0..<16 where await o.pendientes > 0 { try? await Task.sleep(for: .milliseconds(50)) }
+        #expect(await o.pendientes == 0, "salió antes del reintento de 2 s")
+    }
 }
