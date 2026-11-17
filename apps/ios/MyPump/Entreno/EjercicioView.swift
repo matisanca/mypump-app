@@ -711,7 +711,9 @@ private struct AlVerse: ViewModifier {
 
     func body(content: Content) -> some View {
         let base = content
-            .onAppear { presente = true; accion(enElScroll) }
+            // Al aparecer se da por visible: si iOS 18 no vuelve a avisar con `onScrollVisibilityChange` (vuelta de otra
+            // página o pestaña), `enElScroll` no puede quedar en false y frenar las fotos para siempre.
+            .onAppear { presente = true; enElScroll = true; accion(true) }
             .onDisappear { presente = false; accion(false) }
         if #available(iOS 18, *) {
             base.onScrollVisibilityChange(threshold: 0.01) { v in
