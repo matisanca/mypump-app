@@ -3,18 +3,19 @@ import Foundation
 
 /// Las fotos de los ejercicios del catálogo, guardadas en el teléfono (batería, 2.3.2). El bucket público responde
 /// `cache-control: private, no-cache`, así que `AsyncImage` volvía a preguntar en cada aparición. Las fotos del catálogo no
-/// cambian bajo la misma URL: se guardan en memoria y en disco (`Caches/`, que iOS puede vaciar si falta lugar) y se
-/// vuelven a bajar recién pasada `vigencia`. Sin red, la guardada sirve aunque esté vencida. Dos pedidos de la misma foto
-/// a la vez son uno solo.
+/// suelen cambiar, pero la URL no lleva versión: se guardan en memoria y en disco (`Caches/`, que iOS puede vaciar si
+/// falta lugar) y pasada `vigencia` se revalidan con el `ETag` (`If-None-Match`): si no cambió, el servidor contesta 304
+/// sin la foto y la guardada vale otras 24 h. Sin red, la guardada sirve aunque esté vencida. Dos pedidos de la misma
+/// foto a la vez son uno solo.
 public final class CacheFotosCatalogo: @unchecked Sendable {
-    public typealias Bajar = @Sendable (URL) async throws -> (Data, URLResponse)
+    public typealias Bajar = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
     /// La de la app: `Caches/fotos-catalogo`.
     public static let compartida = CacheFotosCatalogo(
         carpeta: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("fotos-catalogo"))
 
-    /// Cuánto vale una foto guardada antes de volver a bajarla.
-    public static let vigencia: TimeInterval = 7 * 24 * 3600
+    /// Cuánto vale una foto guardada antes de revalidarla (revisión: la URL no lleva versión; antes eran 7 días).
+    public static let vigencia: TimeInterval = 24 * 3600
 
     private let memoria = NSCache<NSURL, NSData>()
     private let carpeta: URL?
@@ -36,7 +37,7 @@ public final class CacheFotosCatalogo: @unchecked Sendable {
             config.requestCachePolicy = .reloadIgnoringLocalCacheData
             config.timeoutIntervalForRequest = 30
             let sesion = URLSession(configuration: config)
-            self.bajar = { url in try await sesion.data(from: url) }
+            self.bajar = { pedido in try await sesion.data(for: pedido) }
         }
         if let carpeta { try? FileManager.default.createDirectory(at: carpeta, withIntermediateDirectories: true) }
     }
@@ -54,7 +55,7 @@ public final class CacheFotosCatalogo: @unchecked Sendable {
         }
         let tarea: Task<Data?, Never> = lock.withLock {
             if let t = enVuelo[url] { return t }
-            let t = Task { await self.traer(url) }
+            let t = Task { await self.traer(url, guardada: guardada) }
             enVuelo[url] = t
             return t
         }
@@ -66,20 +67,44 @@ public final class CacheFotosCatalogo: @unchecked Sendable {
         return nil
     }
 
-    private func traer(_ url: URL) async -> Data? {
-        guard let (d, r) = try? await bajar(url), (r as? HTTPURLResponse)?.statusCode == 200, !d.isEmpty else { return nil }
+    private func traer(_ url: URL, guardada: (datos: Data, vencida: Bool, etag: String?)?) async -> Data? {
+        var pedido = URLRequest(url: url)
+        if let etag = guardada?.etag { pedido.setValue(etag, forHTTPHeaderField: "If-None-Match") }
+        guard let (d, r) = try? await bajar(pedido), let http = r as? HTTPURLResponse else { return nil }
+        let archivo = archivo(url)
+        // No cambió: la guardada vale otra vigencia, sin bajarla de nuevo.
+        if http.statusCode == 304, let g = guardada {
+            if let archivo { try? FileManager.default.setAttributes([.modificationDate: ahora()], ofItemAtPath: archivo.path) }
+            guardarMemoria(url, g.datos)
+            return g.datos
+        }
+        guard http.statusCode == 200, !d.isEmpty else { return nil }
         guardarMemoria(url, d)
-        if let archivo = archivo(url) { try? d.write(to: archivo, options: .atomic) }
+        if let archivo {
+            try? d.write(to: archivo, options: .atomic)
+            try? FileManager.default.setAttributes([.modificationDate: ahora()], ofItemAtPath: archivo.path)
+            let marca = Self.archivoEtag(archivo)
+            if let etag = http.value(forHTTPHeaderField: "ETag"), !etag.isEmpty {
+                try? Data(etag.utf8).write(to: marca, options: .atomic)
+            } else {
+                try? FileManager.default.removeItem(at: marca)
+            }
+        }
         return d
     }
 
+    private static func archivoEtag(_ archivo: URL) -> URL { archivo.appendingPathExtension("etag") }
+
     private func guardarMemoria(_ url: URL, _ d: Data) { memoria.setObject(d as NSData, forKey: url as NSURL, cost: d.count) }
 
-    private func leerDisco(_ url: URL) -> (datos: Data, vencida: Bool)? {
+    private func leerDisco(_ url: URL) -> (datos: Data, vencida: Bool, etag: String?)? {
         guard let archivo = archivo(url), let d = try? Data(contentsOf: archivo), !d.isEmpty else { return nil }
-        let fecha = (try? archivo.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+        let fecha = (try? FileManager.default.attributesOfItem(atPath: archivo.path))?[.modificationDate] as? Date ?? .distantPast
         let edad = ahora().timeIntervalSince(fecha)
-        return (d, edad < 0 || edad >= Self.vigencia)
+        let vencida = edad < 0 || edad >= Self.vigencia
+        // El ETag se lee solo si hace falta revalidar.
+        let etag = vencida ? (try? Data(contentsOf: Self.archivoEtag(archivo))).flatMap { String(data: $0, encoding: .utf8) } : nil
+        return (d, vencida, etag)
     }
 
     private func archivo(_ url: URL) -> URL? {
