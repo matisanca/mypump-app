@@ -1,5 +1,5 @@
 {
- "_": "Presión, solo de las apps (todavía no en la web: public/js/presion.js de main sigue con el texto fijo de «no cuenta» y «Ya esperé»). Por qué no cuenta una toma (Presion.motivosNoCuenta), el texto que lo dice (TextosPresion.T.noCuentaPor) y los textos del aviso del reposo (TextosPresion.A). `mensaje` es lo que ve el alumno (null si la toma cuenta). Se edita a mano; lo leen PresionNoCuentaTest.kt y PresionNoCuentaTests.swift. La regla clínica no cambia: `texto` es lo que ya da evaluarSesion.",
+ "_": "Presión, igual en las apps y en la web. Por qué no cuenta una toma (Presion.motivosNoCuenta; motivosNoCuenta en public/js/presion.js), el texto que lo dice (TextosPresion.T.noCuentaPor; T.noCuentaPor en la web) y los textos del aviso del reposo (TextosPresion.A; A en la web). `mensaje` es lo que ve el alumno (null si la toma cuenta). Se edita a mano y la copia de la web (scripts/vectores-app/presion_no_cuenta.json) tiene que quedar igual; lo leen PresionNoCuentaTest.kt, PresionNoCuentaTests.swift y scripts/test-presion.mjs. La regla clínica no cambia: `texto` es lo que ya da evaluarSesion.",
  "casos": [
   {
    "nombre": "reposo salteado con «No puedo esperar» y «Anotar igual»",
