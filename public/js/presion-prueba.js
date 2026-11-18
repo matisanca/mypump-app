@@ -7,7 +7,7 @@
 
    USO:  npx serve public -l <puerto>
          http://localhost:<puerto>/cliente.html?demo=1&presionprueba=inicio[&tema=oscuro][&letra=150]
-   pantallas: inicio, antes, antesmedir, antesaparato, medir, cuando, evitar, como, previas, reposo, anotar, confirmar,
+   pantallas: inicio, antes, antesmedir, antesaparato, medir, cuando, evitar, como, previas, reposo, reposoaviso, anotar, confirmar,
               espera, guardia, guardiasintomas, sintoma, listo, orto, pendiente
    la tarjeta de arriba en Entreno (no abre Presión): tarjeta-toma, tarjeta-seguir, tarjeta-repetir, tarjeta-preparar, tarjeta-hoylisto
    directo (como un aviso con destino presion): directo-toma, directo-repetir, directo-preparar
@@ -80,7 +80,7 @@
     if (directo) UI.abrirDirecto('train'); else if (!enEntreno) UI.abrir('misdatos');
     const u = UI._ui, a = (n, b) => UI._accion(n, b);
     const no = () => { u.previas = { cafeina: 'no', fumo: 'no', comida: 'no', ejercicio: 'no' }; };
-    const hastaAnotar = async () => { a('toma'); a('seguirCuando'); await a('seguirComo'); no(); await a('medirIgual'); await a('saltear'); };
+    const hastaAnotar = async () => { a('toma'); a('seguirCuando'); await a('seguirComo'); no(); await a('medirIgual'); a('saltear'); await a('anotarIgual'); };
     const anotar = async (sis, dia_, pulso) => { u.toma = { sis: String(sis), dia: String(dia_), pulso: String(pulso), irregular: false }; await a('confirmar'); };
     switch (pantalla) {
       case 'antes': a('principal'); break;
@@ -92,6 +92,7 @@
       case 'como': a('toma'); a('seguirCuando'); break;
       case 'previas': a('toma'); a('seguirCuando'); await a('seguirComo'); u.previas = { cafeina: 'no', fumo: 'no' }; break;
       case 'reposo': a('toma'); a('seguirCuando'); await a('seguirComo'); no(); await a('medirIgual'); break;
+      case 'reposoaviso': a('toma'); a('seguirCuando'); await a('seguirComo'); no(); await a('medirIgual'); a('saltear'); break;
       case 'anotar': await hastaAnotar(); u.toma = { sis: '124', dia: '78', pulso: '62', irregular: false }; break;
       case 'confirmar': await hastaAnotar(); u.toma = { sis: '166', dia: '98', pulso: '72', irregular: false }; await a('anotar'); break;
       case 'espera': await hastaAnotar(); await anotar(186, 112, 84); break;

@@ -479,7 +479,7 @@
       await this._guardarCurso();
       this._avisar();
     }
-    /** «Ya esperé»: mide sin el temporizador. Solo en el reposo de la toma sentado. */
+    /** «Anotar igual», después de «No puedo esperar» y su aviso: mide sin el temporizador. Solo en el reposo de la toma sentado. */
     async saltearReposo() {
       const c = this.curso;
       if (!c || c.etapa !== 'reposo' || GUIADAS.indexOf(c.sesion.tipo) !== -1) return;
@@ -624,6 +624,14 @@
       this._avisar();
       this.drenar().catch(() => {});
       return c.etapa;
+    }
+
+    /** Lo que lee el alumno cuando la toma no cuenta: el motivo real de esta sesión (reposo salteado, previas marcadas o ambas).
+        null si cuenta o en una repetición reconstruida. Gemelo de ModeloPresion.mensajeNoCuenta de las apps. */
+    mensajeNoCuenta() {
+      const c = this.curso;
+      if (!c || c.reconstruida || !c.cierre || !c.cierre.noCuenta) return null;
+      return P.T.noCuentaPor(P.motivosNoCuenta(c.sesion));
     }
 
     /** Cierra la sesión en curso (lo anotado ya está en la cola). */

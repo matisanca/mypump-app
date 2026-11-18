@@ -205,6 +205,24 @@
     };
   }
 
+  /* Por qué no cuenta una toma, para decírselo al alumno con `T.noCuentaPor`. Solo lo que se sabe: un reposo sin dato no es un motivo.
+     En la de bajo efecto las previas no se preguntan (el estimulante ya está), sí si entrenó entre la dosis y la toma.
+     Orden fijo: cafeina, fumo, comida, ejercicio, entreno_entre_dosis, reposo. Gemelo de Presion.motivosNoCuenta (iOS y Android).
+     No cambia la regla: si cuenta o no lo sigue diciendo `evaluarSesion`. */
+  function motivosNoCuenta(s) {
+    const m = [], p = s.previo || {};
+    if (s.tipo === 'bajo_efecto') {
+      if (s.entreno_entre_dosis_y_toma === true) m.push('entreno_entre_dosis');
+    } else {
+      if (p.cafeina) m.push('cafeina');
+      if (p.fumo) m.push('fumo');
+      if (p.comida) m.push('comida');
+      if (p.ejercicio) m.push('ejercicio');
+    }
+    if (s.temporizador_salteado === true || s.reposo_cumplido === false) m.push('reposo');
+    return m;
+  }
+
   function categoria(p) {
     if (p.sis >= 150 || p.dia >= 95) return 'hipertension_casa_estadio_2';
     if (p.sis >= 135 || p.dia >= 85) return 'hipertension_casa';
@@ -386,7 +404,33 @@
     latidoIrregular: 'Gracias, seguí como siempre.',
     revisarNumero: 'Revisá el número que anotaste. Si podés, sacale una foto a la pantalla del aparato.',
     revisarNumeroSinFoto: 'Revisá el número que anotaste.',
+    // El texto fijo de antes: sigue en presion.json, pero la pantalla dice el motivo real con `noCuentaPor`.
     noCuenta: 'Esta no cuenta. Hacé otra otro día, antes del café y del preentreno.',
+    /* «Esta toma no cuenta» con el motivo real de esa sesión (`motivosNoCuenta`) y qué hacer la próxima vez. Sin motivos conocidos,
+       solo que no cuenta y que haga otra. Gemelo de TextosPresion.T.noCuentaPor (iOS y Android); lo fija vectores-app/presion_no_cuenta.json. */
+    noCuentaPor(motivos) {
+      const unir = (xs) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}`);
+      const tiene = (k) => motivos.indexOf(k) !== -1;
+      const frases = ['Esta toma no cuenta.'];
+      const mediaHora = [];
+      if (tiene('cafeina')) mediaHora.push('tomaste café, mate, energizante o preentreno');
+      if (tiene('fumo')) mediaHora.push('fumaste o vapeaste');
+      if (tiene('comida')) mediaHora.push('comiste');
+      if (mediaHora.length) frases.push(`En la última media hora ${unir(mediaHora)}.`);
+      if (tiene('ejercicio')) frases.push('Entrenaste en la última hora.');
+      if (tiene('entreno_entre_dosis')) frases.push('Entrenaste entre la dosis y la toma.');
+      const reposo = tiene('reposo');
+      if (reposo) frases.push('No esperaste los 5 minutos sentado.');
+      const antes = [];
+      if (tiene('cafeina')) antes.push('tomar café, mate, energizante o preentreno');
+      if (tiene('fumo')) antes.push('fumar o vapear');
+      if (tiene('comida')) antes.push('comer');
+      if (tiene('ejercicio') || tiene('entreno_entre_dosis')) antes.push('entrenar');
+      if (antes.length) frases.push(`La próxima, medite antes de ${unir(antes.map((x, i) => (i === 0 ? x : `de ${x}`)))}.`);
+      if (reposo) frases.push(antes.length ? 'Quedate sentado y quieto hasta que terminen los 5 minutos.' : 'La próxima, quedate sentado y quieto hasta que terminen los 5 minutos.');
+      frases.push('Hacé otra toma otro día.');
+      return frases.join(' ');
+    },
     recordatorioManana: 'Buen día, te toca la presión antes de desayunar.',
   };
 
@@ -411,6 +455,7 @@
       ejercicio: '¿Entrenaste en la última hora?',
     },
     esperarMejor: 'Mejor esperá un rato y medite después.', esperar: 'Esperar', medirIgual: 'Medirme igual',
+    // `saltear` es el de antes (sigue en presion.json): el reposo ahora se deja con `A.reposoSalir` y su aviso.
     reposo: 'Quedate 5 minutos quieto, sin hablar ni mirar el celular', saltear: 'Ya esperé',
     alta: 'Alta', baja: 'Baja', pulso: 'Pulso', irregular: 'El aparato mostró el símbolo de latido irregular',
     anotar: 'Anotar la toma', confirmar: 'Sí, es ese número', corregir: 'Corregir',
@@ -432,9 +477,18 @@
     graficoAlt: (n) => `Gráfico con tus ${n} tomas, alta y baja, por día.`,
   };
 
+  /** Los del aviso del reposo, iguales a TextosPresion.A de las apps. No están en presion.json: los fija vectores-app/presion_no_cuenta.json.
+      El reposo no se saltea con un toque: primero avisa que así la toma no cuenta, y lo principal es seguir esperando. */
+  const A = {
+    reposoSalir: 'No puedo esperar',
+    reposoAviso: 'Si no esperás los 5 minutos sentado, esta toma no cuenta para el promedio.',
+    seguirEsperando: 'Seguir esperando',
+    anotarIgual: 'Anotar igual',
+  };
+
   const API = {
-    LIM, ESPERA_REPETICION_S, REPOSO_S, RECORDATORIO_MIN, SIN_REPETIR_MIN, ALARMA, OTROS, SINTOMAS, T, N,
-    validarToma, nivelToma, deAlarma, tramoBrazo, manguitoCalza, metodo, momento, pasos, ortostatica, evaluarSesion, categoria, resumenSerie, media,
+    LIM, ESPERA_REPETICION_S, REPOSO_S, RECORDATORIO_MIN, SIN_REPETIR_MIN, ALARMA, OTROS, SINTOMAS, T, N, A,
+    validarToma, nivelToma, deAlarma, tramoBrazo, manguitoCalza, metodo, momento, pasos, ortostatica, evaluarSesion, motivosNoCuenta, categoria, resumenSerie, media,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.Presion = API;
