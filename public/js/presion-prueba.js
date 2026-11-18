@@ -7,7 +7,7 @@
 
    USO:  npx serve public -l <puerto>
          http://localhost:<puerto>/cliente.html?demo=1&presionprueba=inicio[&tema=oscuro][&letra=150]
-   pantallas: inicio, antes, antesmedir, antesaparato, medir, cuando, evitar, como, previas, reposo, anotar, confirmar,
+   pantallas: inicio, antes, antesmedir, antesaparato, medir, cuando, evitar, como, previas, reposo, reposoaviso, anotar, confirmar,
               espera, guardia, guardiasintomas, sintoma, listo, orto, pendiente
    la tarjeta de arriba en Entreno (no abre Presión): tarjeta-toma, tarjeta-seguir, tarjeta-repetir, tarjeta-preparar, tarjeta-hoylisto
    directo (como un aviso con destino presion): directo-toma, directo-repetir, directo-preparar
