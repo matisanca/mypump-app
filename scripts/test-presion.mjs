@@ -15,7 +15,8 @@ const require = createRequire(import.meta.url);
 const P = require('../public/js/presion.js');
 const { ModeloPresion, arrancar, almacenMemoria, decodificarEstado, fechaLocal, leerMedida } = require('../public/js/presion-cola.js');
 const V = JSON.parse(fs.readFileSync(new URL('./vectores-app/presion.json', import.meta.url), 'utf8'));
-const { T, N } = P;
+const VNC = JSON.parse(fs.readFileSync(new URL('./vectores-app/presion_no_cuenta.json', import.meta.url), 'utf8'));
+const { T, N, A } = P;
 
 let ok = 0;
 async function caso(n, f) { try { await f(); ok++; } catch (e) { console.error('MAL', n, '\n', e.stack || e); process.exitCode = 1; } }
@@ -67,6 +68,29 @@ await caso('textos: nada de lo que el alumno no ve, ni signos prohibidos', () =>
   juntar(V.textos); juntar(V.propios);
   for (const s of hojas) {
     for (const mal of [/\bIA\b/, /inteligencia artificial/i, /tu coach/i, /tu entrenador/i, /hipertensi/i, /\bnormal\b/i, /riesgo/i, /no entren/i, /ya me llegó/i]) assert.ok(!mal.test(s), `${mal} en «${s}»`);
+    assert.ok(!/[:;]|\s-\s|—|–/.test(s), `signo prohibido en «${s}»`);
+  }
+});
+
+// ── 1b. «No cuenta» con el motivo real: el vector compartido con las apps (apps/shared/vectores/presion_no_cuenta.json) ──
+await caso(`vectores no cuenta: motivos y mensaje (${VNC.casos.length})`, () => {
+  assert.deepEqual(Object.keys(VNC).sort(), ['_', 'casos', 'propios']);
+  assert.ok(VNC.casos.length > 0);
+  for (const v of VNC.casos) {
+    const ev = P.evaluarSesion(v.entrada);
+    igual(ev.texto, v.sale.texto, `${v.nombre}: texto`);
+    igual(P.motivosNoCuenta(v.entrada), v.sale.motivos, `${v.nombre}: motivos`);
+    igual(ev.texto === 'toma_no_cuenta' ? T.noCuentaPor(P.motivosNoCuenta(v.entrada)) : null, v.sale.mensaje, `${v.nombre}: mensaje`);
+  }
+});
+await caso('vectores no cuenta: los textos del aviso del reposo, uno por uno', () => {
+  assert.deepEqual(Object.keys(A).sort(), Object.keys(VNC.propios).sort());
+  for (const k of Object.keys(VNC.propios)) igual(A[k], VNC.propios[k], `A.${k}`);
+});
+await caso('vectores no cuenta: nada prohibido en los mensajes ni en el aviso', () => {
+  const hojas = [...VNC.casos.map((v) => v.sale.mensaje).filter(Boolean), ...Object.values(VNC.propios)];
+  for (const s of hojas) {
+    for (const mal of [/\bIA\b/, /inteligencia artificial/i, /tu coach/i, /tu entrenador/i, /hipertensi/i, /\bnormal\b/i, /riesgo/i, /no entren/i]) assert.ok(!mal.test(s), `${mal} en «${s}»`);
     assert.ok(!/[:;]|\s-\s|—|–/.test(s), `signo prohibido en «${s}»`);
   }
 });
@@ -272,6 +296,7 @@ await caso('toma común: se guarda, se manda entera y suma el día', async () =>
   assert.equal(s.lista_espera, null);
   assert.deepEqual(s.tomas.map((t) => [t.orden, t.posicion, t.brazo, t.sis, t.dia, t.pulso, t.latido_irregular, t.confirmada_por_alumno]), [[1, 'sentado', 'izq', 124, 78, 62, false, false]]);
   assert.deepEqual(m.curso.cierre, { noCuenta: false, agua: false, mareo: false, irregular: false, completa: false });
+  assert.equal(m.mensajeNoCuenta(), null);
   await m.cerrar();
   assert.equal(m.curso, null);
   assert.equal(m.sesiones[0].tomas[0].sis, 124);
@@ -291,6 +316,7 @@ await caso('con un Sí en las preguntas o salteando el reposo, la toma no cuenta
   assert.equal(await m.anotar(toma(124, 78)), 'listo');
   assert.equal(m.curso.cierre.noCuenta, true);
   assert.equal(m.curso.sesion.texto_alumno, 'toma_no_cuenta');
+  assert.equal(m.mensajeNoCuenta(), T.noCuentaPor(['cafeina']));
   await m.cerrar();
   await m.empezar('estandar');
   await m.responderPrevias(NO);
@@ -301,6 +327,17 @@ await caso('con un Sí en las preguntas o salteando el reposo, la toma no cuenta
   assert.equal(m.curso.sesion.reposo_cumplido, false);
   assert.equal(m.curso.cierre.noCuenta, true);
   assert.equal(m.curso.cierre.completa, false);
+  assert.equal(m.mensajeNoCuenta(), T.noCuentaPor(['reposo']));
+});
+await caso('«No cuenta» no se dice en una repetición reconstruida, ni con un reposo sin dato inventa el motivo', async () => {
+  const m = await modelo(doble());
+  await hastaAnotar(m, 'estandar', { ...NO, comida: true });
+  await m.anotar(toma(124, 78));
+  assert.equal(m.mensajeNoCuenta(), T.noCuentaPor(['comida']));
+  m.curso.reconstruida = true;
+  assert.equal(m.mensajeNoCuenta(), null);
+  igual(P.motivosNoCuenta({ tipo: 'estandar', previo: NO, reposo_cumplido: null, temporizador_salteado: null }), []);
+  assert.equal(T.noCuentaPor([]), 'Esta toma no cuenta. Hacé otra toma otro día.');
 });
 await caso('«Esperar» en las preguntas: no queda ni se manda nada', async () => {
   const d = doble();
@@ -686,6 +723,7 @@ await caso('bajo efecto: hora de la dosis y entreno; si entrenó no cuenta', asy
   await m.anotar(toma(130, 82));
   assert.equal(m.curso.sesion.dosis_estimulante_hora, null);
   assert.equal(m.curso.cierre.noCuenta, true);
+  assert.equal(m.mensajeNoCuenta(), T.noCuentaPor(['entreno_entre_dosis']));
 });
 await caso('ortostática: 3 pasos con su reloj; el minuto 3 se cuenta desde que se paró', async () => {
   const d = doble({ serie: { ...SERIE, ortostatica: 'acostado_parado' } });

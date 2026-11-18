@@ -1,0 +1,574 @@
+{
+ "_": "Presión, igual en las apps y en la web. Por qué no cuenta una toma (Presion.motivosNoCuenta; motivosNoCuenta en public/js/presion.js), el texto que lo dice (TextosPresion.T.noCuentaPor; T.noCuentaPor en la web) y los textos del aviso del reposo (TextosPresion.A; A en la web). `mensaje` es lo que ve el alumno (null si la toma cuenta). Se edita a mano y la copia de la web (scripts/vectores-app/presion_no_cuenta.json) tiene que quedar igual; lo leen PresionNoCuentaTest.kt, PresionNoCuentaTests.swift y scripts/test-presion.mjs. La regla clínica no cambia: `texto` es lo que ya da evaluarSesion.",
+ "casos": [
+  {
+   "nombre": "reposo salteado con «No puedo esperar» y «Anotar igual»",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": false,
+    "temporizador_salteado": true,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "reposo"
+    ],
+    "mensaje": "Esta toma no cuenta. No esperaste los 5 minutos sentado. La próxima, quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "café, mate, energizante o preentreno",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": true,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "cafeina"
+    ],
+    "mensaje": "Esta toma no cuenta. En la última media hora tomaste café, mate, energizante o preentreno. La próxima, medite antes de tomar café, mate, energizante o preentreno. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "cigarrillo o vapeador",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": true,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "fumo"
+    ],
+    "mensaje": "Esta toma no cuenta. En la última media hora fumaste o vapeaste. La próxima, medite antes de fumar o vapear. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "comida",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": true,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "comida"
+    ],
+    "mensaje": "Esta toma no cuenta. En la última media hora comiste. La próxima, medite antes de comer. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "ejercicio en la última hora",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": true
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "ejercicio"
+    ],
+    "mensaje": "Esta toma no cuenta. Entrenaste en la última hora. La próxima, medite antes de entrenar. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "café y reposo salteado",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": true,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": false,
+    "temporizador_salteado": true,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "cafeina",
+     "reposo"
+    ],
+    "mensaje": "Esta toma no cuenta. En la última media hora tomaste café, mate, energizante o preentreno. No esperaste los 5 minutos sentado. La próxima, medite antes de tomar café, mate, energizante o preentreno. Quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "café, cigarrillo y comida",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": true,
+     "fumo": true,
+     "comida": true,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "cafeina",
+     "fumo",
+     "comida"
+    ],
+    "mensaje": "Esta toma no cuenta. En la última media hora tomaste café, mate, energizante o preentreno, fumaste o vapeaste y comiste. La próxima, medite antes de tomar café, mate, energizante o preentreno, de fumar o vapear y de comer. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "todas las previas y reposo salteado",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": true,
+     "fumo": true,
+     "comida": true,
+     "ejercicio": true
+    },
+    "reposo_cumplido": false,
+    "temporizador_salteado": true,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "cafeina",
+     "fumo",
+     "comida",
+     "ejercicio",
+     "reposo"
+    ],
+    "mensaje": "Esta toma no cuenta. En la última media hora tomaste café, mate, energizante o preentreno, fumaste o vapeaste y comiste. Entrenaste en la última hora. No esperaste los 5 minutos sentado. La próxima, medite antes de tomar café, mate, energizante o preentreno, de fumar o vapear, de comer y de entrenar. Quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "ejercicio y reposo salteado",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": true
+    },
+    "reposo_cumplido": false,
+    "temporizador_salteado": true,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "ejercicio",
+     "reposo"
+    ],
+    "mensaje": "Esta toma no cuenta. Entrenaste en la última hora. No esperaste los 5 minutos sentado. La próxima, medite antes de entrenar. Quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "reposo no cumplido sin marca de salteado",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": false,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "reposo"
+    ],
+    "mensaje": "Esta toma no cuenta. No esperaste los 5 minutos sentado. La próxima, quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "reposo sin dato: no se inventa el motivo",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": null,
+    "temporizador_salteado": null,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [],
+    "mensaje": "Esta toma no cuenta. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "toma que cuenta: sin motivos",
+   "entrada": {
+    "tipo": "estandar",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": null,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "ninguno",
+    "motivos": [],
+    "mensaje": null
+   }
+  },
+  {
+   "nombre": "bajo efecto, entrenó entre la dosis y la toma",
+   "entrada": {
+    "tipo": "bajo_efecto",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": true,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "entreno_entre_dosis"
+    ],
+    "mensaje": "Esta toma no cuenta. Entrenaste entre la dosis y la toma. La próxima, medite antes de entrenar. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "bajo efecto, reposo salteado; las previas no se preguntan",
+   "entrada": {
+    "tipo": "bajo_efecto",
+    "previo": {
+     "cafeina": true,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": false,
+    "temporizador_salteado": true,
+    "entreno_entre_dosis_y_toma": false,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "reposo"
+    ],
+    "mensaje": "Esta toma no cuenta. No esperaste los 5 minutos sentado. La próxima, quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "bajo efecto, entrenó y reposo salteado",
+   "entrada": {
+    "tipo": "bajo_efecto",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": false,
+    "temporizador_salteado": true,
+    "entreno_entre_dosis_y_toma": true,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "toma_no_cuenta",
+    "motivos": [
+     "entreno_entre_dosis",
+     "reposo"
+    ],
+    "mensaje": "Esta toma no cuenta. Entrenaste entre la dosis y la toma. No esperaste los 5 minutos sentado. La próxima, medite antes de entrenar. Quedate sentado y quieto hasta que terminen los 5 minutos. Hacé otra toma otro día."
+   }
+  },
+  {
+   "nombre": "bajo efecto válida: sin motivos",
+   "entrada": {
+    "tipo": "bajo_efecto",
+    "previo": {
+     "cafeina": false,
+     "fumo": false,
+     "comida": false,
+     "ejercicio": false
+    },
+    "reposo_cumplido": true,
+    "temporizador_salteado": false,
+    "entreno_entre_dosis_y_toma": false,
+    "sintomas": [],
+    "lista_espera": null,
+    "minutos_desde_ultima": 0,
+    "tomas": [
+     {
+      "orden": 1,
+      "posicion": "sentado",
+      "sis": 124,
+      "dia": 78,
+      "pulso": 62,
+      "latido_irregular": false
+     }
+    ]
+   },
+   "sale": {
+    "texto": "ninguno",
+    "motivos": [],
+    "mensaje": null
+   }
+  }
+ ],
+ "propios": {
+  "reposoSalir": "No puedo esperar",
+  "reposoAviso": "Si no esperás los 5 minutos sentado, esta toma no cuenta para el promedio.",
+  "seguirEsperando": "Seguir esperando",
+  "anotarIgual": "Anotar igual"
+ }
+}

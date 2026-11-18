@@ -14,7 +14,7 @@
 
   const P = raiz.Presion;
   const D = raiz.PresionDibujos;
-  const { T, N } = P;
+  const { T, N, A } = P;
   const FLAG = 'mypump_palanca_presion_app';
   const SEG_ENTRE_REFRESCOS = 60;
   const TRAMOS = ['estandar', 'grande', 'extra_grande', 'mas_52'];
@@ -25,6 +25,8 @@
     pila: [], enSesion: false, error: null, ocupado: false, ultimoHtml: null, presionando: false, pendiente: false, entrada: false,
     form: null, tras: null, medidaHecha: false, origen: 'misdatos', directo: false,
     previas: {}, previasAviso: false, be: { hora: '', entreno: null },
+    // El aviso de «No puedo esperar»: guarda el fin del reposo al que pertenece, así no queda prendido en otro reposo.
+    avisoSalir: null,
     toma: { sis: '', dia: '', pulso: '', irregular: false }, avisoNumero: null,
     marcados: {}, nota: '', recordatorio: {}, recordatorioDe: null, guardia: null,
     vozInicio: null, vozFin: null,
@@ -367,8 +369,13 @@
 
   function pReposo(m, c) {
     const guiada = c.sesion.tipo === 'ortostatica' || c.sesion.tipo === 'comparacion_brazos';
+    // Sin los 5 minutos la toma no cuenta: el botón no dice «ya esperé», primero avisa y lo principal es seguir esperando.
+    const aviso = !guiada && ui.avisoSalir != null && ui.avisoSalir === c.fin;
+    const salir = guiada ? '' : aviso
+      ? `<p class="pre-fuerte" id="preSaltearAviso">${e(A.reposoAviso)}</p>${boton('seguirEsperando', A.seguirEsperando, 'btn-primary')}${boton('anotarIgual', A.anotarIgual, 'btn-secondary')}`
+      : boton('saltear', A.reposoSalir, 'btn-secondary');
     return `${relojHtml(m, guiada ? etiquetaPaso(c) : N.reposo)}
-      ${guiada ? '' : boton('saltear', N.saltear, 'btn-secondary')}${meMaree(c)}${marcar()}`;
+      ${salir}${meMaree(c)}${marcar()}`;
   }
   function pParate(m, c) {
     const xs = T.ortostatica(c.variante === 'sentado_parado');
@@ -402,7 +409,7 @@
     const sigueOrto = !z.mareo && (s.tipo === 'estandar' || s.tipo === 'bajo_efecto') && !!serie && serie.id === s.serie_id && !!serie.ortostatica;
     const sigueToma = s.tipo === 'comparacion_brazos' && !!serie && serie.id === s.serie_id && !m.hoyListo && serie.faltan > 0;
     const cierre = z.mareo || sigueToma ? null : s.tipo === 'suelta' ? N.sintomaRecibido : z.completa ? T.listoSerie : z.noCuenta ? null : T.como(s.brazo)[7];
-    return `${parrafos([z.mareo ? T.mareoOrtostatica : null, z.noCuenta ? T.noCuenta : null, z.agua ? T.sentateAgua : null, z.irregular ? T.latidoIrregular : null, cierre], 'preListo')}
+    return `${parrafos([z.mareo ? T.mareoOrtostatica : null, z.noCuenta ? m.mensajeNoCuenta() : null, z.agua ? T.sentateAgua : null, z.irregular ? T.latidoIrregular : null, cierre], 'preListo')}
       ${sigueOrto ? boton('ortostatica', N.seguir) : sigueToma ? boton('tomaTrasBrazos', N.seguir) : boton('cerrarSesion', N.cerrar)}${marcar()}`;
   }
 
@@ -712,7 +719,24 @@
     medirIgual() { return ui.modelo.responderPrevias(Object.fromEntries(PREVIAS.map((k) => [k, ui.previas[k] === 'si']))); },
     esperar() { return ui.modelo.descartar().then(aInicio); },
     empezarPaso() { return ui.modelo.empezarPaso(); },
-    saltear() { return ui.modelo.saltearReposo(); },
+    /* «No puedo esperar»: todavía no saltea, avisa que así la toma no cuenta (lo dice la región de voz, que ya existe y siempre se oye).
+       El foco va a «Seguir esperando», el principal. */
+    saltear() {
+      const c = ui.modelo.curso;
+      if (!c || c.etapa !== 'reposo') return;
+      ui.avisoSalir = c.fin;
+      renderEscena();
+      decir(A.reposoAviso);
+      const b = document.getElementById('pre-seguirEsperando');
+      if (b) b.focus();
+    },
+    seguirEsperando() {
+      ui.avisoSalir = null;
+      renderEscena();
+      const b = document.getElementById('pre-saltear');
+      if (b) b.focus();
+    },
+    anotarIgual() { ui.avisoSalir = null; return ui.modelo.saltearReposo(); },
     meMaree() { return ui.modelo.meMaree(); },
     anotar() { return anotar(false); },
     confirmar() { return anotar(true); },
