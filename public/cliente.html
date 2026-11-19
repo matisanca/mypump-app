@@ -865,6 +865,11 @@ main{padding:var(--space-4)}
 .ex-prog-nota.is-mantener,.ex-prog-nota.is-calibracion{background:var(--color-bg-tertiary);border-color:var(--color-border);border-left-color:var(--color-text-muted)}
 .ex-prog-nota-lbl{font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--color-text-secondary)}
 .ex-prog-nota-txt{font-size:13px;line-height:1.45;color:var(--color-text-primary)}
+/* 2.3.3 (web_230): el objetivo de la semana va primero, en un recuadro verde suave con la letra del cuerpo (se leía poco). */
+.ex-nota-semana{display:flex;flex-direction:column;gap:6px;background:var(--color-brand-subtle);border:1px solid color-mix(in oklab,var(--color-brand) 35%,transparent);border-radius:16px;padding:14px 16px;margin-bottom:var(--space-3)}
+.ex-nota-semana-lbl{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700;color:var(--color-brand-text)}
+.ex-nota-semana-lbl svg{width:18px;height:18px;flex:0 0 auto}
+.ex-nota-semana-txt{font-size:17px;line-height:1.4;color:var(--color-text-primary)}
 .finish-cerrado-msg{text-align:center;font-size:14px;font-weight:600;color:var(--color-brand);padding:var(--space-2) 0}
 /* ── Dato de la sesión anterior (MEJORA 3) ── */
 .ex-prev-sesion{display:flex;align-items:baseline;gap:6px;margin-top:var(--space-1)}
@@ -1504,10 +1509,10 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .cs-redondo:active:not(:disabled){transform:scale(.88);opacity:.75}
 .cs-redondo:disabled{opacity:.4;cursor:default}
 .cs-redondo.is-grande{width:60px;height:60px;font-size:28px}
-.cs-carga-campo{display:flex;align-items:flex-end;gap:6px;min-height:60px;cursor:text;transform-origin:0 50%;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
-.cs-carga-num{width:calc(var(--cs-len,2) * 1ch + 4px);min-width:2ch;max-width:100%;border:0;background:none;text-align:left;font-family:var(--font-num);font-size:54px;line-height:1;font-weight:800;color:var(--color-text-primary);padding:0;border-radius:6px;transition:color .3s}
-.cs-carga-num.is-l4{font-size:48px}
-.cs-carga-num.is-l5{font-size:42px}
+.cs-carga-campo{display:flex;align-items:flex-end;gap:6px;min-height:52px;cursor:text;transform-origin:0 50%;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
+.cs-carga-num{width:calc(var(--cs-len,2) * 1ch + 4px);min-width:2ch;max-width:100%;border:0;background:none;text-align:left;font-family:var(--font-num);font-size:46px;line-height:1;font-weight:800;color:var(--color-text-primary);padding:0;border-radius:6px;transition:color .3s}
+.cs-carga-num.is-l4{font-size:44px}
+.cs-carga-num.is-l5{font-size:40px}
 .cs-carga-num::placeholder{color:var(--color-text-muted)}
 .cs-carga-num:focus{outline:none;box-shadow:0 3px 0 var(--color-brand)}
 .cs-carga-campo span{font-family:var(--font-num);font-size:20px;font-weight:700;color:var(--color-text-secondary);padding-bottom:6px}
@@ -1538,14 +1543,17 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .cs-pista:empty{display:none}
 /* Las series: una insignia por serie unida por un hilo que se pinta de verde con lo hecho. */
 .cs-filas{display:flex;flex-direction:column}
-.cs-fila{position:relative;display:flex;align-items:center;gap:var(--space-2);width:100%;min-height:56px;padding:4px 4px 4px 0;border:0;border-radius:12px;background:none;color:var(--color-text-secondary);font-size:16px;text-align:left;font-family:inherit}
-.cs-fila::before,.cs-fila::after{content:"";position:absolute;left:15px;width:2px;background:var(--color-bg-tertiary);pointer-events:none}
+.cs-fila{position:relative;display:flex;align-items:center;gap:var(--space-2);width:100%;min-height:56px;padding:4px 6px;border:0;border-radius:14px;background:none;color:var(--color-text-secondary);font-size:16px;text-align:left;font-family:inherit}
+.cs-fila::before,.cs-fila::after{content:"";position:absolute;left:21px;width:2px;background:var(--color-bg-tertiary);pointer-events:none}
 .cs-fila::before{top:0;height:calc(50% - 20px)}
 .cs-fila::after{bottom:0;height:calc(50% - 20px)}
 .cs-fila.sin-arriba::before,.cs-fila.sin-abajo::after{display:none}
 .cs-fila.ok-arriba::before,.cs-fila.ok-abajo::after{background:color-mix(in oklab,var(--color-brand) 60%,transparent)}
 .cs-fila.is-hecha{color:var(--color-text-primary);cursor:pointer}
-.cs-fila.is-activa{color:var(--color-text-primary)}
+/* 2.3.3: la serie que toca se distingue en la lista (como en Android: fondo suave, borde de 2 y esquinas de 14). */
+.cs-fila.is-activa{color:var(--color-text-primary);background:var(--color-brand-subtle);box-shadow:inset 0 0 0 2px var(--color-brand)}
+.cs-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.cs-ahora{color:var(--color-brand-text)}
 .cs-fila.is-corrigiendo{background:var(--color-brand-subtle)}
 .cs-punto{width:32px;height:32px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--color-bg-tertiary);font-family:var(--font-num);font-size:14px;font-weight:600;color:var(--color-text-secondary)}
 .cs-punto.is-activa{background:var(--color-brand-subtle);box-shadow:inset 0 0 0 2px var(--color-brand);color:var(--color-brand-text);font-weight:800}
@@ -1605,6 +1613,9 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 @media (max-height:700px){.cs-tambor{height:104px}.cs-tn b{font-size:64px}.cs-ok{min-height:54px!important}.cs-redondo.is-grande{width:56px;height:56px}}
 .cs-ok{position:relative;overflow:hidden;width:100%;min-height:60px;border:0;border-radius:999px;background:var(--color-brand) linear-gradient(to bottom,rgba(255,255,255,.10),transparent 50%);color:var(--color-on-brand);display:flex;align-items:center;justify-content:center;gap:10px;padding:6px 20px;font-family:var(--font-num);font-size:20px;font-weight:700;cursor:pointer;touch-action:manipulation;transition:background-color .25s,transform .12s;-webkit-tap-highlight-color:transparent}
 .cs-ok:active:not(:disabled){transform:scale(.965)}
+/* 2.3.3: el OK vuelve con el panel (después del teclado) entrando desde abajo; los toques de esos 500 ms no cuentan. */
+.cs-ok.is-vuelve{animation:cs-ok-vuelve .32s cubic-bezier(.4,0,.2,1)}
+@keyframes cs-ok-vuelve{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:none}}
 .cs-ok b{font-weight:800;font-size:24px}
 .cs-ok:disabled{background:var(--color-bg-tertiary);color:var(--color-text-secondary);cursor:default}
 .cs-ok.is-guardia{background-color:var(--color-alerta);color:#fff;font-family:var(--font-sans);font-size:17px;font-weight:700}
@@ -1622,7 +1633,7 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 .cs-terminado{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 0;color:var(--color-text-muted);font-size:13px}
 .cs-terminado i{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand);font-style:normal;font-size:22px;font-weight:800}
 .cs-terminado b{font-family:var(--font-num);font-size:17px;color:var(--color-text-primary)}
-@media (prefers-reduced-motion:reduce){.cs-punto.is-hecha,.cs-dif,.cs-deshacer,.cs-sello svg,.cs-carga-campo.is-encendido{animation:none}.cs-sello{animation-name:cs-sello}}
+@media (prefers-reduced-motion:reduce){.cs-punto.is-hecha,.cs-dif,.cs-deshacer,.cs-sello svg,.cs-carga-campo.is-encendido,.cs-ok.is-vuelve{animation:none}.cs-sello{animation-name:cs-sello}}
 body.cs-con-panel .rest-bar{display:none}
 body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--space-4))}
 /* Entreno como la app 2.0.3: métricas de la pauta, preparación (E1), título de series con la leyenda del RIR y récord (E3) */
@@ -6076,6 +6087,9 @@ let _csOkEnCurso = false;
 let _csCorr = null;            // {exId, idx, reps, kg, texto}: la serie que se está corrigiendo
 let _csAviso = null;           // lo que no se pudo registrar, en el panel
 let _csTeclado = false;
+// 2.3.3: el OK no toma toques durante 500 ms desde que el panel vuelve tras el teclado (CS.EsperaTrasTeclado).
+const _csReloj = { ahora: () => (typeof performance !== 'undefined' ? performance.now() : Date.now()) };
+const _csEspera = CS ? new CS.EsperaTrasTeclado(() => _csReloj.ahora()) : null;
 let _csGuardiaTimer = null;
 const _CS_DESHACER_MS = 6000;
 let _csSelloHasta = 0;
@@ -6206,7 +6220,7 @@ function _csCargaHtml(ex, s) {
     ${s.mismoPeso ? `<div class="cs-carga-fila">
       <div class="cs-carga-izq">
         <span class="cs-ceja">Carga</span>
-        <label class="cs-carga-campo${encendido ? ' is-encendido' : ''}"><input class="cs-carga-num${_csLargoKg(t)}" style="--cs-len:${t.length ? t.length : 2}" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Carga en kilos" value="${t}" data-cs-carga="${id}"><span aria-hidden="true">kg</span></label>
+        <label class="cs-carga-campo${encendido ? ' is-encendido' : ''}"><input class="cs-carga-num${_csLargoKg(t)}" style="--cs-len:${t.length ? t.length : 2}" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="—" aria-label="Carga en kilos" value="${t}" data-cs-carga="${id}"><span aria-hidden="true">kg</span></label>
         ${s.cargaUltimaVez != null ? `<span class="cs-tenue">La vez pasada ${_csKg(s.cargaUltimaVez)} kg</span>` : ''}
       </div>
       <div class="cs-carga-bot">
@@ -6238,10 +6252,10 @@ function _csFilasHtml(ex, s) {
       ? kgFila('')
       : `<span class="cs-kg-serie">
           <button class="cs-mini" data-cs-a="kg-menos" data-ex="${ex.id}" data-i="${i}" aria-label="Bajar el peso de la serie ${i + 1}"${h.kg == null ? ' disabled' : ''}>−</button>
-          <input class="cs-kg-input" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Peso de la serie ${i + 1} en kilos" value="${_csKg(h.kg)}" data-cs-kg="${ex.id}|${i}">
+          <input class="cs-kg-input" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="—" aria-label="Peso de la serie ${i + 1} en kilos" value="${_csKg(h.kg)}" data-cs-kg="${ex.id}|${i}">
           <button class="cs-mini" data-cs-a="kg-mas" data-ex="${ex.id}" data-i="${i}" aria-label="Subir el peso de la serie ${i + 1}"${h.kg == null ? ' disabled' : ''}>+</button>
         </span>`);
-    return `<div class="cs-fila${hilo}${activa ? ' is-activa' : ''}">${izq}${kg}</div>`;
+    return `<div class="cs-fila${hilo}${activa ? ' is-activa' : ''}"${activa ? ' data-cs-fila-activa' : ''}>${izq}${activa ? '<span class="cs-sr">La que toca ahora.</span>' : ''}${kg}</div>`;
   }).join('');
 }
 function _csPistaCalibracion(ex, s) {
@@ -6381,7 +6395,12 @@ function csPintarPanel() {
   if (!host) return;
   const exId = _csPanelEx();
   const s = exId ? _csDe(exId) : null;
-  if (!_csDebeVerse(exId, s)) { host.hidden = true; host.innerHTML = ''; _csMedirPanel(false); return; }
+  const seVe = _csDebeVerse(exId, s);
+  // Escondido por el teclado (y no por otra cosa): cuenta para la espera del OK al volver.
+  const porTeclado = !seVe && !!s && STATE.scene === 'train' && _csTeclado;
+  const volvio = !!_csEspera && _csEspera.oculto && seVe;
+  if (_csEspera) _csEspera.ver(porTeclado);
+  if (!seVe) { host.hidden = true; host.innerHTML = ''; _csMedirPanel(false); return; }
   host.hidden = false;
   let cuerpo;
   host.dataset.ex = exId;
@@ -6391,14 +6410,14 @@ function csPintarPanel() {
       ${_csDialHtml()}
       ${s.sinKg ? '' : `<div class="cs-corr-kg">
         <button class="cs-mini" data-cs-a="corr-kg-menos" aria-label="Bajar el peso">−</button>
-        <input class="cs-kg-input is-grande" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Peso de la serie en kilos" data-cs-corr-kg value="${_csKg(c.kg)}">
+        <input class="cs-kg-input is-grande" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="—" aria-label="Peso de la serie en kilos" data-cs-corr-kg value="${_csKg(c.kg)}">
         <button class="cs-mini" data-cs-a="corr-kg-mas" aria-label="Subir el peso">+</button>
       </div>`}
       ${_csAvisoHtml()}
       <button class="cs-ok" data-cs-a="corr-guardar">Guardar corrección</button>`;
   } else if (s.activa != null && !_CS_TERMINALES.has(getExStatus(exId))) {
     cuerpo = `${_csProgresoHtml(s, s.activa)}<div class="cs-p-top">
-        ${_avisoRecord && _avisoRecord.exId === exId ? `<b class="cs-record">${escapeHtml(_avisoRecord.texto)}</b>` : `<b>Serie ${s.activa + 1} de ${s.series.length}</b>`}
+        ${_avisoRecord && _avisoRecord.exId === exId ? `<b class="cs-record">${escapeHtml(_avisoRecord.texto)}</b>` : `<b role="heading" aria-level="3" data-cs-serie-ahora><span class="cs-ahora">Ahora:</span> serie ${s.activa + 1} de ${s.series.length}</b>`}
         <div class="cs-descanso" id="csDescanso"><span data-t></span><button class="cs-link" data-cs-a="saltar-descanso" hidden>Saltar</button></div>
       </div>
       ${_csDialHtml()}
@@ -6408,6 +6427,7 @@ function csPintarPanel() {
     cuerpo = `<div class="cs-terminado"><i aria-hidden="true">✓</i><b>Ejercicio completo</b><span>Tocá una serie si querés corregirla.</span></div>`;
   }
   host.innerHTML = `<div class="cs-p-inner">${cuerpo}</div>${_csFilaDeshacerHtml()}`;
+  if (volvio) host.querySelectorAll('.cs-ok').forEach(b => b.classList.add('is-vuelve'));
   _csRodar.reps = null;   // tambor nuevo: arranca quieto en el número
   _csPatchPanel();
   _csPintarDescanso();
@@ -6678,11 +6698,14 @@ function _csAccion(a, b) {
     case 'corregir': return csAbrirCorreccion(exId, i);
     case 'reps-menos': return _csAjustarReps(-1);
     case 'reps-mas': return _csAjustarReps(1);
-    case 'ok': { unlockAudio(); const s = _csDe(exId); if (s && s.activa != null) csOK(exId, s.activa); return; }
+    case 'ok': {
+      if (_csEspera && !_csEspera.admite()) return;   // el toque que soltó el peso (o uno apurado detrás): sin aviso
+      unlockAudio(); const s = _csDe(exId); if (s && s.activa != null) csOK(exId, s.activa); return;
+    }
     case 'deshacer': return csDeshacer();
     case 'saltar-descanso': return stopRest();
     case 'corr-cancelar': return csCerrarCorreccion();
-    case 'corr-guardar': return csGuardarCorreccion();
+    case 'corr-guardar': if (_csEspera && !_csEspera.admite()) return; return csGuardarCorreccion();
     case 'corr-kg-menos': case 'corr-kg-mas': {
       const s = _csDe(exId);
       if (!_csCorr || !s || _csCorr.kg == null) return;
@@ -6756,6 +6779,39 @@ function _csEventos() {
   panel.addEventListener('focusin', alEnfocar);
   train.addEventListener('focusout', alSalir);
 
+  // 2.3.3: salir del peso sin registrar nada. Enter (el ✓ o «Listo» del teclado) suelta el campo; tocar afuera también: se
+  // mira el toque al bajar el dedo, antes que nadie, y no se lo frena (el botón tocado hace lo suyo). Tocar otro campo de
+  // kilos no suelta (pasar de uno a otro sin que el teclado parpadee). El panel vuelve y el OK espera (_csEspera).
+  const soltarPeso = () => { const a = document.activeElement; if (a && a.matches && a.matches(campo)) a.blur(); };
+  const alTecla = (e) => {
+    if (e.key !== 'Enter' || e.isComposing || !e.target.matches || !e.target.matches(campo)) return;
+    e.preventDefault();
+    e.target.blur();
+  };
+  train.addEventListener('keydown', alTecla);
+  panel.addEventListener('keydown', alTecla);
+  document.addEventListener('pointerdown', (e) => {
+    const a = document.activeElement;
+    if (!a || !a.matches || !a.matches(campo)) return;
+    const t = e.target;
+    if (t && t.closest && t.closest(`${campo},.cs-carga-campo`)) return;
+    soltarPeso();
+  }, true);
+  // Android cierra el teclado con Atrás y el foco queda en el campo: el panel no volvía. Si la parte visible vuelve a
+  // ocupar la pantalla con un kilo enfocado, se suelta. (scale: el zoom con dos dedos no cuenta como teclado.)
+  const vv = window.visualViewport;
+  if (vv) {
+    let menor = null;
+    document.addEventListener('focusin', () => { menor = null; });
+    vv.addEventListener('resize', () => {
+      const a = document.activeElement;
+      if (!_csTeclado || !a || !a.matches || !a.matches(campo)) { menor = null; return; }
+      const alto = vv.height * vv.scale, pantalla = window.innerHeight;
+      if (menor == null || alto < menor) menor = alto;
+      if (menor < pantalla - 150 && alto > pantalla - 80) { menor = null; soltarPeso(); }
+    });
+  }
+
   // El dial: arrastrar hacia arriba suma y hacia abajo resta, un escalón cada 26 px. Con mouse, también la rueda; con teclado, las flechas.
   const ESCALON = 26;
   let arrastre = null;
@@ -6798,6 +6854,21 @@ function _csEventos() {
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden && _csFoto) { _csVaciarDeshacer(); csPintarPanel(); } });
   window.addEventListener('pagehide', () => _csVaciarDeshacer());
+}
+
+/* 2.3.3 (web_230): la nota de la semana (el objetivo) arriba de todo lo del ejercicio, como NotaSemana de Android. */
+const _NOTA_ICONOS = {
+  mira: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="1.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22.5" y2="12"/></svg>',
+  calendario: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>',
+};
+function _notaSemanaHtml(nota) {
+  if (!nota) return '';
+  const rotulo = nota.cambia ? 'Cambio de la semana' : (nota.calibracion ? 'Semana 1' : 'Esta semana');
+  const icono = nota.cambia ? ICONS.trend : (nota.calibracion ? _NOTA_ICONOS.mira : _NOTA_ICONOS.calendario);
+  return `<div class="ex-nota-semana" data-nota-semana role="note">
+    <span class="ex-nota-semana-lbl"><span aria-hidden="true" style="display:inline-flex">${icono}</span>${rotulo}</span>
+    <span class="ex-nota-semana-txt">${nota.texto}</span>
+  </div>`;
 }
 
 function renderExCard(ex, blockIdx) {
@@ -6888,8 +6959,9 @@ function renderExCard(ex, blockIdx) {
     panel = `
     <div class="ex-panel">
       <div class="divider"></div>
+      ${web230() ? _notaSemanaHtml(_progNota) : ''}
       ${_metricasHtml(ex, _porTiempo ? Object.assign({}, prog, { series: null }) : prog)}
-      ${_progNota ? `<div class="ex-prog-nota ${_progNota.cambia ? 'is-cambio' : (_progNota.calibracion ? 'is-calibracion' : 'is-mantener')}">
+      ${_progNota && !web230() ? `<div class="ex-prog-nota ${_progNota.cambia ? 'is-cambio' : (_progNota.calibracion ? 'is-calibracion' : 'is-mantener')}">
         <span class="ex-prog-nota-lbl">${_progNota.cambia ? 'Cambio de la semana' : (_progNota.calibracion ? 'Semana 1' : 'Esta semana')}</span>
         <span class="ex-prog-nota-txt">${_progNota.texto}</span>
       </div>` : ''}
