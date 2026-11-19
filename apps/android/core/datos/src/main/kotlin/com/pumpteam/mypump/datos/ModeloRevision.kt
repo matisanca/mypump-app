@@ -407,7 +407,15 @@ class ModeloRevision(
         val hoy = diaDeHoy()
         if (!FotosProgreso.necesitaPesoComparador(desde, hoy)) return false
         // Dos a la vez (la tarjeta y la galería) salen como uno.
-        pesoComparadorEnCurso?.takeIf { !it.isCompleted }?.let { return it.await() }
+        pesoComparadorEnCurso?.takeIf { !it.isCompleted }?.let { enCurso ->
+            val llego = enCurso.await()
+            // Si ese pedido ya cubría esta primera foto, su resultado es el nuestro. Si no (llegó una foto más vieja con el
+            // pedido en camino, por ejemplo la de inicio de «Tu cambio»), se vuelve a mirar: pide desde la más vieja. Sin
+            // bucle: el pedido nuevo sale desde `desde`, así que al terminar ya la cubre; y si otro llamado lo largó antes,
+            // este lo espera en vez de duplicarlo.
+            val pc = _pesoComparador.value
+            return if (pc != null && pc.desde <= desde) llego else asegurarPesoComparador(fechasDeFotos)
+        }
         val pc = _pesoComparador.value
         if (pc != null && pc.desde <= desde && pc.hasta == hoy && (pc.filas != null || ahoraMs() - pc.cuandoMs < REINTENTO_PESO_COMPARADOR_MS)) return false
         // En el alcance del modelo: si la pantalla se va a mitad del pedido, el resultado igual queda.

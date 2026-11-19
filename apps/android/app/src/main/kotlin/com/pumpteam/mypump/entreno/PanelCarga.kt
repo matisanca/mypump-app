@@ -106,8 +106,9 @@ fun PanelCarga(motor: ModeloEntreno, lugar: String, preguntador: Preguntador) {
     val d by motor.dia.collectAsStateWithLifecycle()
     val corrigiendo by motor.corrigiendo.collectAsStateWithLifecycle()
     val deshacible by motor.deshacible.collectAsStateWithLifecycle()
-    // Antes de cualquier salida: la espera tiene que acordarse de que el panel estuvo escondido.
-    val espera = remember { EsperaTrasTeclado({ RelojCarga.ahora() }) }
+    // Antes de cualquier salida: la espera tiene que acordarse de que el panel estuvo escondido. Una por ejercicio: en
+    // EjercicioPantalla el panel sigue al pasar a otro con alAbrir y no tiene que heredar la espera del anterior.
+    val espera = remember(lugar) { EsperaTrasTeclado({ RelojCarga.ahora() }) }
     val s = motor.cargaSimple(lugar) ?: return
     // Con el teclado arriba (o un kilo en edición) se esconde: si no, en un teléfono chico tapa el campo y se podría dar OK
     // sin verlo. En su lugar va «Listo», arriba del teclado. Corrigiendo no: el campo del peso está en el panel y, si se

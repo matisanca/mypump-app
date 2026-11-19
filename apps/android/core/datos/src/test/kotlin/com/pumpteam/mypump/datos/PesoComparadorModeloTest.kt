@@ -3,7 +3,10 @@ package com.pumpteam.mypump.datos
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.reglas.PesoCorporal
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -27,6 +30,8 @@ class PesoComparadorModeloTest {
         @Volatile var salud60 = "[]"
         @Volatile var pesoAparte = "[]"
         @Volatile var falla = false
+        /** Si está, el próximo pedido de la serie aparte queda en camino hasta que se complete (una sola vez). */
+        @Volatile var puerta: CompletableDeferred<Unit>? = null
 
         override suspend fun enviar(pedido: Pedido): Respuesta {
             val uri = java.net.URI(pedido.url)
@@ -41,6 +46,7 @@ class PesoComparadorModeloTest {
                     falla -> { status = 503; texto = """{"message":"caído"}""" }
                     else -> texto = pesoAparte
                 }
+                if (uri.rawQuery != null) puerta?.also { puerta = null }?.await()
             }
             return Respuesta(status, texto.toByteArray())
         }
@@ -137,6 +143,39 @@ class PesoComparadorModeloTest {
         val b = async { m.asegurarPesoComparador(listOf("2026-09-02")) }
         a.await(); b.await()
         assertEquals(1, s.aparte.size)
+    }
+
+    /**
+     * I1 de la revisión: con un pedido en camino desde una foto, llega otra más vieja (la de inicio de «Tu cambio», que viene
+     * después). El segundo llamado espera el pedido en curso y después pide desde la más vieja; un tercero con la misma fecha
+     * vieja no duplica el pedido. Al final la serie cubre la foto más vieja.
+     */
+    @Test
+    fun unaFotoMasViejaConUnPedidoEnCaminoPideDeNuevo() = enUnHilo { alcance ->
+        val s = Servidor()
+        s.pesoAparte = "[${peso("2026-07-20", 75.0)},${peso("2026-09-02", 73.0)}]"
+        val puerta = CompletableDeferred<Unit>()
+        s.puerta = puerta
+        val m = modelo(s, Reloj(), alcance)
+        val a = async { m.asegurarPesoComparador(listOf("2026-09-02")) }
+        withTimeout(5_000) { while (s.aparte.isEmpty()) delay(1) }
+        val b = async { m.asegurarPesoComparador(listOf("2026-07-22", "2026-09-02")) }
+        val c = async { m.asegurarPesoComparador(listOf("2026-07-22")) }
+        delay(50)
+        // Con el primero en camino, los otros dos esperan: ningún pedido de más.
+        assertEquals(1, s.aparte.size)
+        assertEquals("2026-08-24", s.aparte.first().cuerpo["p_desde"]?.comoTexto)
+        puerta.complete(Unit)
+        assertTrue(a.await())
+        assertTrue(b.await())
+        assertTrue(c.await())
+        assertEquals(2, s.aparte.size)
+        assertEquals("2026-07-13", s.aparte.last().cuerpo["p_desde"]?.comoTexto)
+        assertEquals("2026-07-13", m.pesoComparador.value?.desde)
+        assertEquals("2026-07-20", m.serieDelComparador.first().fecha)
+        // Ya cubierta: con las mismas fotos no vuelve a pedir.
+        assertFalse(m.asegurarPesoComparador(listOf("2026-07-22", "2026-09-02")))
+        assertEquals(2, s.aparte.size)
     }
 
     /** Si falla, el comparador sigue con los 60 días y se reintenta pasados 5 minutos (no en cada recomposición). */
