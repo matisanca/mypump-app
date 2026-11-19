@@ -94,6 +94,22 @@ await caso('sin peso cercano: no muestra kilos', () => {
   // Tampoco si la que falta es la última.
   assert.equal(TC.resumen('2026-09-14', '2026-11-09', serie([['2026-09-15', 81.0], ['2026-10-20', 79.0]])), '8 semanas');
 });
+await caso('I1: el mismo pesaje (o pesajes de la misma semana) en las dos fotos: sin kg', () => {
+  // Un solo peso el domingo 15/11, fotos 09/11 y 16/11: las dos fotos toman ese mismo pesaje.
+  assert.equal(TC.resumen('2026-11-09', '2026-11-16', serie([['2026-11-15', 80.0]])), '1 semana');
+  // Pesos el 09/11 y el 15/11, fotos 09/11 y 16/11: el de la última foto es de la semana de la primera.
+  assert.equal(TC.resumen('2026-11-09', '2026-11-16', serie([['2026-11-09', 80.6], ['2026-11-15', 80.0]])), '1 semana');
+  // Un solo peso el 12/11, fotos 02/11 y 16/11.
+  assert.equal(TC.resumen('2026-11-02', '2026-11-16', serie([['2026-11-12', 80.0]])), '2 semanas');
+  // Al revés: el de la primera foto cae en la semana de la última.
+  assert.equal(TC.resumen('2026-11-09', '2026-11-16', serie([['2026-11-16', 80.0], ['2026-11-18', 79.5]])), '1 semana');
+  // Dos pesajes distintos con el mismo valor, cada uno en su semana: 0,0 kg es real y se muestra.
+  assert.equal(TC.resumen('2026-07-20', '2026-11-16', serie([['2026-07-21', 78.9], ['2026-11-17', 78.9]])), '17 semanas · 0,0 kg');
+  // Semanas seguidas, cada una con su pesaje (uno de ellos tomado de ±7 días fuera de la otra semana): se muestra.
+  assert.equal(TC.resumen('2026-11-09', '2026-11-16', serie([['2026-11-08', 80.5], ['2026-11-17', 80.0]])), '1 semana · -0,5 kg');
+  // Si el más cercano a la semana 1 es el de la semana de la última foto, sería el mismo pesaje: sin kg.
+  assert.equal(TC.resumen('2026-11-09', '2026-11-16', serie([['2026-11-06', 80.5], ['2026-11-17', 80.0]])), '1 semana');
+});
 await caso('dentro de la semana gana el primero cargado (como antes), aunque haya uno más cerca afuera', () => {
   const p = serie([['2026-11-08', 70.0], ['2026-11-15', 71.0], ['2026-11-12', 72.0]]);
   assert.equal(TC.pesoDeSemana('2026-11-09', p), 72.0);
@@ -190,6 +206,23 @@ await caso('serie del comparador: la aparte más Salud (el peso de hoy), la manu
   assert.deepEqual(m._pesoSerie(), serie([['2026-11-16', 68.4], ['2026-11-19', 68.2]]));   // la de Salud, sin lo viejo
   assert.equal(m.env.STATE.salud, salud);
   assert.equal(TC.resumen('2026-08-31', '2026-11-16', m._pesoSerieComparador()), '11 semanas · -4,6 kg');
+});
+
+await caso('M1: si el alumno corrige el peso de hoy, el comparador usa el valor nuevo sin recargar', async () => {
+  const salud = [fila('2026-11-16', 68.4), fila('2026-11-19', 70.0)];
+  const m = montar({ fotos: [{ semana_lunes: '2026-08-31', pose: 'frente' }], salud,
+    respuesta: [fila('2026-09-02', 73.0), fila('2026-11-16', 68.4), fila('2026-11-19', 70.0)] });
+  await m._pcAsegurar();
+  assert.equal(TC.resumen('2026-08-31', '2026-11-16', m._pesoSerieComparador()), '11 semanas · -4,6 kg');
+  // Lo mismo que hacen _cgPonerPeso y el guardado de Mi día: sacan el manual de hoy de STATE.salud y ponen el nuevo.
+  m.env.STATE.salud = m.env.STATE.salud.filter(r => !(r.fecha === '2026-11-19' && r.fuente === 'manual'));
+  m.env.STATE.salud.push(fila('2026-11-19', 68.0));
+  const s2 = m._pesoSerieComparador();
+  assert.deepEqual(s2.find(p => p.fecha === '2026-11-19'), { fecha: '2026-11-19', kg: 68.0 });
+  assert.equal(s2.filter(p => p.fecha === '2026-11-19').length, 1);
+  assert.equal(TC.resumen('2026-08-31', '2026-11-16', s2), '11 semanas · -4,6 kg');   // el 16/11 sigue siendo el de su semana
+  assert.equal(TC.resumen('2026-08-31', '2026-11-19', s2), '11 semanas · -5,0 kg');
+  assert.equal(m.llamadas.length, 1);   // sin volver a pedir
 });
 
 // ── 3. Los dos caminos usan la misma cuenta ──

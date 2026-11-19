@@ -11638,12 +11638,15 @@ function _pcAsegurar() {
   STATE.pesoComp = { ...(pc || {}), enCurso };
   return enCurso;
 }
-/* La serie del comparador: la aparte más los 60 días de Salud (ahí está el peso que se cargó recién, que se agrega a
- * STATE.salud). Mismo criterio por fecha que _pesoSerie: la carga manual gana. */
+/* La serie del comparador: la aparte más los 60 días de Salud. En las fechas que trae Salud manda Salud: ahí se guarda
+ * (y se corrige) el peso de hoy sin recargar la página, y la serie aparte quedó con el valor de cuando se pidió. De la
+ * aparte solo entran las fechas que Salud no tiene. Por fecha, el mismo criterio que _pesoSerie: la carga manual gana. */
 function _pesoSerieComparador() {
   const pc = STATE.pesoComp;
-  const viejas = pc && Array.isArray(pc.filas) ? pc.filas : [];
-  return _pesoSerie([...viejas, ...(STATE.salud || [])]);
+  const salud = (STATE.salud || []).filter(r => r.tipo === 'peso_kg');
+  const enSalud = new Set(salud.map(r => r.fecha));
+  const viejas = (pc && Array.isArray(pc.filas) ? pc.filas : []).filter(r => !enSalud.has(r.fecha));
+  return _pesoSerie([...viejas, ...salud]);
 }
 
 // Media de los puntos cuya fecha cae en (fechaFin - dias, fechaFin].
@@ -12027,13 +12030,17 @@ const CheckGuiado = (() => {
 /* ═══ CHECK GUIADO · REGLAS (fin) ═══ */
 /* ═══ TU CAMBIO · REGLAS (inicio) ═══
    «Tu cambio» (2.3.0, detrás de `check_guiado`; pedido de Mati del 11/11): la foto de la semana 1 al lado de la última,
-   por pose, siempre a la vista en Revisión. Las mismas reglas que TuCambio.swift y TuCambio.kt; los casos compartidos
-   están en apps/shared/vectores/tucambio.json y los corre scripts/test-tucambio.mjs.
+   por pose, siempre a la vista en Revisión. Las reglas de las fotos son las de TuCambio.swift y TuCambio.kt; los casos
+   compartidos están en apps/shared/vectores/tucambio.json y los corre scripts/test-tucambio.mjs.
    · La semana 1 es la foto más vieja de esa pose: la de inicio si es de esa semana o de antes; si no, la de progreso más
      vieja. Empate de semana: gana la de inicio.
    · La última es la de progreso más nueva de esa pose, de una semana posterior a la semana 1.
    · El par aparece desde que hay dos semanas distintas con alguna foto (contando la de inicio). Antes: el texto de espera
-     y la foto que haya. El pie es el del comparador de siempre: «8 semanas · -2,4 kg». */
+     y la foto que haya. El pie es «8 semanas · -2,4 kg», el mismo que el del comparador clásico («Antes y ahora»).
+   · El peso del pie (2.3.3, la web va adelante de las apps, que siguen con «el primero desde el lunes» y 60 días): cada foto
+     toma el peso de su semana o el más cercano en ±7 días, sobre una serie de peso aparte que llega hasta la primera foto.
+     Sin kg si falta alguno, si las dos fotos caen en el mismo pesaje o en pesajes de la misma semana, o si el cambio pasa
+     el 25 % (pesos en libras). Los casos están en scripts/test-comparador-peso.mjs; los vectores compartidos todavía no. */
 const TuCambio = (() => {
   const POSES_TC = [['frente', 'Frente'], ['perfil', 'Perfil'], ['espalda', 'Espalda']];
   const T = {
@@ -12060,7 +12067,8 @@ const TuCambio = (() => {
        el de después (como la regla vieja, que miraba hacia adelante).
      · Si tampoco hay, null: el pie dice solo «N semanas», nunca un peso inventado. */
   const PESO_DIAS_CERCA = 7;
-  function pesoDeSemana(sem, peso) {
+  // El pesaje elegido: { n (el día), kg }, o null.
+  function pesaje(sem, peso) {
     const l = dia(sem);
     if (l == null) return null;
     let mejor = null, dist = Infinity;
@@ -12071,8 +12079,9 @@ const TuCambio = (() => {
         if (x > PESO_DIAS_CERCA) return;
         if (x < dist || (x === dist && x > 0)) { mejor = p; dist = x; }
       });
-    return mejor ? mejor.kg : null;
+    return mejor;
   }
+  const pesoDeSemana = (sem, peso) => { const p = pesaje(sem, peso); return p ? p.kg : null; };
   /* Guarda de unidades (2.3.3): un cambio imposible no se muestra. Hay alumnos que cargaron el peso en libras (mrl1cczlai0u
      hasta el 20/09: 218 «kg» contra 100) y la cuenta daría «−117,6 kg». Es imposible si pasa el 25 % del peso de la primera
      semana: libras contra kilos es un salto de más del 50 % (un error de tipeo como 7,8 por 78, más todavía).
@@ -12081,9 +12090,14 @@ const TuCambio = (() => {
   const GUARDA_FRACCION = 0.25;
   function cambio(primera, ultima, peso) {
     const semanas = Math.round(((dia(ultima) || 0) - (dia(primera) || 0)) / 7);
-    const p0 = pesoDeSemana(primera, peso), p1 = pesoDeSemana(ultima, peso);
-    if (p0 == null || p1 == null) return { semanas, kg: null };
-    const d = p1 - p0;
+    const a = pesaje(primera, peso), b = pesaje(ultima, peso);
+    if (!a || !b) return { semanas, kg: null };
+    /* Las dos puntas tienen que ser pesajes distintos, en orden y cada uno fuera de la semana de la otra foto. Con fotos de
+       semanas seguidas las ventanas de ±7 días se pisan: el alumno nuevo que todavía no se pesó en su segunda semana veía
+       «1 semana · 0,0 kg» (el mismo pesaje en las dos fotos) o el cambio dentro de la semana 1. Eso no es su cambio. */
+    const enSemana = (n, sem) => n >= dia(sem) && n <= dia(sem) + 6;
+    if (a.n >= b.n || enSemana(a.n, ultima) || enSemana(b.n, primera)) return { semanas, kg: null };
+    const p0 = a.kg, d = b.kg - p0;
     if (Math.abs(d) > GUARDA_FRACCION * p0) return { semanas, kg: null };
     return { semanas, kg: d };
   }
