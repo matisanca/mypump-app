@@ -74,7 +74,7 @@ caso('respuestaReciente: la publicada más nueva de los últimos 7 días', () =>
 });
 
 // ── Lo cableado en cliente.html y los módulos ──
-const html = leer('cliente.html');
+const html = leer('cliente.html').replace(/\?v=v\d+"/g, '"'); // sin el ?v= de la versión (test-cache-versiones.mjs lo controla)
 caso('escena nueva y scripts cargados', () => {
   assert.match(html, /id="scene-dondeentreno"/);
   assert.match(html, /<script src="\/js\/donde-entreno\.js"><\/script>/);

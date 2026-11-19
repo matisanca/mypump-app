@@ -61,7 +61,7 @@ t('sin «coach»', !textos.some((s) => /coach|entrenador|IA\b/i.test(s)));
 // El service worker guarda el módulo (la app abre sin red) y la palanca está apagada si no viene.
 const sw = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
 t('sw guarda metas.js', sw.includes("'/js/metas.js'"));
-const html = fs.readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8');
+const html = fs.readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8').replace(/\?v=v\d+"/g, '"'); // sin el ?v= de la versión (test-cache-versiones.mjs lo controla)
 t('cliente carga metas.js', html.includes('<script src="/js/metas.js"></script>'));
 t('palanca estricta', /metas_pasos === true/.test(html));
 {
