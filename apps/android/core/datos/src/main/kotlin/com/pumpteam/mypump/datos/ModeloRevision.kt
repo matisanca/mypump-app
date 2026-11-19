@@ -12,6 +12,8 @@ import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.reglas.PesoCorporal
 import com.pumpteam.mypump.reglas.SemanaRevision
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -167,7 +169,10 @@ class ModeloRevision(
         disco?.guardar(ARCHIVO_DIA, JsonPrimitive(nuevo))
     }
 
-    /** `loadRevision` + `loadSalud`: el check de la semana y 60 días de salud (para el peso). */
+    /**
+     * `loadRevision` + `loadSalud`: el check de la semana y 60 días de salud (para el peso). El peso del comparador de fotos,
+     * cuando la primera foto es más vieja, va aparte ([asegurarPesoComparador]).
+     */
     suspend fun cargarRevision() {
         if (token == null) return   // la demo, como la web: sin check, peso ni fotos
         val hoy = diaDeHoy()
@@ -371,7 +376,68 @@ class ModeloRevision(
         return null
     }
 
+    /** La serie de los 60 días de Salud: la fila Peso, la tarjeta de peso y Salud. */
     val serieDePeso: List<PesoCorporal.Punto> get() = PesoCorporal.serie(_salud.value)
+
+    // ── El peso del comparador de fotos (2.3.3, el `_pcAsegurar` de la web) ──
+
+    /**
+     * La serie de peso aparte del comparador («Antes y ahora» y «Tu cambio»): la misma `mypump_get_salud`, filtrada a
+     * `peso_kg`, desde el lunes de la semana de la primera foto menos 7 días hasta hoy. Salud trae 60 días y las fotos, todo
+     * el historial: con una primera foto más vieja el comparador no tenía el peso de esa semana. La de 60 días ([salud]) no
+     * cambia. `filas` null: el pedido falló (se reintenta pasados 5 minutos; mientras, el comparador usa los 60 días).
+     */
+    data class PesoComparador(val desde: String, val hasta: String, val filas: List<FilaSalud>?, val cuandoMs: Long)
+
+    private val _pesoComparador = MutableStateFlow<PesoComparador?>(null)
+    val pesoComparador: StateFlow<PesoComparador?> = _pesoComparador.asStateFlow()
+    private var pesoComparadorEnCurso: Deferred<Boolean>? = null
+
+    /** La hora en milisegundos (los tests la fijan para el reintento). */
+    internal var ahoraMs: () -> Long = { System.currentTimeMillis() }
+
+    /**
+     * Pide la serie aparte si hace falta: una vez por día (otra si aparece una foto más vieja, o 5 minutos después si falló).
+     * Si los 60 días de Salud ya llegan a la primera foto, no pide nada. `fechasDeFotos`: las semanas o los días de las fotos
+     * que pueden ir al comparador. Devuelve true si llegó una serie nueva.
+     */
+    suspend fun asegurarPesoComparador(fechasDeFotos: List<String>): Boolean {
+        if (token == null) return false   // la demo
+        val desde = FotosProgreso.desdePesoComparador(fechasDeFotos) ?: return false
+        val hoy = diaDeHoy()
+        if (!FotosProgreso.necesitaPesoComparador(desde, hoy)) return false
+        // Dos a la vez (la tarjeta y la galería) salen como uno.
+        pesoComparadorEnCurso?.takeIf { !it.isCompleted }?.let { return it.await() }
+        val pc = _pesoComparador.value
+        if (pc != null && pc.desde <= desde && pc.hasta == hoy && (pc.filas != null || ahoraMs() - pc.cuandoMs < REINTENTO_PESO_COMPARADOR_MS)) return false
+        // En el alcance del modelo: si la pantalla se va a mitad del pedido, el resultado igual queda.
+        val enCurso = alcance.async(start = CoroutineStart.LAZY) {
+            val r = cliente.filas(
+                "mypump_get_salud", mapOf("p_token" to t, "p_desde" to texto(desde), "p_hasta" to texto(hoy)),
+                listOf("tipo" to "eq.peso_kg"), FilaSalud::desde,
+            )
+            val filas = r.valorONull()
+            _pesoComparador.value = PesoComparador(desde, hoy, filas, ahoraMs())
+            filas != null
+        }
+        pesoComparadorEnCurso = enCurso
+        return enCurso.await()
+    }
+
+    /**
+     * La serie del comparador: la aparte más los 60 días de Salud. En las fechas que trae Salud manda Salud: ahí se guarda (y
+     * se corrige) el peso de hoy, y la serie aparte quedó con el valor de cuando se pidió. De la aparte solo entran las fechas
+     * que Salud no tiene. Por fecha, el mismo criterio que [serieDePeso]: la carga manual gana.
+     */
+    val serieDelComparador: List<PesoCorporal.Punto> get() = serieDelComparador(_salud.value, _pesoComparador.value)
+
+    /** Lo mismo, con lo que la pantalla ya juntó (así recompone cuando cambia cualquiera de las dos). */
+    fun serieDelComparador(salud: List<FilaSalud>, pc: PesoComparador?): List<PesoCorporal.Punto> {
+        val deSalud = salud.filter { it.tipo == "peso_kg" }
+        val fechas = deSalud.mapTo(HashSet()) { it.fecha }
+        val viejas = pc?.filas.orEmpty().filter { it.fecha !in fechas }
+        return PesoCorporal.serie(viejas + deSalud)
+    }
 
     /** Guardar el peso de hoy (30-300 kg). Devuelve false si el valor no es válido. */
     suspend fun guardarPeso(texto: String): Boolean {
@@ -389,6 +455,7 @@ class ModeloRevision(
     }
 
     companion object {
+        private const val REINTENTO_PESO_COMPARADOR_MS = 5 * 60 * 1000L
         private const val ARCHIVO_DIA = "revision_dia.json"
         private const val ARCHIVO_GUIADO = "check_guiado.json"
         private const val ARCHIVO_BORRADOR = "check_guiado_borrador.json"

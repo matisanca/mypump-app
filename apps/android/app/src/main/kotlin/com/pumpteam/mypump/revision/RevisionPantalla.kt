@@ -109,7 +109,11 @@ fun RevisionPantalla(
     val devolucion = modeloDevolucion?.estado?.collectAsStateWithLifecycle()?.value
     val demoHistorial by modelo.demoHistorial.collectAsStateWithLifecycle()
     val filasDePeso = revision?.salud?.collectAsStateWithLifecycle()?.value ?: emptyList()
-    val pesoParaLasFotos = remember(filasDePeso) { PesoCorporal.serie(filasDePeso) }
+    // El peso del comparador (2.3.3): los 60 días de Salud más la serie aparte que llega hasta la primera foto.
+    val pesoComparador = revision?.pesoComparador?.collectAsStateWithLifecycle()?.value
+    val pesoParaLasFotos = remember(revision, filasDePeso, pesoComparador) {
+        revision?.serieDelComparador(filasDePeso, pesoComparador) ?: PesoCorporal.serie(filasDePeso)
+    }
     // U1 (auditoría del 10/11): con la semana a medias, las fotos y el check van arriba (antes quedaban fuera de la primera
     // pantalla). La demo sigue con el orden de siempre.
     val checkin = revision?.checkin?.collectAsStateWithLifecycle()?.value
@@ -149,6 +153,17 @@ fun RevisionPantalla(
     // Con `fotos_inicio` apagada no se mira nada de esa sección, tampoco lo que quedó en el teléfono.
     val inicioHabilitado = inicio?.estado?.collectAsStateWithLifecycle()?.value != null
     val tuCambio = if (conCheckGuiado && fotosDeLaCuenta != null) recordarFuentesTuCambio(fotosDeLaCuenta, inicio?.takeIf { inicioHabilitado }, pesoParaLasFotos) else null
+    // Las fechas de las fotos que pueden ir al comparador, de las tres poses: las del servidor, las que esperan subir y, con
+    // «Tu cambio», las de inicio. Cuando cambia la más vieja se pide el peso desde ahí (una vez; si los 60 días de Salud ya
+    // llegan, nada). Cuando llega, el pie se recompone solo.
+    val fechasDeFotos = remember(fotosHechas, fotosEnCola, tuCambio?.fechasInicio) {
+        val poses = FotosProgreso.poses.map { it.first }.toSet()
+        fotosHechas.filter { it.pose in poses }.map { it.semanaLunes } +
+            fotosEnCola.values.filter { it.pose in poses }.map { it.fecha } + tuCambio?.fechasInicio?.values.orEmpty()
+    }
+    LaunchedEffect(revision, FotosProgreso.desdePesoComparador(fechasDeFotos)) {
+        if (!esDemo) revision?.asegurarPesoComparador(fechasDeFotos)
+    }
 
     // Un aviso o el banner de las otras pestañas piden una sección: se va y se consume.
     val ancla = navegacion?.anclaRevision

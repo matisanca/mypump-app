@@ -75,7 +75,7 @@ internal sealed interface ImagenTuCambio {
 
 /**
  * De dónde salen las fotos de «Tu cambio» (gemela de `FuentesTuCambio` de iOS): las de progreso (servidor y cola) y las de
- * inicio guiadas, más el peso para el pie. Solo lo que la app ya lee; ninguna llamada nueva.
+ * inicio guiadas, más el peso para el pie (`ModeloRevision.serieDelComparador`, que pide RevisionPantalla).
  */
 internal class FuentesTuCambio(
     val fotos: ModeloFotos?,

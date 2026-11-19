@@ -60,9 +60,18 @@ class ClienteRpc(
     /** Los tipos de foto que lee mini-vision. */
     enum class TipoVision(val valor: String) { ETIQUETA("etiqueta"), PLATO("plato") }
 
-    suspend fun llamar(funcion: String, parametros: Map<String, ValorJson>): Resultado<ValorJson> = withContext(Dispatchers.Default) {
+    /**
+     * `filtros` (opcional): filtros de PostgREST sobre las filas que devuelve la función, como `tipo` a `eq.peso_kg` (el
+     * `getPesoSalud` de la web). Van en la URL; el cuerpo es el mismo.
+     */
+    suspend fun llamar(
+        funcion: String,
+        parametros: Map<String, ValorJson>,
+        filtros: List<Pair<String, String>> = emptyList(),
+    ): Resultado<ValorJson> = withContext(Dispatchers.Default) {
+        val consulta = if (filtros.isEmpty()) "" else filtros.joinToString("&", prefix = "?") { (k, v) -> "${codificar(k)}=${codificar(v)}" }
         val pedido = Pedido(
-            url = "${config.supabase}/rest/v1/rpc/$funcion",
+            url = "${config.supabase}/rest/v1/rpc/$funcion$consulta",
             metodo = "POST",
             cabeceras = mapOf(
                 "apikey" to config.anonKey,
@@ -158,7 +167,16 @@ class ClienteRpc(
      * lista vacía.
      */
     suspend fun <T> filas(funcion: String, parametros: Map<String, ValorJson>, leer: (JsonElement) -> T): Resultado<List<T>> =
-        when (val r = llamar(funcion, parametros)) {
+        filas(funcion, parametros, emptyList(), leer)
+
+    /** Lo mismo, con filtros de PostgREST sobre las filas (ver [llamar]). */
+    suspend fun <T> filas(
+        funcion: String,
+        parametros: Map<String, ValorJson>,
+        filtros: List<Pair<String, String>>,
+        leer: (JsonElement) -> T,
+    ): Resultado<List<T>> =
+        when (val r = llamar(funcion, parametros, filtros)) {
             is Resultado.Falla -> r
             is Resultado.Ok -> if (r.valor == ValorJson.Nulo) {
                 Resultado.Ok(emptyList())
@@ -173,6 +191,8 @@ class ClienteRpc(
                 }
             }
         }
+
+    private fun codificar(s: String): String = java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20")
 
     private fun parsear(texto: String): ValorJson? = try {
         ValorJson.desde(Json.parseToJsonElement(texto))

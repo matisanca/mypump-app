@@ -17,7 +17,8 @@ import java.util.Locale
  * - La última es la de progreso más nueva de esa pose, de una semana posterior a la semana 1.
  * - El par aparece desde que hay dos semanas distintas con alguna foto (contando la de inicio). Antes: el texto de espera y
  *   la foto que haya.
- * - El pie es el del comparador de siempre ([FotosProgreso.resumenComparador]).
+ * - El pie es el del comparador clásico ([FotosProgreso.resumenComparador]). Desde la 2.3.3 cada foto toma el peso de su
+ *   semana o el más cercano en ±7 días, sobre la serie que llega hasta la primera foto.
  * Casos en `apps/shared/vectores/tucambio.json`.
  */
 object TuCambio {

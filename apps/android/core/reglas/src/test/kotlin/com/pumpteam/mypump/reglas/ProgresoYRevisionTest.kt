@@ -180,6 +180,48 @@ class FotosProgresoTest {
         assertEquals("4 semanas · -2,4 kg", FotosProgreso.resumenComparador("2026-09-14", "2026-10-12", peso))
         assertEquals("1 semana", FotosProgreso.resumenComparador("2026-10-05", "2026-10-12", emptyList()))
     }
+
+    /** El peso del comparador (2.3.3): el de la semana de cada foto, o el más cercano en ±7 días; sin kg si no se puede decir. */
+    @Test
+    fun pesoDelComparador() {
+        fun p(vararg l: Pair<String, Double>) = l.map { PesoCorporal.Punto(it.first, it.second) }
+        fun r(a: String, b: String, vararg l: Pair<String, Double>) = FotosProgreso.resumenComparador(a, b, p(*l))
+        // Emmanuel: con la regla vieja (el primero desde el lunes, sobre 60 días) veía +0,7.
+        assertEquals("11 semanas · -4,6 kg",
+            r("2026-08-31", "2026-11-16", "2026-09-02" to 73.0, "2026-09-20" to 72.1, "2026-11-16" to 68.4, "2026-11-18" to 68.9))
+        // La semana sin peso toma el más cercano: 3 días antes del lunes le gana a 5 después del domingo.
+        assertEquals("8 semanas · -2,4 kg", r("2026-09-14", "2026-11-09", "2026-09-11" to 82.0, "2026-09-25" to 81.0, "2026-11-10" to 79.6))
+        // Empate (4 y 4): el de después.
+        assertEquals("8 semanas · -1,4 kg", r("2026-09-14", "2026-11-09", "2026-09-10" to 82.0, "2026-09-24" to 81.0, "2026-11-10" to 79.6))
+        // A 7 días justos entra; a 8, no.
+        assertEquals("8 semanas · -2,4 kg", r("2026-09-14", "2026-11-09", "2026-09-07" to 82.0, "2026-11-10" to 79.6))
+        assertEquals("8 semanas", r("2026-09-14", "2026-11-09", "2026-09-06" to 82.0, "2026-09-28" to 81.0, "2026-11-10" to 79.6))
+        // Libras contra kilos: pasa el 25 %. El 25 % justo se muestra.
+        assertEquals("12 semanas", r("2026-08-17", "2026-11-09", "2026-08-17" to 219.0, "2026-11-10" to 101.4))
+        assertEquals("8 semanas · -20,0 kg", r("2026-09-14", "2026-11-09", "2026-09-14" to 80.0, "2026-11-09" to 60.0))
+        // El mismo pesaje en las dos fotos (la regla vieja decía «1 semana · 0,0 kg»).
+        assertEquals("1 semana", r("2026-11-02", "2026-11-09", "2026-11-09" to 80.0))
+        // La última toma un pesaje de la semana de la primera (es el cambio dentro de la semana 1).
+        assertEquals("1 semana", r("2026-11-02", "2026-11-09", "2026-11-02" to 80.0, "2026-11-08" to 79.4))
+        // Un 0,0 real (dos pesajes, cada uno en su semana) se muestra, sin signo.
+        assertEquals("1 semana · 0,0 kg", r("2026-11-02", "2026-11-09", "2026-11-02" to 80.0, "2026-11-10" to 80.0))
+        assertEquals("1 semana · 0,0 kg", r("2026-11-02", "2026-11-09", "2026-11-02" to 80.0, "2026-11-10" to 80.04))
+        assertEquals("1 semana · 0,0 kg", r("2026-11-02", "2026-11-09", "2026-11-02" to 80.0, "2026-11-10" to 79.96))
+        assertEquals("1 semana · +0,5 kg", r("2026-11-02", "2026-11-09", "2026-11-02" to 80.0, "2026-11-10" to 80.5))
+        assertEquals(82.0, FotosProgreso.pesoDeSemana("2026-09-14", p("2026-09-16" to 81.0, "2026-09-15" to 82.0)))
+        assertNull(FotosProgreso.pesoDeSemana("mal", p("2026-09-15" to 82.0)))
+    }
+
+    /** Desde cuándo se pide el peso del comparador: el lunes de la foto más vieja menos 7 días; solo si Salud no llega. */
+    @Test
+    fun desdeDelPesoDelComparador() {
+        assertEquals("2026-08-24", FotosProgreso.desdePesoComparador(listOf("2026-11-16", "2026-09-02", "2026-10-05", "mal", "")))
+        assertEquals("2026-08-24", FotosProgreso.desdePesoComparador(listOf("2026-08-31")))
+        assertNull(FotosProgreso.desdePesoComparador(emptyList()))
+        // Hoy 19/11: Salud trae desde el 21/09.
+        assertTrue(FotosProgreso.necesitaPesoComparador("2026-09-20", "2026-11-19"))
+        assertTrue(!FotosProgreso.necesitaPesoComparador("2026-09-21", "2026-11-19"))
+    }
 }
 
 class AvisoFotosTest {
