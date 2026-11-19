@@ -170,6 +170,27 @@
   const entero = (t) => { const n = numero(t); return n == null ? null : Math.trunc(n); };
   const copiaAumento = (a) => a ? { ...a } : { tipo: MANO.NO };
 
+  /* ---- La espera del OK cuando vuelve el panel (2.3.3) ----
+     Gemela de EsperaTrasTeclado de Android (entreno/EsperaTeclado.kt, rama nativa-233). Con el teclado del celular arriba el
+     panel se esconde; al soltar el peso (Enter, tocar afuera o cerrar el teclado) vuelve justo donde está el dedo y ese toque
+     registraba la serie (Sebastián, 19/11). Durante `ms` desde que el panel vuelve, el OK ignora los toques, sin aviso.
+     `ver(oculto)` va en cada pintada del panel: solo el paso de escondido a visible arranca la espera. */
+  const ESPERA_TECLADO_MS = 500;
+  class EsperaTrasTeclado {
+    constructor(reloj, ms) { this.reloj = reloj; this.ms = ms != null ? ms : ESPERA_TECLADO_MS; this.oculto = false; this.desde = null; }
+    ver(ocultoAhora) {
+      if (this.oculto && !ocultoAhora) this.desde = this.reloj();
+      this.oculto = !!ocultoAhora;
+    }
+    admite() {
+      if (this.oculto) return false;
+      if (this.desde == null) return true;
+      return this.reloj() - this.desde >= this.ms;
+    }
+    // El panel recién vuelve: el OK entra con la animación (la espera corre igual sin ella).
+    recienVuelve() { return !this.oculto && this.desde != null && this.reloj() - this.desde < this.ms; }
+  }
+
   class Carga {
     constructor(e, semana, opts) {
       const o = opts || {};
@@ -376,7 +397,7 @@
     P, MANO, ESPERA_SEGUNDO_TOQUE, VENCE_EN, REPS_MAX,
     esCardio, repsEsTiempo, SLUGS_CARDIO, tope, repsDelPlan, pauta, esCalibracion,
     corresponde, paso, mover, hasta, moda,
-    GuardiaOK, Carga, ultimaSesion, kgTexto,
+    GuardiaOK, Carga, ultimaSesion, kgTexto, EsperaTrasTeclado, ESPERA_TECLADO_MS,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.CargaSimple = API;
