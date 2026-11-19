@@ -277,6 +277,34 @@ class Pantalla(private val esperaMs: Long = 15_000) {
 
     fun enfocado(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsProperties.Focused) == true }
 
+    /** La tecla de acción del teclado sobre un campo (el ✓ del teclado numérico), como apretarla. */
+    fun accionTeclado(s: Selector) {
+        esperar("$s acepta la tecla del teclado") {
+            val n = nodos().firstOrNull(s::coincide) ?: return@esperar null
+            n.config.getOrNull(SemanticsActions.OnImeAction)?.action?.invoke() ?: return@esperar null
+            true
+        }
+    }
+
+    /** Dónde está un nodo en su ventana, y el alto de esa ventana: para afirmar que algo se ve sin desplazar. */
+    fun lugarEnVentana(s: Selector): Pair<Rect, Int> = enPrincipal {
+        for (r in Raices.activas()) {
+            try {
+                r.measureAndLayoutForTest()
+            } catch (_: IllegalStateException) {
+                continue
+            }
+            var hallado: SemanticsNode? = null
+            fun buscar(n: SemanticsNode) {
+                if (hallado != null) return
+                if (s.coincide(n)) hallado = n else n.children.forEach(::buscar)
+            }
+            buscar(r.semanticsOwner.unmergedRootSemanticsNode)
+            hallado?.let { return@enPrincipal it.boundsInWindow to r.view.height }
+        }
+        throw AssertionError("no está $s")
+    }
+
     /** Desplaza una lista (la acción de desplazar de la semántica, como un lector de pantalla). */
     fun desplazar(s: Selector, dy: Float) {
         esperar("se puede desplazar $s") {

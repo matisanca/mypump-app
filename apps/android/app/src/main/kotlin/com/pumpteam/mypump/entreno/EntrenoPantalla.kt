@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -99,53 +100,59 @@ fun EntrenoPantalla(modelo: ModeloApp, preguntador: Preguntador) {
                     alCompletarDia(it)
                 }
             }
-            AnimatedContent(
-                targetState = abierto,
-                transitionSpec = {
-                    if (targetState != null) {
-                        (slideInHorizontally { it } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 } + fadeOut())
-                    } else {
-                        (slideInHorizontally { -it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { it } + fadeOut())
-                    }
-                },
-                label = "entreno",
-            ) { lugar ->
-                if (lugar == null) {
-                    ListaEntreno(
-                        motor = m,
-                        v = v,
-                        deEjemplo = m.demo && !esDemo,
-                        modelo = modelo,
-                        preguntador = preguntador,
-                        desplazamiento = desplazamiento,
-                        alAbrir = { abierto = it },
-                        alCompletarDia = alCompletarDia,
-                    )
-                } else {
-                    val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
-                    val tec = tecnica
-                    val feedback by modelo.feedback.collectAsStateWithLifecycle()
-                    val slug = tecnicaSlug
-                    if (tec != null && slug != null) {
-                        androidx.activity.compose.BackHandler { tecnicaSlug = null }
-                        com.pumpteam.mypump.tecnica.EnviarTecnicaPantalla(tec, slug, tecnicaNombre, alVolver = { tecnicaSlug = null })
-                    } else {
-                        EjercicioPantalla(
+            // Salir del peso sin registrar nada (2.3.3): con un kilo en edición, el panel muestra «Listo» y tocar afuera
+            // del campo cierra el teclado. Lo comparten la lista y la página del ejercicio.
+            val focoKilos = remember { FocoKilos() }
+            CompositionLocalProvider(LocalFocoKilos provides focoKilos) {
+                AnimatedContent(
+                    targetState = abierto,
+                    transitionSpec = {
+                        if (targetState != null) {
+                            (slideInHorizontally { it } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 } + fadeOut())
+                        } else {
+                            (slideInHorizontally { -it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { it } + fadeOut())
+                        }
+                    },
+                    label = "entreno",
+                    modifier = Modifier.soltarFocoAlTocarAfuera(focoKilos),
+                ) { lugar ->
+                    if (lugar == null) {
+                        ListaEntreno(
                             motor = m,
                             v = v,
-                            lugar = lugar,
+                            deEjemplo = m.demo && !esDemo,
+                            modelo = modelo,
                             preguntador = preguntador,
-                            alVolver = { abierto = null },
+                            desplazamiento = desplazamiento,
                             alAbrir = { abierto = it },
                             alCompletarDia = alCompletarDia,
-                            tecnica = tec,
-                            alMandarTecnica = { s, n ->
-                                tecnicaNombre = n
-                                tecnicaSlug = s
-                            },
-                            feedback = feedback,
-                            versionApp = modelo.versionApp,
                         )
+                    } else {
+                        val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
+                        val tec = tecnica
+                        val feedback by modelo.feedback.collectAsStateWithLifecycle()
+                        val slug = tecnicaSlug
+                        if (tec != null && slug != null) {
+                            androidx.activity.compose.BackHandler { tecnicaSlug = null }
+                            com.pumpteam.mypump.tecnica.EnviarTecnicaPantalla(tec, slug, tecnicaNombre, alVolver = { tecnicaSlug = null })
+                        } else {
+                            EjercicioPantalla(
+                                motor = m,
+                                v = v,
+                                lugar = lugar,
+                                preguntador = preguntador,
+                                alVolver = { abierto = null },
+                                alAbrir = { abierto = it },
+                                alCompletarDia = alCompletarDia,
+                                tecnica = tec,
+                                alMandarTecnica = { s, n ->
+                                    tecnicaNombre = n
+                                    tecnicaSlug = s
+                                },
+                                feedback = feedback,
+                                versionApp = modelo.versionApp,
+                            )
+                        }
                     }
                 }
             }

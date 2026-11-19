@@ -276,7 +276,7 @@ internal fun CampoKilos(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { foco.clearFocus() }),
         cursorBrush = SolidColor(c.marcaTexto),
-        modifier = modifier.onFocusChanged { enfocado = it.isFocused }.semantics { contentDescription = etiqueta },
+        modifier = modifier.onFocusChanged { enfocado = it.isFocused }.registrarCampoKilos(enfocado).semantics { contentDescription = etiqueta },
         decorationBox = { campo -> decorar(enfocado, campo) },
     )
 }

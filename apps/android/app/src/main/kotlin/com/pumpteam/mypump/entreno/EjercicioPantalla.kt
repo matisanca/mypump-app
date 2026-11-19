@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -179,6 +180,8 @@ fun EjercicioPantalla(
         Column(
             modifier = Modifier
                 .padding(relleno)
+                // Lo que ya ocupa el panel (o «Listo», que va pegado al teclado) no se descuenta dos veces del teclado.
+                .consumeWindowInsets(relleno)
                 .fillMaxSize()
                 .imePadding()
                 .verticalScroll(desplazamiento)

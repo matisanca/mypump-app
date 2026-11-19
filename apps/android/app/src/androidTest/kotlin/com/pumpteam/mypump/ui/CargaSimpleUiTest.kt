@@ -1,11 +1,18 @@
 package com.pumpteam.mypump.ui
 
+import android.os.Build
+import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.pumpteam.mypump.entreno.EsperaTrasTeclado
+import com.pumpteam.mypump.entreno.RelojCarga
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * La carga simple en la pantalla real de Entreno (gemelo de CargaSimpleUITests.swift), con la cuenta grabada y un historial de
@@ -123,6 +130,7 @@ class CargaSimpleUiTest : PruebaUi() {
         assertTrue("el panel se llevó el campo", p.enfocado(kg))
         p.teclear(kg, "55")
         p.esperar("55") { (p.textoDe(kg) == "55").takeIf { it } }
+        Telefono.captura("carga-7-correccion-teclado")
         p.tocar(etiqueta("correccion-guardar"))
         p.esperarQueNoEste(etiqueta("correccion-guardar"))
         p.esperar("corregida") { fila(1).contains("55 kilos").takeIf { it } }
@@ -181,6 +189,95 @@ class CargaSimpleUiTest : PruebaUi() {
         darOK()
         esperarHecha(2)
         p.esperar("las dos en el servidor", ms = 60_000) { servidor.a("mypump_registrar_carga").takeIf { c -> c.any { it.contains("\"p_serie\":1") } && c.any { it.contains("\"p_serie\":2") } } }
+    }
+
+    // ── Salir del peso sin registrar nada (2.3.3, S2) ──
+    // El emulador tiene teclado físico: sin «mostrar el teclado en pantalla» el de la pantalla no sale nunca. Se prende para
+    // estas pruebas y se deja como estaba.
+
+    private var imeConTeclado: String? = null
+
+    @Before
+    fun tecladoEnPantalla() {
+        imeConTeclado = Telefono.shell("settings get secure show_ime_with_hard_keyboard").trim()
+        Telefono.shell("settings put secure show_ime_with_hard_keyboard 1")
+    }
+
+    @After
+    fun dejarComoEstaba() {
+        RelojCarga.ahora = { SystemClock.uptimeMillis() }
+        Telefono.shell("settings put system font_scale 1.0")
+        imeConTeclado?.takeIf { it == "0" || it == "1" }?.let { Telefono.shell("settings put secure show_ime_with_hard_keyboard $it") }
+    }
+
+    /** Si el teclado de la pantalla está arriba (los insets de la ventana; desde Android 11). */
+    private fun tecladoArriba(): Boolean = p.enPrincipal {
+        Raices.activas().any { it.view.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime()) == true }
+    }
+
+    private fun abrirElTeclado(): Selector {
+        val kg = etiqueta("carga-valor")
+        p.tocarDeVerdad(kg)
+        p.esperar("el foco en el peso") { p.enfocado(kg).takeIf { it } }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) p.esperar("el teclado arriba") { tecladoArriba().takeIf { it } }
+        return kg
+    }
+
+    private fun esperarTecladoCerrado(kg: Selector) {
+        p.esperar("sin foco en el peso") { (!p.enfocado(kg)).takeIf { it } }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) p.esperar("el teclado abajo") { (!tecladoArriba()).takeIf { it } }
+        p.esperarQueNoEste(etiqueta("teclado-listo"))
+        p.nodo(ok)
+    }
+
+    /** Con el teclado del peso arriba está «Listo» (el `teclado-listo` de iOS), en lugar del OK; tocarlo cierra el teclado. */
+    @Test
+    fun conElTecladoEstaListoYLoCierra() {
+        lanzar()
+        val kg = abrirElTeclado()
+        p.nodo(etiqueta("teclado-listo"))
+        assertFalse("el OK quedó a la vista con el teclado", p.existe(ok))
+        Telefono.captura("carga-5-listo")
+        p.tocarDeVerdad(etiqueta("teclado-listo"))
+        esperarTecladoCerrado(kg)
+        assertEquals(listOf("0 de 4"), p.textosBajo(etiqueta("series-confirmadas")))
+    }
+
+    /** Tocar afuera del número (acá, la pauta de la semana) también cierra el teclado, y no registra nada. */
+    @Test
+    fun tocarAfueraDelPesoCierraElTeclado() {
+        lanzar()
+        val kg = abrirElTeclado()
+        p.tocarDeVerdad(etiqueta("metricas"))
+        esperarTecladoCerrado(kg)
+        assertEquals(listOf("0 de 4"), p.textosBajo(etiqueta("series-confirmadas")))
+    }
+
+    /**
+     * El caso de Sebastián (19/11): escribió 83, cerró el teclado y el toque siguiente cayó en el OK, que había vuelto justo
+     * ahí. Con el reloj de la espera quieto, el OK no registra; cumplido el medio segundo, sí (y con los 83 kg).
+     */
+    @Test
+    fun elToqueQueCierraElTecladoNoRegistraLaSerie() {
+        val reloj = AtomicLong(1_000_000L)
+        RelojCarga.ahora = { reloj.get() }
+        lanzar()
+        val kg = abrirElTeclado()
+        p.quieto(300)   // que se seleccione lo escrito: lo nuevo lo reemplaza
+        p.teclear(kg, "83")
+        p.esperar("83") { (p.textoDe(kg) == "83").takeIf { it } }
+        p.accionTeclado(kg)   // el ✓ del teclado
+        esperarTecladoCerrado(kg)
+        p.tocar(ok)
+        p.tocarDeVerdad(ok)
+        p.quieto(800)
+        assertEquals("se registró una serie al cerrar el teclado", listOf("0 de 4"), p.textosBajo(etiqueta("series-confirmadas")))
+        assertTrue(fila(1), fila(1).contains("pendiente"))
+        assertFalse("apareció Deshacer", p.existe(etiqueta("deshacer-ok")))
+        reloj.addAndGet(EsperaTrasTeclado.MS)
+        p.tocar(ok)
+        esperarHecha(1)
+        assertTrue(fila(1), fila(1).contains("83 kilos"))
     }
 
     @Test

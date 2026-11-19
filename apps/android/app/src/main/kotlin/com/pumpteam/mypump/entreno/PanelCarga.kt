@@ -8,6 +8,9 @@ import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -16,6 +19,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.pumpteam.mypump.diseno.Numeros
@@ -46,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -98,11 +103,22 @@ fun PanelCarga(motor: ModeloEntreno, lugar: String, preguntador: Preguntador) {
     val d by motor.dia.collectAsStateWithLifecycle()
     val corrigiendo by motor.corrigiendo.collectAsStateWithLifecycle()
     val deshacible by motor.deshacible.collectAsStateWithLifecycle()
+    // Antes de cualquier salida: la espera tiene que acordarse de que el panel estuvo escondido.
+    val espera = remember { EsperaTrasTeclado({ RelojCarga.ahora() }) }
     val s = motor.cargaSimple(lugar) ?: return
-    // Con el teclado arriba se esconde: si no, en un teléfono chico tapa el campo y se podría dar OK sin verlo. Corrigiendo
-    // no: el campo del peso está en el panel y, si se fuera, se llevaría el foco y el teclado se cerraría al abrirse.
+    // Con el teclado arriba (o un kilo en edición) se esconde: si no, en un teléfono chico tapa el campo y se podría dar OK
+    // sin verlo. En su lugar va «Listo», arriba del teclado. Corrigiendo no: el campo del peso está en el panel y, si se
+    // fuera, se llevaría el foco y el teclado se cerraría al abrirse.
     val corrigiendoEste = corrigiendo?.lugar == lugar
-    if (tecladoAbierto() && !corrigiendoEste) return
+    val editandoKilos = LocalFocoKilos.current?.activo == true
+    val oculto = (tecladoAbierto() || editandoKilos) && !corrigiendoEste
+    // Al volver, el OK espera medio segundo: el toque que cerró el teclado no puede registrar la serie (Sebastián, 19/11).
+    val vuelve = espera.oculto && !oculto
+    SideEffect { espera.ver(oculto) }
+    if (oculto) {
+        if (editandoKilos) BarraListoTeclado()
+        return
+    }
     val terminal = d.estado(lugar) in EstadosEjercicio.terminales
     if (!(corrigiendoEste || deshacible != null || (!s.completo && !terminal))) return
 
@@ -137,7 +153,7 @@ fun PanelCarga(motor: ModeloEntreno, lugar: String, preguntador: Preguntador) {
                 val activa = s.activa
                 when {
                     cor != null && cor.lugar == lugar && cor.indice < s.series.size -> Correccion(motor, cor.indice, s, preguntador)
-                    activa != null && !terminal -> Activa(motor, lugar, activa, s, preguntador)
+                    activa != null && !terminal -> Activa(motor, lugar, activa, s, preguntador, espera, vuelve)
                     else -> Terminado()
                 }
             }
@@ -151,7 +167,7 @@ fun PanelCarga(motor: ModeloEntreno, lugar: String, preguntador: Preguntador) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun tecladoAbierto(): Boolean {
+internal fun tecladoAbierto(): Boolean {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.isImeVisible
     val vista = LocalView.current
     var abierto by remember { mutableStateOf(false) }
@@ -168,8 +184,12 @@ private fun tecladoAbierto(): Boolean {
     return abierto
 }
 
+/**
+ * La serie que toca. [espera]: el OK no registra hasta que se cumple ([EsperaTrasTeclado]); [vuelve]: el panel recién vuelve
+ * de esconderse por el teclado, y el OK entra con una animación corta (la espera no se ve como un botón gris).
+ */
 @Composable
-private fun Activa(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimple, preguntador: Preguntador) {
+private fun Activa(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimple, preguntador: Preguntador, espera: EsperaTrasTeclado, vuelve: Boolean) {
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
     val haptico = LocalHapticFeedback.current
@@ -242,9 +262,19 @@ private fun Activa(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimple, 
         selloVisible = false
     }
     LaunchedEffect(enGuardia) { if (enGuardia) haptico.performHapticFeedback(HapticFeedbackType.Reject) }
-    Box(Modifier.fillMaxWidth()) {
+    // Entra desde abajo y transparente, en lo que dura la espera más o menos: se nota que todavía no está listo.
+    val entrada = remember { Animatable(if (vuelve && !reducir) 0f else 1f) }
+    LaunchedEffect(Unit) { entrada.animateTo(1f, tween(durationMillis = 320, easing = FastOutSlowInEasing)) }
+    Box(
+        Modifier.fillMaxWidth().graphicsLayer {
+            alpha = entrada.value
+            translationY = (1f - entrada.value) * 14.dp.toPx()
+        },
+    ) {
         BotonConfirmar(
             alTocar = {
+                // El toque que cerró el teclado (o uno apurado justo después) no registra: el panel recién volvió.
+                if (!espera.admite()) return@BotonConfirmar
                 aviso = null
                 alcance.launch {
                     val manejaTalkBack = (contexto.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager)?.isTouchExplorationEnabled == true
