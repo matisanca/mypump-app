@@ -12074,18 +12074,17 @@ const TuCambio = (() => {
     return mejor ? mejor.kg : null;
   }
   /* Guarda de unidades (2.3.3): un cambio imposible no se muestra. Hay alumnos que cargaron el peso en libras (mrl1cczlai0u
-     hasta el 20/09: 218 «kg» contra 100) y la cuenta daría «−117,6 kg». Es imposible si pasa cualquiera de estas dos:
-     · más del 25 % del peso de la primera semana (libras contra kilos es un 55 % o más; un error de tipeo como 7,8 por 78, más);
-     · más de 1,5 kg por semana en promedio, contando al menos 2 semanas (o sea, más de 3 kg entre dos semanas seguidas:
-       la primera semana de una dieta o de una carga puede mover 2 kg de agua y glucógeno, y eso es real).
-     Esconde también un cambio real así de grande, que en 12 semanas sería de más de 18 kg; ninguno de los alumnos de hoy. */
-  const GUARDA_FRACCION = 0.25, GUARDA_KG_SEMANA = 1.5, GUARDA_SEMANAS_MIN = 2;
+     hasta el 20/09: 218 «kg» contra 100) y la cuenta daría «−117,6 kg». Es imposible si pasa el 25 % del peso de la primera
+     semana: libras contra kilos es un salto de más del 50 % (un error de tipeo como 7,8 por 78, más todavía).
+     No hay tope por semana a propósito: con tirzepatida o un déficit agresivo se bajan 3 a 4 kg en dos semanas, y eso es real.
+     Esconde un cambio real de más del 25 %, que hoy no tiene ningún alumno. */
+  const GUARDA_FRACCION = 0.25;
   function cambio(primera, ultima, peso) {
     const semanas = Math.round(((dia(ultima) || 0) - (dia(primera) || 0)) / 7);
     const p0 = pesoDeSemana(primera, peso), p1 = pesoDeSemana(ultima, peso);
     if (p0 == null || p1 == null) return { semanas, kg: null };
     const d = p1 - p0;
-    if (Math.abs(d) > GUARDA_FRACCION * p0 || Math.abs(d) > GUARDA_KG_SEMANA * Math.max(semanas, GUARDA_SEMANAS_MIN)) return { semanas, kg: null };
+    if (Math.abs(d) > GUARDA_FRACCION * p0) return { semanas, kg: null };
     return { semanas, kg: d };
   }
   // El pie del comparador: "8 semanas · -2,4 kg". Lo usan «Tu cambio» y el comparador clásico («Antes y ahora»).

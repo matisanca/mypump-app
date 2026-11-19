@@ -100,13 +100,15 @@ await caso('dentro de la semana gana el primero cargado (como antes), aunque hay
 });
 
 // ── Guarda de unidades ──
-await caso('guarda: más de 1,5 kg por semana (contando al menos 2) o más del 25 % no se muestra', () => {
-  assert.equal(TC.resumen('2026-11-02', '2026-11-09', serie([['2026-11-02', 80.0], ['2026-11-09', 78.0]])), '1 semana · -2,0 kg');
-  assert.equal(TC.resumen('2026-11-02', '2026-11-09', serie([['2026-11-02', 80.0], ['2026-11-09', 77.0]])), '1 semana · -3,0 kg');
-  assert.equal(TC.resumen('2026-11-02', '2026-11-09', serie([['2026-11-02', 80.0], ['2026-11-09', 76.9]])), '1 semana');
-  assert.equal(TC.resumen('2026-09-14', '2026-11-09', serie([['2026-09-14', 80.0], ['2026-11-09', 92.0]])), '8 semanas · +12,0 kg');
-  assert.equal(TC.resumen('2026-09-14', '2026-11-09', serie([['2026-09-14', 80.0], ['2026-11-09', 92.1]])), '8 semanas');
-  // 25 %: 40 → 51 en 10 semanas son 1,1 kg por semana pero un 27,5 %.
+await caso('guarda: solo el 25 % del peso inicial; un cambio rápido pero real se muestra', () => {
+  // Tirzepatida o déficit agresivo: −3,5 kg en 2 semanas SÍ se muestra (no hay tope por semana).
+  assert.equal(TC.resumen('2026-10-26', '2026-11-09', serie([['2026-10-26', 95.0], ['2026-11-09', 91.5]])), '2 semanas · -3,5 kg');
+  assert.equal(TC.resumen('2026-11-02', '2026-11-09', serie([['2026-11-02', 80.0], ['2026-11-09', 76.0]])), '1 semana · -4,0 kg');
+  // Justo en el 25 % todavía se muestra; apenas arriba, no.
+  assert.equal(TC.resumen('2026-09-14', '2026-11-09', serie([['2026-09-14', 80.0], ['2026-11-09', 100.0]])), '8 semanas · +20,0 kg');
+  assert.equal(TC.resumen('2026-09-14', '2026-11-09', serie([['2026-09-14', 80.0], ['2026-11-09', 100.1]])), '8 semanas');
+  assert.equal(TC.resumen('2026-09-14', '2026-11-09', serie([['2026-09-14', 80.0], ['2026-11-09', 59.9]])), '8 semanas');
+  // 40 → 51: un 27,5 %.
   assert.equal(TC.resumen('2026-09-07', '2026-11-16', serie([['2026-09-07', 40.0], ['2026-11-16', 51.0]])), '10 semanas');
   assert.deepEqual(TC.cambio('2026-08-17', '2026-11-09', LB), { semanas: 12, kg: null });
 });
