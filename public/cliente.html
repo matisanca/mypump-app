@@ -11584,10 +11584,10 @@ function rangoPesoSemanal() {
     : { min: 75,  max: 250, label: 'ganar 75 a 250 g/sem' };
 }
 
-// Serie de peso por fecha (prefiere carga manual sobre wearable) ordenada asc.
-function _pesoSerie() {
+// Serie de peso por fecha (prefiere carga manual sobre wearable) ordenada asc. Sin argumento: los 60 días de Salud.
+function _pesoSerie(filas) {
   const porFecha = {};
-  (STATE.salud || []).filter(r => r.tipo === 'peso_kg').forEach(r => {
+  (filas || STATE.salud || []).filter(r => r.tipo === 'peso_kg').forEach(r => {
     const prev = porFecha[r.fecha];
     if (!prev || (prev.fuente !== 'manual' && r.fuente === 'manual')) porFecha[r.fecha] = r;
   });
@@ -11595,6 +11595,55 @@ function _pesoSerie() {
     .map(r => ({ fecha: r.fecha, kg: Number(r.valor) }))
     .filter(p => p.kg > 0)
     .sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+}
+
+/* ── Peso del comparador de fotos (2.3.3) ──────────────────────────────────
+ * Salud trae 60 días y las fotos, todo el historial: con una primera foto más vieja, el comparador no tenía el peso de
+ * esa semana. Esta serie es aparte (la de Salud y su fila Peso no cambian): solo peso_kg, desde el lunes de la semana de
+ * la primera foto menos 7 días hasta hoy. Se pide una vez por página (otra si aparece una foto más vieja, o 5 minutos
+ * después si falló). Sin ella el comparador usa los 60 días y, para una foto más vieja, no muestra los kg. */
+const _PC_REINTENTO_MS = 5 * 60 * 1000;
+function _pcDesdeNecesario() {
+  const semanas = (STATE.fotos || []).map(f => f.semana_lunes).filter(Boolean);
+  try { Object.values(_fotoqLeer()).forEach(p => { if (p && p.fecha) semanas.push(_lunesISO(p.fecha)); }); } catch (_) {}
+  const m = window.FotosInicioUI && window.FotosInicioUI._modelo;
+  if (m && m.estado) {
+    [...(m._colaCuerpo || []), ...(m.estado.fotos || [])].forEach(f => {
+      const d = f && f.tomadaEn ? TuCambio.fechaLocal(f.tomadaEn) : null;
+      if (d) semanas.push(TuCambio.lunes(d));
+    });
+  }
+  const validas = semanas.filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)).sort();
+  if (!validas.length) return null;
+  const d = new Date(`${validas[0]}T00:00:00`);
+  d.setDate(d.getDate() - 7);
+  return d.toLocaleDateString('en-CA');
+}
+function _pcAsegurar() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB || !window.mypumpDB.getPesoSalud) return Promise.resolve(false);
+  const desde = _pcDesdeNecesario();
+  if (!desde) return Promise.resolve(false);
+  const s60 = new Date(`${hoyLocal()}T00:00:00`); s60.setDate(s60.getDate() - 59);
+  if (desde >= s60.toLocaleDateString('en-CA')) return Promise.resolve(false);   // los 60 días de Salud ya la cubren
+  const pc = STATE.pesoComp;
+  if (pc && pc.enCurso) return pc.enCurso;
+  if (pc && pc.desde <= desde && pc.hasta === hoyLocal() && (pc.filas || Date.now() - pc.ts < _PC_REINTENTO_MS)) return Promise.resolve(false);
+  const hasta = hoyLocal();
+  const enCurso = (async () => {
+    let filas = null;
+    try { const r = await window.mypumpDB.getPesoSalud(TOKEN, desde, hasta); filas = Array.isArray(r) ? r : null; } catch (_) {}
+    STATE.pesoComp = { desde, hasta, filas, ts: Date.now() };
+    return !!filas;
+  })();
+  STATE.pesoComp = { ...(pc || {}), enCurso };
+  return enCurso;
+}
+/* La serie del comparador: la aparte más los 60 días de Salud (ahí está el peso que se cargó recién, que se agrega a
+ * STATE.salud). Mismo criterio por fecha que _pesoSerie: la carga manual gana. */
+function _pesoSerieComparador() {
+  const pc = STATE.pesoComp;
+  const viejas = pc && Array.isArray(pc.filas) ? pc.filas : [];
+  return _pesoSerie([...viejas, ...(STATE.salud || [])]);
 }
 
 // Media de los puntos cuya fecha cae en (fechaFin - dias, fechaFin].
@@ -12004,13 +12053,50 @@ const TuCambio = (() => {
   const lunes = (f) => { const n = dia(f); return n == null ? f : texto(n - ((((n + 3) % 7) + 7) % 7)); };
   const minuscula = (s) => s.slice(0, 1).toLowerCase() + s.slice(1);
 
-  // El pie del comparador: "8 semanas · -2,4 kg" (el peso es el primero cargado desde el lunes de cada semana).
+  /* El peso de una semana de fotos (2.3.3). Antes era «el primero cargado desde el lunes», sin tope: si la foto tenía más de
+     60 días (lo que trae Salud), tomaba un peso de meses después (Emmanuel veía +0,7 kg en vez de −4,6).
+     · El de la misma semana (lunes a domingo): el primero cargado en ella.
+     · Si esa semana no tiene peso, el más cercano a ella dentro de 7 días antes del lunes o 7 después del domingo. Empate:
+       el de después (como la regla vieja, que miraba hacia adelante).
+     · Si tampoco hay, null: el pie dice solo «N semanas», nunca un peso inventado. */
+  const PESO_DIAS_CERCA = 7;
+  function pesoDeSemana(sem, peso) {
+    const l = dia(sem);
+    if (l == null) return null;
+    let mejor = null, dist = Infinity;
+    (peso || []).map(p => ({ n: dia(p.fecha), kg: Number(p.kg) })).filter(p => p.n != null && p.kg > 0)
+      .sort((a, b) => a.n - b.n)
+      .forEach(p => {
+        const x = p.n < l ? l - p.n : (p.n > l + 6 ? p.n - (l + 6) : 0);
+        if (x > PESO_DIAS_CERCA) return;
+        if (x < dist || (x === dist && x > 0)) { mejor = p; dist = x; }
+      });
+    return mejor ? mejor.kg : null;
+  }
+  /* Guarda de unidades (2.3.3): un cambio imposible no se muestra. Hay alumnos que cargaron el peso en libras (mrl1cczlai0u
+     hasta el 20/09: 218 «kg» contra 100) y la cuenta daría «−117,6 kg». Es imposible si pasa cualquiera de estas dos:
+     · más del 25 % del peso de la primera semana (libras contra kilos es un 55 % o más; un error de tipeo como 7,8 por 78, más);
+     · más de 1,5 kg por semana en promedio, contando al menos 2 semanas (o sea, más de 3 kg entre dos semanas seguidas:
+       la primera semana de una dieta o de una carga puede mover 2 kg de agua y glucógeno, y eso es real).
+     Esconde también un cambio real así de grande, que en 12 semanas sería de más de 18 kg; ninguno de los alumnos de hoy. */
+  const GUARDA_FRACCION = 0.25, GUARDA_KG_SEMANA = 1.5, GUARDA_SEMANAS_MIN = 2;
+  function cambio(primera, ultima, peso) {
+    const semanas = Math.round(((dia(ultima) || 0) - (dia(primera) || 0)) / 7);
+    const p0 = pesoDeSemana(primera, peso), p1 = pesoDeSemana(ultima, peso);
+    if (p0 == null || p1 == null) return { semanas, kg: null };
+    const d = p1 - p0;
+    if (Math.abs(d) > GUARDA_FRACCION * p0 || Math.abs(d) > GUARDA_KG_SEMANA * Math.max(semanas, GUARDA_SEMANAS_MIN)) return { semanas, kg: null };
+    return { semanas, kg: d };
+  }
+  // El pie del comparador: "8 semanas · -2,4 kg". Lo usan «Tu cambio» y el comparador clásico («Antes y ahora»).
   function resumen(primera, ultima, peso) {
-    const pesoEn = (sem) => { const c = peso.filter(p => p.fecha >= sem).sort((a, b) => a.fecha < b.fecha ? -1 : 1)[0]; return c ? c.kg : null; };
-    const semDif = Math.round(((dia(ultima) || 0) - (dia(primera) || 0)) / 7);
-    let r = `${semDif} semana${semDif === 1 ? '' : 's'}`;
-    const p0 = pesoEn(primera), p1 = pesoEn(ultima);
-    if (p0 != null && p1 != null) { const d = p1 - p0; r += ` · ${d > 0 ? '+' : ''}${d.toFixed(1).replace('.', ',')} kg`; }
+    const c = cambio(primera, ultima, peso || []);
+    let r = `${c.semanas} semana${c.semanas === 1 ? '' : 's'}`;
+    if (c.kg != null) {
+      let t = c.kg.toFixed(1);
+      if (t === '-0.0') t = '0.0';
+      r += ` · ${c.kg > 0 && t !== '0.0' ? '+' : ''}${t.replace('.', ',')} kg`;
+    }
     return r;
   }
   function fecha(f) {
@@ -12076,7 +12162,7 @@ const TuCambio = (() => {
       vacioDespues: sinFoto(elegida) };
   }
 
-  return { T, POSES: POSES_TC, vista, fecha, sinFoto, sinOtra, fechaLocal, rotulo, accesible, lunes };
+  return { T, POSES: POSES_TC, vista, fecha, sinFoto, sinOtra, fechaLocal, rotulo, accesible, lunes, resumen, cambio, pesoDeSemana };
 })();
 /* ═══ TU CAMBIO · REGLAS (fin) ═══ */
 
@@ -12882,7 +12968,7 @@ function _tcFuentes() {
 
 function _tcVista(pose) {
   const f = _tcFuentes();
-  return { v: TuCambio.vista({ fotos: f.fotos, inicio: f.inicio, semanaActual: _lunesISO(hoyLocal()), pose, peso: _pesoSerie() }), f };
+  return { v: TuCambio.vista({ fotos: f.fotos, inicio: f.inicio, semanaActual: _lunesISO(hoyLocal()), pose, peso: _pesoSerieComparador() }), f };
 }
 
 // La imagen: la de inicio (la de la cola o la firmada), la de progreso que espera subir (es la más nueva) o la firmada.
@@ -12969,6 +13055,8 @@ function renderTuCambio() {
   const el = document.getElementById('rv-tucambio');
   if (!el) return;
   if (!checkGuiadoPrendido()) { el.innerHTML = ''; return; }
+  // El peso desde la primera foto: si hay que pedirlo, se repinta cuando llega (una sola vez: después ya está cubierto).
+  _pcAsegurar().then(llego => { if (llego) renderTuCambio(); }).catch(() => {});
   const { v, f } = _tcVista(_tcPose);
   const enfocada = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.tcPose : null;
   el.innerHTML = `
@@ -13014,8 +13102,10 @@ async function abrirGaleriaFotos(opciones) {
   _tcAntesDeAbrir = document.activeElement;
   _fpMsg('Cargando tus fotos…');
   const mapa = await cargarFotosFirmadas();
-  _fpMsg('');
   if (!mapa) { _fpMsg('No se pudieron cargar las fotos ahora.', 'is-err'); return; }
+  // El peso desde la primera foto, para el pie (una vez por página; si ya está o no hace falta, no espera nada).
+  await _pcAsegurar().catch(() => {});
+  _fpMsg('');
 
   const porSemana = {};
   Object.keys(mapa).forEach(k => {
@@ -13038,15 +13128,8 @@ async function abrirGaleriaFotos(opciones) {
     if (opciones && opciones.pose) _tcPose = opciones.pose;
     if (_tcVista(_tcPose).v.modo === 'par') bloqueComp = '<div class="tc-comparador" id="tcComp" data-testid="tucambio-comparador"></div>';
   } else if (hayComparador) {
-    const serieP = _pesoSerie();
-    const pesoEn = (sem) => {
-      const cand = serieP.filter(p => p.fecha >= sem).sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
-      return cand ? cand.kg : null;
-    };
-    const p0 = pesoEn(primera), p1 = pesoEn(ultima);
-    const semDif = Math.round((new Date(ultima) - new Date(primera)) / 6048e5);
-    const dKg = (p0 != null && p1 != null) ? (p1 - p0) : null;
-    const resumen = `${semDif} semana${semDif === 1 ? '' : 's'}` + (dKg != null ? ` · ${dKg > 0 ? '+' : ''}${dKg.toFixed(1).replace('.', ',')} kg` : '');
+    // La misma cuenta que «Tu cambio» (TuCambio.resumen), con la serie de peso que llega hasta la primera foto.
+    const resumen = TuCambio.resumen(primera, ultima, _pesoSerieComparador());
     const comparables = POSES.filter(p => porSemana[primera][p.k] && porSemana[ultima][p.k]);
     if (comparables.length) {
       bloqueComp = `

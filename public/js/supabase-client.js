@@ -55,12 +55,14 @@ function clasificarError(error, status) {
 const TOPE_LECTURA_MS = 15000;
 const SIN_RESPUESTA = { code: 'NETWORK', message: 'tiempo de espera agotado', status: 0, transitorio: true };
 
-async function rpc(fn, params, tope = TOPE_LECTURA_MS) {
+// `filtrar` (opcional): agrega filtros de PostgREST sobre las filas que devuelve la función (por ejemplo `q => q.eq('tipo', 'peso_kg')`).
+async function rpc(fn, params, tope = TOPE_LECTURA_MS, filtrar = null) {
   const ctl = typeof AbortController === 'function' ? new AbortController() : null;
   let reloj = null;
   const vencido = new Promise((ok) => { reloj = setTimeout(() => { if (ctl) ctl.abort(); ok({ _vencido: true }); }, tope); });
   try {
     let q = getClient().rpc(fn, params);
+    if (filtrar) q = filtrar(q);
     if (ctl && q && typeof q.abortSignal === 'function') q = q.abortSignal(ctl.signal);
     const r = await Promise.race([q, vencido]);
     if (r && r._vencido || (ctl && ctl.signal.aborted)) {
@@ -453,6 +455,12 @@ window.mypumpDB = {
   // Lee la salud del cliente en un rango. Filas: {fecha, tipo, valor, fuente, detalle}.
   async getSalud(token, desde, hasta) {
     return await rpc('mypump_get_salud', { p_token: token, p_desde: desde, p_hasta: hasta });
+  },
+
+  /* Solo el peso, para el comparador de fotos (2.3.3). La misma función, filtrada por PostgREST: el rango puede ser de meses
+   * y, con todos los tipos, el tope de 1.000 filas cortaría primero lo más viejo, que es justo el peso de la primera foto. */
+  async getPesoSalud(token, desde, hasta) {
+    return await rpc('mypump_get_salud', { p_token: token, p_desde: desde, p_hasta: hasta }, TOPE_LECTURA_MS, q => q.eq('tipo', 'peso_kg'));
   },
 
   // Ingesta por token (Vía B — plugin nativo Apple Health la llama directo).
