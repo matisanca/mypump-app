@@ -308,15 +308,21 @@ struct TarjetaCarga: View {
                 }
             }
         }
+        .padding(.horizontal, Self.rellenoFila)
         .frame(minHeight: 56)
         .background(alignment: .leading) { conector(i, s) }
-        .background(enCorreccion ? Color.marcaSuave : Color.clear, in: .rect(cornerRadius: 12, style: .continuous))
+        // La que se carga ahora se ve sin buscarla (Nicolás, 19/11): recuadro con el borde y el fondo de la marca.
+        .background(enCorreccion || activa ? Color.marcaSuave : Color.clear, in: .rect(cornerRadius: 14, style: .continuous))
+        .overlay {
+            if activa { RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.marca, lineWidth: 2).accessibilityHidden(true) }
+        }
         .animation(reducir ? nil : EstiloCarga.resorte, value: h.confirmada)
         .animation(reducir ? nil : EstiloCarga.resorte, value: activa)
         .contentShape(.rect)
         .onTapGesture { if h.confirmada { Task { await motor.editarSerie(lugar, i) } } }
         .accessibilityElement(children: h.confirmada || s.mismoPeso ? .ignore : .contain)
         .accessibilityLabel(etiquetaFila(i, s))
+        .accessibilityValue(activa ? Self.serieAhora : "")
         .accessibilityAddTraits(h.confirmada ? .isButton : [])
         .accessibilityIdentifier("fila-serie-\(i + 1)")
     }
@@ -340,7 +346,12 @@ struct TarjetaCarga: View {
         .accessibilityHidden(true)
     }
 
-    /// El hilo entre series: se pinta de verde lo que ya se hizo.
+    /// Lo que lee VoiceOver después de la fila de la serie que se carga ahora (y lo que miran las pruebas), como Android.
+    static let serieAhora = "La que toca ahora"
+    /// El aire de cada fila adentro de su recuadro: el borde de la activa no toca la insignia.
+    private static let rellenoFila: CGFloat = 6
+
+    /// El hilo entre series, por el centro de las insignias: se pinta de verde lo que ya se hizo.
     private func conector(_ i: Int, _ s: CargaSimple) -> some View {
         let hueco: CGFloat = 20
         return VStack(spacing: 0) {
@@ -349,7 +360,7 @@ struct TarjetaCarga: View {
             Rectangle().fill(i + 1 < s.series.count && s.series[i].confirmada && s.series[i + 1].confirmada ? Color.marca.opacity(0.6) : Color.campo)
                 .frame(width: 2).padding(.top, hueco).opacity(i + 1 == s.series.count ? 0 : 1)
         }
-        .padding(.leading, 15)
+        .padding(.leading, Self.rellenoFila + 15)
         .accessibilityHidden(true)
     }
 

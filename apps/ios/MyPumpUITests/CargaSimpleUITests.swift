@@ -198,6 +198,26 @@ final class CargaSimpleUITests: XCTestCase {
         XCTAssertTrue(etiqueta(1).contains("85 kilos"), etiqueta(1))
     }
 
+    // MARK: 2.3.3, qué serie va (Nicolás, 19/11)
+
+    private func esLaActiva(_ n: Int) -> Bool { (app.filaSerie(n).value as? String) == "La que toca ahora" }
+
+    func testLaFilaActivaSeDistingue() {
+        lanzar()
+        let ahora = app.staticTexts["serie-ahora"]
+        XCTAssertTrue(ahora.waitForExistence(timeout: 5), "Sin «Ahora: serie N de M»")
+        XCTAssertEqual(ahora.label, "Ahora: serie 1 de 4")
+        XCTAssertTrue(esLaActiva(1), "La fila 1 no tiene la marca: \(app.filaSerie(1).value ?? "nil")")
+        for n in 2...4 { XCTAssertFalse(esLaActiva(n), "La fila \(n) no es la que toca") }
+        app.traerArribaDelPanel(app.filaSerie(1))
+        foto("carga-6-fila-activa")
+        app.darOK()
+        espera("label CONTAINS 'hecha'", app.filaSerie(1))
+        espera("label == 'Ahora: serie 2 de 4'", ahora)
+        XCTAssertFalse(esLaActiva(1), "La hecha sigue marcada como la que toca")
+        XCTAssertTrue(esLaActiva(2), "La fila 2 no tiene la marca")
+    }
+
     /// Las capturas de diseño, de corrido. Solo corre con `TEST_RUNNER_CARGA_GALERIA=<prefijo>`, y las deja en `CARGA_DIR`.
     func testGaleriaDeDiseno() throws {
         guard let pre = ProcessInfo.processInfo.environment["CARGA_GALERIA"], !pre.isEmpty else { throw XCTSkip("Solo para capturas") }

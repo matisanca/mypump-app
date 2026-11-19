@@ -93,13 +93,16 @@ struct PanelCarga: View {
                     Label(a.texto, systemImage: "trophy.fill").labelStyle(EtiquetaCompacta()).font(.subheadline.weight(.bold))
                         .foregroundStyle(Color.record).accessibilityIdentifier("aviso-record-panel")
                 } else {
-                    Text("Serie \(i + 1) de \(s.series.count)")
-                        .font(Archivo.fuente(15, peso: 700, relativoA: .subheadline))
+                    // «Ahora: serie 2 de 4» (2.3.3, Nicolás, 19/11: no sabía cuál cargaba). En la lista, la misma fila va
+                    // resaltada. Es siempre la siguiente que falta (`CargaSimple.activa`).
+                    Text("\(Text("Ahora:").foregroundStyle(Color.marcaTexto)) serie \(i + 1) de \(s.series.count)")
+                        .font(Archivo.fuente(16, peso: 700, relativoA: .subheadline))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .contentTransition(.numericText())
                         .animation(EstiloCarga.resorte, value: i)
                         .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("serie-ahora")
                 }
                 if !letra.isAccessibilitySize { Spacer() }
                 DescansoChip(motor: motor)
