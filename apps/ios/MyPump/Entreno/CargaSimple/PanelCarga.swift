@@ -84,8 +84,10 @@ struct PanelCarga: View {
         let enGuardia = motor.guardia.serie == i && motor.guardia.desde != nil
         return VStack(spacing: Espacio.xs) {
             ProgresoSeries(total: s.series.count, hechas: s.confirmadas, actual: i)
-            // Con letra de accesibilidad, el descanso va abajo del título: al lado partía las palabras.
-            let cabecera = letra.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.xxs))
+            // Con letra de accesibilidad, el descanso va abajo del título: al lado partía las palabras. Desde la 2.3.3 también
+            // con la más grande de las comunes: «Ahora: serie 2 de 4» y el descanso no entraban juntos en un iPhone SE.
+            let apilada = letra >= .xxxLarge
+            let cabecera = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.xxs))
                                                      : AnyLayout(HStackLayout(spacing: Espacio.xs))
             cabecera {
                 // El récord entra en el renglón del título: la tarjeta puede estar fuera de vista y el panel no cambia de alto.
@@ -104,7 +106,7 @@ struct PanelCarga: View {
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("serie-ahora")
                 }
-                if !letra.isAccessibilitySize { Spacer() }
+                if !apilada { Spacer() }
                 DescansoChip(motor: motor)
             }
             .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
@@ -318,6 +320,7 @@ private struct DescansoChip: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(motor.descanso.listo ? Color.marcaSuave : Color.campo, in: .capsule)
+                    .accessibilityIdentifier("descanso-chip")
                 if !motor.descanso.listo {
                     Button("Saltar") { motor.saltarDescanso() }
                         .font(.footnote.weight(.semibold))

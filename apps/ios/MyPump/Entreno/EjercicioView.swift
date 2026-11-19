@@ -70,7 +70,7 @@ struct EjercicioView: View {
                         // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                         HStack(alignment: .top, spacing: Espacio.l) {
                             VStack(alignment: .leading, spacing: Espacio.l) {
-                                encabezado(t, lector); metricas(t); nota(t); comoSeHace(t)
+                                encabezado(t, lector); nota(t); metricas(t); comoSeHace(t)
                             }
                             .frame(maxWidth: .infinity, alignment: .top)
                             .fixedSize(horizontal: false, vertical: true)
@@ -85,9 +85,10 @@ struct EjercicioView: View {
                         .anchoLectura(Ancho.doble)
                     } else {
                         // En el teléfono, lo que se usa en el gimnasio va primero: la pauta y la tabla quedan a la
-                        // vista sin desplazar; el "cómo se hace" (fotos grandes y técnica) va después.
+                        // vista sin desplazar; el "cómo se hace" (fotos grandes y técnica) va después. El objetivo de la
+                        // semana, arriba de todo lo del ejercicio (2.3.3, Sebastián, 19/11: se leía poco).
                         VStack(alignment: .leading, spacing: Espacio.l) {
-                            encabezado(t, lector); metricas(t); nota(t); series(t); aSuperar(t); acciones(t, lector); EstadoMolestia(lugar: lugar) { doliendo = true }; BotonMandarTecnica(ejercicio: t.efectivo.ejercicio)
+                            encabezado(t, lector); nota(t); metricas(t); series(t); aSuperar(t); acciones(t, lector); EstadoMolestia(lugar: lugar) { doliendo = true }; BotonMandarTecnica(ejercicio: t.efectivo.ejercicio)
                             comoSeHace(t); comentarios(t); cierre(t)
                         }
                         .anchoLectura()
@@ -177,25 +178,31 @@ struct EjercicioView: View {
                       alTocarDescanso: t.efectivo.ejercicio.tipo == "calentamiento" || t.filas.isEmpty ? nil : { eligiendoDescanso = true })
     }
 
+    /// La nota de la semana contra la anterior o la de calibración: el objetivo de la semana. Desde la 2.3.3 va en un
+    /// recuadro con el fondo suave y el borde de la marca y la letra del cuerpo (antes la chica, sobre el fondo de una
+    /// tarjeta salvo en las semanas con cambio), como `NotaSemana` de Android.
     @ViewBuilder
     private func nota(_ t: ModeloEntreno.Tarjeta) -> some View {
-        if let nota = t.nota {
+        if let nota = t.nota ?? DemoUI.notaDePrueba {
             let rotulo = nota.cambia ? "Cambio de la semana" : (nota.calibracion ? "Semana 1" : "Esta semana")
             let icono = nota.cambia ? "chart.line.uptrend.xyaxis" : (nota.calibracion ? "scope" : "equal.circle")
+            let forma = RoundedRectangle(cornerRadius: Radio.control + 4, style: .continuous)
             VStack(alignment: .leading, spacing: 6) {
                 Label(rotulo, systemImage: icono)
                     .labelStyle(EtiquetaCompacta())
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Color.marcaTexto)
                 Text(nota.texto)
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(Espacio.m)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(nota.cambia ? Color.marcaSuave : Color.tarjeta, in: .rect(cornerRadius: Radio.control + 4, style: .continuous))
+            .background(Color.marcaSuave, in: forma)
+            .overlay { forma.strokeBorder(Color.marca.opacity(0.35), lineWidth: 1) }
             .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("nota-semana")
         }
     }
 

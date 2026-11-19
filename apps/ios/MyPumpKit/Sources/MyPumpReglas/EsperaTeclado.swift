@@ -27,3 +27,14 @@ public struct EsperaTrasTeclado: Equatable, Sendable {
         return ahora - d >= ms
     }
 }
+
+/// La letra que acompaña el tamaño del teléfono hasta un tope (2.3.3): el kilo y la rueda de reps crecían sin límite con la
+/// letra grande y empujaban el OK y el descanso fuera de la pantalla. Más chica que la base, la deja como la pide el sistema.
+public enum LetraConTope {
+    public static let tope: Double = 1.15
+
+    /// `escalado` es lo que daría el sistema para `base` con la letra del teléfono.
+    public static func tamaño(_ base: Double, escalado: Double, tope: Double = Self.tope) -> Double {
+        min(escalado, base * tope)
+    }
+}

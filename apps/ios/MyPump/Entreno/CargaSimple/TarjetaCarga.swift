@@ -22,6 +22,8 @@ struct TarjetaCarga: View {
     /// Crece con la letra: a tamaños de accesibilidad un 82,5 no entraba en el ancho fijo y salían puntos suspensivos.
     @ScaledMetric(relativeTo: .headline) private var anchoKgFila: CGFloat = 66
     @Environment(\.accessibilityReduceMotion) private var reducir
+    /// Cuánto agranda el sistema la letra del kilo (`EscalaCarga`).
+    @ScaledMetric(relativeTo: .largeTitle) private var cien: CGFloat = 100
 
     var body: some View {
         if let s = motor.cargaSimple(lugar) {
@@ -121,10 +123,11 @@ struct TarjetaCarga: View {
     }
 
     /// El número es un texto que anima y el campo va encima, transparente hasta que se lo toca: así el kilo crece como
-    /// las reps y el «kg» queda pegado, escriba lo que escriba.
+    /// las reps y el «kg» queda pegado, escriba lo que escriba. 2.3.3 (Sebastián, 19/11: se veía demasiado grande): 46/44/40
+    /// según el largo (antes 54/48/42), y con la letra del teléfono crece hasta 1,15 y no más (`EscalaCarga`).
     private func campoCarga(_ s: CargaSimple) -> some View {
-        let tamaño: CGFloat = textoCarga.count >= 5 ? 42 : textoCarga.count == 4 ? 48 : 54
-        let fuente = Archivo.fuente(tamaño, peso: 900, relativoA: .largeTitle)
+        let base: CGFloat = textoCarga.count >= 5 ? 40 : textoCarga.count == 4 ? 44 : 46
+        let fuente = Archivo.fija(EscalaCarga.tamaño(base, cien: cien), peso: 900)
         return HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(textoCarga.isEmpty ? "—" : textoCarga)
                 .font(fuente)
@@ -157,7 +160,7 @@ struct TarjetaCarga: View {
                 }
             Text("kg").font(Archivo.fuente(20, peso: 700, relativoA: .headline)).foregroundStyle(.secondary)
         }
-        .frame(minHeight: 60)
+        .frame(minHeight: 52)
     }
 
     private func subir() {

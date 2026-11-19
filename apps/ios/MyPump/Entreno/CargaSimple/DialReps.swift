@@ -25,13 +25,17 @@ struct DialReps: View {
     @State private var escalones = 0
     @Environment(\.accessibilityReduceMotion) private var reducir
     @Environment(\.dynamicTypeSize) private var letra
+    /// Cuánto agranda el sistema la letra del número (`EscalaCarga`).
+    @ScaledMetric(relativeTo: .largeTitle) private var cien: CGFloat = 100
 
     private var chico: Bool { EstiloCarga.pantallaChica }
     private var conVecinos: Bool { !letra.isAccessibilitySize && reps != nil }
-    private var tamaño: CGFloat { chico ? 64 : 76 }
+    private var base: CGFloat { chico ? 64 : 76 }
+    /// 2.3.3: acompaña la letra del teléfono hasta 1,15 y no más (`EscalaCarga`), como el kilo.
+    private var tamaño: CGFloat { EscalaCarga.tamaño(base, cien: cien) }
     private var paso: CGFloat { tamaño * 0.58 }
     private var altoTambor: CGFloat {
-        conVecinos ? (chico ? 104 : 122) : tamaño * 1.1
+        conVecinos ? (chico ? 104 : 122) * tamaño / base : tamaño * 1.1
     }
     private var valorTexto: String { reps.map(String.init) ?? "—" }
 

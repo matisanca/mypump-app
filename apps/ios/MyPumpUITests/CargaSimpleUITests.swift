@@ -9,10 +9,10 @@ final class CargaSimpleUITests: XCTestCase {
 
     override func setUp() async throws { continueAfterFailure = false }
 
-    private func lanzar(historial: Bool = true, extra: [String] = []) {
+    private func lanzar(historial: Bool = true, irASeries: Bool = true, extra: [String] = []) {
         app = XCUIApplication()
-        app.launchArguments = ["-entrar", "demo", "-pestana", "entreno", "-abrir", "ejercicio", "-ir", "series", "-sinOnboarding", "YES", "-descanso", "no"]
-            + (historial ? ["-historial", "muestra4"] : []) + extra
+        app.launchArguments = ["-entrar", "demo", "-pestana", "entreno", "-abrir", "ejercicio"] + (irASeries ? ["-ir", "series"] : [])
+            + ["-sinOnboarding", "YES", "-descanso", "no"] + (historial ? ["-historial", "muestra4"] : []) + extra
         app.launch()
         XCTAssertTrue(app.filaSerie(1).waitForExistence(timeout: 20), "No abrió el ejercicio")
     }
@@ -216,6 +216,41 @@ final class CargaSimpleUITests: XCTestCase {
         espera("label == 'Ahora: serie 2 de 4'", ahora)
         XCTAssertFalse(esLaActiva(1), "La hecha sigue marcada como la que toca")
         XCTAssertTrue(esLaActiva(2), "La fila 2 no tiene la marca")
+    }
+
+    // MARK: 2.3.3, letra más cómoda
+
+    func testCapturasLetraNormal() { capturas(modo: "normal", letra: nil) }
+
+    /// accessibility1 por defecto; `CARGA_LETRA` elige otra (p. ej. UICTContentSizeCategoryXXXL).
+    func testCapturasLetraGrande() {
+        capturas(modo: "grande", letra: ProcessInfo.processInfo.environment["CARGA_LETRA"] ?? "UICTContentSizeCategoryAccessibilityM")
+    }
+
+    /// Las capturas de la 2.3.3, y lo que importa en un iPhone SE con la letra grande: después de dar OK, el descanso y el
+    /// OK se ven enteros sin desplazar.
+    private func capturas(modo: String, letra: String?) {
+        let extra = letra.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? []
+        lanzar(irASeries: false, extra: extra + ["-nota", "prueba"])
+        RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+        XCTAssertTrue(app.descendants(matching: .any)["nota-semana"].firstMatch.exists, "Sin el objetivo de la semana")
+        foto("s3-\(modo)-1-ejercicio")
+        app.darOK()
+        espera("label CONTAINS 'hecha'", app.filaSerie(1))
+        RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+        let ventana = app.windows.firstMatch.frame
+        for e in [app.descendants(matching: .any)["descanso-chip"].firstMatch, app.okSerie] {
+            XCTAssertTrue(e.waitForExistence(timeout: 4), "Sin \(e.identifier) con la letra \(modo)")
+            XCTAssertTrue(e.frame.minY >= ventana.minY && e.frame.maxY <= ventana.maxY && e.isHittable,
+                          "\(e.identifier) fuera de la pantalla con la letra \(modo): \(e.frame) en \(ventana)")
+        }
+        foto("s3-\(modo)-2-descanso")
+        app.traerArribaDelPanel(app.filaSerie(4))
+        foto("s3-\(modo)-3-series")
+        app.traerArribaDelPanel(app.cargaValor)
+        app.cargaValor.tap()
+        XCTAssertTrue(app.buttons["teclado-listo"].waitForExistence(timeout: 4), "Sin «Listo» con la letra \(modo)")
+        foto("s3-\(modo)-4-listo")
     }
 
     /// Las capturas de diseño, de corrido. Solo corre con `TEST_RUNNER_CARGA_GALERIA=<prefijo>`, y las deja en `CARGA_DIR`.

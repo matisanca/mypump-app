@@ -1,7 +1,8 @@
 import XCTest
 @testable import MyPumpReglas
 
-/// 2.3.3: el OK del panel no registra con el toque que cierra el teclado. Los mismos casos que `EsperaTecladoTest` de Android.
+/// 2.3.3: el OK del panel no registra con el toque que cierra el teclado, y el kilo y la rueda crecen con la letra hasta 1,15.
+/// Los mismos casos que `EsperaTecladoTest` de Android.
 final class EsperaTecladoTests: XCTestCase {
     func testSinTecladoNuncaEspera() {
         let e = EsperaTrasTeclado()
@@ -54,5 +55,16 @@ final class EsperaTecladoTests: XCTestCase {
         XCTAssertFalse(e.admite(ahora: 3_999))
         XCTAssertTrue(e.admite(ahora: 4_000))
         XCTAssertEqual(EsperaTrasTeclado().ms, 500)
+    }
+
+    func testLetraConTope() {
+        // De la letra más chica a la de accesibilidad más grande: nunca pasa de base × 1,15 y abajo queda como la pide.
+        for escala in [0.85, 1.0, 1.1, 1.15, 1.3, 1.6, 2.0, 3.1] {
+            let t = LetraConTope.tamaño(46, escalado: 46 * escala)
+            XCTAssertLessThanOrEqual(t, 46 * 1.15 + 1e-9, "escala \(escala)")
+            if escala <= 1.15 { XCTAssertEqual(t, 46 * escala, accuracy: 1e-9) } else { XCTAssertEqual(t, 52.9, accuracy: 1e-9) }
+        }
+        XCTAssertEqual(LetraConTope.tamaño(76, escalado: 200), 87.4, accuracy: 1e-9)
+        XCTAssertEqual(LetraConTope.tope, 1.15)
     }
 }

@@ -15,6 +15,7 @@ import MyPumpDatos
 ///     simctl launch … -demo lleno                          (el check lleno, con -bocetos)
 ///     simctl launch … -series 2                            (el ejercicio abierto con 2 series ya confirmadas)
 ///     simctl launch … -descanso no                         (sin el descanso de muestra)
+///     simctl launch … -nota prueba                         (el «Cambio de la semana» en el ejercicio abierto)
 ///     simctl launch … -esperaOK 4000                       (el OK espera 4 s al cerrarse el teclado, para las pruebas)
 ///     simctl launch … -metas muestra -pasos 7420           (el «Pump del día» de muestra; -pasosLuego 10240 lo llena)
 enum DemoUI {
@@ -66,6 +67,18 @@ enum DemoUI {
             e.aumento = .sugerido(desde: desde, hasta: hasta)
             c = CargaSimple(ejercicio: ejercicio, semana: 1, ultimaVez: c.ultimaVez, equipo: c.equipo, estado: e)
         }
+        #endif
+    }
+
+    /// `-nota prueba`: el «Cambio de la semana» a la vista en el ejercicio, para las capturas (la demo no trae progresión y
+    /// siempre está en la semana 1). El texto sale de la regla de verdad, con 10 reps la semana 1 y 12 la 2.
+    static var notaDePrueba: NotaProgresion? {
+        #if DEBUG
+        guard valor("nota") == "prueba" else { return nil }
+        let e = Ejercicio(id: "nota-prueba", nombre: "", progresion: [Progresion(semana: 1, series: 4, reps: "10"), Progresion(semana: 2, series: 4, reps: "12")])
+        return Progresiones.nota(e, semanaActual: 2)
+        #else
+        nil
         #endif
     }
 

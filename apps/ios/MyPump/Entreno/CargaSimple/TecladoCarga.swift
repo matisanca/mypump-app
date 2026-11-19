@@ -42,3 +42,12 @@ extension View {
         })
     }
 }
+
+/// La letra del kilo y de la rueda de reps: acompaña la del teléfono hasta 1,15 (`LetraConTope`) y no más, para que con la
+/// letra grande el OK y el descanso sigan a la vista en un iPhone SE. Cada vista lleva
+/// `@ScaledMetric(relativeTo: .largeTitle) var cien: CGFloat = 100`, que dice cuánto agranda el sistema un 100.
+enum EscalaCarga {
+    static func tamaño(_ base: CGFloat, cien: CGFloat) -> CGFloat {
+        CGFloat(LetraConTope.tamaño(Double(base), escalado: Double(base * cien / 100)))
+    }
+}
