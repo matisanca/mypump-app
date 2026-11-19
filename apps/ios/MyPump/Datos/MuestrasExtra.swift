@@ -15,6 +15,7 @@ import MyPumpDatos
 ///     simctl launch … -demo lleno                          (el check lleno, con -bocetos)
 ///     simctl launch … -series 2                            (el ejercicio abierto con 2 series ya confirmadas)
 ///     simctl launch … -descanso no                         (sin el descanso de muestra)
+///     simctl launch … -esperaOK 4000                       (el OK espera 4 s al cerrarse el teclado, para las pruebas)
 ///     simctl launch … -metas muestra -pasos 7420           (el «Pump del día» de muestra; -pasosLuego 10240 lo llena)
 enum DemoUI {
     enum Estado: String { case cargando, vacio, error }
@@ -45,6 +46,8 @@ enum DemoUI {
     static var lleno: Bool { bocetos && valor("demo") == "lleno" }
     static var seriesHechas: Int { Int(valor("series") ?? "") ?? 0 }
     static var sinDescanso: Bool { valor("descanso") == "no" }
+    /// `-esperaOK 4000` (pruebas de interfaz): la espera del OK al cerrarse el teclado, en ms (normalmente 500).
+    static var esperaOK: Double? { valor("esperaOK").flatMap(Double.init) }
     /// `-historial muestra`: la demo con historial (60 kg × 10 hace 4 días en cada ejercicio), para ver el kg sugerido, la
     /// preparación con kg y el aviso de récord sin cuenta.
     static var historialDeMuestra: Bool { valor("historial") == "muestra" || cuatroSeries }

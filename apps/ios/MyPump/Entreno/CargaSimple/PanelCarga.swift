@@ -17,14 +17,22 @@ struct PanelCarga: View {
     @State private var textoCorreccion = ""
     @State private var cargaConfirmada = 0
     @State private var selloVisible = false
+    /// Al cerrarse el teclado el OK vuelve justo bajo el dedo: medio segundo sin tomar toques (Sebastián, 19/11).
+    @State private var espera = EsperaTrasTeclado(ms: TecladoCarga.esperaOK)
+    /// De 0 a 1: el OK entra desde abajo y transparente cuando el panel vuelve (lo que dura la espera, más o menos).
+    @State private var entradaOK: CGFloat = 1
     @FocusState private var enCorreccionKg: Bool
     @Environment(\.accessibilityReduceMotion) private var reducir
     @Environment(\.dynamicTypeSize) private var letra
 
+    /// Con el teclado arriba se esconde: si no, en un teléfono chico tapa el campo y se podría dar OK sin verlo. Arriba del
+    /// teclado queda «Listo» (`TarjetaCarga`). Corrigiendo no: el peso de la corrección está en el panel y, si se fuera, se
+    /// llevaría el foco y el teclado se cerraría al abrirse (como en Android).
+    private var oculto: Bool { teclado && motor.corrigiendo?.lugar != lugar }
+
     var body: some View {
         Group {
-            // Con el teclado arriba se esconde: si no, en un teléfono chico tapa el campo y se podría dar OK sin verlo.
-            if !teclado, let s = motor.cargaSimple(lugar), debeVerse(s) {
+            if !oculto, let s = motor.cargaSimple(lugar), debeVerse(s) {
                 contenido(s)
                     .frame(maxWidth: 560)
                     .padding(.horizontal, Espacio.m + 2)
@@ -41,6 +49,15 @@ struct PanelCarga: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in teclado = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in teclado = false }
+        .onChange(of: oculto, initial: true) { _, o in
+            espera.ver(oculto: o, ahora: TecladoCarga.ahora())
+            if o {
+                if !reducir { entradaOK = 0 }
+            } else if entradaOK < 1 {
+                // Un ciclo después: el panel tiene que existir con el OK abajo antes de animarlo.
+                DispatchQueue.main.async { withAnimation(.easeOut(duration: 0.32)) { entradaOK = 1 } }
+            }
+        }
     }
 
     private func debeVerse(_ s: CargaSimple) -> Bool {
@@ -100,6 +117,8 @@ struct PanelCarga: View {
                 .overlay { sello }
                 .accessibilityIdentifier("ok-serie")
                 .accessibilityLabel(etiquetaAccesibleOK(reps: reps, kg: kg, i: i, s, enGuardia: enGuardia))
+                .opacity(entradaOK)
+                .offset(y: (1 - entradaOK) * 14)
             if let t = aviso ?? motor.dia.ejercicios[lugar]?.series[safe: i]?.aviso, !t.isEmpty {
                 Label(t, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(Color.peligro)
             }
@@ -112,6 +131,8 @@ struct PanelCarga: View {
     }
 
     private func confirmar(_ i: Int) {
+        // El toque que cerró el teclado (o uno apurado justo después) no registra: el panel recién volvió. Sin aviso.
+        guard espera.admite(ahora: TecladoCarga.ahora()) else { return }
         Task {
             aviso = nil
             let r = await motor.okSerie(lugar, i, venceEn: UIAccessibility.isVoiceOverRunning ? nil : 6) { await preguntador.preguntar($0) }

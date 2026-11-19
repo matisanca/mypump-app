@@ -46,7 +46,8 @@ struct TarjetaCarga: View {
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Listo") { enCarga = false; kgFila = nil }.fontWeight(.semibold).accessibilityIdentifier("teclado-listo")
+                    // Suelta cualquier campo, también el peso de la corrección, que vive en el panel.
+                    Button("Listo") { enCarga = false; kgFila = nil; TecladoCarga.soltar() }.fontWeight(.semibold).accessibilityIdentifier("teclado-listo")
                 }
             }
         }

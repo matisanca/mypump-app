@@ -102,6 +102,102 @@ final class CargaSimpleUITests: XCTestCase {
         espera("label CONTAINS 'hecha'", app.filaSerie(2))
     }
 
+    // MARK: 2.3.3, salir del peso sin registrar nada (Sebastián, 19/11)
+
+    private var teclado: XCUIElement { app.keyboards.firstMatch }
+
+    /// Abre el teclado del kilo y escribe. Con el teclado arriba el panel (y su OK) se esconde.
+    private func escribirKilo(_ texto: String) {
+        XCTAssertTrue(app.cargaValor.waitForExistence(timeout: 15), "Sin el campo de la carga")
+        app.traerArribaDelPanel(app.cargaValor)
+        app.cargaValor.tap()
+        XCTAssertTrue(teclado.waitForExistence(timeout: 4), "No abrió el teclado")
+        RunLoop.current.run(until: Date().addingTimeInterval(0.4))   // la selección llega 0,08 s después del foco
+        app.cargaValor.typeText(texto)
+    }
+
+    /// Toca el «kg» de al lado del número: es parte de la tarjeta, no del campo.
+    private func tocarAfueraDelPeso() {
+        app.cargaValor.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5)).withOffset(CGVector(dx: 26, dy: 0)).tap()
+    }
+
+    func testListoArribaDelTecladoLoCierra() {
+        lanzar()
+        escribirKilo("83")
+        XCTAssertFalse(app.okSerie.exists, "Con el teclado arriba el OK tiene que estar escondido")
+        XCTAssertTrue(app.buttons["teclado-listo"].waitForExistence(timeout: 3), "Sin «Listo» arriba del teclado")
+        foto("carga-5-listo")
+        app.buttons["teclado-listo"].tap()
+        XCTAssertTrue(teclado.waitForNonExistence(timeout: 4), "«Listo» no cerró el teclado")
+        XCTAssertTrue(app.okSerie.waitForExistence(timeout: 4), "El panel no volvió")
+        XCTAssertEqual(app.cargaValor.value as? String, "83")
+        XCTAssertTrue(etiqueta(1).contains("pendiente"), "Cerrar el teclado registró la serie: \(etiqueta(1))")
+    }
+
+    func testTocarAfueraDelPesoCierraElTeclado() {
+        lanzar()
+        escribirKilo("83")
+        // Tocar el mismo campo (mover el cursor) no lo cierra.
+        app.cargaValor.tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+        XCTAssertTrue(teclado.exists, "Tocar el campo cerró el teclado")
+        tocarAfueraDelPeso()
+        XCTAssertTrue(teclado.waitForNonExistence(timeout: 4), "Tocar afuera no cerró el teclado")
+        XCTAssertTrue(app.okSerie.waitForExistence(timeout: 4), "El panel no volvió")
+        XCTAssertTrue(etiqueta(1).contains("83 kilos"), etiqueta(1))
+        XCTAssertTrue(etiqueta(1).contains("pendiente"), etiqueta(1))
+    }
+
+    /// Con la espera alargada a 4 s (`-esperaOK`): el simulador tarda más de medio segundo entre dos toques. El OK tocado
+    /// enseguida de cerrar el teclado no registra; pasada la espera, sí, con el peso escrito.
+    func testElToqueQueCierraElTecladoNoRegistraLaSerie() {
+        lanzar(extra: ["-esperaOK", "4000"])
+        escribirKilo("83")
+        app.buttons["teclado-listo"].tap()
+        XCTAssertTrue(app.okSerie.waitForExistence(timeout: 3), "El panel no volvió")
+        app.okSerie.tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+        XCTAssertTrue(etiqueta(1).contains("pendiente"), "El toque apurado registró la serie: \(etiqueta(1))")
+        XCTAssertFalse(app.buttons["deshacer-ok"].exists)
+        // Lo mismo cerrando con un toque afuera.
+        escribirKilo("84")
+        tocarAfueraDelPeso()
+        XCTAssertTrue(app.okSerie.waitForExistence(timeout: 3), "El panel no volvió")
+        app.okSerie.tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+        XCTAssertTrue(etiqueta(1).contains("pendiente"), "El toque apurado registró la serie: \(etiqueta(1))")
+        RunLoop.current.run(until: Date().addingTimeInterval(3.5))
+        app.darOK()
+        espera("label CONTAINS 'hecha'", app.filaSerie(1))
+        XCTAssertTrue(etiqueta(1).contains("84 kilos"), etiqueta(1))
+    }
+
+    /// El peso de la corrección vive en el panel: con el teclado arriba el panel sigue, y «Listo» también lo cierra.
+    func testLaCorreccionDelPesoTieneListo() {
+        lanzar()
+        app.darOK()
+        espera("label CONTAINS 'hecha'", app.filaSerie(1))
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+        app.traerArribaDelPanel(app.filaSerie(1))
+        app.filaSerie(1).tap()
+        let kg = app.textFields["correccion-kg"]
+        XCTAssertTrue(kg.waitForExistence(timeout: 3), "No abrió la corrección")
+        // Al borde derecho: el cursor queda al final y los borrados se llevan el peso anterior.
+        kg.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        XCTAssertTrue(teclado.waitForExistence(timeout: 4), "No abrió el teclado")
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+        XCTAssertTrue(kg.exists && app.buttons["correccion-guardar"].exists, "El panel de la corrección se escondió con el teclado")
+        XCTAssertTrue(app.buttons["teclado-listo"].firstMatch.waitForExistence(timeout: 3), "Sin «Listo» al corregir")
+        kg.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6) + "85")
+        foto("carga-7-correccion-teclado")
+        app.buttons["teclado-listo"].firstMatch.tap()
+        XCTAssertTrue(teclado.waitForNonExistence(timeout: 4), "«Listo» no cerró el teclado de la corrección")
+        XCTAssertEqual(kg.value as? String, "85")
+        app.buttons["correccion-guardar"].tap()
+        XCTAssertTrue(app.buttons["correccion-guardar"].waitForNonExistence(timeout: 4))
+        XCTAssertTrue(etiqueta(1).contains("85 kilos"), etiqueta(1))
+    }
+
     /// Las capturas de diseño, de corrido. Solo corre con `TEST_RUNNER_CARGA_GALERIA=<prefijo>`, y las deja en `CARGA_DIR`.
     func testGaleriaDeDiseno() throws {
         guard let pre = ProcessInfo.processInfo.environment["CARGA_GALERIA"], !pre.isEmpty else { throw XCTSkip("Solo para capturas") }

@@ -264,6 +264,8 @@ private struct ListaEntreno: View {
             .padding(.top, Espacio.xs)
             .padding(.bottom, Espacio.xl)
             .anchoLectura()
+            .contentShape(.rect)
+            .soltarTecladoAlTocarAfuera()
         }
         // Al abrirse un ejercicio (tocado, o el siguiente cuando se completa uno) la lista lo trae a la vista: abierto abajo
         // de todo quedaba fuera de la pantalla. Si entra entero no se mueve.

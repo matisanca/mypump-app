@@ -96,6 +96,8 @@ struct EjercicioView: View {
                 .padding(.horizontal, Espacio.m)
                 .padding(.top, Espacio.xs)
                 .padding(.bottom, Espacio.xl)
+                .contentShape(.rect)
+                .soltarTecladoAlTocarAfuera()
             }
             .scrollDismissesKeyboard(.interactively)
             .environment(\.traerDescansoALaVista, { withAnimation(.snappy) { lector.scrollTo("descanso-en-tarjeta", anchor: nil) } })
