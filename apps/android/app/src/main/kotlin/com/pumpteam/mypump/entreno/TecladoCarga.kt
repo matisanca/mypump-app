@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.MyPump
@@ -193,3 +194,6 @@ internal fun altoTeclado(): Dp {
     return with(densidad) { alto.toDp() }
 }
 
+/** [base] con la letra del teléfono, topeada en [TOPE_LETRA] ([letraConTope]). */
+@Composable
+internal fun letraTopeada(base: TextUnit): TextUnit = with(LocalDensity.current) { letraConTope(base) }

@@ -282,22 +282,27 @@ internal fun CampoKilos(
     )
 }
 
-/** El kilo grande, alineado a la izquierda con el «kg» pegado. Achica la letra si el número es largo (122,5). */
+/**
+ * El kilo grande, alineado a la izquierda con el «kg» pegado. Achica la letra si el número es largo (122,5). Desde la 2.3.3
+ * es más chico (46 a 40, antes 54 a 42) y con la letra grande del teléfono crece hasta 1,15 ([letraTopeada]).
+ */
 @Composable
 private fun CampoCarga(motor: ModeloEntreno, lugar: String, s: CargaSimple, encendido: Boolean) {
     val c = MyPump.colores
     val texto = KgTexto.de(s.carga)
-    val tamano = when {
-        texto.length >= 5 -> 42.sp
-        texto.length == 4 -> 48.sp
-        else -> 54.sp
-    }
+    val tamano = letraTopeada(
+        when {
+            texto.length >= 5 -> 40.sp
+            texto.length == 4 -> 44.sp
+            else -> 46.sp
+        },
+    )
     val color by animateColorAsState(if (encendido) c.marcaTexto else c.texto, label = "kilo-encendido")
     val escala by animateFloatAsState(if (encendido) 1.06f else 1f, spring(dampingRatio = 0.55f), label = "kilo-escala")
     val estilo = TextStyle(fontFamily = Archivo, fontWeight = FontWeight.Black, fontSize = tamano, lineHeight = tamano)
     // El «kg» va afuera del campo: adentro, el ancho del campo (el del número) lo dejaba sin lugar.
     Row(
-        Modifier.heightIn(min = 60.dp).graphicsLayer { scaleX = escala; scaleY = escala; transformOrigin = TransformOrigin(0f, 0.5f) },
+        Modifier.heightIn(min = 52.dp).graphicsLayer { scaleX = escala; scaleY = escala; transformOrigin = TransformOrigin(0f, 0.5f) },
         verticalAlignment = Alignment.Bottom,
     ) {
         CampoKilos(

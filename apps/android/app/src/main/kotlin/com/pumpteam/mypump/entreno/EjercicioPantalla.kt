@@ -201,8 +201,9 @@ fun EjercicioPantalla(
                 Encabezado(t, Modifier.onSizeChanged { altoEncabezado = it.height }) {
                     alcanceUi.launch { pedirMovimiento.bringIntoView() }
                 }
-                MetricasPauta(t.pauta, t.descanso, t.efectivo.ejercicio.tipo)
+                // El objetivo de la semana, arriba de todo lo del ejercicio (Sebastián, 19/11: se leía poco).
                 t.nota?.let { NotaSemana(it) }
+                MetricasPauta(t.pauta, t.descanso, t.efectivo.ejercicio.tipo)
                 if (t.filas.isNotEmpty()) {
                     TarjetaCarga(motor, v, lugar, t)
                     DescansoEnTarjeta(motor, enLista = false)
@@ -342,27 +343,32 @@ internal fun partirParentesis(s: String): Pair<String, String?> {
     return (principal.ifEmpty { s }) to detalle.ifEmpty { null }
 }
 
-/** La nota de la semana contra la anterior (ENT-07) o la de calibración. */
+/**
+ * La nota de la semana contra la anterior (ENT-07) o la de calibración: el objetivo de la semana. Desde la 2.3.3 va en un
+ * recuadro con el fondo suave de la marca y la letra del cuerpo (antes era la chica, sobre el fondo de una tarjeta).
+ */
 @Composable
 private fun NotaSemana(nota: NotaProgresion) {
     val c = MyPump.colores
     val rotulo = if (nota.cambia) "Cambio de la semana" else if (nota.calibracion) "Semana 1" else "Esta semana"
     val icono = if (nota.cambia) Iconos.Tendencia else if (nota.calibracion) Iconos.Mira else Iconos.Calendario
+    val forma = RoundedCornerShape(Radio.control + 4.dp)
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Radio.control + 4.dp))
-            .background(if (nota.cambia) c.marcaSuave else c.tarjeta)
+            .clip(forma)
+            .background(c.marcaSuave)
+            .border(1.dp, c.marca.copy(alpha = 0.35f), forma)
             .padding(Espacio.m)
             .semantics(mergeDescendants = true) {}
             .testTag("nota-semana"),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            Icon(icono, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(15.dp))
-            Text(rotulo, style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = c.marcaTexto)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(icono, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
+            Text(rotulo, style = Letras.subtitulo.copy(fontWeight = FontWeight.Bold), color = c.marcaTexto)
         }
-        Text(nota.texto, style = Letras.subtitulo, color = c.texto)
+        Text(nota.texto, style = MaterialTheme.typography.bodyLarge, color = c.texto)
     }
 }
 

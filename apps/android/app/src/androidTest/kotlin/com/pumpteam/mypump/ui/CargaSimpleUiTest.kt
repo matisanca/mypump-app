@@ -307,6 +307,32 @@ class CargaSimpleUiTest : PruebaUi() {
         if (kotlin.math.abs(dy) > 1f) p.desplazar(etiqueta("ejercicio-pantalla"), dy)
     }
 
+    /** Las capturas de la 2.3.3, con la letra normal y al 130 %: el descanso y el OK se ven sin desplazar. */
+    @Test
+    fun capturasLetraNormal() = capturas("normal")
+
+    @Test
+    fun capturasLetraGrande() = capturas("grande")
+
+    private fun capturas(modo: String) {
+        if (modo == "grande") Telefono.shell("settings put system font_scale 1.3")
+        lanzar()
+        Telefono.captura("s2-$modo-1-ejercicio")
+        darOK()
+        esperarHecha(1)
+        p.nodo(etiqueta("descanso-chip"))
+        for (tag in listOf("descanso-chip", "ok-serie")) {
+            val (r, alto) = p.lugarEnVentana(etiqueta(tag))
+            assertTrue("$tag fuera de la pantalla con la letra $modo: $r (alto $alto)", r.top >= 0f && r.bottom <= alto && r.height > 0f)
+        }
+        Telefono.captura("s2-$modo-2-descanso")
+        verArribaDelPanel(etiqueta("fila-serie-4"))
+        Telefono.captura("s2-$modo-3-series")
+        abrirElTeclado()
+        p.nodo(etiqueta("teclado-listo"))
+        Telefono.captura("s2-$modo-4-listo")
+    }
+
     @Test
     fun sinRirEnPantalla() {
         lanzar()

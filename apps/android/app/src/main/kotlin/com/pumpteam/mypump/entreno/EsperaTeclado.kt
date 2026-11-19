@@ -1,7 +1,11 @@
 package com.pumpteam.mypump.entreno
 
-// Lo que no depende de la vista en «salir del peso sin registrar nada» (2.3.3, S2): la espera del OK cuando vuelve el panel.
-// Sin Android adentro: se prueba en la JVM (src/test).
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
+
+// Lo que no depende de la vista en «salir del peso sin registrar nada» (2.3.3, S2): la espera del OK cuando vuelve el panel
+// y el tope de la letra grande. Sin Android adentro: se prueba en la JVM (src/test).
 
 /**
  * El OK no toma toques un rato después de que vuelve el panel (Sebastián, 19/11: escribió 83 en el peso, no supo cómo salir,
@@ -35,3 +39,16 @@ class EsperaTrasTeclado(private val reloj: () -> Long, val ms: Long = MS) {
     }
 }
 
+/** Hasta cuánto acompaña la letra del teléfono a los números grandes de la carga (el kilo y la rueda de reps). */
+const val TOPE_LETRA = 1.15f
+
+/**
+ * [base] con la letra del teléfono, pero sin pasar de [tope] veces su tamaño: con la letra al 130 % el kilo y la rueda
+ * crecían sin límite y el panel se comía la pantalla (Sebastián, 19/11: «todo se ve muy grande»). Con la escala no lineal de
+ * Android 14 el sistema ya achica los tamaños grandes: si eso queda por debajo del tope, se deja como está.
+ */
+fun Density.letraConTope(base: TextUnit, tope: Float = TOPE_LETRA): TextUnit {
+    val natural = base.toDp()
+    val maximo = (base.value * tope).dp
+    return if (natural <= maximo) base else maximo.toSp()
+}

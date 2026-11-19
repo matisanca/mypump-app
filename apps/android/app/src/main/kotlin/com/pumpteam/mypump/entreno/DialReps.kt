@@ -199,7 +199,9 @@ private fun Rueda(
             else -> crudo
         }
     }
-    val estilo = TextStyle(fontFamily = Archivo, fontWeight = FontWeight.Black, fontSize = tamano.sp, lineHeight = tamano.sp)
+    // Con la letra grande del teléfono crece hasta 1,15 (2.3.3): más y el número no entraba en el alto del tambor.
+    val letra = letraTopeada(tamano.sp)
+    val estilo = TextStyle(fontFamily = Archivo, fontWeight = FontWeight.Black, fontSize = letra, lineHeight = letra)
 
     Box(
         modifier
