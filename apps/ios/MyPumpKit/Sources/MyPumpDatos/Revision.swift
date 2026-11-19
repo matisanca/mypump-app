@@ -297,7 +297,15 @@ public final class ModeloRevision {
         guard let desde = FotosProgreso.desdePesoComparador(fechasDeFotos) else { return false }
         let hoy = diaDeHoy()
         guard FotosProgreso.necesitaPesoComparador(desde: desde, hoy: hoy) else { return false }
-        if let enCurso = pesoComparadorEnCurso { return await enCurso.value }
+        if let enCurso = pesoComparadorEnCurso {
+            let llego = await enCurso.value
+            // Si ese pedido ya cubría esta primera foto, su resultado es el nuestro. Si no (llegó una foto más vieja con el
+            // pedido en camino, por ejemplo la de inicio de «Tu cambio»), se vuelve a mirar: pide desde la más vieja. Sin
+            // bucle: el pedido nuevo sale desde `desde`, así que al terminar ya la cubre; y si otro llamado lo largó antes,
+            // este lo espera en vez de duplicarlo.
+            if let pc = pesoComparador, pc.desde <= desde { return llego }
+            return await asegurarPesoComparador(fechasDeFotos: fechasDeFotos)
+        }
         if let pc = pesoComparador, pc.desde <= desde, pc.hasta == hoy,
            pc.filas != nil || ahora().timeIntervalSince(pc.cuando) < Self.reintentoPesoComparador { return false }
         let filtro = [URLQueryItem(name: "tipo", value: "eq.peso_kg")]

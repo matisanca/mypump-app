@@ -18,6 +18,8 @@ struct PesoComparadorModeloTests {
         var salud60 = "[]"
         var pesoAparte = "[]"
         var falla = false
+        /// Si está, el próximo pedido de la serie aparte queda en camino hasta que se abra (una sola vez).
+        var puerta: Puerta?
 
         func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
             let url = pedido.url!
@@ -26,12 +28,41 @@ struct PesoComparadorModeloTests {
             let cuerpo = (try? JSONDecoder().decode(JSONValue.self, from: pedido.httpBody ?? Data("{}".utf8))) ?? .null
             lock.withLock { _pedidos.append(Anotado(funcion: fn, consulta: consulta, cuerpo: cuerpo)) }
             var texto = "[]", status = 200
+            if fn == "mypump_get_salud", consulta != nil {
+                let p = lock.withLock { () -> Puerta? in let x = puerta; puerta = nil; return x }
+                await p?.esperar()
+            }
             if fn == "mypump_get_salud" {
                 if consulta == nil { texto = salud60 } else if falla { status = 503; texto = #"{"message":"caído"}"# } else { texto = pesoAparte }
             }
             return (Data(texto.utf8), HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil)!)
         }
         var aparte: [Anotado] { pedidos.filter { $0.funcion == "mypump_get_salud" && $0.consulta != nil } }
+    }
+
+    /// Retiene un pedido hasta que el test la abre.
+    final class Puerta: @unchecked Sendable {
+        private let lock = NSLock()
+        private var abierta = false
+        private var esperando: [CheckedContinuation<Void, Never>] = []
+        func esperar() async {
+            await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                let ya = lock.withLock { () -> Bool in
+                    if abierta { return true }
+                    esperando.append(c)
+                    return false
+                }
+                if ya { c.resume() }
+            }
+        }
+        func abrir() {
+            let cs = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
+                abierta = true
+                defer { esperando = [] }
+                return esperando
+            }
+            cs.forEach { $0.resume() }
+        }
     }
 
     final class Reloj: @unchecked Sendable { var t = Date(timeIntervalSince1970: 1_800_000_000) }
@@ -116,6 +147,37 @@ struct PesoComparadorModeloTests {
         async let b = m.asegurarPesoComparador(fechasDeFotos: ["2026-09-02"])
         _ = await (a, b)
         #expect(s.aparte.count == 1)
+    }
+
+    /// I1 de la revisión: con un pedido en camino desde una foto, llega otra más vieja (la de inicio de «Tu cambio», que viene
+    /// después). El segundo llamado espera el pedido en curso y después pide desde la más vieja; un tercero con la misma fecha
+    /// vieja no duplica el pedido. Al final la serie cubre la foto más vieja.
+    @Test func unaFotoMasViejaConUnPedidoEnCaminoPideDeNuevo() async throws {
+        let s = Servidor()
+        s.pesoAparte = "[\(peso("2026-07-20", 75.0)),\(peso("2026-09-02", 73.0))]"
+        let puerta = Puerta()
+        s.puerta = puerta
+        let m = modelo(s)
+        let a = Task { await m.asegurarPesoComparador(fechasDeFotos: ["2026-09-02"]) }
+        for _ in 0..<5000 where s.aparte.isEmpty { try await Task.sleep(for: .milliseconds(1)) }
+        try #require(s.aparte.count == 1)
+        let b = Task { await m.asegurarPesoComparador(fechasDeFotos: ["2026-07-22", "2026-09-02"]) }
+        let c = Task { await m.asegurarPesoComparador(fechasDeFotos: ["2026-07-22"]) }
+        try await Task.sleep(for: .milliseconds(50))
+        // Con el primero en camino, los otros dos esperan: ningún pedido de más.
+        #expect(s.aparte.count == 1)
+        #expect(s.aparte.first?.cuerpo["p_desde"]?.comoTexto == "2026-08-24")
+        puerta.abrir()
+        #expect(await a.value)
+        #expect(await b.value)
+        #expect(await c.value)
+        #expect(s.aparte.count == 2)
+        #expect(s.aparte.last?.cuerpo["p_desde"]?.comoTexto == "2026-07-13")
+        #expect(m.pesoComparador?.desde == "2026-07-13")
+        #expect(m.serieDelComparador.first?.fecha == "2026-07-20")
+        // Ya cubierta: con las mismas fotos no vuelve a pedir.
+        #expect(await m.asegurarPesoComparador(fechasDeFotos: ["2026-07-22", "2026-09-02"]) == false)
+        #expect(s.aparte.count == 2)
     }
 
     /// Si falla, el comparador sigue con los 60 días y se reintenta pasados 5 minutos (no en cada pintada).
