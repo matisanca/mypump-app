@@ -40,6 +40,8 @@ extension XCUIApplication {
         cargaValor.typeText(texto)
         buttons["teclado-listo"].tap()
         XCTAssertTrue(okSerie.waitForExistence(timeout: 5), "El panel no volvió al bajar el teclado")
+        // 2.3.3: al volver el panel, el OK no toma toques por medio segundo (el toque que cierra el teclado no registra).
+        RunLoop.current.run(until: Date().addingTimeInterval(0.7))
     }
 
     /// Deja el elemento entre la barra de arriba y el panel fijo, con arrastres cortos para no pasarse.
