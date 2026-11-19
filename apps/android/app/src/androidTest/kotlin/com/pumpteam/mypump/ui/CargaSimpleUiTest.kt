@@ -5,9 +5,11 @@ import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pumpteam.mypump.entreno.EsperaTrasTeclado
 import com.pumpteam.mypump.entreno.RelojCarga
+import com.pumpteam.mypump.entreno.SERIE_AHORA
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -278,6 +280,31 @@ class CargaSimpleUiTest : PruebaUi() {
         p.tocar(ok)
         esperarHecha(1)
         assertTrue(fila(1), fila(1).contains("83 kilos"))
+    }
+
+    /** La serie que se carga se ve: «Ahora: serie N de 4» arriba del panel y su fila marcada; las hechas, con su tilde. */
+    @Test
+    fun laFilaActivaSeDistingue() {
+        lanzar()
+        assertEquals("Ahora: serie 1 de 4", p.textosBajo(etiqueta("serie-ahora")).joinToString(""))
+        assertEquals(SERIE_AHORA, p.estado(etiqueta("fila-serie-1")))
+        assertNull(p.estado(etiqueta("fila-serie-2")))
+        darOK()
+        esperarHecha(1)
+        p.esperar("la 2 es la de ahora") { (p.estado(etiqueta("fila-serie-2")) == SERIE_AHORA).takeIf { it } }
+        assertNull(p.estado(etiqueta("fila-serie-1")))
+        assertEquals("Ahora: serie 2 de 4", p.textosBajo(etiqueta("serie-ahora")).joinToString(""))
+        verArribaDelPanel(etiqueta("fila-serie-4"))
+        Telefono.captura("carga-6-fila-activa")
+    }
+
+    /** Desplaza la página del ejercicio hasta que [s] quede justo arriba del panel (que tapa lo de abajo), para la captura. */
+    private fun verArribaDelPanel(s: Selector) {
+        val (fila, _) = p.lugarEnVentana(s)
+        val (panel, _) = p.lugarEnVentana(etiqueta("panel-carga"))
+        val margen = 40f * app.resources.displayMetrics.density
+        val dy = fila.bottom + margen - panel.top   // negativo: la fila quedó arriba, fuera de la vista
+        if (kotlin.math.abs(dy) > 1f) p.desplazar(etiqueta("ejercicio-pantalla"), dy)
     }
 
     @Test

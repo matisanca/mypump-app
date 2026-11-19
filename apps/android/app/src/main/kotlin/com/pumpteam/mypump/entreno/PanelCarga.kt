@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.pumpteam.mypump.diseno.Numeros
@@ -228,11 +231,16 @@ private fun Activa(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimple, 
                 modifier = m.semantics { liveRegion = LiveRegionMode.Polite }.testTag("aviso-record-panel"),
             )
         } else {
+            // «Ahora: serie 2 de 4» (2.3.3): cuál se carga, dicho arriba de todo. En la lista, la misma fila va resaltada.
             Text(
-                "Serie ${i + 1} de ${s.series.size}",
-                style = Numeros.chico.copy(fontSize = 15.sp),
+                buildAnnotatedString {
+                    withStyle(SpanStyle(color = c.marcaTexto)) { append("Ahora: ") }
+                    append("serie ${i + 1} de ${s.series.size}")
+                },
+                style = Numeros.chico.copy(fontSize = 16.sp),
+                color = c.texto,
                 maxLines = 1,
-                modifier = m.semantics { heading() },
+                modifier = m.semantics { heading() }.testTag("serie-ahora"),
             )
         }
     }

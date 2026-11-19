@@ -64,6 +64,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -443,19 +444,27 @@ private fun FilaCarga(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimpl
     val etiqueta = etiquetaFila(i, s)
     // Con letra grande y peso por serie, los botones del kilo van abajo: al lado partían el número de reps.
     val apilar = LocalDensity.current.fontScale >= 1.3f && !s.sinKg && !s.mismoPeso && !h.confirmada
+    // La que se carga ahora se ve sin buscarla (Nicolás, 19/11: le costaba saber cuál era): recuadro con el borde y el fondo
+    // de la marca, y TalkBack dice «la que toca ahora». Es siempre la siguiente que falta (`CargaSimple.activa`).
+    val forma = RoundedCornerShape(14.dp)
     val base = Modifier
         .fillMaxWidth()
         .heightIn(min = 56.dp)
-        .clip(RoundedCornerShape(12.dp))
-        .background(if (enCorreccion) c.marcaSuave else Color.Transparent)
+        .clip(forma)
+        .background(if (enCorreccion || activa) c.marcaSuave else Color.Transparent)
+        .then(if (activa) Modifier.border(2.dp, c.marca, forma) else Modifier)
         .drawBehind { conector(i, s, c.marca, c.campo) }
         .testTag("fila-serie-${i + 1}")
     val semantica = when {
         h.confirmada -> base.clickable(role = Role.Button) { alcance.launch { motor.editarSerie(lugar, i) } }.clearAndSetSemantics { contentDescription = etiqueta }
-        s.mismoPeso -> base.clearAndSetSemantics { contentDescription = etiqueta }
-        else -> base   // con peso por serie, adentro están el campo y sus botones
+        s.mismoPeso -> base.clearAndSetSemantics {
+            contentDescription = etiqueta
+            if (activa) stateDescription = SERIE_AHORA
+        }
+        // Con peso por serie, adentro están el campo y sus botones.
+        else -> if (activa) base.semantics { stateDescription = SERIE_AHORA } else base
     }
-    Row(semantica, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+    Row(semantica.padding(horizontal = RELLENO_FILA), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
         Insignia(i, h.confirmada, activa)
         val repsYKilos: @Composable () -> Unit = {
             // Un solo «8 reps» para TalkBack, aunque sean dos textos.
@@ -527,9 +536,15 @@ private fun Insignia(i: Int, hecha: Boolean, activa: Boolean) {
     }
 }
 
-/** El hilo entre series: se pinta de verde lo que ya se hizo. */
+/** Lo que lee TalkBack después de la fila de la serie que se carga ahora (y lo que miran las pruebas). */
+internal const val SERIE_AHORA = "La que toca ahora"
+
+/** El aire de cada fila adentro de su recuadro: el borde de la activa no toca la insignia. */
+private val RELLENO_FILA = 6.dp
+
+/** El hilo entre series, por el centro de las insignias: se pinta de verde lo que ya se hizo. */
 private fun DrawScope.conector(i: Int, s: CargaSimple, verde: Color, gris: Color) {
-    val x = 16.dp.toPx()
+    val x = (RELLENO_FILA + 16.dp).toPx()
     val hueco = 20.dp.toPx()
     val medio = size.height / 2
     val ancho = 2.dp.toPx()
