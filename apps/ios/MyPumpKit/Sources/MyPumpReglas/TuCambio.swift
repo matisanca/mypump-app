@@ -8,7 +8,8 @@ import Foundation
 /// - La última es la foto de progreso más nueva de esa pose, y tiene que ser de una semana posterior a la semana 1.
 /// - El par aparece desde que hay dos semanas distintas con alguna foto (contando la de inicio), sin esperar a las 4 del
 ///   comparador de siempre. Antes: el texto de espera y la foto que haya.
-/// - El pie es el del comparador de siempre (`FotosProgreso.resumenComparador`): «8 semanas · -2,4 kg».
+/// - El pie es el del comparador clásico (`FotosProgreso.resumenComparador`): «8 semanas · -2,4 kg». Desde la 2.3.3 cada
+///   foto toma el peso de su semana o el más cercano en ±7 días, sobre la serie que llega hasta la primera foto.
 /// Los casos están en `apps/shared/vectores/tucambio.json` (los corren iOS, Android y la web).
 public enum TuCambio {
     public static let titulo = "Tu cambio"

@@ -1,5 +1,5 @@
 {
- "_nota": "Tu cambio (2.3.0, palanca check_guiado). Reglas: TuCambio.swift / TuCambio.kt / cliente.html (TuCambio). Generado por nativa-evidencia/tucambio/gen_vectores.py. Datos inventados.",
+ "_nota": "Tu cambio (2.3.0, palanca check_guiado; el peso del pie, 2.3.3). Reglas: TuCambio.swift / TuCambio.kt / cliente.html (TuCambio). Generado por nativa-evidencia/tucambio/gen_vectores.py. Datos inventados.",
  "textos": {
   "titulo": "Tu cambio",
   "textoEspera": "Tu cambio se va a ver acá desde tu segunda semana de fotos",
@@ -920,6 +920,690 @@
     [
      "2026-11-10",
      80.0
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-11-02"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-09"
+    },
+    "texto": null,
+    "pie": "1 semana · 0,0 kg",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Esta semana",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoEmmanuel",
+   "fotos": [
+    [
+     "2026-08-31",
+     "frente"
+    ],
+    [
+     "2026-08-31",
+     "perfil"
+    ],
+    [
+     "2026-08-31",
+     "espalda"
+    ],
+    [
+     "2026-11-16",
+     "frente"
+    ],
+    [
+     "2026-11-16",
+     "perfil"
+    ],
+    [
+     "2026-11-16",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-09-02",
+     73.0
+    ],
+    [
+     "2026-09-20",
+     72.1
+    ],
+    [
+     "2026-10-15",
+     70.2
+    ],
+    [
+     "2026-11-16",
+     68.4
+    ],
+    [
+     "2026-11-18",
+     68.9
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-08-31"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-16"
+    },
+    "texto": null,
+    "pie": "11 semanas · -4,6 kg",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Semana del 16 de noviembre",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de la semana del 16 de noviembre",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoSebastian",
+   "fotos": [
+    [
+     "2026-07-20",
+     "frente"
+    ],
+    [
+     "2026-07-20",
+     "perfil"
+    ],
+    [
+     "2026-07-20",
+     "espalda"
+    ],
+    [
+     "2026-11-16",
+     "frente"
+    ],
+    [
+     "2026-11-16",
+     "perfil"
+    ],
+    [
+     "2026-11-16",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "perfil",
+   "peso": [
+    [
+     "2026-07-22",
+     79.3
+    ],
+    [
+     "2026-08-30",
+     78.6
+    ],
+    [
+     "2026-11-16",
+     77.8
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "perfil",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-07-20"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-16"
+    },
+    "texto": null,
+    "pie": "17 semanas · -1,5 kg",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Semana del 16 de noviembre",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de la semana del 16 de noviembre",
+    "vacioDespues": "Sin foto de perfil"
+   }
+  },
+  {
+   "nombre": "pesoEnLibrasSinKg",
+   "fotos": [
+    [
+     "2026-08-17",
+     "frente"
+    ],
+    [
+     "2026-08-17",
+     "perfil"
+    ],
+    [
+     "2026-08-17",
+     "espalda"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-11-09",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-08-17",
+     219.0
+    ],
+    [
+     "2026-11-10",
+     101.4
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-08-17"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-09"
+    },
+    "texto": null,
+    "pie": "12 semanas",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Esta semana",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoCambioDel25PorCientoSeMuestra",
+   "fotos": [
+    [
+     "2026-09-14",
+     "frente"
+    ],
+    [
+     "2026-09-14",
+     "perfil"
+    ],
+    [
+     "2026-09-14",
+     "espalda"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-11-09",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-09-14",
+     80.0
+    ],
+    [
+     "2026-11-09",
+     60.0
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-09-14"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-09"
+    },
+    "texto": null,
+    "pie": "8 semanas · -20,0 kg",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Esta semana",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoSemanaSinPesoUsaElCercano",
+   "fotos": [
+    [
+     "2026-09-14",
+     "frente"
+    ],
+    [
+     "2026-09-14",
+     "perfil"
+    ],
+    [
+     "2026-09-14",
+     "espalda"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-11-09",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-09-11",
+     82.0
+    ],
+    [
+     "2026-09-25",
+     81.0
+    ],
+    [
+     "2026-11-10",
+     79.6
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-09-14"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-09"
+    },
+    "texto": null,
+    "pie": "8 semanas · -2,4 kg",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Esta semana",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoCercanoEmpateGanaElDeDespues",
+   "fotos": [
+    [
+     "2026-09-14",
+     "frente"
+    ],
+    [
+     "2026-09-14",
+     "perfil"
+    ],
+    [
+     "2026-09-14",
+     "espalda"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-11-09",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-09-10",
+     82.0
+    ],
+    [
+     "2026-09-24",
+     81.0
+    ],
+    [
+     "2026-11-10",
+     79.6
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-09-14"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-09"
+    },
+    "texto": null,
+    "pie": "8 semanas · -1,4 kg",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Esta semana",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoCercanoASieteDias",
+   "fotos": [
+    [
+     "2026-09-14",
+     "frente"
+    ],
+    [
+     "2026-09-14",
+     "perfil"
+    ],
+    [
+     "2026-09-14",
+     "espalda"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-11-09",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-09-07",
+     82.0
+    ],
+    [
+     "2026-11-10",
+     79.6
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-09-14"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-09"
+    },
+    "texto": null,
+    "pie": "8 semanas · -2,4 kg",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Esta semana",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoSinPesoCercano",
+   "fotos": [
+    [
+     "2026-09-14",
+     "frente"
+    ],
+    [
+     "2026-09-14",
+     "perfil"
+    ],
+    [
+     "2026-09-14",
+     "espalda"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-11-09",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-09-06",
+     82.0
+    ],
+    [
+     "2026-09-28",
+     81.0
+    ],
+    [
+     "2026-11-10",
+     79.6
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-09-14"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-09"
+    },
+    "texto": null,
+    "pie": "8 semanas",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Esta semana",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoMismoPesajeSinKg",
+   "fotos": [
+    [
+     "2026-11-02",
+     "frente"
+    ],
+    [
+     "2026-11-02",
+     "perfil"
+    ],
+    [
+     "2026-11-02",
+     "espalda"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-11-09",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-11-09",
+     80.0
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-11-02"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-09"
+    },
+    "texto": null,
+    "pie": "1 semana",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Esta semana",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoDeLaSemanaDeLaOtraFotoSinKg",
+   "fotos": [
+    [
+     "2026-11-02",
+     "frente"
+    ],
+    [
+     "2026-11-02",
+     "perfil"
+    ],
+    [
+     "2026-11-02",
+     "espalda"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-11-09",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-11-02",
+     80.0
+    ],
+    [
+     "2026-11-08",
+     79.4
+    ]
+   ],
+   "esperado": {
+    "modo": "par",
+    "pose": "frente",
+    "antes": {
+     "origen": "progreso",
+     "semana": "2026-11-02"
+    },
+    "despues": {
+     "origen": "progreso",
+     "semana": "2026-11-09"
+    },
+    "texto": null,
+    "pie": "1 semana",
+    "rotuloAntes": "Semana 1",
+    "rotuloDespues": "Esta semana",
+    "accesibleAntes": "Foto de la semana 1",
+    "accesibleDespues": "Foto de esta semana",
+    "vacioDespues": "Sin foto de frente"
+   }
+  },
+  {
+   "nombre": "pesoCasiCeroSinSigno",
+   "fotos": [
+    [
+     "2026-11-02",
+     "frente"
+    ],
+    [
+     "2026-11-02",
+     "perfil"
+    ],
+    [
+     "2026-11-02",
+     "espalda"
+    ],
+    [
+     "2026-11-09",
+     "frente"
+    ],
+    [
+     "2026-11-09",
+     "perfil"
+    ],
+    [
+     "2026-11-09",
+     "espalda"
+    ]
+   ],
+   "inicio": {},
+   "pose": "frente",
+   "peso": [
+    [
+     "2026-11-02",
+     80.0
+    ],
+    [
+     "2026-11-10",
+     79.96
     ]
    ],
    "esperado": {

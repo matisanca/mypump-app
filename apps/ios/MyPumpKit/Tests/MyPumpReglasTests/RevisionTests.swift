@@ -96,6 +96,46 @@ struct FotosProgresoTests {
         #expect(FotosProgreso.resumenComparador(primera: "2026-09-14", ultima: "2026-10-12", peso: peso) == "4 semanas · -2,4 kg")
         #expect(FotosProgreso.resumenComparador(primera: "2026-10-05", ultima: "2026-10-12", peso: []) == "1 semana")
     }
+
+    /// El peso del comparador (2.3.3): el de la semana de cada foto, o el más cercano en ±7 días; sin kg si no se puede decir.
+    @Test func pesoDelComparador() {
+        func p(_ l: [(String, Double)]) -> [PesoCorporal.Punto] { l.map { PesoCorporal.Punto(fecha: $0.0, kg: $0.1) } }
+        func r(_ a: String, _ b: String, _ l: [(String, Double)]) -> String { FotosProgreso.resumenComparador(primera: a, ultima: b, peso: p(l)) }
+        // Emmanuel: con la regla vieja (el primero desde el lunes, sobre 60 días) veía +0,7.
+        #expect(r("2026-08-31", "2026-11-16", [("2026-09-02", 73.0), ("2026-09-20", 72.1), ("2026-11-16", 68.4), ("2026-11-18", 68.9)])
+                == "11 semanas · -4,6 kg")
+        // La semana sin peso toma el más cercano: 3 días antes del lunes le gana a 5 después del domingo.
+        #expect(r("2026-09-14", "2026-11-09", [("2026-09-11", 82.0), ("2026-09-25", 81.0), ("2026-11-10", 79.6)]) == "8 semanas · -2,4 kg")
+        // Empate (4 y 4): el de después.
+        #expect(r("2026-09-14", "2026-11-09", [("2026-09-10", 82.0), ("2026-09-24", 81.0), ("2026-11-10", 79.6)]) == "8 semanas · -1,4 kg")
+        // A 7 días justos entra; a 8, no.
+        #expect(r("2026-09-14", "2026-11-09", [("2026-09-07", 82.0), ("2026-11-10", 79.6)]) == "8 semanas · -2,4 kg")
+        #expect(r("2026-09-14", "2026-11-09", [("2026-09-06", 82.0), ("2026-09-28", 81.0), ("2026-11-10", 79.6)]) == "8 semanas")
+        // Libras contra kilos: pasa el 25 %. El 25 % justo se muestra.
+        #expect(r("2026-08-17", "2026-11-09", [("2026-08-17", 219.0), ("2026-11-10", 101.4)]) == "12 semanas")
+        #expect(r("2026-09-14", "2026-11-09", [("2026-09-14", 80.0), ("2026-11-09", 60.0)]) == "8 semanas · -20,0 kg")
+        // El mismo pesaje en las dos fotos (la regla vieja decía «1 semana · 0,0 kg»).
+        #expect(r("2026-11-02", "2026-11-09", [("2026-11-09", 80.0)]) == "1 semana")
+        // La última toma un pesaje de la semana de la primera (es el cambio dentro de la semana 1).
+        #expect(r("2026-11-02", "2026-11-09", [("2026-11-02", 80.0), ("2026-11-08", 79.4)]) == "1 semana")
+        // Un 0,0 real (dos pesajes, cada uno en su semana) se muestra, sin signo.
+        #expect(r("2026-11-02", "2026-11-09", [("2026-11-02", 80.0), ("2026-11-10", 80.0)]) == "1 semana · 0,0 kg")
+        #expect(r("2026-11-02", "2026-11-09", [("2026-11-02", 80.0), ("2026-11-10", 80.04)]) == "1 semana · 0,0 kg")
+        #expect(r("2026-11-02", "2026-11-09", [("2026-11-02", 80.0), ("2026-11-10", 79.96)]) == "1 semana · 0,0 kg")
+        #expect(r("2026-11-02", "2026-11-09", [("2026-11-02", 80.0), ("2026-11-10", 80.5)]) == "1 semana · +0,5 kg")
+        #expect(FotosProgreso.pesoDeSemana("2026-09-14", p([("2026-09-16", 81.0), ("2026-09-15", 82.0)])) == 82.0)
+        #expect(FotosProgreso.pesoDeSemana("mal", p([("2026-09-15", 82.0)])) == nil)
+    }
+
+    /// Desde cuándo se pide el peso del comparador: el lunes de la foto más vieja menos 7 días; solo si Salud no llega.
+    @Test func desdeDelPesoDelComparador() {
+        #expect(FotosProgreso.desdePesoComparador(["2026-11-16", "2026-09-02", "2026-10-05", "mal", ""]) == "2026-08-24")
+        #expect(FotosProgreso.desdePesoComparador(["2026-08-31"]) == "2026-08-24")
+        #expect(FotosProgreso.desdePesoComparador([]) == nil)
+        // Hoy 19/11: Salud trae desde el 21/09.
+        #expect(FotosProgreso.necesitaPesoComparador(desde: "2026-09-20", hoy: "2026-11-19"))
+        #expect(!FotosProgreso.necesitaPesoComparador(desde: "2026-09-21", hoy: "2026-11-19"))
+    }
 }
 
 @Suite("toFixed como JavaScript")

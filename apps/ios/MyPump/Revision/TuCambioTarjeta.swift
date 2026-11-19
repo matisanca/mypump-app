@@ -5,7 +5,7 @@ import MyPumpReglas
 import MyPumpDatos
 
 /// De dónde salen las fotos de «Tu cambio»: las de progreso (servidor y cola) y las de inicio guiadas, más el peso para el
-/// pie. Solo lee lo que la app ya tiene; no hay ninguna llamada nueva (las URLs firmadas son las de siempre).
+/// pie (`ModeloRevision.serieDelComparador`, que pide RevisionView). Las URLs firmadas son las de siempre.
 @MainActor
 struct FuentesTuCambio {
     let fotos: ModeloFotos?

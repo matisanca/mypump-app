@@ -76,8 +76,15 @@ public final class ClienteRPC: Sendable {
         self.config = config; self.transporte = transporte; self.espera = espera
     }
 
-    public func llamar(_ funcion: String, _ parametros: [String: JSONValue]) async -> Result<JSONValue, ErrorRPC> {
-        var pedido = URLRequest(url: config.supabase.appendingPathComponent("rest/v1/rpc/\(funcion)"), timeoutInterval: espera)
+    /// `filtros` (opcional): filtros de PostgREST sobre las filas que devuelve la función, como `tipo=eq.peso_kg` (el
+    /// `getPesoSalud` de la web). Van en la URL; el cuerpo es el mismo.
+    public func llamar(_ funcion: String, _ parametros: [String: JSONValue], filtros: [URLQueryItem] = []) async -> Result<JSONValue, ErrorRPC> {
+        var url = config.supabase.appendingPathComponent("rest/v1/rpc/\(funcion)")
+        if !filtros.isEmpty, var c = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            c.queryItems = filtros
+            url = c.url ?? url
+        }
+        var pedido = URLRequest(url: url, timeoutInterval: espera)
         pedido.httpMethod = "POST"
         pedido.setValue(config.anonKey, forHTTPHeaderField: "apikey")
         pedido.setValue("Bearer \(config.anonKey)", forHTTPHeaderField: "Authorization")
@@ -126,8 +133,9 @@ public final class ClienteRPC: Sendable {
 
 extension ClienteRPC {
     /// Decodifica una respuesta de filas. Una forma inesperada es un error permanente (no se reintenta a ciegas).
-    public func filas<T: Decodable>(_ funcion: String, _ parametros: [String: JSONValue], como: T.Type = T.self) async -> Result<[T], ErrorRPC> {
-        switch await llamar(funcion, parametros) {
+    public func filas<T: Decodable>(_ funcion: String, _ parametros: [String: JSONValue], como: T.Type = T.self,
+                                    filtros: [URLQueryItem] = []) async -> Result<[T], ErrorRPC> {
+        switch await llamar(funcion, parametros, filtros: filtros) {
         case .failure(let e): return .failure(e)
         case .success(.null): return .success([])
         case .success(let json):

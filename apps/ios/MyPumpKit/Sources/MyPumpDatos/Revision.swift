@@ -60,7 +60,8 @@ public final class ModeloRevision {
 
     // MARK: - Revisión
 
-    /// `loadRevision` + `loadSalud`: el check de la semana y 60 días de salud (para el peso).
+    /// `loadRevision` + `loadSalud`: el check de la semana y 60 días de salud (para el peso). El peso del comparador de
+    /// fotos, cuando la primera foto es más vieja, va aparte (`asegurarPesoComparador`).
     public func cargarRevision() async {
         fecha = diaDeHoy()
         // Semana nueva: el check de la anterior no es el de esta, haya red o no (la web lo vacía).
@@ -266,7 +267,61 @@ public final class ModeloRevision {
         return nil
     }
 
+    /// La serie de los 60 días de Salud: la fila Peso, la tarjeta de peso y Salud.
     public var serieDePeso: [PesoCorporal.Punto] { PesoCorporal.serie(salud) }
+
+    // MARK: - El peso del comparador de fotos (2.3.3, el `_pcAsegurar` de la web)
+
+    /// La serie de peso aparte del comparador («Antes y ahora» y «Tu cambio»): la misma `mypump_get_salud`, filtrada a
+    /// `peso_kg`, desde el lunes de la semana de la primera foto menos 7 días hasta hoy. Salud trae 60 días y las fotos,
+    /// todo el historial: con una primera foto más vieja el comparador no tenía el peso de esa semana. La de 60 días
+    /// (`salud`) no cambia. nil: todavía no se pidió (o no hizo falta).
+    public struct PesoComparador: Sendable {
+        public let desde: String
+        public let hasta: String
+        /// nil: el pedido falló (se reintenta pasados 5 minutos; mientras, el comparador usa los 60 días).
+        public let filas: [FilaSalud]?
+        let cuando: Date
+    }
+    public private(set) var pesoComparador: PesoComparador?
+    @ObservationIgnored private var pesoComparadorEnCurso: Task<Bool, Never>?
+    /// La hora (los tests la fijan para el reintento).
+    @ObservationIgnored var ahora: @Sendable () -> Date = { Date() }
+    static let reintentoPesoComparador: TimeInterval = 5 * 60
+
+    /// Pide la serie aparte si hace falta: una vez por día (otra si aparece una foto más vieja, o 5 minutos después si
+    /// falló). Si los 60 días de Salud ya llegan a la primera foto, no pide nada. `fechasDeFotos`: las semanas o los días de
+    /// las fotos que pueden ir al comparador. Devuelve true si llegó una serie nueva.
+    @discardableResult
+    public func asegurarPesoComparador(fechasDeFotos: [String]) async -> Bool {
+        guard let desde = FotosProgreso.desdePesoComparador(fechasDeFotos) else { return false }
+        let hoy = diaDeHoy()
+        guard FotosProgreso.necesitaPesoComparador(desde: desde, hoy: hoy) else { return false }
+        if let enCurso = pesoComparadorEnCurso { return await enCurso.value }
+        if let pc = pesoComparador, pc.desde <= desde, pc.hasta == hoy,
+           pc.filas != nil || ahora().timeIntervalSince(pc.cuando) < Self.reintentoPesoComparador { return false }
+        let filtro = [URLQueryItem(name: "tipo", value: "eq.peso_kg")]
+        let enCurso = Task { @MainActor () -> Bool in
+            let r = await cliente.filas("mypump_get_salud", ["p_token": t, "p_desde": .texto(desde), "p_hasta": .texto(hoy)],
+                                        como: FilaSalud.self, filtros: filtro)
+            let filas: [FilaSalud]? = if case .success(let f) = r { f } else { nil }
+            pesoComparador = PesoComparador(desde: desde, hasta: hoy, filas: filas, cuando: ahora())
+            pesoComparadorEnCurso = nil
+            return filas != nil
+        }
+        pesoComparadorEnCurso = enCurso
+        return await enCurso.value
+    }
+
+    /// La serie del comparador: la aparte más los 60 días de Salud. En las fechas que trae Salud manda Salud: ahí se guarda
+    /// (y se corrige) el peso de hoy, y la serie aparte quedó con el valor de cuando se pidió. De la aparte solo entran las
+    /// fechas que Salud no tiene. Por fecha, el mismo criterio que `serieDePeso`: la carga manual gana.
+    public var serieDelComparador: [PesoCorporal.Punto] {
+        let deSalud = salud.filter { $0.tipo == "peso_kg" }
+        let fechas = Set(deSalud.map(\.fecha))
+        let viejas = (pesoComparador?.filas ?? []).filter { !fechas.contains($0.fecha) }
+        return PesoCorporal.serie(viejas + deSalud)
+    }
 
     /// Guardar el peso de hoy (30-300 kg). Devuelve false si el valor no es válido.
     @discardableResult

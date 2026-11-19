@@ -285,14 +285,29 @@ struct RevisionView: View {
         return FotosProgreso.pendientes(checkinEnviado: revision.checkinEnviado, posesDeLaSemana: modeloFotos.posesDeLaSemana).total > 0
     }
     private var fotos: some View {
-        FotosSemana(modelo: modeloFotos, muestras: muestras.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(muestras.salud),
+        FotosSemana(modelo: modeloFotos, muestras: muestras.fotos, peso: revision?.serieDelComparador ?? PesoCorporal.serie(muestras.salud),
                     tuCambio: fuentesTuCambio)
             .id("fotos")
+            // El peso del comparador desde la primera foto (2.3.3): se pide cuando cambia la foto más vieja (una vez; si los
+            // 60 días de Salud ya llegan, nada). Cuando llega, el pie se repinta solo (el modelo es observable).
+            .task(id: FotosProgreso.desdePesoComparador(fechasDeFotos)) {
+                await revision?.asegurarPesoComparador(fechasDeFotos: fechasDeFotos)
+            }
+    }
+    /// Las fechas de las fotos que pueden ir al comparador, de las tres poses: las del servidor, las que esperan subir y, con
+    /// «Tu cambio», las de inicio.
+    private var fechasDeFotos: [String] {
+        guard let modeloFotos else { return [] }
+        let poses = Set(FotosProgreso.poses.map(\.clave))
+        var r = modeloFotos.fotos.filter { poses.contains($0.pose) }.map(\.semanaLunes)
+        r += modeloFotos.pendientes.values.filter { poses.contains($0.pose) }.map(\.fecha)
+        if let fuentesTuCambio { r += fuentesTuCambio.fechasInicio.values }
+        return r
     }
     /// «Tu cambio» (pedido de Mati del 11/11): con cuenta y con la palanca `check_guiado`. Apagada, nada de esto existe.
     private var fuentesTuCambio: FuentesTuCambio? {
         guard let guiado, let modeloFotos else { return nil }
-        return FuentesTuCambio(fotos: modeloFotos, inicio: modelo.fotosInicio, peso: guiado.serieDePeso)
+        return FuentesTuCambio(fotos: modeloFotos, inicio: modelo.fotosInicio, peso: guiado.serieDelComparador)
     }
     @ViewBuilder private var tuCambio: some View {
         if let fuentesTuCambio { TuCambioTarjeta(fuentes: fuentesTuCambio).id("tucambio") }

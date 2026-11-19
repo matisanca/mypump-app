@@ -225,15 +225,79 @@ public enum FotosProgreso {
         return nil
     }
 
-    /// El pie del comparador: "8 semanas · -2,4 kg" (el peso es el primero cargado desde el lunes de cada semana).
+    // MARK: - El peso del comparador (2.3.3, el arreglo de la web: cliente.html `TuCambio.pesaje` y `cambio`)
+    //
+    // Antes era «el primero cargado desde el lunes», sin tope, sobre los 60 días de Salud: con una primera foto más vieja
+    // tomaba un peso de meses después (Emmanuel veía +0,7 kg en vez de −4,6). Ahora el peso va en una serie aparte que
+    // llega hasta la primera foto (`ModeloRevision.serieDelComparador`) y cada foto toma el de su semana:
+    // · El de la misma semana (lunes a domingo): el primero cargado en ella.
+    // · Si esa semana no tiene peso, el más cercano dentro de 7 días antes del lunes o 7 después del domingo. Empate: el de
+    //   después (como la regla vieja, que miraba hacia adelante).
+    // · Si tampoco hay, el pie dice solo «N semanas»: nunca un peso inventado.
+    // Los casos están en apps/shared/vectores/tucambio.json (los corren iOS, Android y la web).
+
+    /// Hasta cuántos días fuera de su semana se busca el peso de una foto.
+    public static let pesoDiasCerca = 7
+    /// Guarda de unidades: un cambio de más del 25 % del peso de la primera foto es imposible (libras contra kilos es un
+    /// salto de más del 50 %). No hay tope por semana a propósito: con tirzepatida se bajan 3 a 4 kg en dos semanas.
+    public static let guardaFraccion = 0.25
+
+    /// El pesaje elegido para una semana de fotos: el día (`DiaCalendario.numero`) y los kg, o nil.
+    static func pesaje(_ semana: String, _ peso: [PesoCorporal.Punto]) -> (n: Int, kg: Double)? {
+        guard let l = DiaCalendario.numero(semana) else { return nil }
+        let puntos = peso.compactMap { p -> (n: Int, kg: Double)? in
+            guard let n = DiaCalendario.numero(p.fecha), p.kg > 0 else { return nil }
+            return (n, p.kg)
+        }
+        var mejor: (n: Int, kg: Double)?
+        var dist = Int.max
+        for p in puntos.enumerated().sorted(by: { ($0.element.n, $0.offset) < ($1.element.n, $1.offset) }).map(\.element) {
+            let x = p.n < l ? l - p.n : (p.n > l + 6 ? p.n - (l + 6) : 0)
+            if x > pesoDiasCerca { continue }
+            if x < dist || (x == dist && x > 0) { mejor = p; dist = x }
+        }
+        return mejor
+    }
+
+    /// El peso de una semana de fotos, o nil.
+    public static func pesoDeSemana(_ semana: String, _ peso: [PesoCorporal.Punto]) -> Double? { pesaje(semana, peso)?.kg }
+
+    /// Las semanas entre las dos fotos y el cambio de peso, o `kg: nil` si no se puede decir.
+    public static func cambioComparador(primera: String, ultima: String, peso: [PesoCorporal.Punto]) -> (semanas: Int, kg: Double?) {
+        let semanas = Int(jsRound(Double((DiaCalendario.numero(ultima) ?? 0) - (DiaCalendario.numero(primera) ?? 0)) / 7))
+        guard let a = pesaje(primera, peso), let b = pesaje(ultima, peso) else { return (semanas, nil) }
+        // Las dos puntas tienen que ser pesajes distintos, en orden y cada uno fuera de la semana de la otra foto. Con fotos
+        // de semanas seguidas las ventanas de ±7 días se pisan: el alumno nuevo que todavía no se pesó en su segunda semana
+        // veía «1 semana · 0,0 kg» (el mismo pesaje en las dos fotos) o el cambio dentro de la semana 1.
+        func enSemana(_ n: Int, _ sem: String) -> Bool { DiaCalendario.numero(sem).map { n >= $0 && n <= $0 + 6 } ?? false }
+        if a.n >= b.n || enSemana(a.n, ultima) || enSemana(b.n, primera) { return (semanas, nil) }
+        let d = b.kg - a.kg
+        if abs(d) > guardaFraccion * a.kg { return (semanas, nil) }
+        return (semanas, d)
+    }
+
+    /// El pie del comparador: "8 semanas · -2,4 kg". Lo usan «Tu cambio» y el comparador clásico («Antes y ahora»).
     public static func resumenComparador(primera: String, ultima: String, peso: [PesoCorporal.Punto]) -> String {
-        func pesoEn(_ sem: String) -> Double? { peso.filter { $0.fecha >= sem }.min { $0.fecha < $1.fecha }?.kg }
-        let semDif = Int(jsRound(Double((DiaCalendario.numero(ultima) ?? 0) - (DiaCalendario.numero(primera) ?? 0)) / 7))
-        var r = "\(semDif) semana\(semDif == 1 ? "" : "s")"
-        if let p0 = pesoEn(primera), let p1 = pesoEn(ultima) {
-            let d = p1 - p0
-            r += " · \(d > 0 ? "+" : "")\(PesoCorporal.kg(d)) kg"
+        let c = cambioComparador(primera: primera, ultima: ultima, peso: peso)
+        var r = "\(c.semanas) semana\(c.semanas == 1 ? "" : "s")"
+        if let d = c.kg {
+            var t = PesoCorporal.kg(d)
+            if t == "-0,0" { t = "0,0" }
+            r += " · \(d > 0 && t != "0,0" ? "+" : "")\(t) kg"
         }
         return r
+    }
+
+    /// Desde cuándo pedir el peso del comparador: el lunes de la semana de la foto más vieja menos 7 días (lo que necesita
+    /// la regla de ±7 días). `fechas`: las semanas o los días de las fotos (AAAA-MM-DD). nil sin ninguna fecha válida.
+    public static func desdePesoComparador(_ fechas: [String]) -> String? {
+        let lunesValidos = fechas.filter { $0.count == 10 }.compactMap { DiaCalendario.numero(lunes($0)) }
+        return lunesValidos.min().map { DiaCalendario.texto($0 - pesoDiasCerca) }
+    }
+
+    /// Si hace falta la serie aparte: los 60 días de Salud (de hoy − 59 a hoy) no llegan a `desde`.
+    public static func necesitaPesoComparador(desde: String, hoy: String) -> Bool {
+        guard let d = DiaCalendario.numero(desde), let h = DiaCalendario.numero(hoy) else { return false }
+        return d < h - 59
     }
 }
