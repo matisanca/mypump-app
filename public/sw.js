@@ -178,7 +178,7 @@ self.addEventListener('fetch', (e) => {
 const TOPE_RED_CODIGO_MS = 6000;
 
 async function copiaDelCodigo(req) {
-  const cached = await caches.match(req, { ignoreSearch: true });
+  const cached = await caches.match(req, { ignoreSearch: req.mode === 'navigate' });
   if (cached && !(req.mode === 'navigate' && cached.redirected)) return cached;
   // Navegación offline sin match exacto (ej: /cliente?t=…) → servir el shell.
   if (req.mode === 'navigate') {
