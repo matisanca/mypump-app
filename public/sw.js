@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v76-20261119-233';
+const VERSION       = 'v77-20261119-233';
 // 19/11: cliente.html pide sus .js y .css con `?v=<ASSET_V>` (ver test-cache-versiones.mjs). Cloudflare los sirve con
 // max-age=14400 aunque _headers pida no-cache, así que un teléfono podía juntar el HTML nuevo con un .js viejo de su caché
 // (la 2.3.3 quedó en «Cargando tu plan…»). Con la versión en la URL, un HTML nuevo nunca encuentra un .js viejo.

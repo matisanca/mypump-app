@@ -339,10 +339,78 @@
     if (!rango) return false;
     return (rango[0].match(numeroRE) || []).some(x => Number(x.replace(',', '.')) > 0);
   }
-  /** La nota del plan como la ve el alumno: entera si esa semana lleva reserva; si no, sin RIR. */
-  function notaParaAlumno(texto, rir) {
+  /** La nota del plan como la ve el alumno: entera si esa semana lleva reserva o el plan tiene reserva clínica (así
+      sinRIR no pasa un «cerca del fallo» a «al fallo»); si no, sin RIR. */
+  function notaParaAlumno(texto, rir, clinica) {
     if (texto == null) return texto;
-    return conReserva(rir) ? String(texto) : sinRIR(String(texto));
+    return (clinica || conReserva(rir)) ? String(texto) : sinRIR(String(texto));
+  }
+
+  /* ---------------- Reserva clínica (19/11, OK de Mati) ----------------
+     Todo va al fallo, salvo el plan que deja reps en reserva a propósito (cardiopatía, lumbar, competencia: lo decide
+     Mati y el servidor lo publica en el rir de la pauta). Con reserva clínica la app NUNCA dice «Al fallo», «llevá al
+     fallo» ni «Subí la carga», no sugiere subir y en lugar de la nota automática de progresión muestra la pauta del plan.
+     Fuente única: el rir de cada semana de la progresión, el mismo campo que conReserva, con dos diferencias a propósito:
+     - cuenta solo un rango sin el 0 («2-3», «1-2», «3»): «0-1» deja llegar al fallo y es el de los planes viejos y de la
+       semana 1 del generador;
+     - es del alumno, no del ejercicio: alcanza un ejercicio con reserva en la semana que se muestra o en una posterior
+       (el taper con rir vacío entre semanas con reserva no vuelve al fallo, ni los ejercicios sin rir de ese plan). Las
+       semanas ya pasadas no cuentan: son las rampas viejas de las semanas 1 a 3.
+     La demo no es el plan de un alumno: queda como siempre (lo resuelve quien llama).
+     Gemelos: MyPumpReglas/ReservaClinica.swift y reglas/ReservaClinica.kt (rama nativa-233); vectores: reserva_clinica.json. */
+  function reservaIndicada(rir) {
+    if (rir == null) return false;
+    const o = String(rir);
+    if (rpeRE.test(o)) return false;
+    const rango = o.match(rangoRE);
+    if (!rango) return false;
+    const ns = (rango[0].match(numeroRE) || []).map(x => Number(x.replace(',', '.')));
+    return ns.length > 0 && ns.every(x => x > 0);
+  }
+  /** ¿El plan tiene reserva clínica en la semana que se muestra o en una posterior? `dias`: los del plan, con sus bloques. */
+  function reservaClinicaDelPlan(dias, semana) {
+    const sem = semana || 1;
+    for (const d of dias || []) for (const b of (d && d.bloques) || []) for (const e of (b && b.ejercicios) || []) {
+      if (!e) continue;
+      const prog = Array.isArray(e.progresion) ? e.progresion : [];
+      if (prog.length) {
+        // La misma semana que getProgresionActual (pasada la última, la última) y las que siguen.
+        for (let k = Math.max(0, Math.min(sem - 1, prog.length - 1)); k < prog.length; k++) {
+          if (prog[k] && reservaIndicada(prog[k].rir)) return true;
+        }
+      } else if (reservaIndicada(e.rir_objetivo != null ? e.rir_objetivo : e.rir)) return true;
+    }
+    return false;
+  }
+  /** Con reserva clínica, la leyenda es la reserva de esa semana («Dejando 2–3 en reserva»); sin número, ninguna (nunca «Al fallo»). */
+  function leyendaReserva(rir) {
+    const l = leyendaRir(rir);
+    return l === 'Al fallo' ? null : l;
+  }
+  /** La leyenda debajo de «Series efectivas»: sin reserva clínica, «Al fallo» (2.3.0); con reserva, la del plan o ninguna. */
+  function leyendaSerie(tipo, sinPeso, rir, clinica) {
+    if (!llevaRir(tipo, sinPeso)) return null;
+    return clinica ? leyendaReserva(rir) : 'Al fallo';
+  }
+  /** La leyenda dentro de una frase: « al fallo», « dejando 2–3 en reserva»; sin leyenda, nada. */
+  function fraseLeyenda(l) {
+    if (!l) return '';
+    return ' ' + (l === 'Al fallo' ? 'al fallo' : l.charAt(0).toLowerCase() + l.slice(1));
+  }
+  /** En lugar de la nota automática de progresión, la pauta del plan: «Seguí la pauta de esta semana (3×10), dejando 2–3
+      en reserva.». Una pauta sin números («No va esta semana») va tal cual. Nunca «cambia» (sin cartel de cambio). */
+  function notaReserva(cur, calibracion) {
+    const c = cur || {};
+    const reps = c.reps != null && String(c.reps).trim() !== '' ? String(c.reps).trim() : null;
+    let texto;
+    if (reps != null && c.series == null && !/\d/.test(reps)) {
+      texto = reps.charAt(0).toUpperCase() + reps.slice(1) + (/[.!?]$/.test(reps) ? '' : '.');
+    } else {
+      const pauta = reps == null ? null : (c.series != null ? `${c.series}×${reps}` : reps);
+      const res = fraseLeyenda(leyendaReserva(c.rir));
+      texto = `Seguí la pauta de esta semana${pauta != null ? ` (${pauta})` : ''}${res ? `,${res}` : ''}.`;
+    }
+    return { texto, cambia: false, calibracion: !!calibracion };
   }
 
   const API = {
@@ -353,6 +421,7 @@
     evaluarRecord, historiaSuficiente, TOPE_HISTORIAL,
     volumenMusculo, VOL_VACIO,
     sinRIR, conReserva, notaParaAlumno,
+    reservaIndicada, reservaClinicaDelPlan, leyendaReserva, leyendaSerie, fraseLeyenda, notaReserva,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.ReglasEntreno = API;

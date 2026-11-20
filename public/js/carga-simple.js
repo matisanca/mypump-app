@@ -87,7 +87,9 @@
     if (t == null) return '';
     return String(t).replace(/^\s*semana\s+\d+\s*/i, '').replace(/^[ —–\-·:\n\t]+|[ —–\-·:\n\t]+$/g, '');
   }
-  function corresponde(e, semana, mensajeSemana) {
+  // reservaClinica (19/11): el plan deja reps en reserva a propósito (ReglasEntreno.reservaClinicaDelPlan): nunca se sugiere subir.
+  function corresponde(e, semana, mensajeSemana, reservaClinica) {
+    if (reservaClinica) return false;
     const prog = e.progresion || [];
     if (!prog.length || esCardio(e.nombre, e.tipo, [e.catalogo_slug, e.matched_slug]) || e.tipo === 'calentamiento') return false;
     if (esCalibracion(e, semana)) return false;
@@ -163,8 +165,10 @@
   }
 
   /* ---- La carga de un ejercicio ----
-     opts: {ultimaVez:[{reps,kg}], equipo, sinKg, recordKg, guardiaMs, mensajeSemana, seriesLocales, estado, yaAumentado}
-     seriesLocales: [{reps, kg, confirmada, varianteRegistrada}] con reps y kg en texto, como la sesión de la web. */
+     opts: {ultimaVez:[{reps,kg}], equipo, sinKg, recordKg, guardiaMs, mensajeSemana, seriesLocales, estado, yaAumentado,
+            reservaClinica}
+     seriesLocales: [{reps, kg, confirmada, varianteRegistrada}] con reps y kg en texto, como la sesión de la web.
+     reservaClinica (19/11): sin sugerencia de subir, tampoco la que quedó guardada de antes. */
   const MANO = { NO: 'noCorresponde', SUG: 'sugerido', ACE: 'aceptado', DES: 'descartado' };
   const numero = (t) => { if (t === '' || t == null) return null; const n = Number(String(t).replace(',', '.')); return isFinite(n) ? n : null; };
   const entero = (t) => { const n = numero(t); return n == null ? null : Math.trunc(n); };
@@ -216,8 +220,10 @@
       this.cargaCambioDesdeOK = est ? !!est.cargaCambioDesdeOK : false;
       this.ultimoOK = est ? (est.ultimoOK != null ? est.ultimoOK : null) : null;
       this.aumento = { tipo: MANO.NO };
-      if (est && est.aumento) this.aumento = copiaAumento(est.aumento);
-      else if (!est && !o.yaAumentado && base != null && !sk && corresponde(e, semana, o.mensajeSemana)) {
+      if (est && est.aumento) {
+        this.aumento = copiaAumento(est.aumento);
+        if (o.reservaClinica && this.aumento.tipo === MANO.SUG) this.aumento = { tipo: MANO.NO };
+      } else if (!est && !o.yaAumentado && base != null && !sk && corresponde(e, semana, o.mensajeSemana, o.reservaClinica)) {
         const h = hasta(base, this.equipo);
         if (h != null) this.aumento = { tipo: MANO.SUG, desde: base, hasta: h };
       }
