@@ -150,7 +150,7 @@ struct Entreno203Tests {
         press.nombre = "Press banca con barra"; press.equipo = "barbell"
         d.fijarRIRDelPlan("e2", 0, efectivo: press)
         #expect(d.ejercicios["e2"]!.series[0].rir == "0", "2.3.0: todo al fallo, nunca el RIR del plan")
-        #expect(RIRDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", leyenda: "Dejando 0–1 en reserva") == "… a 8 reps dejando 0–1 en reserva.")
+        #expect(RIRDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", leyenda: "Dejando 0 a 1 en reserva") == "… a 8 reps dejando 0 a 1 en reserva.")
         #expect(RIRDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva. Queda.", leyenda: nil) == "… a 8 reps. Queda.", "sin leyenda, tampoco reserva")
     }
 

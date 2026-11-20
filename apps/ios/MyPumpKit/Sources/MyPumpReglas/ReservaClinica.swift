@@ -45,31 +45,43 @@ public enum ReservaClinica {
         return false
     }
 
-    /// La leyenda debajo de «Series efectivas» con reserva: la de esa semana («Dejando 2–3 en reserva»); sin número,
+    /// La leyenda debajo de «Series efectivas» con reserva: la de esa semana («Dejando 2 a 3 en reserva»); sin número,
     /// ninguna. Nunca «Al fallo».
     public static func leyenda(_ rir: String?) -> String? {
         let l = RIRDelPlan.leyenda(rir)
         return l == "Al fallo" ? nil : l
     }
 
-    /// La leyenda dentro de una frase: « dejando 2–3 en reserva»; sin leyenda, nada.
+    /// La leyenda dentro de una frase: « dejando 2 a 3 en reserva»; sin leyenda, nada.
     static func frase(_ l: String?) -> String {
         guard let l else { return "" }
         return " " + (l == "Al fallo" ? "al fallo" : l.prefix(1).lowercased() + l.dropFirst())
     }
 
+    /// ¿Es pauta? Un reps vacío o de puro relleno («—», «-», «.») no; «∞» sí (`rellenoRE` de la web).
+    static func conTexto(_ s: String) -> Bool { !s.allSatisfy { $0.isWhitespace || "-–—_.·".contains($0) } }
+
+    /// La pauta como la ve el alumno: «3×10», «10 min» (sin series) o nil. Nunca un guion de relleno en pantalla. La usan
+    /// `nota` y `Progresiones.nota` (gemelo de `pautaVisible` de la web).
+    static func pautaVisible(_ series: Int?, _ reps: String?) -> String? {
+        guard let r = reps?.trimmingCharacters(in: .whitespacesAndNewlines), conTexto(r) else { return nil }
+        return series.map { "\($0)×\(r)" } ?? r
+    }
+
     /// En lugar de la nota automática de progresión, la pauta del plan: «Seguí la pauta de esta semana (3×10), dejando
-    /// 2–3 en reserva.». Una pauta sin números («No va esta semana») va tal cual. Nunca `cambia` (sin cartel de cambio);
-    /// `calibracion` es la semana sin anterior, como en `Progresiones.nota`.
-    public static func nota(_ p: Progresion, calibracion: Bool) -> NotaProgresion {
-        let reps = p.reps.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : $0 }
+    /// 2 a 3 en reserva.». Una pauta sin números («No va esta semana») va tal cual. Sin pauta ni reserva (reps «—» y rir
+    /// vacío), ninguna nota: nil (nunca «—.»). Nunca `cambia` (sin cartel de cambio); `calibracion` es la semana sin
+    /// anterior, como en `Progresiones.nota`.
+    public static func nota(_ p: Progresion, calibracion: Bool) -> NotaProgresion? {
+        let reps = p.reps.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { conTexto($0) ? $0 : nil }
         let texto: String
         if let r = reps, p.series == nil, !r.contains(where: { $0.isASCII && $0.isNumber }) {
             let fin = r.hasSuffix(".") || r.hasSuffix("!") || r.hasSuffix("?") ? "" : "."
             texto = r.prefix(1).uppercased() + r.dropFirst() + fin
         } else {
-            let pauta = reps.map { r in p.series.map { "\($0)×\(r)" } ?? r }
+            let pauta = pautaVisible(p.series, reps)
             let reserva = frase(leyenda(p.rir))
+            if pauta == nil && reserva.isEmpty { return nil }
             texto = "Seguí la pauta de esta semana\(pauta.map { " (\($0))" } ?? "")\(reserva.isEmpty ? "" : ",\(reserva)")."
         }
         return NotaProgresion(texto: texto, cambia: false, calibracion: calibracion)

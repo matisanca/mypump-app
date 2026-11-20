@@ -63,16 +63,16 @@ struct ReservaClinicaModeloTests {
         let m = await modelo(b, rutina(rir: "2-3"))
         #expect(m.reservaClinica)
         #expect(m.banner.cambian == 0 && !m.banner.calibracion && m.banner.texto == nil)
-        #expect(m.tarjeta(lugar)?.nota?.texto == "Seguí la pauta de esta semana (4×8), dejando 2–3 en reserva.")
+        #expect(m.tarjeta(lugar)?.nota?.texto == "Seguí la pauta de esta semana (4×8), dejando 2 a 3 en reserva.")
         #expect(m.tarjeta(lugar)?.nota?.cambia == false)
-        #expect(m.leyendaRIR(lugar) == "Dejando 2–3 en reserva")
+        #expect(m.leyendaRIR(lugar) == "Dejando 2 a 3 en reserva")
         #expect(m.cargaSimple(lugar)?.aumento == .noCorresponde, "nunca «toca subir»")
-        #expect(m.rutinaReloj().ejercicios.first { $0.lugar == lugar }?.leyendaRIR == "Dejando 2–3 en reserva")
+        #expect(m.rutinaReloj().ejercicios.first { $0.lugar == lugar }?.leyendaRIR == "Dejando 2 a 3 en reserva")
         let t = textos(m)
         #expect(dice(t) == nil, "apareció: \(dice(t) ?? "")")
         #expect(t.contains("Dejá 2 repeticiones en reserva y bajá controlado."), "la nota técnica de Mati entera")
         #expect(t.contains("Con RIR 3, sin apurar."), "la nota de la preparación entera")
-        #expect(t.contains { $0.contains("dejando 2–3 en reserva") && $0.contains("Primera vez") }, "el aviso de primera vez con la reserva")
+        #expect(t.contains { $0.contains("dejando 2 a 3 en reserva") && $0.contains("Primera vez") }, "el aviso de primera vez con la reserva")
     }
 
     @Test func sinReservaTodoIgual() async {
@@ -94,7 +94,7 @@ struct ReservaClinicaModeloTests {
         let m = await modelo(b, rutina(rir: "2-3", semana: 1))
         #expect(!m.banner.calibracion && m.banner.texto == nil)
         let n = m.tarjeta(lugar)?.nota
-        #expect(n?.texto == "Seguí la pauta de esta semana (4×10), dejando 2–3 en reserva.")
+        #expect(n?.texto == "Seguí la pauta de esta semana (4×10), dejando 2 a 3 en reserva.")
         #expect(n?.cambia == false && n?.calibracion == true, "el rótulo «Semana 1», sin «al fallo»")
         #expect(dice(textos(m)) == nil)
         let sin = await modelo(Banco(), rutina(rir: "0", semana: 1))
@@ -115,7 +115,7 @@ struct ReservaClinicaModeloTests {
         #expect(!m.reservaClinica)
         m.reemplazarRutina(rutina(rir: "2-3"))
         #expect(m.reservaClinica)
-        #expect(m.leyendaRIR(lugar) == "Dejando 2–3 en reserva")
+        #expect(m.leyendaRIR(lugar) == "Dejando 2 a 3 en reserva")
         m.reemplazarRutina(rutina(rir: "0", semana: 3))
         #expect(!m.reservaClinica)
     }

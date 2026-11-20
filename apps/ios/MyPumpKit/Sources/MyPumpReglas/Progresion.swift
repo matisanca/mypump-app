@@ -85,7 +85,9 @@ public enum Progresiones {
             if repsIgual && seriesIgual {
                 partes.append("Mantené el peso de la semana pasada e intentá superar tus reps, siempre al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.")
             } else {
-                partes.append("Seguí la pauta de esta semana (\(cur.series.map(String.init) ?? "—")×\(cur.reps ?? "—")) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.")
+                // Sin guion de relleno: nunca «(—×10 min)».
+                let pauta = ReservaClinica.pautaVisible(cur.series, cur.reps).map { " (\($0))" } ?? ""
+                partes.append("Seguí la pauta de esta semana\(pauta) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.")
             }
         }
         return NotaProgresion(texto: partes.joined(separator: " "), cambia: cambia, calibracion: false)

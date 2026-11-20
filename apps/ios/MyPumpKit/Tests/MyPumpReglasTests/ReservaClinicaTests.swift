@@ -20,6 +20,11 @@ final class ReservaClinicaTests: XCTestCase {
     private func prohibido() throws -> NSRegularExpression {
         try NSRegularExpression(pattern: try v["prohibido"] as! String, options: .caseInsensitive)
     }
+    /// Regla de Mati: en lo que ve el alumno nunca — – « » · (el rango va «2 a 3»).
+    private func sinSignos(_ t: String, _ m: String = "") {
+        let re = try! NSRegularExpression(pattern: try! v["signos"] as! String)
+        XCTAssertNil(re.firstMatch(in: t, range: NSRange(t.startIndex..., in: t)), "signo prohibido en «\(t)» \(m)")
+    }
     private func nota(_ n: NotaProgresion?) -> [String: AnyHashable]? {
         n.map { ["texto": $0.texto, "cambia": $0.cambia, "calibracion": $0.calibracion] }
     }
@@ -36,8 +41,9 @@ final class ReservaClinicaTests: XCTestCase {
     func testLeyendaConReserva() throws {
         for c in try v["leyenda"] as! [[String: Any]] {
             XCTAssertEqual(ReservaClinica.leyenda(texto(c["rir"])), texto(c["sale"]), "\(c)")
+            sinSignos(RIRDelPlan.leyenda(texto(c["rir"])))
         }
-        XCTAssertEqual(ReservaClinica.frase("Dejando 2–3 en reserva"), " dejando 2–3 en reserva")
+        XCTAssertEqual(ReservaClinica.frase("Dejando 2 a 3 en reserva"), " dejando 2 a 3 en reserva")
         XCTAssertEqual(ReservaClinica.frase(nil), "")
     }
 
@@ -58,7 +64,8 @@ final class ReservaClinicaTests: XCTestCase {
             let con = Progresiones.nota(e, semanaActual: semana, reservaClinica: true)
             XCTAssertEqual(nota(con), esperada(c["sale"]), "con reserva: \(c["nombre"]!)")
             XCTAssertEqual(nota(Progresiones.nota(e, semanaActual: semana)), esperada(c["sinReserva"]), "sin reserva: \(c["nombre"]!)")
-            let t = con!.texto
+            for x in [con, Progresiones.nota(e, semanaActual: semana)] { if let x { sinSignos(x.texto, "\(c["nombre"]!)") } }
+            guard let t = con?.texto else { continue }
             XCTAssertNil(re.firstMatch(in: t, range: NSRange(t.startIndex..., in: t)), t)
         }
     }
@@ -107,7 +114,7 @@ final class ReservaClinicaTests: XCTestCase {
         let d = DiaEnCurso(dia: try dia(c["ejercicios"]!), semana: 2)
         let id = d.lista[0].id
         XCTAssertEqual(d.leyendaRIR(id), "Al fallo", "sin reserva clínica, como siempre (2.3.0)")
-        XCTAssertEqual(d.leyendaRIR(id, reservaClinica: true), "Dejando 2–3 en reserva")
+        XCTAssertEqual(d.leyendaRIR(id, reservaClinica: true), "Dejando 2 a 3 en reserva")
         XCTAssertNil(d.leyendaRIR(d.lista[1].id, reservaClinica: true), "la plancha no lleva RIR")
         // Una semana sin rir en un plan con reserva (el taper): ninguna leyenda, nunca «Al fallo».
         let taper: [[String: Any]] = [["id": "a", "nombre": "Sentadilla con barra", "tipo": "compuesto", "progresion": [
@@ -118,7 +125,7 @@ final class ReservaClinicaTests: XCTestCase {
         XCTAssertNil(dt.leyendaRIR(dt.lista[0].id, reservaClinica: true))
         XCTAssertEqual(dt.leyendaRIR(dt.lista[0].id), "Al fallo")
         // El aviso de primera vez sigue a la leyenda.
-        XCTAssertEqual(RIRDelPlan.calibracion("llegues a 10 reps dejando 1–2 en reserva.", leyenda: "Dejando 2–3 en reserva"), "llegues a 10 reps dejando 2–3 en reserva.")
+        XCTAssertEqual(RIRDelPlan.calibracion("llegues a 10 reps dejando 1–2 en reserva.", leyenda: "Dejando 2 a 3 en reserva"), "llegues a 10 reps dejando 2 a 3 en reserva.")
         XCTAssertEqual(RIRDelPlan.calibracion("llegues a 10 reps dejando 1–2 en reserva.", leyenda: nil), "llegues a 10 reps.")
     }
 
