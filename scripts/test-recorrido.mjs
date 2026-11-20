@@ -217,7 +217,7 @@ for (const error of ['apagado', 'no_disponible']) {
 {
   const { readFileSync } = await import('node:fs');
   const sw = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
-  const html = readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8').replace(/\?v=v\d+"/g, '"'); // sin el ?v= de la versión (test-cache-versiones.mjs lo controla)
   si(Number(/const VERSION\s*=\s*'v(\d+)/.exec(sw)[1]) >= 57, 'versión del sw subida');
   for (const a of ['/js/recorrido.js', '/js/recorrido-ui.js', '/js/compras.js', '/js/compras-ui.js', '/js/casa.js', '/js/casa-ui.js', '/css/cola-b.css']) {
     si(sw.includes(`'${a}'`), `shell ${a}`);

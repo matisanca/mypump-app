@@ -679,7 +679,7 @@ await caso('el service worker no guarda nada de esta sección', () => {
   assert.ok(responde('https://app.ejemplo.test/js/estudios.js'));
 });
 await caso('cliente.html: la escena existe, ?scene=estudios nunca la prende a ciegas y los puntos dicen «Novedad»', () => {
-  const html = fs.readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8');
+  const html = fs.readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8').replace(/\?v=v\d+"/g, '"'); // sin el ?v= de la versión (test-cache-versiones.mjs lo controla)
   assert.ok(html.includes('id="scene-estudios"'));
   assert.ok(/cfg\.estudios_app === true : null/.test(html));
   // El destino en frío: cae a Mis datos y le deja a EstudiosUI el paso a Estudios. La escena no se prende desde la URL.

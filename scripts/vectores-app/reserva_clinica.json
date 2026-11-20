@@ -1,0 +1,943 @@
+{
+  "_doc": "Reserva clínica (19/11, OK de Mati). Todo va al fallo, salvo el plan que deja reps en reserva a propósito (cardiopatía, lumbar, competencia: lo decide Mati y el servidor lo publica en el rir de la pauta). Con reserva clínica la app NUNCA dice «Al fallo», «llevá al fallo» ni «Subí la carga», no sugiere subir y no muestra la nota automática de progresión: muestra la pauta del plan. Sin reserva, todo igual. Fuente única: el rir de cada semana de la progresión (`pauta.rir`), el mismo campo que ya lee TextoAlumno.conReserva. Diferencias a propósito: (1) cuenta solo un rango sin el 0 («2-3», «1-2», «3»): «0-1» deja llegar al fallo y es el de los planes viejos y de la semana 1 del generador; (2) es del alumno, no del ejercicio: alcanza con un ejercicio con reserva en la semana que se muestra o en una posterior (una semana de taper con rir vacío entre semanas con reserva no vuelve al fallo, ni los ejercicios sin rir de ese plan); las semanas ya pasadas no cuentan (las rampas viejas de las semanas 1 a 3). Mismos vectores en iOS (ReservaClinicaTests), Android (ReservaClinicaTest) y la web (scripts/test-reserva-clinica.mjs, copia en scripts/vectores-app/).",
+  "prohibido": "\\bal fallo\\b|sub[ií]\\s+(un poco\\s+)?la carga|toca subir|subí la próxima",
+  "signos": "[—–«»·]",
+  "indicada": {
+    "si": [
+      "2-3",
+      "1-2",
+      "3",
+      "3-4",
+      "2 – 3",
+      "1,5-2",
+      "2-3 (cardiólogo)",
+      "RIR 2",
+      2,
+      "0,5",
+      "2 a 3",
+      "2—3",
+      "2 o 3"
+    ],
+    "no": [
+      null,
+      "",
+      "0",
+      0,
+      "0 (al fallo)",
+      "al fallo",
+      "Al fallo",
+      "0-1",
+      "0–2",
+      "RPE 8",
+      "rpe 7-8",
+      "sin fallo",
+      "0 a 1"
+    ]
+  },
+  "leyenda": [
+    {
+      "rir": "2-3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "1-2",
+      "sale": "Dejando 1 a 2 en reserva"
+    },
+    {
+      "rir": "3",
+      "sale": "Dejando 3 en reserva"
+    },
+    {
+      "rir": "2 – 3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "0-1",
+      "sale": "Dejando 0 a 1 en reserva"
+    },
+    {
+      "rir": "0 (al fallo)",
+      "sale": null
+    },
+    {
+      "rir": "0",
+      "sale": null
+    },
+    {
+      "rir": null,
+      "sale": null
+    },
+    {
+      "rir": "RPE 8",
+      "sale": null
+    },
+    {
+      "rir": "2 a 3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "2—3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "2 o 3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "2 – 3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "1,5-2",
+      "sale": "Dejando 1,5 a 2 en reserva"
+    },
+    {
+      "rir": "0 a 1",
+      "sale": "Dejando 0 a 1 en reserva"
+    }
+  ],
+  "planes": [
+    {
+      "nombre": "cardiopatía: 2-3 en todas las semanas",
+      "semana": 1,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Press inclinado en multipower",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 1,
+              "series": 3,
+              "reps": "12",
+              "rir": "2-3"
+            },
+            {
+              "semana": 2,
+              "series": 3,
+              "reps": "10",
+              "rir": "2-3"
+            }
+          ]
+        },
+        {
+          "id": "b",
+          "nombre": "Plancha",
+          "tipo": "core",
+          "progresion": [
+            {
+              "semana": 1,
+              "series": 2,
+              "reps": "20-30 s",
+              "rir": null
+            },
+            {
+              "semana": 2,
+              "series": 2,
+              "reps": "20-30 s",
+              "rir": null
+            }
+          ]
+        }
+      ],
+      "sale": true
+    },
+    {
+      "nombre": "competencia: el taper sin rir entre semanas con reserva no vuelve al fallo",
+      "semana": 7,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Back squat",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 6,
+              "series": 2,
+              "reps": "3",
+              "rir": "3"
+            },
+            {
+              "semana": 7,
+              "series": 3,
+              "reps": "2",
+              "rir": null
+            },
+            {
+              "semana": 8,
+              "series": 2,
+              "reps": "3",
+              "rir": null
+            },
+            {
+              "semana": 9,
+              "series": 3,
+              "reps": "8",
+              "rir": "1-2"
+            }
+          ]
+        },
+        {
+          "id": "b",
+          "nombre": "Farmer walk",
+          "tipo": "aislamiento",
+          "progresion": [
+            {
+              "semana": 6,
+              "series": 3,
+              "reps": "25 m",
+              "rir": null
+            },
+            {
+              "semana": 7,
+              "series": 2,
+              "reps": "20 m",
+              "rir": null
+            },
+            {
+              "semana": 8,
+              "series": 1,
+              "reps": "20 m",
+              "rir": null
+            },
+            {
+              "semana": 9,
+              "series": 3,
+              "reps": "30 m",
+              "rir": null
+            }
+          ]
+        }
+      ],
+      "sale": true
+    },
+    {
+      "nombre": "rampa vieja en las semanas 1 a 3 y después al fallo: desde la 4, sin reserva",
+      "semana": 4,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Jalón al pecho",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 1,
+              "series": 3,
+              "reps": "12",
+              "rir": "2-3"
+            },
+            {
+              "semana": 2,
+              "series": 3,
+              "reps": "10",
+              "rir": "1-2"
+            },
+            {
+              "semana": 3,
+              "series": 3,
+              "reps": "8",
+              "rir": "1-2"
+            },
+            {
+              "semana": 4,
+              "series": 4,
+              "reps": "9",
+              "rir": "0 (al fallo)"
+            },
+            {
+              "semana": 5,
+              "series": 4,
+              "reps": "10",
+              "rir": "0 (al fallo)"
+            }
+          ]
+        }
+      ],
+      "sale": false
+    },
+    {
+      "nombre": "la misma rampa vieja, todavía en la semana 2: es reserva del plan",
+      "semana": 2,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Jalón al pecho",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 1,
+              "series": 3,
+              "reps": "12",
+              "rir": "2-3"
+            },
+            {
+              "semana": 2,
+              "series": 3,
+              "reps": "10",
+              "rir": "1-2"
+            },
+            {
+              "semana": 3,
+              "series": 3,
+              "reps": "8",
+              "rir": "1-2"
+            },
+            {
+              "semana": 4,
+              "series": 4,
+              "reps": "9",
+              "rir": "0 (al fallo)"
+            }
+          ]
+        }
+      ],
+      "sale": true
+    },
+    {
+      "nombre": "0-1 no es reserva clínica (plan viejo cerca del fallo)",
+      "semana": 6,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Curl predicador",
+          "tipo": "aislamiento",
+          "progresion": [
+            {
+              "semana": 6,
+              "series": 4,
+              "reps": "11",
+              "rir": "0-1"
+            },
+            {
+              "semana": 7,
+              "series": 4,
+              "reps": "12",
+              "rir": "0-1"
+            }
+          ]
+        },
+        {
+          "id": "b",
+          "nombre": "Press plano",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 6,
+              "series": 4,
+              "reps": "11",
+              "rir": "0 (al fallo)"
+            },
+            {
+              "semana": 7,
+              "series": 4,
+              "reps": "12",
+              "rir": "0 (al fallo)"
+            }
+          ]
+        }
+      ],
+      "sale": false
+    },
+    {
+      "nombre": "todo al fallo o sin rir",
+      "semana": 3,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Prensa",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 1,
+              "series": 3,
+              "reps": "12",
+              "rir": "0 (al fallo)"
+            },
+            {
+              "semana": 2,
+              "series": 3,
+              "reps": "10",
+              "rir": "0 (al fallo)"
+            },
+            {
+              "semana": 3,
+              "series": 3,
+              "reps": "8",
+              "rir": "0 (al fallo)"
+            }
+          ]
+        },
+        {
+          "id": "b",
+          "nombre": "Cinta",
+          "tipo": "cardio",
+          "progresion": [
+            {
+              "semana": 1,
+              "series": null,
+              "reps": "10 min",
+              "rir": null
+            }
+          ]
+        }
+      ],
+      "sale": false
+    },
+    {
+      "nombre": "pasada la última semana vale la última pauta",
+      "semana": 13,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Prensa",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 11,
+              "series": 3,
+              "reps": "10-15",
+              "rir": "2-3"
+            },
+            {
+              "semana": 12,
+              "series": 3,
+              "reps": "10-15",
+              "rir": "2-3"
+            }
+          ]
+        }
+      ],
+      "sale": true
+    },
+    {
+      "nombre": "la reserva ya terminó: desde la semana 10 todo al fallo",
+      "semana": 10,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Remo en máquina",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 8,
+              "series": 3,
+              "reps": "10",
+              "rir": "2-3"
+            },
+            {
+              "semana": 9,
+              "series": 3,
+              "reps": "10",
+              "rir": "2-3"
+            },
+            {
+              "semana": 10,
+              "series": 3,
+              "reps": "8",
+              "rir": "0 (al fallo)"
+            },
+            {
+              "semana": 11,
+              "series": 4,
+              "reps": "9",
+              "rir": "0 (al fallo)"
+            }
+          ]
+        }
+      ],
+      "sale": false
+    },
+    {
+      "nombre": "sin progresión: el rir_objetivo del ejercicio",
+      "semana": 1,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Press militar",
+          "tipo": "compuesto",
+          "series": 3,
+          "reps": "8",
+          "rir_objetivo": "1-2",
+          "progresion": []
+        }
+      ],
+      "sale": true
+    },
+    {
+      "nombre": "sin progresión y al fallo",
+      "semana": 1,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Press militar",
+          "tipo": "compuesto",
+          "series": 3,
+          "reps": "8",
+          "rir_objetivo": "0",
+          "progresion": []
+        }
+      ],
+      "sale": false
+    }
+  ],
+  "notas": [
+    {
+      "nombre": "bajan las reps con reserva: la pauta, sin «subí la carga»",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Press inclinado en multipower",
+        "tipo": "compuesto",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": 3,
+            "reps": "12",
+            "rir": "2-3"
+          },
+          {
+            "semana": 2,
+            "series": 3,
+            "reps": "10",
+            "rir": "2-3"
+          }
+        ]
+      },
+      "semana": 2,
+      "sale": {
+        "texto": "Seguí la pauta de esta semana (3×10), dejando 2 a 3 en reserva.",
+        "cambia": false,
+        "calibracion": false
+      },
+      "sinReserva": {
+        "texto": "Esta semana bajan las reps (de 12 a 10). Subí la carga: apuntá a más kilos que la semana pasada, manteniendo buena técnica.",
+        "cambia": true,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "semana 1 con reserva: sin la calibración al fallo",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Press inclinado en multipower",
+        "tipo": "compuesto",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": 3,
+            "reps": "12",
+            "rir": "2-3"
+          },
+          {
+            "semana": 2,
+            "series": 3,
+            "reps": "10",
+            "rir": "2-3"
+          }
+        ]
+      },
+      "semana": 1,
+      "sale": {
+        "texto": "Seguí la pauta de esta semana (3×12), dejando 2 a 3 en reserva.",
+        "cambia": false,
+        "calibracion": true
+      },
+      "sinReserva": {
+        "texto": "Semana de calibración. Llevá cada serie al fallo, sin guardarte reps. Las reps son una guía, si apuntás a 12 y te salen 9 o 14 está perfecto. La idea es encontrar tu peso real.",
+        "cambia": false,
+        "calibracion": true
+      }
+    },
+    {
+      "nombre": "semana de taper sin rir en un plan con reserva: la pauta sola",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Back squat",
+        "tipo": "compuesto",
+        "progresion": [
+          {
+            "semana": 6,
+            "series": 2,
+            "reps": "3",
+            "rir": "3"
+          },
+          {
+            "semana": 7,
+            "series": 3,
+            "reps": "2",
+            "rir": null
+          },
+          {
+            "semana": 8,
+            "series": 2,
+            "reps": "3",
+            "rir": null
+          },
+          {
+            "semana": 9,
+            "series": 3,
+            "reps": "8",
+            "rir": "1-2"
+          }
+        ]
+      },
+      "semana": 7,
+      "sale": {
+        "texto": "Seguí la pauta de esta semana (3×2).",
+        "cambia": false,
+        "calibracion": false
+      },
+      "sinReserva": {
+        "texto": "Más series y menos reps: subí un poco la carga y sumá volumen.",
+        "cambia": true,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "suben las series con reserva",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Remo en punta",
+        "tipo": "compuesto",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": 3,
+            "reps": "8",
+            "rir": "2-3"
+          },
+          {
+            "semana": 2,
+            "series": 4,
+            "reps": "9",
+            "rir": "2-3"
+          }
+        ]
+      },
+      "semana": 2,
+      "sale": {
+        "texto": "Seguí la pauta de esta semana (4×9), dejando 2 a 3 en reserva.",
+        "cambia": false,
+        "calibracion": false
+      },
+      "sinReserva": {
+        "texto": "Seguí la pauta de esta semana (4×9) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "cambia": false,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "pauta igual con reserva",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Prensa",
+        "tipo": "compuesto",
+        "progresion": [
+          {
+            "semana": 4,
+            "series": 3,
+            "reps": "10-15",
+            "rir": "2-3"
+          },
+          {
+            "semana": 5,
+            "series": 3,
+            "reps": "10-15",
+            "rir": "2-3"
+          }
+        ]
+      },
+      "semana": 5,
+      "sale": {
+        "texto": "Seguí la pauta de esta semana (3×10-15), dejando 2 a 3 en reserva.",
+        "cambia": false,
+        "calibracion": false
+      },
+      "sinReserva": {
+        "texto": "Mantené el peso de la semana pasada e intentá superar tus reps, siempre al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "cambia": false,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "baja el rir (de 2-3 a 0-1): nunca «llevá cada serie al fallo»",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Curl en polea",
+        "tipo": "aislamiento",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": 3,
+            "reps": "12",
+            "rir": "2-3"
+          },
+          {
+            "semana": 2,
+            "series": 3,
+            "reps": "12",
+            "rir": "0-1"
+          }
+        ]
+      },
+      "semana": 2,
+      "sale": {
+        "texto": "Seguí la pauta de esta semana (3×12), dejando 0 a 1 en reserva.",
+        "cambia": false,
+        "calibracion": false
+      },
+      "sinReserva": {
+        "texto": "Llevá cada serie al fallo.",
+        "cambia": true,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "no va esta semana",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Swing con kettlebell",
+        "tipo": "compuesto",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": 4,
+            "reps": "10",
+            "rir": "3"
+          },
+          {
+            "semana": 2,
+            "series": null,
+            "reps": "No va esta semana",
+            "rir": null
+          }
+        ]
+      },
+      "semana": 2,
+      "sale": {
+        "texto": "No va esta semana.",
+        "cambia": false,
+        "calibracion": false
+      },
+      "sinReserva": {
+        "texto": "Seguí la pauta de esta semana (No va esta semana) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "cambia": false,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "por tiempo, sin series",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Intervalos en bici",
+        "tipo": "cardio",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": null,
+            "reps": "6 × 30 s / 30 s",
+            "rir": null
+          },
+          {
+            "semana": 2,
+            "series": null,
+            "reps": "4 × 20 s / 60 s",
+            "rir": null
+          }
+        ]
+      },
+      "semana": 2,
+      "sale": {
+        "texto": "Seguí la pauta de esta semana (4 × 20 s / 60 s).",
+        "cambia": false,
+        "calibracion": false
+      },
+      "sinReserva": {
+        "texto": "Seguí la pauta de esta semana (4 × 20 s / 60 s) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "cambia": false,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "pauta «—» sin series ni rir (Aguilera, semana 8): sin nota, nunca «—.»",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Intervalos en bici",
+        "tipo": "cardio",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": null,
+            "reps": "6 × 30 s / 30 s",
+            "rir": null
+          },
+          {
+            "semana": 2,
+            "series": null,
+            "reps": "—",
+            "rir": null
+          }
+        ]
+      },
+      "semana": 2,
+      "sale": null,
+      "sinReserva": {
+        "texto": "Seguí la pauta de esta semana y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "cambia": false,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "pauta «—» con reserva: solo la reserva, sin guion de relleno",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Intervalos en bici",
+        "tipo": "cardio",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": null,
+            "reps": "6 × 30 s / 30 s",
+            "rir": null
+          },
+          {
+            "semana": 2,
+            "series": null,
+            "reps": "—",
+            "rir": "2-3"
+          }
+        ]
+      },
+      "semana": 2,
+      "sale": {
+        "texto": "Seguí la pauta de esta semana, dejando 2 a 3 en reserva.",
+        "cambia": false,
+        "calibracion": false
+      },
+      "sinReserva": {
+        "texto": "Seguí la pauta de esta semana y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "cambia": false,
+        "calibracion": false
+      }
+    }
+  ],
+  "aumento": [
+    {
+      "nombre": "bajan las reps con las mismas series: sin reserva sugiere subir; con reserva, nunca",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Press de banca",
+        "tipo": "compuesto",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": 3,
+            "reps": "12",
+            "rir": "2-3",
+            "titulo": "Semana 1"
+          },
+          {
+            "semana": 2,
+            "series": 3,
+            "reps": "10",
+            "rir": "2-3",
+            "titulo": "Semana 2"
+          }
+        ]
+      },
+      "semana": 2,
+      "ultimaVez": [
+        {
+          "reps": 12,
+          "kg": 80
+        },
+        {
+          "reps": 12,
+          "kg": 80
+        },
+        {
+          "reps": 11,
+          "kg": 80
+        }
+      ],
+      "equipo": "barra",
+      "sinReserva": {
+        "tipo": "sugerido",
+        "desde": 80,
+        "hasta": 82.5
+      },
+      "conReserva": {
+        "tipo": "noCorresponde"
+      }
+    }
+  ],
+  "banner": [
+    {
+      "nombre": "semana 1 del primer bloque: sin reserva, calibración; con reserva, ningún cartel",
+      "semana": 1,
+      "offset": 0,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Press de banca",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 1,
+              "series": 3,
+              "reps": "12",
+              "rir": "2-3"
+            },
+            {
+              "semana": 2,
+              "series": 3,
+              "reps": "10",
+              "rir": "2-3"
+            }
+          ]
+        }
+      ],
+      "sinReserva": {
+        "cambian": 0,
+        "calibracion": true
+      },
+      "conReserva": {
+        "cambian": 0,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "bajan las reps: sin reserva, «1 ejercicio cambia carga o volumen»; con reserva, ningún cartel",
+      "semana": 2,
+      "offset": 0,
+      "ejercicios": [
+        {
+          "id": "a",
+          "nombre": "Press de banca",
+          "tipo": "compuesto",
+          "progresion": [
+            {
+              "semana": 1,
+              "series": 3,
+              "reps": "12",
+              "rir": "2-3"
+            },
+            {
+              "semana": 2,
+              "series": 3,
+              "reps": "10",
+              "rir": "2-3"
+            }
+          ]
+        }
+      ],
+      "sinReserva": {
+        "cambian": 1,
+        "calibracion": false
+      },
+      "conReserva": {
+        "cambian": 0,
+        "calibracion": false
+      }
+    }
+  ]
+}

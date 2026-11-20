@@ -67,7 +67,9 @@ await caso('espera: cada vuelta arranca otra espera', () => {
 const sinEspacios = (s) => s.replace(/\s+/g, ' ');
 const H = sinEspacios(HTML);
 await caso('pantalla: el OK y «Guardar corrección» pasan por la espera', () => {
-  assert.match(H, /const _csEspera = CS \? new CS\.EsperaTrasTeclado\(/);
+  // 19/11: la espera sale de CS.EsperaTrasTeclado si existe y, con un carga-simple.js viejo en caché, del respaldo (test-cache-versiones.mjs).
+  assert.match(H, /const _CsEspera = \(CS && typeof CS\.EsperaTrasTeclado === 'function'\) \? CS\.EsperaTrasTeclado : _CsEsperaRespaldo;/);
+  assert.match(H, /const _csEspera = CS \? new _CsEspera\(/);
   assert.match(H, /case 'ok': \{ if \(_csEspera && !_csEspera\.admite\(\)\) return;/);
   assert.match(H, /case 'corr-guardar': if \(_csEspera && !_csEspera\.admite\(\)\) return; return csGuardarCorreccion\(\);/);
   // la espera se alimenta en cada pintada del panel, con «escondido por el teclado», antes del return temprano

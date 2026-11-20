@@ -78,7 +78,7 @@ caso('textos: «Mi salud» exacto, sin «entrenador», sin IA, sin ciclo ni medi
   assert.doesNotMatch(todos, /entrenador|\bIA\b|inteligencia|ciclo|testo|f[aá]rmac|dosis|\bRIR\b/i);
 });
 
-const html = leer('cliente.html');
+const html = leer('cliente.html').replace(/\?v=v\d+"/g, '"'); // sin el ?v= de la versión (test-cache-versiones.mjs lo controla)
 const fn = (nombre) => { const i = html.indexOf(`function ${nombre}(`); assert.ok(i > 0, nombre); return html.slice(i, html.indexOf('\n}\n', i)); };
 
 caso('navegación: todo detrás de web_230 y Estudios adentro de «Mi salud»', () => {

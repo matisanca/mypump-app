@@ -146,17 +146,17 @@
       {
         "objetivo": "1-2",
         "guarda": "1",
-        "leyenda": "Dejando 1–2 en reserva"
+        "leyenda": "Dejando 1 a 2 en reserva"
       },
       {
         "objetivo": "1 - 2",
         "guarda": "1",
-        "leyenda": "Dejando 1–2 en reserva"
+        "leyenda": "Dejando 1 a 2 en reserva"
       },
       {
         "objetivo": "2-3",
         "guarda": "2",
-        "leyenda": "Dejando 2–3 en reserva"
+        "leyenda": "Dejando 2 a 3 en reserva"
       },
       {
         "objetivo": "0 (al fallo)",
@@ -171,7 +171,7 @@
       {
         "objetivo": "0-1",
         "guarda": "0",
-        "leyenda": "Dejando 0–1 en reserva"
+        "leyenda": "Dejando 0 a 1 en reserva"
       },
       {
         "objetivo": "1.5",
@@ -181,7 +181,7 @@
       {
         "objetivo": "1,5-2",
         "guarda": "2",
-        "leyenda": "Dejando 1,5–2 en reserva"
+        "leyenda": "Dejando 1,5 a 2 en reserva"
       },
       {
         "objetivo": "RIR 3",
@@ -191,7 +191,7 @@
       {
         "objetivo": "1-2 (cerca del fallo)",
         "guarda": "1",
-        "leyenda": "Dejando 1–2 en reserva"
+        "leyenda": "Dejando 1 a 2 en reserva"
       },
       {
         "objetivo": "8",

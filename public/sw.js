@@ -14,7 +14,12 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v74-20261119-233';
+const VERSION       = 'v77-20261119-233';
+// 19/11: cliente.html pide sus .js y .css con `?v=<ASSET_V>` (ver test-cache-versiones.mjs). Cloudflare los sirve con
+// max-age=14400 aunque _headers pida no-cache, así que un teléfono podía juntar el HTML nuevo con un .js viejo de su caché
+// (la 2.3.3 quedó en «Cargando tu plan…»). Con la versión en la URL, un HTML nuevo nunca encuentra un .js viejo.
+// Al subir VERSION, subir también el ?v= de cliente.html (el test lo exige).
+const ASSET_V       = VERSION.split('-')[0];
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = '/js/vendor/supabase-js.min.js';   // vendorizada el 20-sep-2026 (antes CDN)
@@ -104,10 +109,21 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(SHELL_CACHE)
       // allSettled + add individual: si un asset 404ea, no aborta todo el precache.
-      .then((c) => Promise.allSettled(SHELL.map((u) => c.add(u))))
+      // Los .js y .css van con la misma URL versionada que pide cliente.html, y todo con cache:'reload' para que la
+      // instalación nunca guarde lo que el navegador tenía viejo en su caché HTTP.
+      .then((c) => Promise.allSettled(SHELL.map((u) => c.add(pedidoDelShell(u)))))
       .then(() => self.skipWaiting())
   );
 });
+
+// '/js/x.js' → '/js/x.js?v=<ASSET_V>' (lo que pide cliente.html); lo demás, igual.
+function urlDelShell(u) {
+  return /^\/(js|css)\//.test(u) ? `${u}?v=${ASSET_V}` : u;
+}
+function pedidoDelShell(u) {
+  const url = urlDelShell(u);
+  try { return new Request(url, { cache: 'reload' }); } catch (_) { return url; }
+}
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -162,7 +178,7 @@ self.addEventListener('fetch', (e) => {
 const TOPE_RED_CODIGO_MS = 6000;
 
 async function copiaDelCodigo(req) {
-  const cached = await caches.match(req, { ignoreSearch: true });
+  const cached = await caches.match(req, { ignoreSearch: req.mode === 'navigate' });
   if (cached && !(req.mode === 'navigate' && cached.redirected)) return cached;
   // Navegación offline sin match exacto (ej: /cliente?t=…) → servir el shell.
   if (req.mode === 'navigate') {
@@ -179,13 +195,23 @@ async function copiaDelCodigo(req) {
 // página vieja podía cargar código nuevo de la red (revisión 10/11).
 let paginaDeLaCopiaHasta = 0;
 
+// 19/11: la página misma (la navegación) se revalida siempre con el servidor (no-cache), porque Cloudflare la sirve con
+// max-age=14400 y una página vieja del caché HTTP volvería a mezclar versiones. Si el navegador no deja armar ese pedido
+// o falla, va el pedido de siempre. Los .js y .css no lo necesitan: su URL ya trae la versión.
+function pedirALaRed(req) {
+  if (req.mode !== 'navigate') return fetch(req);
+  let fresco = null;
+  try { fresco = new Request(req, { cache: 'no-cache' }); } catch (_) { fresco = null; }
+  return fresco ? fetch(fresco).catch(() => fetch(req)) : fetch(req);
+}
+
 async function networkFirst(req, e) {
   if (req.mode !== 'navigate' && Date.now() < paginaDeLaCopiaHasta) {
     const cached = await copiaDelCodigo(req);
     if (cached) return cached;
   }
   let guardado = Promise.resolve();
-  const red = fetch(req).then((res) => {
+  const red = pedirALaRed(req).then((res) => {
     if (res && res.ok && !res.redirected) {
       const copy = res.clone();
       guardado = caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});

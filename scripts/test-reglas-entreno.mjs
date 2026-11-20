@@ -64,8 +64,9 @@ assert.equal(E.notaParaAlumno(notaClinica, null), 'Compuestos: cuidá la lumbar.
 n += 18;
 // La web dibuja la nota técnica filtrada y escapada.
 const html = readFileSync(new URL('../public/cliente.html', import.meta.url), 'utf8');
-assert.ok(html.includes('ReglasEntreno.notaParaAlumno(ex.notas_tecnica, prog.rir)'), 'cliente.html filtra notas_tecnica con el rir de la semana');
-assert.ok(html.includes('ReglasEntreno.notaParaAlumno(n, _rirPlan)'), 'cliente.html filtra la nota de la preparación');
+// 19/11: con la reserva clínica del plan (_reservaClinica, ver test-reserva-clinica.mjs).
+assert.ok(html.includes('ReglasEntreno.notaParaAlumno(ex.notas_tecnica, prog.rir, _clinica)'), 'cliente.html filtra notas_tecnica con el rir de la semana');
+assert.ok(html.includes('ReglasEntreno.notaParaAlumno(n, _rirPlan, _reservaClinica())'), 'cliente.html filtra la nota de la preparación');
 assert.ok(!/>\$\{ex\.notas_tecnica\}</.test(html), 'notas_tecnica no va cruda al HTML');
 n++;
 console.log(`✓ reglas de entreno iguales a la app (${n} casos)`);
