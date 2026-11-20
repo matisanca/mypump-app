@@ -23,7 +23,9 @@ import com.pumpteam.mypump.modelos.Progresion
  */
 object ReservaClinica {
     private val numero = Regex("""\d+([.,]\d+)?""")
-    private val rango = Regex("""\d+([.,]\d+)?(\s*[-–]\s*\d+([.,]\d+)?)?""")
+    // Un número o un rango: «2-3», «2 – 3», «2—3», «2 a 3», «2 o 3». [\s\u00A0]: el \s de Java no agarra el espacio duro y
+    // el de la web y Swift sí.
+    private val rango = Regex("""\d+([.,]\d+)?(([\s\u00A0]*[-–—][\s\u00A0]*|[\s\u00A0]+[ao][\s\u00A0]+)\d+([.,]\d+)?)?""")
     private val rpe = Regex("rpe", RegexOption.IGNORE_CASE)
 
     /** ¿Este rir pide reserva? Todos los números del primer rango mayores que 0 («2-3», «3», «1,5-2»), y no es RPE. */
@@ -51,26 +53,41 @@ object ReservaClinica {
         return false
     }
 
-    /** La leyenda con reserva: la de esa semana («Dejando 2–3 en reserva»); sin número, ninguna. Nunca «Al fallo». */
+    /** La leyenda con reserva: la de esa semana («Dejando 2 a 3 en reserva»); sin número, ninguna. Nunca «Al fallo». */
     fun leyenda(rir: String?): String? = RirDelPlan.leyenda(rir).takeIf { it != "Al fallo" }
 
-    /** La leyenda dentro de una frase: « dejando 2–3 en reserva»; sin leyenda, nada. */
+    /** La leyenda dentro de una frase: « dejando 2 a 3 en reserva»; sin leyenda, nada. */
     internal fun frase(l: String?): String =
         if (l == null) "" else " " + (if (l == "Al fallo") "al fallo" else l.replaceFirstChar { it.lowercase() })
 
+    /** Un reps vacío o de puro relleno («—», «-», «.») no es pauta; «∞» sí (`rellenoRE` de la web). */
+    private val relleno = Regex("""^[\s\u00A0\-–—_.·]*$""")
+    private fun conTexto(s: String) = !relleno.matches(s)
+
     /**
-     * En lugar de la nota automática de progresión, la pauta del plan: «Seguí la pauta de esta semana (3×10), dejando 2–3
-     * en reserva.». Una pauta sin números («No va esta semana») va tal cual. Nunca `cambia` (sin cartel de cambio);
-     * [calibracion] es la semana sin anterior, como en [Progresiones.nota].
+     * La pauta como la ve el alumno: «3×10», «10 min» (sin series) o null. Nunca un guion de relleno en pantalla. La usan
+     * [nota] y [Progresiones.nota] (gemelo de `pautaVisible` de la web).
      */
-    fun nota(p: Progresion, calibracion: Boolean): NotaProgresion {
-        val reps = p.reps?.trim()?.ifEmpty { null }
+    internal fun pautaVisible(series: Int?, reps: String?): String? {
+        val r = reps?.trim()?.takeIf { conTexto(it) } ?: return null
+        return series?.let { "$it×$r" } ?: r
+    }
+
+    /**
+     * En lugar de la nota automática de progresión, la pauta del plan: «Seguí la pauta de esta semana (3×10), dejando 2 a 3
+     * en reserva.». Una pauta sin números («No va esta semana») va tal cual. Sin pauta ni reserva (reps «—» y rir vacío),
+     * ninguna nota: null (nunca «—.»). Nunca `cambia` (sin cartel de cambio); [calibracion] es la semana sin anterior,
+     * como en [Progresiones.nota].
+     */
+    fun nota(p: Progresion, calibracion: Boolean): NotaProgresion? {
+        val reps = p.reps?.trim()?.takeIf { conTexto(it) }
         val texto = if (reps != null && p.series == null && reps.none { it in '0'..'9' }) {
             val fin = if (reps.endsWith(".") || reps.endsWith("!") || reps.endsWith("?")) "" else "."
             reps.replaceFirstChar { it.uppercase() } + fin
         } else {
-            val pauta = reps?.let { r -> p.series?.let { "$it×$r" } ?: r }
+            val pauta = pautaVisible(p.series, reps)
             val reserva = frase(leyenda(p.rir))
+            if (pauta == null && reserva.isEmpty()) return null
             "Seguí la pauta de esta semana${pauta?.let { " ($it)" } ?: ""}${if (reserva.isEmpty()) "" else ",$reserva"}."
         }
         return NotaProgresion(texto, cambia = false, calibracion = calibracion)

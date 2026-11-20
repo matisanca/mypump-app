@@ -28,6 +28,9 @@ import org.junit.jupiter.api.Test
 class ReservaClinicaTest {
     private val v: JsonObject = Vectores.json(Vectores.publico("reserva_clinica"))
     private val prohibido = Regex(v.getValue("prohibido").jsonPrimitive.content, RegexOption.IGNORE_CASE)
+    /** Regla de Mati: en lo que ve el alumno nunca — – « » · (el rango va «2 a 3»). */
+    private val signos = Regex(v.getValue("signos").jsonPrimitive.content)
+    private fun sinSignos(t: String, m: String = "") = assertFalse(signos.containsMatchIn(t), "signo prohibido en «$t» $m")
 
     private fun txt(e: JsonElement?): String? = if (e == null || e is JsonNull) null else e.jsonPrimitive.content
     private fun JsonObject.lista(k: String): List<JsonObject> = getValue(k).jsonArray.map { it.jsonObject }
@@ -45,8 +48,11 @@ class ReservaClinicaTest {
     }
 
     @Test fun leyendaConReserva() {
-        for (c in v.lista("leyenda")) assertEquals(txt(c["sale"]), ReservaClinica.leyenda(txt(c["rir"])), "$c")
-        assertEquals(" dejando 2–3 en reserva", ReservaClinica.frase("Dejando 2–3 en reserva"))
+        for (c in v.lista("leyenda")) {
+            assertEquals(txt(c["sale"]), ReservaClinica.leyenda(txt(c["rir"])), "$c")
+            sinSignos(RirDelPlan.leyenda(txt(c["rir"])))
+        }
+        assertEquals(" dejando 2 a 3 en reserva", ReservaClinica.frase("Dejando 2 a 3 en reserva"))
         assertEquals("", ReservaClinica.frase(null))
     }
 
@@ -68,7 +74,8 @@ class ReservaClinicaTest {
             val nombre = c.getValue("nombre").jsonPrimitive.content
             assertEquals(esperada(c["sale"]), nota(con), "con reserva: $nombre")
             assertEquals(esperada(c["sinReserva"]), nota(Progresiones.nota(e, semana)), "sin reserva: $nombre")
-            assertFalse(prohibido.containsMatchIn(con!!.texto), con.texto)
+            for (x in listOfNotNull(con, Progresiones.nota(e, semana))) sinSignos(x.texto, nombre)
+            if (con != null) assertFalse(prohibido.containsMatchIn(con.texto), con.texto)
         }
     }
 
@@ -119,7 +126,7 @@ class ReservaClinicaTest {
         val d = DiaEnCurso(dia(c.getValue("ejercicios")), 2)
         val id = d.lista[0].id
         assertEquals("Al fallo", d.leyendaRir(id), "sin reserva clínica, como siempre (2.3.0)")
-        assertEquals("Dejando 2–3 en reserva", d.leyendaRir(id, reservaClinica = true))
+        assertEquals("Dejando 2 a 3 en reserva", d.leyendaRir(id, reservaClinica = true))
         assertNull(d.leyendaRir(d.lista[1].id, reservaClinica = true), "la plancha no lleva RIR")
         // Una semana sin rir en un plan con reserva (el taper): ninguna leyenda, nunca «Al fallo».
         val taper = Dia(id = "d1", bloques = listOf(Bloque(ejercicios = listOf(Ejercicio(
@@ -131,7 +138,7 @@ class ReservaClinicaTest {
         assertNull(dt.leyendaRir("a", reservaClinica = true))
         assertEquals("Al fallo", dt.leyendaRir("a"))
         // El aviso de primera vez sigue a la leyenda.
-        assertEquals("llegues a 10 reps dejando 2–3 en reserva.", RirDelPlan.calibracion("llegues a 10 reps dejando 1–2 en reserva.", "Dejando 2–3 en reserva"))
+        assertEquals("llegues a 10 reps dejando 2 a 3 en reserva.", RirDelPlan.calibracion("llegues a 10 reps dejando 1–2 en reserva.", "Dejando 2 a 3 en reserva"))
         assertEquals("llegues a 10 reps.", RirDelPlan.calibracion("llegues a 10 reps dejando 1–2 en reserva.", null))
     }
 

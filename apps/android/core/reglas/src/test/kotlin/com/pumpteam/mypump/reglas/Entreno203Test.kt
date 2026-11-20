@@ -175,7 +175,7 @@ class Entreno203Test {
         assertEquals("0", d.ejercicios.getValue("e3").series[0].rir)
         d.fijarRirDelPlan("e2", 0, e2.copy(nombre = "Press banca con barra", equipo = "barbell"))
         assertEquals("0", d.ejercicios.getValue("e2").series[0].rir, "2.3.0: todo al fallo, nunca el RIR del plan")
-        assertEquals("… a 8 reps dejando 0–1 en reserva.", RirDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", "Dejando 0–1 en reserva"))
+        assertEquals("… a 8 reps dejando 0 a 1 en reserva.", RirDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", "Dejando 0 a 1 en reserva"))
         assertEquals("… a 8 reps al fallo.", RirDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", "Al fallo"))
         assertEquals("… a 8 reps. Queda.", RirDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva. Queda.", null), "sin leyenda, tampoco reserva")
     }

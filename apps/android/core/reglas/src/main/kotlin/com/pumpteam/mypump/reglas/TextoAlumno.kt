@@ -71,7 +71,9 @@ object TextoAlumno {
     }
 
     private val numero = Regex("""\d+([.,]\d+)?""")
-    private val rango = Regex("""\d+([.,]\d+)?(\s*[-–]\s*\d+([.,]\d+)?)?""")
+    // Un número o un rango: «2-3», «2 – 3», «2—3», «2 a 3», «2 o 3». [\s\u00A0]: el \s de Java no agarra el espacio duro y
+    // el de la web y Swift sí.
+    private val rango = Regex("""\d+([.,]\d+)?(([\s\u00A0]*[-–—][\s\u00A0]*|[\s\u00A0]+[ao][\s\u00A0]+)\d+([.,]\d+)?)?""")
     private val rpe = Regex("rpe", RegexOption.IGNORE_CASE)
 
     /** ¿El rir del plan de esa semana pide reserva? Un número mayor que 0 (sin dato, 0, «al fallo» o RPE: no). */

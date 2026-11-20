@@ -39,11 +39,13 @@ object DescansoPropio {
  * efectivas van al fallo y la app ya no muestra el RIR, pero la recuperación cuenta las «series duras» con `rir_real`
  * ≤ 2 (todo null la apaga). Al confirmar se guarda el objetivo del plan para la semana: el primer número del rango
  * (redondeado hacia arriba, entre 0 y 5); sin objetivo o sin número, 0. La leyenda debajo de «Series efectivas» es
- * «Al fallo» o «Dejando 1–2 en reserva» con el rango del plan. Vectores: `entreno_203.json`, sección `rir`.
+ * «Al fallo» o «Dejando 1 a 2 en reserva» con el rango del plan. Vectores: `entreno_203.json`, sección `rir`.
  */
 object RirDelPlan {
     private val numero = Regex("""\d+([.,]\d+)?""")
-    private val rango = Regex("""\d+([.,]\d+)?(\s*[-–]\s*\d+([.,]\d+)?)?""")
+    // Un número o un rango: «2-3», «2 – 3», «2—3», «2 a 3», «2 o 3». [\s\u00A0]: el \s de Java no agarra el espacio duro y
+    // el de la web y Swift sí.
+    private val rango = Regex("""\d+([.,]\d+)?(([\s\u00A0]*[-–—][\s\u00A0]*|[\s\u00A0]+[ao][\s\u00A0]+)\d+([.,]\d+)?)?""")
 
     /** Un objetivo en RPE no es RIR: se toma como al fallo. */
     private val rpe = Regex("rpe", RegexOption.IGNORE_CASE)
@@ -74,7 +76,8 @@ object RirDelPlan {
         val r = objetivo?.let { rango.find(it)?.value } ?: return "Al fallo"
         val numeros = numero.findAll(r).mapNotNull { it.value.replace(',', '.').toDoubleOrNull() }.toList()
         if (numeros.all { it == 0.0 }) return "Al fallo"
-        val partes = r.split('-', '–').map { it.trim().replace('.', ',') }
-        return "Dejando ${partes.joinToString("–")} en reserva"
+        // «Dejando 2 a 3 en reserva»: nunca el guion medio en pantalla (regla de Mati: ni — – « » ·).
+        val partes = numero.findAll(r).map { it.value.replace('.', ',') }.toList()
+        return "Dejando ${partes.joinToString(" a ")} en reserva"
     }
 }

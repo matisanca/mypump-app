@@ -79,7 +79,8 @@ object Progresiones {
             partes += if (repsIgual && seriesIgual) {
                 "Mantené el peso de la semana pasada e intentá superar tus reps, siempre al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima."
             } else {
-                "Seguí la pauta de esta semana (${cur.series?.toString() ?: "—"}×${cur.reps ?: "—"}) y llevá cada serie al " +
+                // Sin guion de relleno: nunca «(—×10 min)».
+                "Seguí la pauta de esta semana${ReservaClinica.pautaVisible(cur.series, cur.reps)?.let { " ($it)" } ?: ""} y llevá cada serie al " +
                     "fallo. Si te salen más reps que las de la pauta, subí la carga la próxima."
             }
         }

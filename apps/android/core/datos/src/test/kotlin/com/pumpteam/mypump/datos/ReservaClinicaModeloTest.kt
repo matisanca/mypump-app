@@ -62,15 +62,15 @@ class ReservaClinicaModeloTest {
         assertEquals(0, m.banner.cambian)
         assertFalse(m.banner.calibracion)
         assertNull(m.banner.texto)
-        assertEquals("Seguí la pauta de esta semana (4×8), dejando 2–3 en reserva.", m.tarjeta(lugar)?.nota?.texto)
+        assertEquals("Seguí la pauta de esta semana (4×8), dejando 2 a 3 en reserva.", m.tarjeta(lugar)?.nota?.texto)
         assertEquals(false, m.tarjeta(lugar)?.nota?.cambia)
-        assertEquals("Dejando 2–3 en reserva", m.leyendaRir(lugar))
+        assertEquals("Dejando 2 a 3 en reserva", m.leyendaRir(lugar))
         assertEquals(CargaSimple.Aumento.NoCorresponde, m.cargaSimple(lugar)?.aumento, "nunca «toca subir»")
         val t = textos(m)
         assertEquals(null, t.firstOrNull { prohibido.containsMatchIn(it) }, "apareció")
         assertTrue("Dejá 2 repeticiones en reserva y bajá controlado." in t, "la nota técnica de Mati entera")
         assertTrue("Con RIR 3, sin apurar." in t, "la nota de la preparación entera")
-        assertTrue(t.any { "dejando 2–3 en reserva" in it && "Primera vez" in it }, "el aviso de primera vez con la reserva: $t")
+        assertTrue(t.any { "dejando 2 a 3 en reserva" in it && "Primera vez" in it }, "el aviso de primera vez con la reserva: $t")
     }
 
     @Test fun sinReservaTodoIgual() = enUnHilo { a: CoroutineScope ->
@@ -90,7 +90,7 @@ class ReservaClinicaModeloTest {
         assertFalse(m.banner.calibracion)
         assertNull(m.banner.texto)
         val n = m.tarjeta(lugar)?.nota
-        assertEquals("Seguí la pauta de esta semana (4×10), dejando 2–3 en reserva.", n?.texto)
+        assertEquals("Seguí la pauta de esta semana (4×10), dejando 2 a 3 en reserva.", n?.texto)
         assertTrue(n?.cambia == false && n.calibracion, "el rótulo «Semana 1», sin «al fallo»")
         assertEquals(null, textos(m).firstOrNull { prohibido.containsMatchIn(it) })
         val sin = modelo(Banco(a), rutina("0", semana = 1))
@@ -110,7 +110,7 @@ class ReservaClinicaModeloTest {
         assertFalse(m.reservaClinica)
         m.reemplazarRutina(rutina("2-3"))
         assertTrue(m.reservaClinica)
-        assertEquals("Dejando 2–3 en reserva", m.leyendaRir(lugar))
+        assertEquals("Dejando 2 a 3 en reserva", m.leyendaRir(lugar))
         m.reemplazarRutina(rutina("0", semana = 3))
         assertFalse(m.reservaClinica)
     }
