@@ -1,0 +1,232 @@
+{
+ "fuente": "revision_desde (OK de Mati 19/11): antes de mypump_get_revision_desde no se pide la revisión (ni badge, ni banner, ni aviso de fotos) y el aviso local sale recién el primer día de revisión en o después de esa fecha. Sin fecha o ilegible, como siempre. 9999-12-31 = la entrega todavía no se hizo: nunca habilitada y sin aviso. hoy = la fecha local del teléfono; hora y revisionDia como aviso_revision.json",
+ "habilitada": [
+  {
+   "nombre": "sin fecha: como siempre",
+   "hoy": "2026-11-19",
+   "desde": null,
+   "habilitada": true
+  },
+  {
+   "nombre": "vacía: como siempre",
+   "hoy": "2026-11-19",
+   "desde": "",
+   "habilitada": true
+  },
+  {
+   "nombre": "ilegible: como siempre",
+   "hoy": "2026-11-19",
+   "desde": "basura",
+   "habilitada": true
+  },
+  {
+   "nombre": "mes imposible: como siempre",
+   "hoy": "2026-11-19",
+   "desde": "2026-13-01",
+   "habilitada": true
+  },
+  {
+   "nombre": "jueves antes del lunes de arranque",
+   "hoy": "2026-11-19",
+   "desde": "2026-11-23",
+   "habilitada": false
+  },
+  {
+   "nombre": "el domingo anterior todavía no",
+   "hoy": "2026-11-22",
+   "desde": "2026-11-23",
+   "habilitada": false
+  },
+  {
+   "nombre": "el mismo lunes ya sí",
+   "hoy": "2026-11-23",
+   "desde": "2026-11-23",
+   "habilitada": true
+  },
+  {
+   "nombre": "el martes siguiente",
+   "hoy": "2026-11-24",
+   "desde": "2026-11-23",
+   "habilitada": true
+  },
+  {
+   "nombre": "la semana que viene",
+   "hoy": "2026-11-30",
+   "desde": "2026-11-23",
+   "habilitada": true
+  },
+  {
+   "nombre": "arranque viejo: como siempre",
+   "hoy": "2026-11-19",
+   "desde": "2026-10-05",
+   "habilitada": true
+  },
+  {
+   "nombre": "la entrega todavía no se hizo",
+   "hoy": "2026-11-19",
+   "desde": "9999-12-31",
+   "habilitada": false
+  },
+  {
+   "nombre": "con hora: vale la fecha",
+   "hoy": "2026-11-19",
+   "desde": "2026-11-23T00:00:00",
+   "habilitada": false
+  }
+ ],
+ "aviso": [
+  {
+   "nombre": "sin fecha: el domingo de siempre",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 7,
+   "desde": null,
+   "aviso": "2026-11-22"
+  },
+  {
+   "nombre": "el domingo de esta semana es antes del arranque: el de la que viene",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 7,
+   "desde": "2026-11-23",
+   "aviso": "2026-11-29"
+  },
+  {
+   "nombre": "completa y antes del arranque: el primer domingo del arranque",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": true,
+   "revisionDia": 7,
+   "desde": "2026-11-23",
+   "aviso": "2026-11-29"
+  },
+  {
+   "nombre": "revisa el lunes: el mismo lunes del arranque",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 1,
+   "desde": "2026-11-23",
+   "aviso": "2026-11-23"
+  },
+  {
+   "nombre": "el lunes del arranque antes de las 11: hoy",
+   "hoy": "2026-11-23",
+   "hora": "09:30",
+   "completa": false,
+   "revisionDia": 1,
+   "desde": "2026-11-23",
+   "aviso": "2026-11-23"
+  },
+  {
+   "nombre": "el lunes del arranque después de las 11: el que viene",
+   "hoy": "2026-11-23",
+   "hora": "12:00",
+   "completa": false,
+   "revisionDia": 1,
+   "desde": "2026-11-23",
+   "aviso": "2026-11-30"
+  },
+  {
+   "nombre": "domingo anterior antes de las 11: no hoy, el del arranque",
+   "hoy": "2026-11-22",
+   "hora": "09:00",
+   "completa": false,
+   "revisionDia": 7,
+   "desde": "2026-11-23",
+   "aviso": "2026-11-29"
+  },
+  {
+   "nombre": "ya arrancó y completa: se saltea como siempre",
+   "hoy": "2026-11-23",
+   "hora": "10:00",
+   "completa": true,
+   "revisionDia": 7,
+   "desde": "2026-11-23",
+   "aviso": "2026-12-06"
+  },
+  {
+   "nombre": "ya arrancó: el domingo de la semana",
+   "hoy": "2026-11-23",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 7,
+   "desde": "2026-11-23",
+   "aviso": "2026-11-29"
+  },
+  {
+   "nombre": "arranque lejos, revisa el sábado",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 6,
+   "desde": "2026-12-07",
+   "aviso": "2026-12-12"
+  },
+  {
+   "nombre": "la entrega todavía no se hizo: sin aviso",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 7,
+   "desde": "9999-12-31",
+   "aviso": null
+  },
+  {
+   "nombre": "arranque viejo: como siempre",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 7,
+   "desde": "2026-10-05",
+   "aviso": "2026-11-22"
+  },
+  {
+   "nombre": "arranque viejo y completa: como siempre",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": true,
+   "revisionDia": 7,
+   "desde": "2026-10-05",
+   "aviso": "2026-11-29"
+  },
+  {
+   "nombre": "ilegible: como siempre",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 7,
+   "desde": "basura",
+   "aviso": "2026-11-22"
+  },
+  {
+   "nombre": "arranque un miércoles (dato raro): el domingo de esa semana",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 7,
+   "desde": "2026-11-25",
+   "aviso": "2026-11-29"
+  },
+  {
+   "nombre": "arranque un miércoles y revisa el miércoles: ese día",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 3,
+   "desde": "2026-11-25",
+   "aviso": "2026-11-25"
+  },
+  {
+   "nombre": "arranque un miércoles y revisa el lunes: el lunes siguiente",
+   "hoy": "2026-11-19",
+   "hora": "10:00",
+   "completa": false,
+   "revisionDia": 1,
+   "desde": "2026-11-25",
+   "aviso": "2026-11-30"
+  }
+ ]
+}

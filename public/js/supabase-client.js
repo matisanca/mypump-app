@@ -376,6 +376,14 @@ window.mypumpDB = {
     return await rpc('mypump_get_revision_dia', { p_token: token });
   },
 
+  // La fecha de arranque de la revisión semanal (mypump_get_revision_desde, "YYYY-MM-DD" o null = sin fecha).
+  // { ok: false } si no se pudo preguntar (red, servidor, función que no está): la web se queda con la última que supo.
+  async getRevisionDesde(token) {
+    const data = await rpc('mypump_get_revision_desde', { p_token: token });
+    if (data == null && window.mypumpDB && window.mypumpDB._lastError) return { ok: false, valor: null };
+    return { ok: true, valor: typeof data === 'string' ? data : null };
+  },
+
   // La palanca remota (mypump_get_app_config): null si no se pudo preguntar.
   async getAppConfig() {
     return await rpc('mypump_get_app_config', {});

@@ -49,6 +49,9 @@ for (const m of seccionFns.matchAll(/^(mypump_[a-z0-9_]+|_mypump_[a-z0-9_]+)\(([
 }
 // Aplicada a mano desde supabase/propuestas de la rama nativa-230 (nativa_008b); todavía no está en el esquema volcado.
 firmas.set('mypump_get_revision_dia', new Set(['p_token']));
+// revision_desde (14/11): aplicada en producción desde la Mini (anon puede ejecutarla; la verifiqué en solo lectura el 19/11),
+// todavía no está en el volcado de esta rama (sí en el de nativa-234). Devuelve mypump_revision_desde_efectiva o null.
+firmas.set('mypump_get_revision_desde', new Set(['p_token']));
 // Gimnasio por fotos: propuesta sin aplicar (supabase/propuestas/nativa_gimnasio_fotos.sql, rama nativa-gimnasio). Si no existe, la web no muestra nada.
 firmas.set('mypump_gimnasio_get', new Set(['p_token']));
 firmas.set('mypump_gimnasio_nuevo', new Set(['p_token', 'p_modo']));
