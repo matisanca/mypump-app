@@ -12,6 +12,8 @@ data class ContextoCarga(
     val mensajeSemana: String?,
     /** YYYY-MM-DD local de hoy. */
     val hoy: String,
+    /** El plan tiene reserva clínica (19/11, [ReservaClinica]): nunca se sugiere subir. */
+    val reservaClinica: Boolean = false,
 )
 
 /**
@@ -37,7 +39,7 @@ fun DiaEnCurso.cargaSimple(id: String, c: ContextoCarga): CargaSimple? {
     val sinKg = ReglasEjercicio.sinKg(c.efectivo)
     fun armar(estado: CargaSimple.Estado?): CargaSimple = CargaSimple(
         c.efectivo, semana, refs, c.equipo, sinKg, HistorialEntreno.recordKg(h), mensajeSemana = c.mensajeSemana, seriesLocales = e.series,
-        estado = estado, yaAumentadoEstaSemana = claveAumento(id) in aumentosSemana,
+        estado = estado, yaAumentadoEstaSemana = claveAumento(id) in aumentosSemana, reservaClinica = c.reservaClinica,
     ).also { s ->
         s.varianteActual = if (variantesVisibles(id) == null) null else Js.verdadero(e.variante)
         s.marcarAjenas(e.series.indices.filter { !esDelEjercicioActual(id, e.series[it]) }.toSet())

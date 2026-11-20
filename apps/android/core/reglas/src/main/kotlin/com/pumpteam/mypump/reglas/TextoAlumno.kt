@@ -81,10 +81,13 @@ object TextoAlumno {
         return numero.findAll(r).any { (it.value.replace(',', '.').toDoubleOrNull() ?: 0.0) > 0 }
     }
 
-    /** La nota del plan como la ve el alumno: entera si esa semana lleva reserva clínica; si no, sin RIR. Vacía → null. */
-    fun notaParaAlumno(texto: String?, rir: String?): String? {
+    /**
+     * La nota del plan como la ve el alumno: entera si esa semana lleva reserva o el plan tiene reserva clínica ([clinica],
+     * 19/11: así sinRIR no pasa un «cerca del fallo» a «al fallo»); si no, sin RIR. Vacía → null.
+     */
+    fun notaParaAlumno(texto: String?, rir: String?, clinica: Boolean = false): String? {
         if (texto == null) return null
-        val r = (if (conReserva(rir)) texto else sinRIR(texto)).trim()
+        val r = (if (clinica || conReserva(rir)) texto else sinRIR(texto)).trim()
         return r.ifEmpty { null }
     }
 }

@@ -36,14 +36,16 @@ object Progresiones {
 
     /**
      * Port de `computeProgresionNota` (cliente.html:1701): explica el cambio de esta semana contra la anterior.
-     * Devuelve null si el ejercicio no tiene progresión.
+     * Devuelve null si el ejercicio no tiene progresión. Con [reservaClinica] (19/11, ver [ReservaClinica]) nunca «Subí la
+     * carga» ni «al fallo»: la pauta del plan.
      */
-    fun nota(e: Ejercicio, semanaActual: Int?): NotaProgresion? {
+    fun nota(e: Ejercicio, semanaActual: Int?, reservaClinica: Boolean = false): NotaProgresion? {
         val prog = e.progresion
         if (prog.isEmpty()) return null
         val sem = semanaJs(semanaActual)
 
         val (cur, prev) = pasoDePlan(prog, sem)
+        if (reservaClinica) return ReservaClinica.nota(cur, calibracion = prev == null)
         if (prev == null) return NotaProgresion(TEXTO_CALIBRACION, cambia = false, calibracion = true)
 
         val curReps = tope(cur.reps)

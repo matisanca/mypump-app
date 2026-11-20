@@ -140,8 +140,13 @@ data class BannerSemana(
 }
 
 object SemanaEntreno {
-    /** El banner de `renderTrain`: cuántos ejercicios cambian carga o volumen, o la calibración de la semana 1. */
-    fun banner(dia: Dia, semana: Int, offset: Int): BannerSemana {
+    /**
+     * El banner de `renderTrain`: cuántos ejercicios cambian carga o volumen, o la calibración de la semana 1. Con reserva
+     * clínica (19/11, [ReservaClinica]) ninguno: ni «cambian carga» ni la calibración «al fallo» (cada ejercicio muestra la
+     * pauta del plan).
+     */
+    fun banner(dia: Dia, semana: Int, offset: Int, reservaClinica: Boolean = false): BannerSemana {
+        if (reservaClinica) return BannerSemana(0, false)
         val n = dia.bloques.flatMap { it.ejercicios }
             .count { it.tipo != "calentamiento" && Progresiones.nota(it, semanaActual = semana)?.cambia == true }
         // Calibración solo en la semana 1 del PRIMER macrociclo (fase 2+ continúa cargas).

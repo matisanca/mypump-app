@@ -391,11 +391,16 @@ class DiaEnCurso(
         cambiarSerie(id, idx) { it.copy(rir = RirDelPlan.AL_FALLO) }
     }
 
-    /** La leyenda debajo de «Series efectivas»: «Al fallo», nunca «Dejando N en reserva» aunque el plan traiga RIR (2.3.0); null si no lleva RIR. */
-    fun leyendaRir(id: String, efectivo: Ejercicio? = null): String? {
+    /**
+     * La leyenda debajo de «Series efectivas»: «Al fallo», nunca «Dejando N en reserva» aunque el plan traiga RIR (2.3.0).
+     * Con reserva clínica (19/11, [ReservaClinica]) la reserva del plan esa semana («Dejando 2–3 en reserva») o ninguna,
+     * nunca «Al fallo». null si no lleva RIR.
+     */
+    fun leyendaRir(id: String, efectivo: Ejercicio? = null, reservaClinica: Boolean = false): String? {
         val ex = efectivo ?: ejercicio(id) ?: return null
         if (!RirDelPlan.lleva(ex)) return null
-        return "Al fallo"
+        if (!reservaClinica) return "Al fallo"
+        return ReservaClinica.leyenda(Progresiones.pauta(ejercicio(id) ?: ex, semana).rir)
     }
 
     /**

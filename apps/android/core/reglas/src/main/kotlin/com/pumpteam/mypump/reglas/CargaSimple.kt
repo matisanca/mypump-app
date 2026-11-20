@@ -34,9 +34,12 @@ object AumentoCarga {
         return prefijoSemana.reemplazarTodo(t, "").trim { it in ORILLAS_TITULO }
     }
 
-    /** Esta semana bajan las reps con las mismas series, y nada del plan dice lo contrario. Nunca en calibración. */
-    fun corresponde(e: Ejercicio, semana: Int, mensajeSemana: String? = null): Boolean {
-        if (e.progresion.isEmpty() || ReglasEjercicio.esCardio(e) || e.tipo == "calentamiento") return false
+    /**
+     * Esta semana bajan las reps con las mismas series, y nada del plan dice lo contrario. Nunca en calibración, ni con
+     * reserva clínica (19/11, [ReservaClinica]: el plan deja reps en reserva a propósito, nunca se sugiere subir).
+     */
+    fun corresponde(e: Ejercicio, semana: Int, mensajeSemana: String? = null, reservaClinica: Boolean = false): Boolean {
+        if (reservaClinica || e.progresion.isEmpty() || ReglasEjercicio.esCardio(e) || e.tipo == "calentamiento") return false
         val nota = Progresiones.nota(e, semana) ?: return false
         if (nota.calibracion) return false
         val (cur, prev) = Progresiones.pasoDePlan(e.progresion, Progresiones.semanaJs(semana))
@@ -153,6 +156,8 @@ class CargaSimple(
     estado: Estado? = null,
     /** El mismo ejercicio en otro día de la semana ya aceptó o rechazó: sin sugerencia. */
     yaAumentadoEstaSemana: Boolean = false,
+    /** El plan tiene reserva clínica (19/11): sin sugerencia de subir, tampoco la guardada de antes (lo aceptado queda). */
+    reservaClinica: Boolean = false,
 ) {
     data class Referencia(val reps: Int, val kg: Double?)
 
@@ -294,8 +299,8 @@ class CargaSimple(
         cargaCambioDesdeOK = estado?.cargaCambioDesdeOK ?: false
         ultimoOK = estado?.ultimoOK
         if (estado != null) {
-            aumento = estado.aumento
-        } else if (!yaAumentadoEstaSemana && base != null && !this.sinKg && AumentoCarga.corresponde(e, semana, mensajeSemana)) {
+            aumento = if (reservaClinica && estado.aumento is Aumento.Sugerido) Aumento.NoCorresponde else estado.aumento
+        } else if (!yaAumentadoEstaSemana && base != null && !this.sinKg && AumentoCarga.corresponde(e, semana, mensajeSemana, reservaClinica)) {
             AumentoCarga.hasta(base, equipo)?.let { aumento = Aumento.Sugerido(base, it) }
         }
 
