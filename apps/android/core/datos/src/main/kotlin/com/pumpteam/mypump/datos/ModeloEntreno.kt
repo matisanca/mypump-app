@@ -43,6 +43,7 @@ import com.pumpteam.mypump.reglas.Progresiones
 import com.pumpteam.mypump.reglas.TextoAlumno
 import com.pumpteam.mypump.reglas.ReglasEjercicio
 import com.pumpteam.mypump.reglas.ReglasWins
+import com.pumpteam.mypump.reglas.ReservaClinica
 import com.pumpteam.mypump.reglas.ResumenDia
 import com.pumpteam.mypump.reglas.SemanaEntreno
 import com.pumpteam.mypump.reglas.SemanticaJs
@@ -342,6 +343,25 @@ class ModeloEntreno(
     val totalMostrado: Int get() = semanasTotal + offset
     val dias: List<Dia> get() = _estructura.value.dias
 
+    /** [reservaClinica] ya calculada para esa estructura y esa semana (un caché). */
+    @Volatile private var memoReserva: Triple<EstructuraRutina, Int, Boolean>? = null
+
+    /**
+     * Reserva clínica del plan (19/11, OK de Mati, ver [ReservaClinica]): el plan deja reps en reserva a propósito en la
+     * semana que se muestra o en una posterior. Con reserva, nunca «Al fallo», «llevá al fallo» ni «Subí la carga»: la nota,
+     * la leyenda, el aviso de primera vez y el cartel muestran la pauta del plan, y la carga no sugiere subir. La demo queda
+     * como siempre. Se calcula una vez por estructura y semana.
+     */
+    val reservaClinica: Boolean
+        get() {
+            val est = _estructura.value
+            val sem = semana
+            memoReserva?.let { (e, s, v) -> if (e === est && s == sem) return v }
+            val v = !demo && ReservaClinica.delPlan(est.dias, sem)
+            memoReserva = Triple(est, sem, v)
+            return v
+        }
+
     /** "DÍA n" de un día (`getDayNum`). */
     fun numero(d: Dia): Int = TextosEntreno.numeroDia(d, dias)
 
@@ -358,7 +378,7 @@ class ModeloEntreno(
     val sinLeerEntreno: Int get() = _comentarios.value.totalEntreno
 
     /** ENT-07/08 */
-    val banner: BannerSemana get() = SemanaEntreno.banner(_dia.value.dia, semana, offset)
+    val banner: BannerSemana get() = SemanaEntreno.banner(_dia.value.dia, semana, offset, reservaClinica)
     val puedeAvanzar: Boolean get() = SemanaEntreno.puedeAvanzar(semana, semanasTotal, demo)
     val puedeEmpezarBloque: Boolean get() = SemanaEntreno.puedeEmpezarBloque(semana, semanasTotal, _rutina.value.tieneSiguiente, demo)
     val botonAvanzar: String get() = SemanaEntreno.botonAvanzar(semana, offset)
@@ -441,7 +461,7 @@ class ModeloEntreno(
         val manual: Boolean,
         val sinLeer: Int,
         val pauta: Pauta,
-        /** La nota de la semana (null en el calentamiento). */
+        /** La nota de la semana (null en el calentamiento). Con reserva clínica, la pauta del plan. */
         val nota: NotaProgresion?,
         val sinKg: Boolean,
         val variantes: VariantesEjercicio?,
@@ -463,6 +483,8 @@ class ModeloEntreno(
         val descansoSegundos: Int = NormalizacionRutina.DESCANSO_POR_DEFECTO,
         val descansoPlan: Int = NormalizacionRutina.DESCANSO_POR_DEFECTO,
         val descansoPropio: Boolean = false,
+        /** El plan tiene reserva clínica (19/11): la nota técnica va entera (`TextoAlumno.notaParaAlumno`). */
+        val reservaClinica: Boolean = false,
     )
 
     fun tarjeta(lugar: String): Tarjeta? {
@@ -476,7 +498,7 @@ class ModeloEntreno(
             lugar = lugar, efectivo = ef, estado = d.estado(lugar),
             manual = d.estado(lugar) == "completo_sin_datos" && d.meta[lugar]?.manual == true,
             sinLeer = _comentarios.value.sinLeer(lugar), pauta = Progresiones.pauta(ef.ejercicio, semana),
-            nota = if (ef.ejercicio.tipo == "calentamiento") null else Progresiones.nota(ef.ejercicio, semanaActual = semana),
+            nota = if (ef.ejercicio.tipo == "calentamiento") null else Progresiones.nota(ef.ejercicio, semanaActual = semana, reservaClinica = reservaClinica),
             sinKg = ReglasEjercicio.sinKg(ef.ejercicio), variantes = variantes,
             varianteActual = Js.verdadero(e?.variante) ?: variantes?.opciones?.firstOrNull(),
             filas = e?.series?.indices?.mapNotNull { filaConLeyenda(lugar, it, ef.ejercicio) } ?: emptyList(),
@@ -490,6 +512,7 @@ class ModeloEntreno(
             descansoSegundos = d.descanso(lugar),
             descansoPlan = plan.descansoSegundos ?: NormalizacionRutina.DESCANSO_POR_DEFECTO,
             descansoPropio = d.tieneDescansoPropio(lugar),
+            reservaClinica = reservaClinica,
         )
     }
 
@@ -506,8 +529,9 @@ class ModeloEntreno(
         return if (e.equipo != null) e else e.copy(equipo = _catalogo.value.resolver(ex)?.equipment)
     }
 
-    /** La leyenda debajo de «Series efectivas» («Al fallo» o el rango del plan); null si el ejercicio no lleva RIR. */
-    fun leyendaRir(lugar: String): String? = _dia.value.let { d -> d.leyendaRir(lugar, d.ejercicio(lugar)?.let { hecho(it) }) }
+    /** La leyenda debajo de «Series efectivas» («Al fallo»; con reserva clínica, la reserva del plan o ninguna); null si no lleva RIR. */
+    fun leyendaRir(lugar: String): String? =
+        _dia.value.let { d -> d.leyendaRir(lugar, d.ejercicio(lugar)?.let { hecho(it) }, reservaClinica) }
 
     /**
      * La fila, con el aviso de primera vez diciendo lo mismo que la leyenda («al fallo» o el rango del plan) y no el
@@ -595,9 +619,10 @@ class ModeloEntreno(
         // La carga única se elige antes de empezar: la preparación se calcula con ella (sin heredarla como serie).
         val conCarga = primera?.kg?.takeIf { it.isNotEmpty() } ?: d.cargas[lugar]?.carga?.let(Js::texto) ?: ""
         val kg = Preparacion.kgEfectivo(conCarga, sugerido)
-        val clave = "$lugar|$kg|${cacheEntradas?.first}"
+        val clinica = reservaClinica
+        val clave = "$lugar|$kg|${cacheEntradas?.first}|${d.semana}|$clinica"
         cachePreparacion[lugar]?.let { (c, series) -> if (c == clave) return series }
-        val plan = aproximacionesParaAlumno(ef.aproximaciones, Progresiones.pauta(lista[i], d.semana).rir)
+        val plan = aproximacionesParaAlumno(ef.aproximaciones, Progresiones.pauta(lista[i], d.semana).rir, clinica)
         val series = Preparacion.series(entradas, i, ef.nombre, ef.equipo, ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kg, plan)
         cachePreparacion[lugar] = clave to series
         return series
@@ -1612,7 +1637,8 @@ class ModeloEntreno(
         val plan = _dia.value.ejercicio(lugar) ?: return null
         val conEquipo = hecho(plan)
         val mensaje = _estructura.value.mensajesSemana.firstOrNull { it.n == semana }?.msg
-        return ContextoCarga(efectivo(plan).ejercicio, Preparacion.equipo(conEquipo.nombre, conEquipo.equipo), mensaje, FechaLocal.hoy(reloj(), zona))
+        return ContextoCarga(efectivo(plan).ejercicio, Preparacion.equipo(conEquipo.nombre, conEquipo.equipo), mensaje, FechaLocal.hoy(reloj(), zona),
+            reservaClinica)
     }
 
     fun cargaSimple(lugar: String): CargaSimple? = contextoCarga(lugar)?.let { _dia.value.cargaSimple(lugar, it) }
@@ -2111,6 +2137,9 @@ internal fun leerAnotadas(v: ValorJson): Map<String, ModeloEntreno.EscrituraAnot
         k to ModeloEntreno.EscrituraAnotada(kind, payload, ts, e["rutinaId"]?.comoTexto)
     }.toMap()
 
-/** Las series de preparación del plan con la nota como la ve el alumno: sin RIR, salvo reserva clínica esa semana. */
-fun aproximacionesParaAlumno(plan: List<Aproximacion>?, rir: String?): List<Aproximacion>? =
-    plan?.map { it.copy(nota = TextoAlumno.notaParaAlumno(it.nota, rir)) }
+/**
+ * Las series de preparación del plan con la nota como la ve el alumno: sin RIR, salvo reserva esa semana o reserva clínica
+ * del plan ([clinica], 19/11).
+ */
+fun aproximacionesParaAlumno(plan: List<Aproximacion>?, rir: String?, clinica: Boolean = false): List<Aproximacion>? =
+    plan?.map { it.copy(nota = TextoAlumno.notaParaAlumno(it.nota, rir, clinica)) }

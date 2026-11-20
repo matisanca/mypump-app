@@ -19,7 +19,11 @@ class CargaSimpleModeloTest {
 
     private fun igual(a: Any?, b: Any?, m: String = "") = assertEquals(a, b, m)
 
-    private fun rutina(rir: String = "2", semana: Int = 2, reps2: String = "8"): RutinaActiva {
+    /**
+     * [rir] «0»: el plan de todos, al fallo (2.3.0). Con un rir mayor que 0 en la pauta el plan tiene reserva clínica (19/11,
+     * ver ReservaClinicaModeloTest) y la carga nunca sugiere subir.
+     */
+    private fun rutina(rir: String = "0", semana: Int = 2, reps2: String = "8"): RutinaActiva {
         val est = """{"semanas_total":12,"dias":[{"id":"d1","n":1,"nombre":"EMPUJE","bloques":[{"titulo":"B1","ejercicios":[{"id":"pre-d1-0","nombre":"Press banca con barra","tipo":"compuesto","descanso_segundos":120,"progresion":[{"semana":1,"series":4,"reps":"10","rir":"$rir"},{"semana":2,"series":4,"reps":"$reps2","rir":"$rir"}]}]}]}]}"""
         return RutinaActiva.desde(ValorJson.parsear("""{"id":"r1","version":1,"semana_actual":$semana,"tiene_siguiente":false,"estructura":$est}""").aJson())
     }
