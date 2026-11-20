@@ -116,7 +116,7 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// '/js/x.js' → '/js/x.js?v=v76' (lo que pide cliente.html); lo demás, igual.
+// '/js/x.js' → '/js/x.js?v=<ASSET_V>' (lo que pide cliente.html); lo demás, igual.
 function urlDelShell(u) {
   return /^\/(js|css)\//.test(u) ? `${u}?v=${ASSET_V}` : u;
 }
