@@ -399,12 +399,12 @@
     if (!l) return '';
     return ' ' + (l === 'Al fallo' ? 'al fallo' : l.charAt(0).toLowerCase() + l.slice(1));
   }
-  /** La pauta como la ve el alumno: «3×10», «10 min» (sin series) o null. Un reps sin letras ni números («—», «-») no es
-      pauta: nunca un guion de relleno en pantalla. La usan notaReserva y la nota de progresión de cliente.html. */
-  const conTextoRE = /[\p{L}\p{N}]/u;
+  /** La pauta como la ve el alumno: «3×10», «10 min» (sin series) o null. Un reps vacío o de puro relleno («—», «-», «.»)
+      no es pauta: nunca un guion de relleno en pantalla («∞» sí es pauta). La usan notaReserva y la nota de progresión. */
+  const rellenoRE = /^[\s\-–—_.·]*$/;
   function pautaVisible(series, reps) {
     const r = reps != null ? String(reps).trim() : '';
-    if (!conTextoRE.test(r)) return null;
+    if (rellenoRE.test(r)) return null;
     return series != null ? `${series}×${r}` : r;
   }
   /** En lugar de la nota automática de progresión, la pauta del plan: «Seguí la pauta de esta semana (3×10), dejando 2 a 3
@@ -412,7 +412,7 @@
       ninguna nota: null. Nunca «cambia» (sin cartel de cambio). */
   function notaReserva(cur, calibracion) {
     const c = cur || {};
-    const reps = c.reps != null && conTextoRE.test(String(c.reps)) ? String(c.reps).trim() : null;
+    const reps = c.reps != null && !rellenoRE.test(String(c.reps)) ? String(c.reps).trim() : null;
     let texto;
     if (reps != null && c.series == null && !/\d/.test(reps)) {
       texto = reps.charAt(0).toUpperCase() + reps.slice(1) + (/[.!?]$/.test(reps) ? '' : '.');
