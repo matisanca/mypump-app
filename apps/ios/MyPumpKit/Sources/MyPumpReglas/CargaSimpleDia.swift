@@ -11,8 +11,11 @@ extension DiaEnCurso {
         public let mensajeSemana: String?
         /// YYYY-MM-DD local de hoy.
         public let hoy: String
-        public init(efectivo: Ejercicio, equipo: Preparacion.Equipo, mensajeSemana: String?, hoy: String) {
+        /// El plan tiene reserva clínica (19/11, [ReservaClinica]): nunca se sugiere subir.
+        public let reservaClinica: Bool
+        public init(efectivo: Ejercicio, equipo: Preparacion.Equipo, mensajeSemana: String?, hoy: String, reservaClinica: Bool = false) {
             self.efectivo = efectivo; self.equipo = equipo; self.mensajeSemana = mensajeSemana; self.hoy = hoy
+            self.reservaClinica = reservaClinica
         }
     }
 
@@ -28,7 +31,8 @@ extension DiaEnCurso {
         func armar(_ estado: CargaSimple.Estado?) -> CargaSimple {
             var s = CargaSimple(ejercicio: c.efectivo, semana: semana, ultimaVez: refs, equipo: c.equipo, sinKg: sinKg,
                                 recordKg: HistorialEntreno.recordKg(h), mensajeSemana: c.mensajeSemana, seriesLocales: e.series,
-                                estado: estado, yaAumentadoEstaSemana: aumentosSemana.contains(claveAumento(id)))
+                                estado: estado, yaAumentadoEstaSemana: aumentosSemana.contains(claveAumento(id)),
+                                reservaClinica: c.reservaClinica)
             s.varianteActual = variantesVisibles(id) == nil ? nil : JS.verdadero(e.variante)
             for i in s.series.indices where i < e.series.count && !esDelEjercicioActual(id, e.series[i]) { s.series[i].ajena = true }
             return s

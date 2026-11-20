@@ -144,8 +144,11 @@ public struct BannerSemana: Equatable, Sendable {
 }
 
 public enum SemanaEntreno {
-    /// El banner de `renderTrain`: cuántos ejercicios cambian carga o volumen, o la calibración de la semana 1.
-    public static func banner(_ dia: Dia, semana: Int, offset: Int) -> BannerSemana {
+    /// El banner de `renderTrain`: cuántos ejercicios cambian carga o volumen, o la calibración de la semana 1. Con
+    /// reserva clínica (19/11, [ReservaClinica]) ninguno: ni «cambian carga» ni la calibración «al fallo» (cada
+    /// ejercicio muestra la pauta del plan).
+    public static func banner(_ dia: Dia, semana: Int, offset: Int, reservaClinica: Bool = false) -> BannerSemana {
+        if reservaClinica { return BannerSemana(cambian: 0, calibracion: false) }
         let n = dia.bloques.flatMap(\.ejercicios).filter { $0.tipo != "calentamiento" && Progresiones.nota($0, semanaActual: semana)?.cambia == true }.count
         // Calibración solo en la semana 1 del PRIMER macrociclo (fase 2+ continúa cargas).
         return BannerSemana(cambian: n, calibracion: (semana == 0 ? 1 : semana) <= 1 && offset == 0)

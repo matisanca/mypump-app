@@ -27,9 +27,10 @@ public enum AumentoCarga {
         return sinSemana.trimmingCharacters(in: CharacterSet(charactersIn: " —–-·:\n\t"))
     }
 
-    /// Esta semana bajan las reps con las mismas series, y nada del plan dice lo contrario. Nunca en calibración.
-    public static func corresponde(_ e: Ejercicio, semana: Int, mensajeSemana: String? = nil) -> Bool {
-        guard !e.progresion.isEmpty, !ReglasEjercicio.esCardio(e), e.tipo != "calentamiento",
+    /// Esta semana bajan las reps con las mismas series, y nada del plan dice lo contrario. Nunca en calibración, ni con
+    /// reserva clínica (19/11, [ReservaClinica]: el plan deja reps en reserva a propósito, nunca se sugiere subir).
+    public static func corresponde(_ e: Ejercicio, semana: Int, mensajeSemana: String? = nil, reservaClinica: Bool = false) -> Bool {
+        guard !reservaClinica, !e.progresion.isEmpty, !ReglasEjercicio.esCardio(e), e.tipo != "calentamiento",
               let nota = Progresiones.nota(e, semanaActual: semana), !nota.calibracion else { return false }
         let (cur, ant) = Progresiones.pasoDePlan(e.progresion, semana: Progresiones.semanaJS(semana))
         guard let prev = ant,
@@ -201,10 +202,12 @@ public struct CargaSimple: Equatable, Sendable {
 
     /// `seriesLocales`: las del día (hechas y por hacer), que mandan sobre la cantidad; `estado`: lo guardado. Sin estado, la
     /// base sale de `ultimaVez` y `yaAumentadoEstaSemana` (el mismo ejercicio en otro día de la semana ya aceptó o rechazó)
-    /// apaga la sugerencia.
+    /// apaga la sugerencia. `reservaClinica` (19/11): sin sugerencia de subir, tampoco la que quedó guardada de antes (lo
+    /// que el alumno ya aceptó queda).
     public init(ejercicio e: Ejercicio, semana: Int, ultimaVez: [Referencia], equipo: Preparacion.Equipo,
                 sinKg: Bool? = nil, recordKg: Double = 0, guardiaMs: Double = 10_000, mensajeSemana: String? = nil,
-                seriesLocales: [SerieLocal]? = nil, estado: Estado? = nil, yaAumentadoEstaSemana: Bool = false) {
+                seriesLocales: [SerieLocal]? = nil, estado: Estado? = nil, yaAumentadoEstaSemana: Bool = false,
+                reservaClinica: Bool = false) {
         let sk = sinKg ?? ReglasEjercicio.sinKg(e)
         self.sinKg = sk
         self.equipo = equipo
@@ -226,8 +229,9 @@ public struct CargaSimple: Equatable, Sendable {
         cargaCambioDesdeOK = estado?.cargaCambioDesdeOK ?? false
         ultimoOK = estado?.ultimoOK
         if let a = estado?.aumento {
-            aumento = a
-        } else if !yaAumentadoEstaSemana, let b = base, !sk, AumentoCarga.corresponde(e, semana: semana, mensajeSemana: mensajeSemana),
+            if reservaClinica, case .sugerido = a { aumento = .noCorresponde } else { aumento = a }
+        } else if !yaAumentadoEstaSemana, let b = base, !sk,
+                  AumentoCarga.corresponde(e, semana: semana, mensajeSemana: mensajeSemana, reservaClinica: reservaClinica),
                   let h = AumentoCarga.hasta(desde: b, equipo: equipo) {
             aumento = .sugerido(desde: b, hasta: h)
         }

@@ -42,13 +42,15 @@ public enum Progresiones {
     static let textoCalibracion = "Semana de calibración. Llevá cada serie al fallo, sin guardarte reps. Las reps son una guía, si apuntás a 12 y te salen 9 o 14 está perfecto. La idea es encontrar tu peso real."
 
     /// Port de `computeProgresionNota` (cliente.html:1701): explica el cambio de esta semana contra la anterior.
-    /// Devuelve nil si el ejercicio no tiene progresión.
-    public static func nota(_ e: Ejercicio, semanaActual: Int?) -> NotaProgresion? {
+    /// Devuelve nil si el ejercicio no tiene progresión. Con `reservaClinica` (19/11, ver [ReservaClinica]) nunca
+    /// «Subí la carga» ni «al fallo»: la pauta del plan.
+    public static func nota(_ e: Ejercicio, semanaActual: Int?, reservaClinica: Bool = false) -> NotaProgresion? {
         let prog = e.progresion
         guard !prog.isEmpty else { return nil }
         let sem = semanaJS(semanaActual)
 
         let (cur, anterior) = pasoDePlan(prog, semana: sem)
+        if reservaClinica { return ReservaClinica.nota(cur, calibracion: anterior == nil) }
         guard let prev = anterior else { return NotaProgresion(texto: textoCalibracion, cambia: false, calibracion: true) }
 
         let curReps = tope(cur.reps), prevReps = tope(prev.reps)

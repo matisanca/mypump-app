@@ -87,10 +87,11 @@ public enum TextoAlumno {
         return RIRDelPlan.numeroRE.todas(rango).contains { (Double($0.replacingOccurrences(of: ",", with: ".")) ?? 0) > 0 }
     }
 
-    /// La nota del plan como la ve el alumno: entera si esa semana lleva reserva clínica; si no, sin RIR. Vacía → nil.
-    public static func notaParaAlumno(_ texto: String?, rir: String?) -> String? {
+    /// La nota del plan como la ve el alumno: entera si esa semana lleva reserva o el plan tiene reserva clínica
+    /// (`clinica`, 19/11: así sinRIR no pasa un «cerca del fallo» a «al fallo»); si no, sin RIR. Vacía → nil.
+    public static func notaParaAlumno(_ texto: String?, rir: String?, clinica: Bool = false) -> String? {
         guard let t = texto else { return nil }
-        let r = (conReserva(rir) ? t : sinRIR(t)).trimmingCharacters(in: .whitespacesAndNewlines)
+        let r = (clinica || conReserva(rir) ? t : sinRIR(t)).trimmingCharacters(in: .whitespacesAndNewlines)
         return r.isEmpty ? nil : r
     }
 }

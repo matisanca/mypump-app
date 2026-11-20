@@ -488,10 +488,13 @@ public struct DiaEnCurso: Sendable, Equatable {
         ejercicios[id]!.series[idx].rir = RIRDelPlan.alFallo
     }
 
-    /// La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva». nil si el ejercicio no lleva RIR.
-    public func leyendaRIR(_ id: String, efectivo: Ejercicio? = nil) -> String? {
+    /// La leyenda debajo de «Series efectivas»: «Al fallo» (2.3.0: nunca «Dejando N en reserva», aunque el plan traiga
+    /// RIR). Con reserva clínica (19/11, [ReservaClinica]) la reserva del plan esa semana («Dejando 2–3 en reserva») o
+    /// ninguna, nunca «Al fallo». nil si el ejercicio no lleva RIR.
+    public func leyendaRIR(_ id: String, efectivo: Ejercicio? = nil, reservaClinica: Bool = false) -> String? {
         guard let ex = efectivo ?? ejercicio(id), RIRDelPlan.lleva(ex) else { return nil }
-        return "Al fallo"   // 2.3.0: nunca «Dejando N en reserva», aunque el plan traiga RIR.
+        guard reservaClinica else { return "Al fallo" }
+        return ReservaClinica.leyenda(Progresiones.pauta(ejercicio(id) ?? ex, semana: semana).rir)
     }
 
     // MARK: - Restaurar (lo que trae el servidor)
