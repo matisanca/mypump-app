@@ -11,7 +11,9 @@ struct CargaSimpleModeloTests {
     let lugar = "pre-d1-0"
     let hoy = "2026-10-14"
 
-    func rutina(rir: String = "2", semana: Int = 2, reps2: String = "8") -> RutinaActiva {
+    /// `rir` «0»: el plan de todos, al fallo (2.3.0). Con un rir mayor que 0 en la pauta el plan tiene reserva clínica
+    /// (19/11, ver `ReservaClinicaModeloTests`) y la carga nunca sugiere subir.
+    func rutina(rir: String = "0", semana: Int = 2, reps2: String = "8") -> RutinaActiva {
         let est = #"{"semanas_total":12,"dias":[{"id":"d1","n":1,"nombre":"EMPUJE","bloques":[{"titulo":"B1","ejercicios":[{"id":"pre-d1-0","nombre":"Press banca con barra","tipo":"compuesto","descanso_segundos":120,"progresion":[{"semana":1,"series":4,"reps":"10","rir":"\#(rir)"},{"semana":2,"series":4,"reps":"\#(reps2)","rir":"\#(rir)"}]}]}]}]}"#
         return try! JSONDecoder().decode(RutinaActiva.self, from: Data(#"{"id":"r1","version":1,"semana_actual":\#(semana),"tiene_siguiente":false,"estructura":\#(est)}"#.utf8))
     }

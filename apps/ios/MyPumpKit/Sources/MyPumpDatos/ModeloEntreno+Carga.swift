@@ -79,7 +79,8 @@ extension ModeloEntreno {
         let mensaje = estructura.mensajesSemana.first { $0.n == semana }?.msg
         return DiaEnCurso.ContextoCarga(efectivo: efectivo(plan).ejercicio,
                                         equipo: Preparacion.equipo(nombre: conEquipo.nombre, equipo: conEquipo.equipo),
-                                        mensajeSemana: mensaje, hoy: FechaJS.ymd(reloj(), zona: zona))
+                                        mensajeSemana: mensaje, hoy: FechaJS.ymd(reloj(), zona: zona),
+                                        reservaClinica: reservaClinica)
     }
 
     public func cargaSimple(_ lugar: String) -> CargaSimple? {

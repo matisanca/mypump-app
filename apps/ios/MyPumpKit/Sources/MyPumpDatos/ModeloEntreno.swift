@@ -62,6 +62,8 @@ public final class ModeloEntreno {
     /// E1: la preparación ya calculada (ver `preparacion(_:)`). Fuera de la observación: es un caché.
     @ObservationIgnored private var cacheEntradas: (firma: String, entradas: [Preparacion.Entrada], ejercicios: [Ejercicio])?
     @ObservationIgnored private var cachePreparacion: [String: (clave: String, series: [Preparacion.Serie])] = [:]
+    /// `reservaClinica` ya calculada para esa semana (ver la propiedad). Fuera de la observación: es un caché.
+    @ObservationIgnored private var memoReserva: (semana: Int, valor: Bool)?
     @ObservationIgnored public let info: ClienteInfo?
     @ObservationIgnored public let demo: Bool
     @ObservationIgnored let zona: TimeZone
@@ -225,6 +227,17 @@ public final class ModeloEntreno {
     public var totalMostrado: Int { semanasTotal + offset }
     public var dias: [Dia] { estructura.dias }
 
+    /// Reserva clínica del plan (19/11, OK de Mati, ver [ReservaClinica]): el plan deja reps en reserva a propósito en
+    /// la semana que se muestra o en una posterior. Con reserva, nunca «Al fallo», «llevá al fallo» ni «Subí la carga»:
+    /// la nota, la leyenda, el aviso de primera vez y el cartel muestran la pauta del plan, y la carga no sugiere subir.
+    /// La demo queda como siempre. Se calcula una vez por semana y plan (`reemplazarRutina` lo borra).
+    public var reservaClinica: Bool {
+        if let m = memoReserva, m.semana == semana { return m.valor }
+        let v = !demo && ReservaClinica.delPlan(estructura.dias, semana: semana)
+        memoReserva = (semana, v)
+        return v
+    }
+
     /// "DÍA n" de un día (`getDayNum`).
     public func numero(_ d: Dia) -> Int { TextosEntreno.numeroDia(d, en: dias) }
     /// La primera palabra del nombre (`getDayShortName`).
@@ -237,7 +250,7 @@ public final class ModeloEntreno {
     public var sinLeerEntreno: Int { comentarios.totalEntreno }
 
     /// ENT-07/08
-    public var banner: BannerSemana { SemanaEntreno.banner(dia.dia, semana: semana, offset: offset) }
+    public var banner: BannerSemana { SemanaEntreno.banner(dia.dia, semana: semana, offset: offset, reservaClinica: reservaClinica) }
     public var puedeAvanzar: Bool { SemanaEntreno.puedeAvanzar(semana: semana, total: semanasTotal, demo: demo) }
     public var puedeEmpezarBloque: Bool {
         SemanaEntreno.puedeEmpezarBloque(semana: semana, total: semanasTotal, tieneSiguiente: rutina.tieneSiguiente, demo: demo)
@@ -316,8 +329,10 @@ public final class ModeloEntreno {
         public let manual: Bool
         public let sinLeer: Int
         public let pauta: Pauta
-        /// La nota de la semana (nil en el calentamiento).
+        /// La nota de la semana (nil en el calentamiento). Con reserva clínica, la pauta del plan.
         public let nota: NotaProgresion?
+        /// El plan tiene reserva clínica (19/11): la nota técnica va entera (`TextoAlumno.notaParaAlumno`).
+        public let reservaClinica: Bool
         public let sinKg: Bool
         public let variantes: VariantesEjercicio?
         public let varianteActual: String?
@@ -349,7 +364,8 @@ public final class ModeloEntreno {
             lugar: lugar, efectivo: ef, estado: dia.estado(lugar),
             manual: dia.estado(lugar) == "completo_sin_datos" && dia.meta[lugar]?.manual == true,
             sinLeer: comentarios.sinLeer(ejercicio: lugar), pauta: Progresiones.pauta(ef.ejercicio, semana: semana),
-            nota: ef.ejercicio.tipo == "calentamiento" ? nil : Progresiones.nota(ef.ejercicio, semanaActual: semana),
+            nota: ef.ejercicio.tipo == "calentamiento" ? nil : Progresiones.nota(ef.ejercicio, semanaActual: semana, reservaClinica: reservaClinica),
+            reservaClinica: reservaClinica,
             sinKg: ReglasEjercicio.sinKg(ef.ejercicio), variantes: variantes,
             varianteActual: JS.verdadero(e?.variante) ?? variantes?.opciones.first,
             filas: (e?.series.indices).map { $0.compactMap { filaConLeyenda(lugar, $0, ef.ejercicio) } } ?? [],
@@ -385,9 +401,10 @@ public final class ModeloEntreno {
         return f
     }
 
-    /// La leyenda debajo de «Series efectivas» («Al fallo» o el rango del plan); nil si el ejercicio no lleva RIR.
+    /// La leyenda debajo de «Series efectivas» («Al fallo»; con reserva clínica, la reserva del plan o ninguna); nil si el
+    /// ejercicio no lleva RIR. La misma va al reloj.
     public func leyendaRIR(_ lugar: String) -> String? {
-        dia.leyendaRIR(lugar, efectivo: dia.ejercicio(lugar).map(hecho))
+        dia.leyendaRIR(lugar, efectivo: dia.ejercicio(lugar).map(hecho), reservaClinica: reservaClinica)
     }
 
     public func actualizarCatalogo(_ c: CatalogoEjercicios) { catalogo = c }
@@ -481,20 +498,22 @@ public final class ModeloEntreno {
         // La carga única se elige antes de empezar: la preparación se calcula con ella (sin heredarla como serie).
         let conCarga = !(primera?.kg ?? "").isEmpty ? primera!.kg : (dia.cargas[lugar]?.carga.map(JS.texto) ?? "")
         let kg = Preparacion.kgEfectivo(escrito: conCarga, sugerido: sugerido)
-        let clave = "\(lugar)|\(kg.map { "\($0)" } ?? "-")|\(cacheEntradas?.firma ?? "")"
+        let clinica = reservaClinica
+        let clave = "\(lugar)|\(kg.map { "\($0)" } ?? "-")|\(cacheEntradas?.firma ?? "")|\(semana)|\(clinica)"
         if let c = cachePreparacion[lugar], c.clave == clave { return c.series }
-        let plan = Self.aproximacionesParaAlumno(ef.aproximaciones, rir: Progresiones.pauta(lista[i], semana: semana).rir)
+        let plan = Self.aproximacionesParaAlumno(ef.aproximaciones, rir: Progresiones.pauta(lista[i], semana: semana).rir, clinica: clinica)
         let series = Preparacion.series(dia: entradas, indice: i, nombre: ef.nombre, equipo: ef.equipo,
                                         sinKg: ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kgEfectivo: kg, plan: plan)
         cachePreparacion[lugar] = (clave, series)
         return series
     }
 
-    /// Las series de preparación del plan con la nota como la ve el alumno: sin RIR, salvo reserva clínica esa semana.
-    nonisolated static func aproximacionesParaAlumno(_ plan: [Aproximacion]?, rir: String?) -> [Aproximacion]? {
+    /// Las series de preparación del plan con la nota como la ve el alumno: sin RIR, salvo reserva esa semana o reserva
+    /// clínica del plan (`clinica`, 19/11).
+    nonisolated static func aproximacionesParaAlumno(_ plan: [Aproximacion]?, rir: String?, clinica: Bool = false) -> [Aproximacion]? {
         plan?.map { a in
             var a = a
-            a.nota = TextoAlumno.notaParaAlumno(a.nota, rir: rir)
+            a.nota = TextoAlumno.notaParaAlumno(a.nota, rir: rir, clinica: clinica)
             return a
         }
     }
@@ -1004,6 +1023,7 @@ public final class ModeloEntreno {
         rutina = nueva
         let n = NormalizacionRutina.normalizar(nueva.estructura)
         estructura = n.estructura
+        memoReserva = nil
         usable = n.usable
         problemas = n.problemas
         let semana = nueva.semanaActual == 0 ? 1 : nueva.semanaActual
