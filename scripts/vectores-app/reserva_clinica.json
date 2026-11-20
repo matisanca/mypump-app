@@ -1,6 +1,7 @@
 {
   "_doc": "Reserva clínica (19/11, OK de Mati). Todo va al fallo, salvo el plan que deja reps en reserva a propósito (cardiopatía, lumbar, competencia: lo decide Mati y el servidor lo publica en el rir de la pauta). Con reserva clínica la app NUNCA dice «Al fallo», «llevá al fallo» ni «Subí la carga», no sugiere subir y no muestra la nota automática de progresión: muestra la pauta del plan. Sin reserva, todo igual. Fuente única: el rir de cada semana de la progresión (`pauta.rir`), el mismo campo que ya lee TextoAlumno.conReserva. Diferencias a propósito: (1) cuenta solo un rango sin el 0 («2-3», «1-2», «3»): «0-1» deja llegar al fallo y es el de los planes viejos y de la semana 1 del generador; (2) es del alumno, no del ejercicio: alcanza con un ejercicio con reserva en la semana que se muestra o en una posterior (una semana de taper con rir vacío entre semanas con reserva no vuelve al fallo, ni los ejercicios sin rir de ese plan); las semanas ya pasadas no cuentan (las rampas viejas de las semanas 1 a 3). Mismos vectores en iOS (ReservaClinicaTests), Android (ReservaClinicaTest) y la web (scripts/test-reserva-clinica.mjs, copia en scripts/vectores-app/).",
   "prohibido": "\\bal fallo\\b|sub[ií]\\s+(un poco\\s+)?la carga|toca subir|subí la próxima",
+  "signos": "[—–«»·]",
   "indicada": {
     "si": [
       "2-3",
@@ -12,7 +13,10 @@
       "2-3 (cardiólogo)",
       "RIR 2",
       2,
-      "0,5"
+      "0,5",
+      "2 a 3",
+      "2—3",
+      "2 o 3"
     ],
     "no": [
       null,
@@ -26,17 +30,18 @@
       "0–2",
       "RPE 8",
       "rpe 7-8",
-      "sin fallo"
+      "sin fallo",
+      "0 a 1"
     ]
   },
   "leyenda": [
     {
       "rir": "2-3",
-      "sale": "Dejando 2–3 en reserva"
+      "sale": "Dejando 2 a 3 en reserva"
     },
     {
       "rir": "1-2",
-      "sale": "Dejando 1–2 en reserva"
+      "sale": "Dejando 1 a 2 en reserva"
     },
     {
       "rir": "3",
@@ -44,11 +49,11 @@
     },
     {
       "rir": "2 – 3",
-      "sale": "Dejando 2–3 en reserva"
+      "sale": "Dejando 2 a 3 en reserva"
     },
     {
       "rir": "0-1",
-      "sale": "Dejando 0–1 en reserva"
+      "sale": "Dejando 0 a 1 en reserva"
     },
     {
       "rir": "0 (al fallo)",
@@ -65,6 +70,30 @@
     {
       "rir": "RPE 8",
       "sale": null
+    },
+    {
+      "rir": "2 a 3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "2—3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "2 o 3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "2 – 3",
+      "sale": "Dejando 2 a 3 en reserva"
+    },
+    {
+      "rir": "1,5-2",
+      "sale": "Dejando 1,5 a 2 en reserva"
+    },
+    {
+      "rir": "0 a 1",
+      "sale": "Dejando 0 a 1 en reserva"
     }
   ],
   "planes": [
@@ -475,7 +504,7 @@
       },
       "semana": 2,
       "sale": {
-        "texto": "Seguí la pauta de esta semana (3×10), dejando 2–3 en reserva.",
+        "texto": "Seguí la pauta de esta semana (3×10), dejando 2 a 3 en reserva.",
         "cambia": false,
         "calibracion": false
       },
@@ -508,7 +537,7 @@
       },
       "semana": 1,
       "sale": {
-        "texto": "Seguí la pauta de esta semana (3×12), dejando 2–3 en reserva.",
+        "texto": "Seguí la pauta de esta semana (3×12), dejando 2 a 3 en reserva.",
         "cambia": false,
         "calibracion": true
       },
@@ -586,7 +615,7 @@
       },
       "semana": 2,
       "sale": {
-        "texto": "Seguí la pauta de esta semana (4×9), dejando 2–3 en reserva.",
+        "texto": "Seguí la pauta de esta semana (4×9), dejando 2 a 3 en reserva.",
         "cambia": false,
         "calibracion": false
       },
@@ -619,7 +648,7 @@
       },
       "semana": 5,
       "sale": {
-        "texto": "Seguí la pauta de esta semana (3×10-15), dejando 2–3 en reserva.",
+        "texto": "Seguí la pauta de esta semana (3×10-15), dejando 2 a 3 en reserva.",
         "cambia": false,
         "calibracion": false
       },
@@ -652,7 +681,7 @@
       },
       "semana": 2,
       "sale": {
-        "texto": "Seguí la pauta de esta semana (3×12), dejando 0–1 en reserva.",
+        "texto": "Seguí la pauta de esta semana (3×12), dejando 0 a 1 en reserva.",
         "cambia": false,
         "calibracion": false
       },
@@ -690,7 +719,7 @@
         "calibracion": false
       },
       "sinReserva": {
-        "texto": "Seguí la pauta de esta semana (—×No va esta semana) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "texto": "Seguí la pauta de esta semana (No va esta semana) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
         "cambia": false,
         "calibracion": false
       }
@@ -723,7 +752,69 @@
         "calibracion": false
       },
       "sinReserva": {
-        "texto": "Seguí la pauta de esta semana (—×4 × 20 s / 60 s) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "texto": "Seguí la pauta de esta semana (4 × 20 s / 60 s) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "cambia": false,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "pauta «—» sin series ni rir (Aguilera, semana 8): sin nota, nunca «—.»",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Intervalos en bici",
+        "tipo": "cardio",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": null,
+            "reps": "6 × 30 s / 30 s",
+            "rir": null
+          },
+          {
+            "semana": 2,
+            "series": null,
+            "reps": "—",
+            "rir": null
+          }
+        ]
+      },
+      "semana": 2,
+      "sale": null,
+      "sinReserva": {
+        "texto": "Seguí la pauta de esta semana y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
+        "cambia": false,
+        "calibracion": false
+      }
+    },
+    {
+      "nombre": "pauta «—» con reserva: solo la reserva, sin guion de relleno",
+      "ejercicio": {
+        "id": "a",
+        "nombre": "Intervalos en bici",
+        "tipo": "cardio",
+        "progresion": [
+          {
+            "semana": 1,
+            "series": null,
+            "reps": "6 × 30 s / 30 s",
+            "rir": null
+          },
+          {
+            "semana": 2,
+            "series": null,
+            "reps": "—",
+            "rir": "2-3"
+          }
+        ]
+      },
+      "semana": 2,
+      "sale": {
+        "texto": "Seguí la pauta de esta semana, dejando 2 a 3 en reserva.",
+        "cambia": false,
+        "calibracion": false
+      },
+      "sinReserva": {
+        "texto": "Seguí la pauta de esta semana y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.",
         "cambia": false,
         "calibracion": false
       }

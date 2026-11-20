@@ -3303,7 +3303,10 @@ function computeProgresionNota(ej, semanaActual, clinica) {
   const cambia = parts.length > 0;
   if (!cambia) {
     if (repsSame && seriesSame) parts.push(`Mantené el peso de la semana pasada e intentá superar tus reps, siempre al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.`);
-    else parts.push(`Seguí la pauta de esta semana (${cur.series ?? '—'}×${cur.reps ?? '—'}) y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.`);
+    else {
+      const pauta = ReglasEntreno.pautaVisible(cur.series, cur.reps);   // sin guion de relleno: nunca «(—×10 min)»
+      parts.push(`Seguí la pauta de esta semana${pauta != null ? ` (${pauta})` : ''} y llevá cada serie al fallo. Si te salen más reps que las de la pauta, subí la carga la próxima.`);
+    }
   }
   return { texto: parts.join(' '), cambia, calibracion: false };
 }

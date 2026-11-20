@@ -159,7 +159,8 @@
 
   /* ---------------- RIR del plan (E4) ---------------- */
   const numeroRE = /\d+([.,]\d+)?/g;
-  const rangoRE = /\d+([.,]\d+)?(\s*[-–]\s*\d+([.,]\d+)?)?/;
+  // Un número o un rango: «2-3», «2 – 3», «2—3», «2 a 3», «2 o 3» (19/11: la leyenda dice «2 a 3» y el plan puede venir así).
+  const rangoRE = /\d+([.,]\d+)?((\s*[-–—]\s*|\s+[ao]\s+)\d+([.,]\d+)?)?/;
   const rpeRE = /rpe/i;
   // ¿La serie lleva RIR? No en calentamiento, cardio, core ni peso corporal.
   function llevaRir(tipo, sinPeso) { return !['calentamiento', 'cardio', 'core'].includes(tipo || '') && !sinPeso; }
@@ -181,8 +182,9 @@
     if (!rango) return 'Al fallo';
     const numeros = (rango[0].match(numeroRE) || []).map(x => Number(x.replace(',', '.')));
     if (numeros.every(x => x === 0)) return 'Al fallo';
-    const partes = rango[0].split(/[-–]/).map(p => p.trim().replace('.', ','));
-    return `Dejando ${partes.join('–')} en reserva`;
+    // «Dejando 2 a 3 en reserva»: nunca el guion medio en pantalla (regla de Mati: ni — – « » ·).
+    const partes = (rango[0].match(numeroRE) || []).map(p => p.replace('.', ','));
+    return `Dejando ${partes.join(' a ')} en reserva`;
   }
 
   /* ---------------- Récord (E3) ---------------- */
@@ -382,7 +384,7 @@
     }
     return false;
   }
-  /** Con reserva clínica, la leyenda es la reserva de esa semana («Dejando 2–3 en reserva»); sin número, ninguna (nunca «Al fallo»). */
+  /** Con reserva clínica, la leyenda es la reserva de esa semana («Dejando 2 a 3 en reserva»); sin número, ninguna (nunca «Al fallo»). */
   function leyendaReserva(rir) {
     const l = leyendaRir(rir);
     return l === 'Al fallo' ? null : l;
@@ -392,22 +394,32 @@
     if (!llevaRir(tipo, sinPeso)) return null;
     return clinica ? leyendaReserva(rir) : 'Al fallo';
   }
-  /** La leyenda dentro de una frase: « al fallo», « dejando 2–3 en reserva»; sin leyenda, nada. */
+  /** La leyenda dentro de una frase: « al fallo», « dejando 2 a 3 en reserva»; sin leyenda, nada. */
   function fraseLeyenda(l) {
     if (!l) return '';
     return ' ' + (l === 'Al fallo' ? 'al fallo' : l.charAt(0).toLowerCase() + l.slice(1));
   }
-  /** En lugar de la nota automática de progresión, la pauta del plan: «Seguí la pauta de esta semana (3×10), dejando 2–3
-      en reserva.». Una pauta sin números («No va esta semana») va tal cual. Nunca «cambia» (sin cartel de cambio). */
+  /** La pauta como la ve el alumno: «3×10», «10 min» (sin series) o null. Un reps sin letras ni números («—», «-») no es
+      pauta: nunca un guion de relleno en pantalla. La usan notaReserva y la nota de progresión de cliente.html. */
+  const conTextoRE = /[\p{L}\p{N}]/u;
+  function pautaVisible(series, reps) {
+    const r = reps != null ? String(reps).trim() : '';
+    if (!conTextoRE.test(r)) return null;
+    return series != null ? `${series}×${r}` : r;
+  }
+  /** En lugar de la nota automática de progresión, la pauta del plan: «Seguí la pauta de esta semana (3×10), dejando 2 a 3
+      en reserva.». Una pauta sin números («No va esta semana») va tal cual. Sin pauta ni reserva (reps «—» y rir vacío),
+      ninguna nota: null. Nunca «cambia» (sin cartel de cambio). */
   function notaReserva(cur, calibracion) {
     const c = cur || {};
-    const reps = c.reps != null && String(c.reps).trim() !== '' ? String(c.reps).trim() : null;
+    const reps = c.reps != null && conTextoRE.test(String(c.reps)) ? String(c.reps).trim() : null;
     let texto;
     if (reps != null && c.series == null && !/\d/.test(reps)) {
       texto = reps.charAt(0).toUpperCase() + reps.slice(1) + (/[.!?]$/.test(reps) ? '' : '.');
     } else {
-      const pauta = reps == null ? null : (c.series != null ? `${c.series}×${reps}` : reps);
+      const pauta = pautaVisible(c.series, reps);
       const res = fraseLeyenda(leyendaReserva(c.rir));
+      if (pauta == null && !res) return null;
       texto = `Seguí la pauta de esta semana${pauta != null ? ` (${pauta})` : ''}${res ? `,${res}` : ''}.`;
     }
     return { texto, cambia: false, calibracion: !!calibracion };
@@ -421,7 +433,7 @@
     evaluarRecord, historiaSuficiente, TOPE_HISTORIAL,
     volumenMusculo, VOL_VACIO,
     sinRIR, conReserva, notaParaAlumno,
-    reservaIndicada, reservaClinicaDelPlan, leyendaReserva, leyendaSerie, fraseLeyenda, notaReserva,
+    reservaIndicada, reservaClinicaDelPlan, leyendaReserva, leyendaSerie, fraseLeyenda, pautaVisible, notaReserva,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.ReglasEntreno = API;

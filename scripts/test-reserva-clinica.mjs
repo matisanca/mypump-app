@@ -19,6 +19,8 @@ const C = require('../public/js/carga-simple.js');
 const V = JSON.parse(fs.readFileSync(join(raiz, 'scripts/vectores-app/reserva_clinica.json'), 'utf8'));
 const HTML = fs.readFileSync(join(raiz, 'public/cliente.html'), 'utf8');
 const PROHIBIDO = new RegExp(V.prohibido, 'i');
+// Regla de Mati: en lo que ve el alumno nunca — – « » · (el rango va «2 a 3»).
+const SIGNOS = new RegExp(V.signos);
 let n = 0;
 
 const comoDias = (ejercicios) => [{ id: 'd1', bloques: [{ ejercicios }] }];
@@ -28,6 +30,7 @@ for (const r of V.indicada.si) { assert.equal(E.reservaIndicada(r), true, `indic
 for (const r of V.indicada.no) { assert.equal(E.reservaIndicada(r), false, `no indicada ${JSON.stringify(r)}`); n++; }
 for (const c of V.leyenda) {
   assert.equal(E.leyendaReserva(c.rir), c.sale, `leyenda ${JSON.stringify(c.rir)}`);
+  assert.ok(!SIGNOS.test(E.leyendaRir(c.rir)), `leyenda sin signos prohibidos: ${E.leyendaRir(c.rir)}`);
   // La leyenda de «Series efectivas»: sin reserva clínica, «Al fallo» (2.3.0); con reserva, la del plan o ninguna.
   assert.equal(E.leyendaSerie('compuesto', false, c.rir, false), 'Al fallo');
   assert.equal(E.leyendaSerie('compuesto', false, c.rir, true), c.sale);
@@ -35,7 +38,7 @@ for (const c of V.leyenda) {
   n++;
 }
 assert.equal(E.fraseLeyenda('Al fallo'), ' al fallo');
-assert.equal(E.fraseLeyenda('Dejando 2–3 en reserva'), ' dejando 2–3 en reserva');
+assert.equal(E.fraseLeyenda('Dejando 2 a 3 en reserva'), ' dejando 2 a 3 en reserva');
 assert.equal(E.fraseLeyenda(null), '');
 n++;
 for (const c of V.planes) { assert.equal(E.reservaClinicaDelPlan(comoDias(c.ejercicios), c.semana), c.sale, c.nombre); n++; }
@@ -69,7 +72,8 @@ for (const c of V.notas) {
   const sin = H.computeProgresionNota(c.ejercicio, c.semana, false);
   assert.deepEqual(con, c.sale, `con reserva: ${c.nombre}`);
   assert.deepEqual(sin, c.sinReserva, `sin reserva: ${c.nombre}`);
-  assert.ok(!PROHIBIDO.test(con.texto), `con reserva no dice «al fallo» ni «subí la carga»: ${con.texto}`);
+  if (con) assert.ok(!PROHIBIDO.test(con.texto), `con reserva no dice «al fallo» ni «subí la carga»: ${con.texto}`);
+  for (const x of [con, sin]) if (x) assert.ok(!SIGNOS.test(x.texto), `sin signos prohibidos ni guion de relleno: ${x.texto}`);
   n++;
 }
 assert.equal(H.computeProgresionNota({ progresion: [] }, 2, true), null, 'sin progresión no hay nota');
@@ -256,6 +260,8 @@ async function pantallaDeEntreno({ rir, semana, web230 }) {
 }
 
 if (!fs.existsSync(CH) || typeof WebSocket === 'undefined') {
+  // En CI no vale saltearla en silencio: sin navegador no se probaron las pantallas.
+  if (process.env.CI) { console.error('test-reserva-clinica: sin Chrome (o sin WebSocket en Node) en CI: faltan las pantallas'); process.exit(1); }
   console.log('test-reserva-clinica: sin Chrome (o sin WebSocket en Node), se saltea la prueba en el navegador');
 } else {
   for (const web230 of [true, false]) {
@@ -266,9 +272,11 @@ if (!fs.existsSync(CH) || typeof WebSocket === 'undefined') {
     assert.equal(con.textos.clinica, true, `${vista}: el plan con 2-3 tiene reserva clínica`);
     const todoCon = [con.textos.lista, ...Object.values(con.textos.ejercicios)].join('\n');
     assert.ok(!PROHIBIDO.test(todoCon), `${vista}, con reserva: apareció «${(todoCon.match(PROHIBIDO) || [])[0]}»`);
+    // La reserva va «2 a 3», nunca con guion medio (el «16–20» de la preparación es de antes y no es de esta regla).
+    assert.ok(!/\d\s*[–—]\s*\d[^\n]*en reserva/i.test(todoCon), `${vista}, con reserva: la reserva con guion medio: ${(todoCon.match(/[^\n]*\d\s*[–—]\s*\d[^\n]*en reserva/i) || [])[0]}`);
     assert.ok(!/cambia(n)? carga o volumen/.test(todoCon), `${vista}, con reserva: sin el cartel de la semana`);
-    assert.ok(todoCon.includes('Seguí la pauta de esta semana (3×10), dejando 2–3 en reserva.'), `${vista}, con reserva: la pauta del plan`);
-    assert.ok(todoCon.includes('Dejando 2–3 en reserva'), `${vista}, con reserva: la leyenda de la reserva`);
+    assert.ok(todoCon.includes('Seguí la pauta de esta semana (3×10), dejando 2 a 3 en reserva.'), `${vista}, con reserva: la pauta del plan`);
+    assert.ok(todoCon.includes('Dejando 2 a 3 en reserva'), `${vista}, con reserva: la leyenda de la reserva`);
     assert.ok(todoCon.includes('Dejá 2 repeticiones en reserva'), `${vista}, con reserva: la nota técnica entera`);
 
     const sin = await pantallaDeEntreno({ rir: '0', semana: 2, web230 });
@@ -277,7 +285,7 @@ if (!fs.existsSync(CH) || typeof WebSocket === 'undefined') {
     const todoSin = [sin.textos.lista, ...Object.values(sin.textos.ejercicios)].join('\n');
     assert.ok(todoSin.includes('Subí la carga'), `${vista}, sin reserva: la nota de progresión de siempre`);
     assert.ok(/Al fallo/.test(todoSin), `${vista}, sin reserva: la leyenda «Al fallo»`);
-    assert.ok(!todoSin.includes('Dejando 2–3 en reserva'), `${vista}, sin reserva: sin la leyenda de reserva`);
+    assert.ok(!todoSin.includes('Dejando 2 a 3 en reserva'), `${vista}, sin reserva: sin la leyenda de reserva`);
     assert.ok(!todoSin.includes('Dejá 2 repeticiones en reserva') && todoSin.includes(E.sinRIR('Dejá 2 repeticiones en reserva y bajá controlado.')),
       `${vista}, sin reserva: la nota técnica sin RIR`);
     if (web230) assert.ok(todoSin.includes('toca subir'), `${vista}, sin reserva: la carga simple sugiere subir`);
@@ -289,7 +297,7 @@ if (!fs.existsSync(CH) || typeof WebSocket === 'undefined') {
     assert.deepEqual(con1.errores, [], `${vista}: excepciones en la página`);
     assert.ok(!PROHIBIDO.test(todoCon1), `${vista}, semana 1 con reserva: apareció «${(todoCon1.match(PROHIBIDO) || [])[0]}»`);
     assert.ok(!/calibración/i.test(todoCon1), `${vista}, semana 1 con reserva: sin la calibración`);
-    assert.ok(todoCon1.includes('Seguí la pauta de esta semana (3×12), dejando 2–3 en reserva.'), `${vista}, semana 1 con reserva: la pauta`);
+    assert.ok(todoCon1.includes('Seguí la pauta de esta semana (3×12), dejando 2 a 3 en reserva.'), `${vista}, semana 1 con reserva: la pauta`);
     const sin1 = await pantallaDeEntreno({ rir: '0', semana: 1, web230 });
     const todoSin1 = [sin1.textos.lista, ...Object.values(sin1.textos.ejercicios)].join('\n');
     assert.deepEqual(sin1.errores, [], `${vista}: excepciones en la página`);
