@@ -529,8 +529,18 @@
     return t;
   }
 
+  // Una comida cargada (gramos a mano, kcal o alimentos agregados) que todavía no tiene «Comí»: el total del día suma solo
+  // lo marcado, y un alumno real (21/11) ajustó y copió comidas sin tocar «Comí» y veía el total sin ellas. La tarjeta lo
+  // dice en vez de sumarla sola. Con marca, sin nada cargado, con «Hoy no la como» o en un día que ya no se puede marcar,
+  // nada. Gemelo de CargadaSinComi de las apps.
+  const TEXTO_SIN_COMI = 'Cargada, falta tocar Comí';
+  function avisoSinComi(marca, ajuste, puedeMarcar) {
+    if (!puedeMarcar || marca || !ajuste || ajuste.omitida || esNeutro(ajuste)) return null;
+    return TEXTO_SIN_COMI;
+  }
+
   const API = {
-    indiceOpcion, comidasDelDia, consumo,
+    indiceOpcion, comidasDelDia, consumo, avisoSinComi, TEXTO_SIN_COMI,
     PASO, FACTOR_MIN, FACTOR_MAX, MAX_POR_COMIDA, MAX_POR_DIA,
     esPeso, redondear, pasoCantidad, maximoCantidad, bajar, subir, puedeSubir, conCantidad, kcal,
     escalar, cantidadesValidas, baseEscalable, limitesDelta, anclar, esNeutro, dia, destino,

@@ -73,10 +73,35 @@
     if (!a || !b) return !a && !b;
     return JSON.stringify(_canonico(AD.serializarAjuste(a))) === JSON.stringify(_canonico(AD.serializarAjuste(b)));
   }
-  // 'nueva': hoy no hay nada; 'igual': ya está eso; 'conflicto': hay otra cosa y solo se pisa si el cliente lo pide.
-  function estado(marca, ajuste, hoyMarca, hoyAjuste) {
+  // 'nueva': hoy no hay nada; 'igual': copiarla no cambiaría nada (ver marcaTrasCopiar); 'conflicto': hay otra cosa y solo
+  // se pisa si el cliente lo pide.
+  function estado(marca, ajuste, hoyMarca, hoyAjuste, nombreOpcion) {
     if (!hoyMarca && !hoyAjuste) return 'nueva';
-    return igualMarca(hoyMarca, marca) && igualAjuste(hoyAjuste, ajuste) ? 'igual' : 'conflicto';
+    const queda = marcaTrasCopiar(marca, nombreOpcion, ajuste, hoyMarca, hoyAjuste);
+    return igualMarca(hoyMarca, queda) && igualAjuste(hoyAjuste, ajuste) ? 'igual' : 'conflicto';
+  }
+  // La marca que queda hoy al copiar una comida (null: ninguna). Caso real del 21/11: copiar con «reemplazar» desde un día
+  // sin marca le sacaba a hoy el «Comí» y la comida dejaba de sumar en el total. Ahora:
+  // - si ese día tenía «Comí», queda esa marca (con sus tildes);
+  // - si no, y hoy tenía «Comí», se conserva: tal cual si es la misma opción con los mismos agregados (sus tildes siguen
+  //   valiendo); si no, «Comí» con la opción copiada y todo tildado (los tildes de hoy eran de otros alimentos);
+  // - si no, sin marca («Salté» de hoy se va: hoy queda lo de ese día, que se come).
+  // Gemelo de CopiaDeComidas.marcaTrasCopiar de las apps.
+  function marcaTrasCopiar(marca, nombreOpcion, ajuste, hoyMarca, hoyAjuste) {
+    if (marca) return marca;
+    if (!hoyMarca || hoyMarca.estado !== 'comido') return null;
+    const ts = (a) => JSON.stringify(((a && a.agregados) || []).map((x) => x._ts));
+    if (hoyMarca.opcion === nombreOpcion && ts(hoyAjuste) === ts(ajuste)) return hoyMarca;
+    return { opcion: nombreOpcion, estado: 'comido', foodsExcluidos: [] };
+  }
+  // El renglón de una comida en la lista de copiar. Las kcal solo con «Comí» ese día: sin marca no suman al total, y
+  // mostrarlas hacía creer que se copiaba una comida comida (caso real del 21/11).
+  function detalle(i) {
+    const p = [`Opción ${i.nombreOpcion}`];
+    if (i.agregados > 0) p.push(`${i.agregados} ${i.agregados === 1 ? 'agregado' : 'agregados'}`);
+    if (i.conCantidades) p.push('con ajustes');
+    p.push(i.marca && i.marca.estado === 'comido' ? `${Math.round(i.kcal)} kcal` : 'sin tocar Comí');
+    return p.join(', ');
   }
   const _norm = (s) => String(s == null ? '' : s).trim().toLowerCase();
   // La misma descripción y las mismas kcal redondeadas: copiarla de nuevo la duplicaría.
@@ -116,16 +141,17 @@
       }
       p.comidas.push({
         id: c.id, comidaId: c.id, nombre: c.name || '', opcion: o, nombreOpcion: _opcionNombre(c, o), marca, ajuste: a || null,
-        kcal: kcal(c, marca, a || null, o), agregados: a ? a.agregados.length : 0,
+        // Las kcal solo se piden con marca: sin «Comí» ese día no sumaba, y la lista no las muestra.
+        kcal: marca ? kcal(c, marca, a || null, o) : 0, agregados: a ? a.agregados.length : 0,
         conCantidades: !!a && (Object.keys(a.cantidades || {}).length > 0 || (a.deltaKcal || 0) !== 0),
-        estado: estado(marca, a || null, hoyMarcas[c.id] || null, hoyAjustes[c.id] || null),
+        estado: estado(marca, a || null, hoyMarcas[c.id] || null, hoyAjustes[c.id] || null, _opcionNombre(c, o)),
       });
     }
     return p;
   }
 
   const API = { DIAS_ATRAS, DIAS_MARCAR_FABRICA, hoyServidor, sumar, seleccionables, permiteMarcar, diasMarcar, rotuloCorto, rotuloLargo,
-    igualMarca, igualAjuste, estado, mismaLibre, plan };
+    igualMarca, igualAjuste, estado, marcaTrasCopiar, detalle, mismaLibre, plan };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else global.DiasDieta = API;
 })(typeof window !== 'undefined' ? window : globalThis);
